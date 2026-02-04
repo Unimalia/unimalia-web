@@ -27,14 +27,20 @@ export default function RootLayout({
     <html lang="it">
       <body className="min-h-screen bg-zinc-50 text-zinc-900">
         <header className="sticky top-0 z-50 border-b border-zinc-200 bg-white/80 backdrop-blur">
-          <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-            <a href="/" className="flex items-center gap-3">
-              <img src="/logo.png" alt="UNIMALIA" className="h-30 w-auto" />
-              <span className="text-lg font-bold tracking-tight">UNIMALIA</span>
+          <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3 sm:px-6 sm:py-4">
+            {/* LOGO ONLY (cliccabile) */}
+            <a href="/" className="flex items-center">
+              <img
+                src="/logo.png"
+                alt="UNIMALIA"
+                className="h-10 w-auto"
+              />
             </a>
 
-            <div className="flex items-center gap-3">
-              <nav className="flex items-center gap-1">
+            {/* NAV + AUTH */}
+            <div className="flex min-w-0 flex-1 items-center justify-end gap-3">
+              {/* NAV: su mobile scorre orizzontalmente (non esce fuori) */}
+              <nav className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto whitespace-nowrap">
                 <a
                   href="/smarrimenti"
                   className="rounded-lg px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
@@ -76,10 +82,12 @@ export default function RootLayout({
           </div>
         </header>
 
-        <main className="mx-auto max-w-5xl px-6 py-10">{children}</main>
+        <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-10">
+          {children}
+        </main>
 
         <footer className="mt-14 border-t border-zinc-200 bg-white">
-          <div className="mx-auto max-w-5xl px-6 py-8 text-sm text-zinc-600">
+          <div className="mx-auto max-w-5xl px-4 py-8 text-sm text-zinc-600 sm:px-6">
             <p>
               UNIMALIA nasce come impresa responsabile: una parte dei ricavi verrà
               reinvestita nel progetto e una parte devolverà valore al mondo animale.
