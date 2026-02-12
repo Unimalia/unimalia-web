@@ -1,290 +1,240 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "../../lib/supabaseClient";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabaseClient";
 
-type LostEvent = {
+type MyLostEvent = {
   id: string;
   created_at: string;
   reporter_id: string;
+
+  animal_id: string | null;
+
   species: string;
   animal_name: string | null;
-  description: string;
   city: string;
   province: string;
   lost_date: string;
   primary_photo_url: string;
-  status: "active" | "found" | string;
+
+  status: "active" | "found";
+
+  animals?: { name: string; species: string }[] | null;
 };
 
-type ContactRequest = {
-  id: string;
-  created_at: string;
-  event_id: string;
-  sender_id: string;
-  message: string;
-};
+function badge(status: "active" | "found") {
+  return status === "active" ? "🔴 Attivo" : "🔵 Chiuso";
+}
 
 export default function MieiAnnunciPage() {
   const router = useRouter();
 
-  const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-
-  const [events, setEvents] = useState<LostEvent[]>([]);
-  const [messages, setMessages] = useState<ContactRequest[]>([]);
-
-  const [tab, setTab] = useState<"active" | "found" | "all">("active");
+  const [userId, setUserId] = useState<string | null>(null);
+  const [items, setItems] = useState<MyLostEvent[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function init() {
-      const { data } = await supabase.auth.getUser();
-      const user = data.user;
+    let alive = true;
 
-      if (!user) {
-        router.push("/login");
+    async function boot() {
+      setLoading(true);
+      setError(null);
+
+      const { data, error } = await supabase.auth.getUser();
+      const u = data.user;
+
+      if (!u || error) {
+        router.replace("/login");
         return;
       }
 
-      setUserId(user.id);
+      if (!alive) return;
+      setUserId(u.id);
 
-      // Carica annunci miei (grazie alla policy select_own_all)
-      const { data: ev, error: evErr } = await supabase
+      const { data: rows, error: e2 } = await supabase
         .from("lost_events")
         .select(
-          "id, created_at, reporter_id, species, animal_name, description, city, province, lost_date, primary_photo_url, status"
+          `
+          id, created_at, reporter_id,
+          animal_id,
+          species, animal_name, city, province, lost_date, primary_photo_url,
+          status,
+          animals:animal_id ( name, species )
+        `
         )
-        .eq("reporter_id", user.id)
+        .eq("reporter_id", u.id)
         .order("created_at", { ascending: false });
 
-      if (!evErr && ev) setEvents(ev as any);
+      if (!alive) return;
 
-      // Carica messaggi ricevuti (policy select_owner su contact_requests)
-      const { data: msgs, error: msgErr } = await supabase
-        .from("contact_requests")
-        .select("id, created_at, event_id, sender_id, message")
-        .order("created_at", { ascending: false });
-
-      if (!msgErr && msgs) setMessages(msgs as any);
+      if (e2) {
+        setError(e2.message);
+        setItems([]);
+      } else {
+        setItems(((rows as unknown) as MyLostEvent[]) ?? []);
+      }
 
       setLoading(false);
     }
 
-    init();
+    boot();
+    return () => {
+      alive = false;
+    };
   }, [router]);
 
-  const filteredEvents = useMemo(() => {
-    if (tab === "all") return events;
-    return events.filter((e) => e.status === tab);
-  }, [events, tab]);
+  async function markFound(item: MyLostEvent) {
+    if (!userId) return;
+    if (item.reporter_id !== userId) return;
 
-  function eventMessages(eventId: string) {
-    return messages.filter((m) => m.event_id === eventId);
-  }
-
-  async function markFound(eventId: string) {
-    const ok = window.confirm("Confermi che l’animale è stato ritrovato?");
+    const ok = window.confirm("Confermi che l’animale è stato ritrovato e vuoi chiudere l’annuncio?");
     if (!ok) return;
 
-    const { error } = await supabase
+    const { error: e1 } = await supabase
       .from("lost_events")
       .update({ status: "found" })
-      .eq("id", eventId);
+      .eq("id", item.id);
 
-    if (error) {
-      alert(error.message);
+    if (e1) {
+      alert(e1.message);
       return;
     }
 
-    // aggiorna local state
-    setEvents((prev) =>
-      prev.map((e) => (e.id === eventId ? { ...e, status: "found" } : e))
+    if (item.animal_id) {
+      await supabase.from("animals").update({ status: "home" }).eq("id", item.animal_id);
+    }
+
+    setItems((prev) =>
+      prev.map((x) => (x.id === item.id ? { ...x, status: "found" } : x))
     );
   }
 
-  if (loading) return <p>Caricamento area personale…</p>;
+  const activeCount = useMemo(() => items.filter((x) => x.status === "active").length, [items]);
+
+  if (loading) {
+    return (
+      <main>
+        <h1 className="text-3xl font-bold tracking-tight">I miei annunci</h1>
+        <p className="mt-4 text-zinc-700">Caricamento…</p>
+      </main>
+    );
+  }
 
   return (
     <main>
-      <h1 className="text-3xl font-bold tracking-tight">I miei annunci</h1>
-      <p className="mt-3 text-zinc-700">
-        Qui trovi gli annunci che hai pubblicato e i messaggi ricevuti.
-      </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">I miei annunci</h1>
+          <p className="mt-3 text-zinc-700">
+            Annunci pubblicati da te. Attivi: <span className="font-medium">{activeCount}</span>
+          </p>
+        </div>
 
-      {/* Tabs */}
-      <div className="mt-6 flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => setTab("active")}
-          className={`rounded-full px-4 py-2 text-sm font-medium border ${
-            tab === "active"
-              ? "bg-black text-white border-black"
-              : "bg-white text-zinc-800 border-zinc-200 hover:bg-zinc-50"
-          }`}
-        >
-          Attivi
-        </button>
-        <button
-          type="button"
-          onClick={() => setTab("found")}
-          className={`rounded-full px-4 py-2 text-sm font-medium border ${
-            tab === "found"
-              ? "bg-black text-white border-black"
-              : "bg-white text-zinc-800 border-zinc-200 hover:bg-zinc-50"
-          }`}
-        >
-          Ritrovati
-        </button>
-        <button
-          type="button"
-          onClick={() => setTab("all")}
-          className={`rounded-full px-4 py-2 text-sm font-medium border ${
-            tab === "all"
-              ? "bg-black text-white border-black"
-              : "bg-white text-zinc-800 border-zinc-200 hover:bg-zinc-50"
-          }`}
-        >
-          Tutti
-        </button>
-      </div>
+        <div className="flex gap-2">
+          <Link
+            href="/smarrimenti"
+            className="inline-flex items-center justify-center rounded-lg border border-zinc-200 bg-white px-4 py-3 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
+          >
+            Vedi smarrimenti
+          </Link>
 
-      {/* Lista */}
-      {filteredEvents.length === 0 ? (
-        <div className="mt-8 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <p className="text-zinc-700">Nessun annuncio in questa sezione.</p>
-          <a
-            href="/smarrimento"
-            className="mt-4 inline-flex rounded-lg bg-black px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
+          {/* Se esiste già la pagina di pubblicazione smarrimento, questo link andrà bene.
+              Se non esiste ancora, lo sistemiamo nello step successivo. */}
+          <Link
+            href="/smarrimenti/nuovo"
+            className="inline-flex items-center justify-center rounded-lg bg-black px-4 py-3 text-sm font-medium text-white hover:bg-zinc-800"
           >
             Pubblica smarrimento
-          </a>
+          </Link>
+        </div>
+      </div>
+
+      {error ? (
+        <div className="mt-8 rounded-2xl border border-red-200 bg-white p-6 text-sm text-red-700 shadow-sm">
+          Errore: {error}
+        </div>
+      ) : items.length === 0 ? (
+        <div className="mt-8 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+          <p className="text-sm text-zinc-700">Non hai ancora pubblicato annunci.</p>
         </div>
       ) : (
-        <div className="mt-8 space-y-6">
-          {filteredEvents.map((e) => {
-            const msgs = eventMessages(e.id);
-            const isActive = e.status === "active";
+        <div className="mt-8 grid gap-6 sm:grid-cols-2">
+          {items.map((item) => {
+            const linkedAnimal = item.animals?.[0] || null;
+            const displaySpecies = linkedAnimal?.species || item.species || "Animale";
+            const displayName = linkedAnimal?.name || item.animal_name || null;
+
+            const imgSrc =
+              (item.primary_photo_url || "/placeholder-animal.jpg") +
+              `?v=${encodeURIComponent(item.created_at)}`;
 
             return (
               <div
-                key={e.id}
+                key={item.id}
                 className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm"
               >
-                <div className="grid gap-0 md:grid-cols-[240px_1fr]">
-                  <img
-                    src={
-                      (e.primary_photo_url || "/placeholder-animal.jpg") +
-                      `?v=${encodeURIComponent(e.created_at)}`
-                    }
-                    alt={e.animal_name || e.species}
-                    className="h-56 w-full object-cover md:h-full"
-                    onError={(ev) => {
-                      (ev.currentTarget as HTMLImageElement).src =
-                        "/placeholder-animal.jpg";
-                    }}
-                  />
+                <img
+                  src={imgSrc}
+                  alt={displayName ? `${displaySpecies} – ${displayName}` : displaySpecies}
+                  className="h-44 w-full object-cover"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = "/placeholder-animal.jpg";
+                  }}
+                />
 
-                  <div className="p-5">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <h2 className="text-xl font-semibold">
-                          {e.species}
-                          {e.animal_name ? ` – ${e.animal_name}` : ""}
-                        </h2>
-                        <p className="mt-1 text-sm text-zinc-600">
-                          {(e.city || "—")}{" "}
-                          {e.province ? `(${e.province})` : ""} •{" "}
-                          {new Date(e.lost_date).toLocaleDateString()}
-                        </p>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                            isActive
-                              ? "bg-amber-50 text-amber-800"
-                              : "bg-emerald-50 text-emerald-700"
-                          }`}
-                        >
-                          {isActive ? "Attivo" : "Ritrovato"}
-                        </span>
-
-                        {isActive && (
-                          <button
-                            type="button"
-                            onClick={() => markFound(e.id)}
-                            className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
-                          >
-                            Ritrovato ✅
-                          </button>
-                        )}
-                      </div>
+                <div className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h2 className="text-lg font-semibold">
+                        {displaySpecies}
+                        {displayName ? ` – ${displayName}` : ""}
+                      </h2>
+                      <p className="mt-1 text-sm text-zinc-600">
+                        {(item.city || "—")} {item.province ? `(${item.province})` : ""} –{" "}
+                        {new Date(item.lost_date).toLocaleDateString("it-IT")}
+                      </p>
                     </div>
-
-                    <p className="mt-3 text-sm text-zinc-800">{e.description}</p>
-
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      <a
-                        href={`/smarrimenti/${e.id}`}
-                        className="rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
-                      >
-                        Apri annuncio
-                      </a>
-                    </div>
-
-                    {/* Messaggi ricevuti */}
-                    <div className="mt-5 rounded-xl border border-zinc-200 bg-zinc-50 p-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-sm font-semibold text-zinc-900">
-                          Messaggi ricevuti
-                        </p>
-                        <span className="text-xs text-zinc-600">
-                          {msgs.length}
-                        </span>
-                      </div>
-
-                      {msgs.length === 0 ? (
-                        <p className="mt-2 text-sm text-zinc-700">
-                          Nessun messaggio per questo annuncio (ancora).
-                        </p>
-                      ) : (
-                        <div className="mt-3 space-y-3">
-                          {msgs.slice(0, 5).map((m) => (
-                            <div
-                              key={m.id}
-                              className="rounded-lg border border-zinc-200 bg-white p-3"
-                            >
-                              <p className="text-xs text-zinc-500">
-                                {new Date(m.created_at).toLocaleString()}
-                              </p>
-                              <p className="mt-1 text-sm text-zinc-800">
-                                {m.message}
-                              </p>
-                            </div>
-                          ))}
-
-                          {msgs.length > 5 && (
-                            <p className="text-xs text-zinc-500">
-                              Mostro solo gli ultimi 5 (nel prossimo step
-                              facciamo “vedi tutti”).
-                            </p>
-                          )}
-                        </div>
-                      )}
-                    </div>
+                    <span className="text-sm">{badge(item.status)}</span>
                   </div>
+
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <Link
+                      href={`/smarrimenti/${item.id}`}
+                      className="inline-flex items-center justify-center rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
+                    >
+                      Apri annuncio
+                    </Link>
+
+                    {item.status === "active" && (
+                      <button
+                        type="button"
+                        onClick={() => markFound(item)}
+                        className="inline-flex items-center justify-center rounded-lg border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50"
+                        title="Segna come ritrovato"
+                      >
+                        Segna come ritrovato
+                      </button>
+                    )}
+                  </div>
+
+                  {item.animal_id ? (
+                    <p className="mt-3 text-xs text-zinc-500">
+                      Collegato al profilo animale ✅
+                    </p>
+                  ) : (
+                    <p className="mt-3 text-xs text-zinc-500">
+                      Smarrimento rapido (non collegato a profilo)
+                    </p>
+                  )}
                 </div>
               </div>
             );
           })}
         </div>
       )}
-
-      <p className="mt-10 text-xs text-zinc-500">
-        Nota: questa è la base dell’area personale. Nel prossimo step aggiungiamo:
-        “I miei messaggi” + gestione contatti + eventuale modifica annuncio.
-      </p>
     </main>
   );
 }

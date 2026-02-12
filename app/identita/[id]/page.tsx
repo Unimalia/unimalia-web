@@ -1,0 +1,223 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabaseClient";
+
+type Animal = {
+  id: string;
+  owner_id: string;
+  created_at: string;
+  name: string;
+  species: string;
+  breed: string | null;
+  color: string | null;
+  size: string | null;
+  chip_number: string | null;
+  microchip_verified: boolean;
+  status: string;
+  premium_active: boolean;
+  premium_expires_at: string | null;
+};
+
+function statusLabel(status: string) {
+  switch (status) {
+    case "lost":
+      return "🔴 Smarrito";
+    case "found":
+      return "🔵 Ritrovato";
+    case "home":
+    case "safe":
+    default:
+      return "🟢 A casa";
+  }
+}
+
+export default function AnimalProfilePage() {
+  const params = useParams<{ id: string }>();
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [animal, setAnimal] = useState<Animal | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const id = params?.id;
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function load() {
+      setLoading(true);
+      setError(null);
+
+      const { data: authData, error: authErr } = await supabase.auth.getUser();
+      if (authErr || !authData?.user) {
+        router.replace("/login");
+        return;
+      }
+
+      const { data, error: fetchErr } = await supabase
+        .from("animals")
+        .select(
+          "id,owner_id,created_at,name,species,breed,color,size,chip_number,microchip_verified,status,premium_active,premium_expires_at"
+        )
+        .eq("id", id)
+        .single();
+
+      if (!isMounted) return;
+
+      if (fetchErr || !data) {
+        setError(fetchErr?.message || "Profilo non trovato.");
+        setAnimal(null);
+        setLoading(false);
+        return;
+      }
+
+      const a = data as Animal;
+
+      // sicurezza extra (RLS dovrebbe già fare il suo)
+      if (a.owner_id !== authData.user.id) {
+        router.replace("/identita");
+        return;
+      }
+
+      setAnimal(a);
+      setLoading(false);
+    }
+
+    if (id) load();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [id, router]);
+
+  const premiumOk = useMemo(() => {
+    if (!animal) return false;
+    if (!animal.premium_active) return false;
+    if (!animal.premium_expires_at) return true;
+    return new Date(animal.premium_expires_at).getTime() > Date.now();
+  }, [animal]);
+
+  if (loading) {
+    return (
+      <main className="max-w-3xl">
+        <h1 className="text-3xl font-bold tracking-tight">Profilo animale</h1>
+        <p className="mt-4 text-zinc-700">Caricamento…</p>
+      </main>
+    );
+  }
+
+  if (error || !animal) {
+    return (
+      <main className="max-w-3xl">
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold tracking-tight">Profilo animale</h1>
+          <Link href="/identita" className="text-sm text-zinc-600 hover:underline">
+            ← Torna
+          </Link>
+        </div>
+        <div className="mt-6 rounded-2xl border border-red-200 bg-white p-6 text-sm text-red-700 shadow-sm">
+          {error || "Errore."}
+        </div>
+      </main>
+    );
+  }
+
+  return (
+    <main className="max-w-3xl">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">{animal.name}</h1>
+          <p className="mt-1 text-zinc-700">
+            {animal.species}
+            {animal.breed ? ` • ${animal.breed}` : ""} • {statusLabel(animal.status)}
+          </p>
+        </div>
+        <Link href="/identita" className="text-sm text-zinc-600 hover:underline">
+          ← Torna
+        </Link>
+      </div>
+
+      <div className="mt-6 grid gap-4 sm:grid-cols-2">
+        <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+          <h2 className="text-base font-semibold">Identità</h2>
+          <dl className="mt-4 grid gap-3 text-sm">
+            <div className="flex justify-between gap-3">
+              <dt className="text-zinc-500">Nome</dt>
+              <dd className="font-medium">{animal.name}</dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt className="text-zinc-500">Tipo</dt>
+              <dd className="font-medium">{animal.species}</dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt className="text-zinc-500">Colore / segni</dt>
+              <dd className="font-medium">{animal.color || "—"}</dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt className="text-zinc-500">Taglia</dt>
+              <dd className="font-medium">{animal.size || "—"}</dd>
+            </div>
+          </dl>
+
+          <p className="mt-4 text-xs text-zinc-500">
+            Creato il {new Date(animal.created_at).toLocaleDateString("it-IT")}
+          </p>
+        </section>
+
+        <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+          <h2 className="text-base font-semibold">Stato profilo</h2>
+
+          <div className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4">
+            <p className="text-sm text-zinc-700">
+              Profilo completo:{" "}
+              <span className="font-medium">{premiumOk ? "attualmente gratuito ✅" : "limitato"}</span>
+            </p>
+            <p className="mt-2 text-xs text-zinc-500">
+              Smarrimenti sempre gratuiti. In futuro alcune funzioni potrebbero richiedere UNIMALIA ID per sostenere il progetto.
+            </p>
+          </div>
+
+          <div className="mt-5">
+            <h3 className="text-sm font-semibold">Microchip</h3>
+            <div className="mt-2 rounded-xl border border-zinc-200 bg-white p-4">
+              <p className="text-sm text-zinc-700">
+                {animal.chip_number ? "Microchip registrato ✔️" : "Microchip non ancora registrato nel profilo."}
+              </p>
+              <p className="mt-2 text-xs text-zinc-500">
+                {animal.chip_number
+                  ? animal.microchip_verified
+                    ? "Verificato da professionista ✅"
+                    : "Verifica professionale disponibile in futuro."
+                  : "La registrazione e verifica del microchip sarà disponibile prossimamente tramite professionisti autorizzati."}
+              </p>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+          <h2 className="text-base font-semibold">Cartella clinica (in arrivo)</h2>
+          <p className="mt-3 text-sm text-zinc-700">
+            Questa sezione sarà compilabile dal veterinario di fiducia tramite accesso professionale dedicato.
+          </p>
+          <div className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600">
+            Nessuna informazione registrata.
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+          <h2 className="text-base font-semibold">Condivisione</h2>
+          <p className="mt-3 text-sm text-zinc-700">
+            In futuro potrai condividere un link pubblico e dare accesso temporaneo ai professionisti.
+          </p>
+          <div className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600">
+            Link pubblico: disponibile prossimamente.
+          </div>
+        </section>
+      </div>
+    </main>
+  );
+}
