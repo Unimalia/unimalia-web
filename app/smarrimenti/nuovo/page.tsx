@@ -1,5 +1,7 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -11,9 +13,13 @@ type AnimalRow = {
   species: string;
   breed: string | null;
   status: string;
+  photo_url: string | null;
 };
 
 type Mode = "rapido" | "profilo";
+
+const BUCKET = "public"; // <-- se il tuo bucket NON si chiama "public", dimmelo
+const LOST_FOLDER = "lost-events";
 
 function todayIso() {
   const d = new Date();
@@ -23,27 +29,27 @@ function todayIso() {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-// Errore “umano” per errori DB/tecnici
-function humanizeSupabaseError(message?: string) {
-  const msg = (message || "").toLowerCase();
-
-  // foto obbligatoria (NOT NULL)
-  if (msg.includes("primary_photo_url") && msg.includes("not-null")) {
-    return "Per pubblicare l’annuncio devi inserire una foto (URL).";
+function humanError(msg?: string) {
+  const m = (msg || "").toLowerCase();
+  if (m.includes("row level security") || m.includes("permission") || m.includes("not allowed")) {
+    return "Non hai i permessi per completare questa operazione. Fai login e riprova.";
   }
-
-  // login / permessi
-  if (msg.includes("jwt") || msg.includes("auth") || msg.includes("permission")) {
-    return "Sessione scaduta o permessi insufficienti. Fai login e riprova.";
+  if (m.includes("bucket") || m.includes("storage") || m.includes("object")) {
+    return "Errore nel caricamento della foto. Riprova o contattaci se il problema continua.";
   }
-
-  // rete / timeout
-  if (msg.includes("failed to fetch") || msg.includes("network") || msg.includes("timeout")) {
+  if (m.includes("failed to fetch") || m.includes("network") || m.includes("timeout")) {
     return "Problema di connessione. Controlla internet e riprova.";
   }
+  return "Si è verificato un errore. Riprova tra poco.";
+}
 
-  // fallback
-  return "Si è verificato un errore durante la pubblicazione. Riprova tra poco.";
+function extFromFile(file: File) {
+  const name = file.name || "";
+  const i = name.lastIndexOf(".");
+  if (i >= 0) return name.slice(i + 1).toLowerCase();
+  if (file.type === "image/png") return "png";
+  if (file.type === "image/webp") return "webp";
+  return "jpg";
 }
 
 export default function NuovoSmarrimentoPage() {
@@ -57,11 +63,10 @@ export default function NuovoSmarrimentoPage() {
 
   const [mode, setMode] = useState<Mode>("rapido");
 
-  // Profilo animale
   const [animals, setAnimals] = useState<AnimalRow[]>([]);
   const [animalId, setAnimalId] = useState(preselectedAnimalId);
 
-  // Campi smarrimento
+  // campi
   const [species, setSpecies] = useState("");
   const [animalName, setAnimalName] = useState("");
   const [breed, setBreed] = useState("");
@@ -73,19 +78,21 @@ export default function NuovoSmarrimentoPage() {
   const [contactPhone, setContactPhone] = useState("");
   const [contactEmail, setContactEmail] = useState("");
 
-  // Foto (URL per ora) — ORA OBBLIGATORIA
-  const [primaryPhotoUrl, setPrimaryPhotoUrl] = useState("");
+  // FOTO:
+  const [profilePhotoUrl, setProfilePhotoUrl] = useState<string>("");
+  const [photoUrl, setPhotoUrl] = useState<string>("");
 
+  const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Se arriva animal_id via query, passa automaticamente a "profilo"
+  // auto profilo se arriva animal_id
   useEffect(() => {
     if (preselectedAnimalId) setMode("profilo");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Check login + carica animali + prefill email
+  // login + carica animali
   useEffect(() => {
     let alive = true;
 
@@ -102,22 +109,24 @@ export default function NuovoSmarrimentoPage() {
       }
 
       if (!alive) return;
-
       setUserId(u.id);
 
-      // Prefill email (modificabile e cancellabile)
+      // prefill email (modificabile/cancellabile)
       setContactEmail((prev) => prev || (u.email ?? ""));
 
       const { data: rows, error: e2 } = await supabase
         .from("animals")
-        .select("id,name,species,breed,status")
+        .select("id,name,species,breed,status,photo_url")
         .eq("owner_id", u.id)
         .order("created_at", { ascending: false });
 
       if (!alive) return;
 
-      if (e2) setAnimals([]);
-      else setAnimals((rows as AnimalRow[]) || []);
+      if (e2) {
+        setAnimals([]);
+      } else {
+        setAnimals((rows as AnimalRow[]) || []);
+      }
 
       setChecking(false);
     }
@@ -133,20 +142,28 @@ export default function NuovoSmarrimentoPage() {
     [animals, animalId]
   );
 
-  // Precompilo specie+nome+razza (EDITABILI) se modalità profilo
+  // quando scegli animale: precompila + imposta foto profilo come default se esiste
   useEffect(() => {
     if (mode !== "profilo") return;
-    if (!selectedAnimal) return;
+    if (!selectedAnimal) {
+      setProfilePhotoUrl("");
+      return;
+    }
 
     setSpecies((prev) => prev || selectedAnimal.species || "");
     setAnimalName((prev) => prev || selectedAnimal.name || "");
     setBreed((prev) => prev || selectedAnimal.breed || "");
+
+    const prof = selectedAnimal.photo_url || "";
+    setProfilePhotoUrl(prof);
+
+    // se non hai scelto una foto nuova, usa quella profilo
+    setPhotoUrl((prev) => prev || prof);
   }, [mode, selectedAnimal]);
 
   function buildFinalDescription() {
     const d = description.trim();
     const b = breed.trim();
-
     if (!b) return d;
 
     const alreadyHasBreed =
@@ -157,14 +174,50 @@ export default function NuovoSmarrimentoPage() {
     return `Razza: ${b}\n---\n${d}`;
   }
 
-  function validatePhotoUrl(url: string) {
-    const u = url.trim();
-    if (!u) return "Per pubblicare l’annuncio devi inserire una foto (URL).";
-    // accettiamo anche URL Supabase firmati / path lunghi; controllo leggero
-    const isHttp = u.startsWith("http://") || u.startsWith("https://");
-    const isRelative = u.startsWith("/"); // se in futuro userai path interni
-    if (!isHttp && !isRelative) return "Il link della foto non sembra valido. Usa un URL che inizi con https://";
-    return null;
+  async function onPickFile(file: File | null) {
+    if (!file) return;
+
+    setError(null);
+
+    if (!file.type.startsWith("image/")) {
+      setError("Seleziona un file immagine (JPG/PNG/WebP).");
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      setError("Immagine troppo grande. Usa una foto sotto gli 8MB.");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const ext = extFromFile(file);
+      const name = `lost_${Date.now()}_${Math.random().toString(16).slice(2)}.${ext}`;
+      const path = `${LOST_FOLDER}/${name}`;
+
+      const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file, {
+        cacheControl: "3600",
+        upsert: false,
+        contentType: file.type,
+      });
+
+      if (upErr) throw new Error(upErr.message);
+
+      const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(path);
+      const url = pub?.publicUrl;
+
+      if (!url) throw new Error("public_url_missing");
+
+      setPhotoUrl(url);
+    } catch (e: any) {
+      setError(humanError(e?.message));
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function useProfilePhoto() {
+    if (!profilePhotoUrl) return;
+    setPhotoUrl(profilePhotoUrl);
   }
 
   async function submit() {
@@ -176,20 +229,14 @@ export default function NuovoSmarrimentoPage() {
     const desc = description.trim();
     const c = city.trim();
     const p = province.trim();
-    const photo = primaryPhotoUrl.trim();
 
-    // ✅ errori “umani”
     if (!sp) return setError("Seleziona il tipo animale (es. Cane, Gatto…).");
     if (mode === "profilo" && !animalId) return setError("Seleziona un profilo animale.");
-    if (!animalName.trim()) {
-      // nome non obbligatorio nel tuo requisito, quindi NON blocco
-      // (se vuoi renderlo obbligatorio dimmelo)
-    }
     if (!c) return setError("Inserisci la città.");
     if (!lostDate) return setError("Inserisci la data dello smarrimento.");
     if (desc.length < 10) return setError("Descrizione troppo corta. Scrivi almeno 10 caratteri.");
-    const photoErr = validatePhotoUrl(photo);
-    if (photoErr) return setError(photoErr);
+
+    if (!photoUrl) return setError("Per pubblicare l’annuncio devi caricare una foto.");
 
     setSaving(true);
 
@@ -202,10 +249,7 @@ export default function NuovoSmarrimentoPage() {
         city: c,
         province: p || null,
         lost_date: lostDate,
-
-        // ✅ ORA SEMPRE valorizzata (obbligatoria)
-        primary_photo_url: photo,
-
+        primary_photo_url: photoUrl,
         contact_phone: contactPhone.trim() || null,
         contact_email: contactEmail.trim() || null,
         status: "active",
@@ -219,9 +263,7 @@ export default function NuovoSmarrimentoPage() {
         .select("id")
         .single();
 
-      if (e1 || !ev?.id) {
-        throw new Error(e1?.message || "publish_failed");
-      }
+      if (e1 || !ev?.id) throw new Error(e1?.message || "publish_failed");
 
       if (mode === "profilo" && animalId) {
         const { error: e2 } = await supabase
@@ -229,15 +271,12 @@ export default function NuovoSmarrimentoPage() {
           .update({ status: "lost" })
           .eq("id", animalId);
 
-        if (e2) {
-          // non blocco la pubblicazione, ma loggo
-          console.warn("Impossibile aggiornare status animale:", e2.message);
-        }
+        if (e2) console.warn("Impossibile aggiornare status animale:", e2.message);
       }
 
       router.push(`/smarrimenti/${ev.id}`);
-    } catch (err: any) {
-      setError(humanizeSupabaseError(err?.message));
+    } catch (e: any) {
+      setError(humanError(e?.message));
     } finally {
       setSaving(false);
     }
@@ -262,7 +301,7 @@ export default function NuovoSmarrimentoPage() {
       </div>
 
       <p className="mt-3 text-zinc-700">
-        Puoi pubblicare uno smarrimento in modalità rapida oppure collegarlo a un profilo animale registrato.
+        Pubblica uno smarrimento rapido oppure collegalo a un profilo animale (con foto profilo come default).
       </p>
 
       <div className="mt-6 flex gap-2">
@@ -319,7 +358,7 @@ export default function NuovoSmarrimentoPage() {
 
               {selectedAnimal && (
                 <p className="text-xs text-zinc-500">
-                  Collegato a: <span className="font-medium">{selectedAnimal.name}</span>. Puoi modificare i campi prima di pubblicare.
+                  Collegato a: <span className="font-medium">{selectedAnimal.name}</span>. Puoi modificare tutto prima di pubblicare.
                 </p>
               )}
             </div>
@@ -327,6 +366,65 @@ export default function NuovoSmarrimentoPage() {
         </div>
       )}
 
+      {/* FOTO */}
+      <div className="mt-6 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+        <h2 className="text-base font-semibold">Foto *</h2>
+        <p className="mt-2 text-sm text-zinc-700">
+          Per pubblicare è obbligatoria almeno una foto. Se hai una foto nel profilo animale, la useremo come default.
+        </p>
+
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <div className="overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50">
+            <img
+              src={photoUrl || "/placeholder-animal.jpg"}
+              alt="Anteprima foto"
+              className="h-56 w-full object-cover"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).src = "/placeholder-animal.jpg";
+              }}
+            />
+          </div>
+
+          <div className="flex flex-col gap-3">
+            {mode === "profilo" && profilePhotoUrl ? (
+              <button
+                type="button"
+                onClick={useProfilePhoto}
+                className="rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+              >
+                Usa foto profilo
+              </button>
+            ) : (
+              <div className="rounded-lg border border-zinc-200 bg-white p-3 text-sm text-zinc-700">
+                Nessuna foto profilo disponibile.
+              </div>
+            )}
+
+            <label className="rounded-lg bg-black px-4 py-2 text-center text-sm font-semibold text-white hover:bg-zinc-800 cursor-pointer">
+              {uploading ? "Caricamento foto…" : "Sfoglia e carica una nuova foto"}
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => onPickFile(e.target.files?.[0] ?? null)}
+                disabled={uploading}
+              />
+            </label>
+
+            <p className="text-xs text-zinc-500">
+              Formati consigliati: JPG/PNG/WebP. Max 8MB.
+            </p>
+
+            {!photoUrl && (
+              <p className="text-sm font-medium text-red-700">
+                Per pubblicare l’annuncio devi caricare una foto.
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* FORM */}
       <div className="mt-6 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="grid gap-2">
@@ -409,19 +507,6 @@ export default function NuovoSmarrimentoPage() {
             />
           </label>
 
-          <label className="grid gap-2 sm:col-span-2">
-            <span className="text-sm font-medium">Foto (URL per ora) *</span>
-            <input
-              value={primaryPhotoUrl}
-              onChange={(e) => setPrimaryPhotoUrl(e.target.value)}
-              className="rounded-lg border border-zinc-300 px-3 py-2"
-              placeholder="https://..."
-            />
-            <p className="text-xs text-zinc-500">
-              Per pubblicare l’annuncio è obbligatorio inserire una foto (URL).
-            </p>
-          </label>
-
           <label className="grid gap-2">
             <span className="text-sm font-medium">Telefono</span>
             <input
@@ -457,10 +542,10 @@ export default function NuovoSmarrimentoPage() {
           <button
             type="button"
             onClick={submit}
-            disabled={saving}
+            disabled={saving || uploading}
             className="rounded-lg bg-black px-5 py-3 text-white hover:bg-zinc-800 disabled:opacity-60"
           >
-            {saving ? "Pubblico…" : "Pubblica smarrimento"}
+            {uploading ? "Carico foto…" : saving ? "Pubblico…" : "Pubblica smarrimento"}
           </button>
         </div>
       </div>
