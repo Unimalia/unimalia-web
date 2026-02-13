@@ -16,7 +16,7 @@ type Animal = {
   size: string | null;
   chip_number: string | null;
   microchip_verified: boolean;
-  status: string;
+  status: string; // home | lost | found (o safe legacy)
   premium_active: boolean;
   premium_expires_at: string | null;
 };
@@ -37,26 +37,30 @@ function statusLabel(status: string) {
 export default function AnimalProfilePage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const id = params?.id;
+
   const [loading, setLoading] = useState(true);
   const [animal, setAnimal] = useState<Animal | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const id = params?.id;
-
   useEffect(() => {
-    let isMounted = true;
+    let alive = true;
 
     async function load() {
+      if (!id) return;
+
       setLoading(true);
       setError(null);
 
       const { data: authData, error: authErr } = await supabase.auth.getUser();
-      if (authErr || !authData?.user) {
+      const user = authData.user;
+
+      if (authErr || !user) {
         router.replace("/login");
         return;
       }
 
-      const { data, error: fetchErr } = await supabase
+      const { data, error } = await supabase
         .from("animals")
         .select(
           "id,owner_id,created_at,name,species,breed,color,size,chip_number,microchip_verified,status,premium_active,premium_expires_at"
@@ -64,10 +68,10 @@ export default function AnimalProfilePage() {
         .eq("id", id)
         .single();
 
-      if (!isMounted) return;
+      if (!alive) return;
 
-      if (fetchErr || !data) {
-        setError(fetchErr?.message || "Profilo non trovato.");
+      if (error || !data) {
+        setError(error?.message || "Profilo non trovato.");
         setAnimal(null);
         setLoading(false);
         return;
@@ -75,8 +79,8 @@ export default function AnimalProfilePage() {
 
       const a = data as Animal;
 
-      // sicurezza extra (RLS dovrebbe già fare il suo)
-      if (a.owner_id !== authData.user.id) {
+      // sicurezza extra (RLS dovrebbe già bloccare, ma meglio)
+      if (a.owner_id !== user.id) {
         router.replace("/identita");
         return;
       }
@@ -85,10 +89,9 @@ export default function AnimalProfilePage() {
       setLoading(false);
     }
 
-    if (id) load();
-
+    load();
     return () => {
-      isMounted = false;
+      alive = false;
     };
   }, [id, router]);
 
@@ -117,6 +120,7 @@ export default function AnimalProfilePage() {
             ← Torna
           </Link>
         </div>
+
         <div className="mt-6 rounded-2xl border border-red-200 bg-white p-6 text-sm text-red-700 shadow-sm">
           {error || "Errore."}
         </div>
@@ -126,35 +130,60 @@ export default function AnimalProfilePage() {
 
   return (
     <main className="max-w-3xl">
-      <div className="flex items-center justify-between gap-3">
+      {/* HEADER */}
+      <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">{animal.name}</h1>
-          <p className="mt-1 text-zinc-700">
-            {animal.species}
-            {animal.breed ? ` • ${animal.breed}` : ""} • {statusLabel(animal.status)}
-          </p>
+
+          <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-zinc-700">
+              {animal.species}
+              {animal.breed ? ` • ${animal.breed}` : ""}
+              {" • "}
+              {statusLabel(animal.status)}
+            </p>
+
+            <Link
+              href={`/smarrimenti/nuovo?animal_id=${animal.id}`}
+              className="inline-flex items-center justify-center rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+              title="Crea un annuncio collegato a questo profilo"
+            >
+              Segnala smarrimento
+            </Link>
+          </div>
         </div>
+
         <Link href="/identita" className="text-sm text-zinc-600 hover:underline">
           ← Torna
         </Link>
       </div>
 
+      {/* SEZIONI */}
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
           <h2 className="text-base font-semibold">Identità</h2>
+
           <dl className="mt-4 grid gap-3 text-sm">
             <div className="flex justify-between gap-3">
               <dt className="text-zinc-500">Nome</dt>
               <dd className="font-medium">{animal.name}</dd>
             </div>
+
             <div className="flex justify-between gap-3">
               <dt className="text-zinc-500">Tipo</dt>
               <dd className="font-medium">{animal.species}</dd>
             </div>
+
+            <div className="flex justify-between gap-3">
+              <dt className="text-zinc-500">Razza</dt>
+              <dd className="font-medium">{animal.breed || "—"}</dd>
+            </div>
+
             <div className="flex justify-between gap-3">
               <dt className="text-zinc-500">Colore / segni</dt>
               <dd className="font-medium">{animal.color || "—"}</dd>
             </div>
+
             <div className="flex justify-between gap-3">
               <dt className="text-zinc-500">Taglia</dt>
               <dd className="font-medium">{animal.size || "—"}</dd>
@@ -183,7 +212,7 @@ export default function AnimalProfilePage() {
             <h3 className="text-sm font-semibold">Microchip</h3>
             <div className="mt-2 rounded-xl border border-zinc-200 bg-white p-4">
               <p className="text-sm text-zinc-700">
-                {animal.chip_number ? "Microchip registrato ✔️" : "Microchip non ancora registrato nel profilo."}
+                {animal.chip_number ? "Microchip registrato ✔️" : "Microchip non ancora disponibile nel profilo."}
               </p>
               <p className="mt-2 text-xs text-zinc-500">
                 {animal.chip_number
@@ -209,7 +238,7 @@ export default function AnimalProfilePage() {
         </section>
 
         <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <h2 className="text-base font-semibold">Condivisione</h2>
+          <h2 className="text-base font-semibold">Condivisione (in arrivo)</h2>
           <p className="mt-3 text-sm text-zinc-700">
             In futuro potrai condividere un link pubblico e dare accesso temporaneo ai professionisti.
           </p>

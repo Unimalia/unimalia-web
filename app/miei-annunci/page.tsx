@@ -141,8 +141,6 @@ export default function MieiAnnunciPage() {
             Vedi smarrimenti
           </Link>
 
-          {/* Se esiste già la pagina di pubblicazione smarrimento, questo link andrà bene.
-              Se non esiste ancora, lo sistemiamo nello step successivo. */}
           <Link
             href="/smarrimenti/nuovo"
             className="inline-flex items-center justify-center rounded-lg bg-black px-4 py-3 text-sm font-medium text-white hover:bg-zinc-800"
@@ -221,13 +219,9 @@ export default function MieiAnnunciPage() {
                   </div>
 
                   {item.animal_id ? (
-                    <p className="mt-3 text-xs text-zinc-500">
-                      Collegato al profilo animale ✅
-                    </p>
+                    <p className="mt-3 text-xs text-zinc-500">Collegato al profilo animale ✅</p>
                   ) : (
-                    <p className="mt-3 text-xs text-zinc-500">
-                      Smarrimento rapido (non collegato a profilo)
-                    </p>
+                    <p className="mt-3 text-xs text-zinc-500">Smarrimento rapido (non collegato a profilo)</p>
                   )}
                 </div>
               </div>
