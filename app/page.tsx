@@ -1,143 +1,182 @@
-"use client";
+import Link from "next/link";
 
-import { useEffect, useState } from "react";
-import { supabase } from "../lib/supabaseClient";
-
-export default function Home() {
-  const [loading, setLoading] = useState(true);
-
-  const [activeToday, setActiveToday] = useState(0);
-  const [active7d, setActive7d] = useState(0);
-  const [found7d, setFound7d] = useState(0);
-
-  useEffect(() => {
-    async function loadCounts() {
-      setLoading(true);
-
-      const now = new Date();
-      const startOfToday = new Date(now);
-      startOfToday.setHours(0, 0, 0, 0);
-
-      const sevenDaysAgo = new Date(now);
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-      const todayISO = startOfToday.toISOString();
-      const sevenDaysISO = sevenDaysAgo.toISOString();
-
-      // Attivi creati oggi (usiamo created_at perché è sempre presente)
-      const { count: cToday } = await supabase
-        .from("lost_events")
-        .select("id", { count: "exact", head: true })
-        .eq("status", "active")
-        .gte("created_at", todayISO);
-
-      // Attivi ultimi 7 giorni
-      const { count: cActive7d } = await supabase
-        .from("lost_events")
-        .select("id", { count: "exact", head: true })
-        .eq("status", "active")
-        .gte("created_at", sevenDaysISO);
-
-      // Ritrovati ultimi 7 giorni
-      const { count: cFound7d } = await supabase
-        .from("lost_events")
-        .select("id", { count: "exact", head: true })
-        .eq("status", "found")
-        .gte("created_at", sevenDaysISO);
-
-      setActiveToday(cToday ?? 0);
-      setActive7d(cActive7d ?? 0);
-      setFound7d(cFound7d ?? 0);
-
-      setLoading(false);
-    }
-
-    loadCounts();
-  }, []);
-
+export default function HomePage() {
   return (
-    <main className="space-y-10">
-      <section className="rounded-3xl border border-zinc-200 bg-white p-8 shadow-sm">
-        <div className="flex flex-col gap-6">
-          <h1 className="text-4xl font-bold tracking-tight">
-            UNIMALIA
-            <span className="block text-zinc-600 text-2xl font-semibold mt-2">
-              Il luogo dove ritrovare il tuo animale.
-            </span>
-          </h1>
-
-          <p className="max-w-2xl text-zinc-700 text-lg leading-8">
-            Pubblica uno smarrimento con foto e luogo preciso, oppure consulta quelli attivi nella tua zona.
+    <main>
+      {/* HERO */}
+      <section className="mx-auto max-w-5xl px-4 pt-10 sm:pt-14">
+        <div className="rounded-3xl border border-zinc-200 bg-white p-8 shadow-sm sm:p-10">
+          <p className="text-xs font-semibold tracking-wide text-zinc-500">
+            HUB PER ANIMALI • SMARRIMENTI • IDENTITÀ DIGITALE • PROFESSIONISTI
           </p>
 
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <a
-              href="/smarrimento"
-              className="inline-flex items-center justify-center rounded-xl bg-black px-5 py-3 text-sm font-medium text-white hover:bg-zinc-800"
+          <h1 className="mt-3 text-4xl font-bold tracking-tight sm:text-5xl">
+            UNIMALIA è il luogo dove animale e proprietario restano connessi.
+          </h1>
+
+          <p className="mt-5 max-w-2xl text-base text-zinc-700 sm:text-lg">
+            Nasciamo dagli <span className="font-semibold">smarrimenti</span> (perché lì serve una
+            soluzione immediata), e costruiamo un ecosistema che rende più semplice
+            gestire la vita dell’animale: identità digitale, informazioni utili, e in futuro
+            un ponte diretto con i professionisti.
+          </p>
+
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <Link
+              href="/smarrimenti"
+              className="inline-flex items-center justify-center rounded-xl bg-black px-6 py-3 text-sm font-semibold text-white hover:bg-zinc-800"
+            >
+              Vedi smarrimenti attivi
+            </Link>
+
+            <Link
+              href="/smarrimenti/nuovo"
+              className="inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-white px-6 py-3 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
+            >
+              Pubblica uno smarrimento
+            </Link>
+
+            <Link
+              href="/identita"
+              className="inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-white px-6 py-3 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
+            >
+              Identità animale
+            </Link>
+          </div>
+
+          <p className="mt-6 text-xs text-zinc-500">
+            Smarrimenti sempre gratuiti. L’identità digitale dell’animale è un servizio in evoluzione.
+          </p>
+        </div>
+      </section>
+
+      {/* COSA FACCIAMO */}
+      <section className="mx-auto mt-10 max-w-5xl px-4">
+        <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
+          Cosa fa UNIMALIA
+        </h2>
+        <p className="mt-3 max-w-3xl text-zinc-700">
+          Unimalia non è “solo” un sito per ritrovare animali. È un hub: oggi risolve un problema urgente,
+          domani diventa lo standard di gestione digitale per l’animale (senza sostituire i documenti ufficiali).
+        </p>
+
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <FeatureCard
+            title="Smarrimenti e ritrovamenti"
+            desc="Pubblica e condividi segnalazioni in modo rapido. Credibilità e chiarezza prima di tutto."
+            badge="Attivo ora"
+          />
+          <FeatureCard
+            title="Identità digitale dell’animale"
+            desc="Un profilo unico con foto, dati utili, contatti. Pronto quando serve."
+            badge="In evoluzione"
+          />
+          <FeatureCard
+            title="Collegamento con professionisti"
+            desc="In futuro: veterinari, toelettature, educatori, pensioni, pet-sitter… in un solo posto."
+            badge="Prossimamente"
+          />
+        </div>
+      </section>
+
+      {/* COME FUNZIONA */}
+      <section className="mx-auto mt-12 max-w-5xl px-4">
+        <div className="rounded-3xl border border-zinc-200 bg-white p-8 shadow-sm sm:p-10">
+          <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
+            Come funziona (in 3 passi)
+          </h2>
+
+          <div className="mt-6 grid gap-4 sm:grid-cols-3">
+            <Step
+              n="1"
+              title="Crea un profilo"
+              desc="Aggiungi il tuo animale: foto e informazioni essenziali."
+            />
+            <Step
+              n="2"
+              title="Se serve, segnala lo smarrimento"
+              desc="Dal profilo o in modalità rapida: pubblica l’annuncio completo."
+            />
+            <Step
+              n="3"
+              title="Diffondi e ritrova"
+              desc="Condividi l’annuncio e raccogli segnalazioni reali."
+            />
+          </div>
+
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <Link
+              href="/identita/nuovo"
+              className="inline-flex items-center justify-center rounded-xl bg-black px-6 py-3 text-sm font-semibold text-white hover:bg-zinc-800"
+            >
+              Crea profilo animale
+            </Link>
+            <Link
+              href="/smarrimenti/nuovo"
+              className="inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-white px-6 py-3 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
             >
               Pubblica smarrimento
-            </a>
-            <a
-              href="/smarrimenti"
-              className="inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-white px-5 py-3 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
-            >
-              Vedi smarrimenti
-            </a>
-            <a
-              href="/ritrovati"
-              className="inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-white px-5 py-3 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
-            >
-              Ritrovati
-            </a>
+            </Link>
           </div>
+        </div>
+      </section>
 
-          <div className="mt-2 grid gap-3 sm:grid-cols-3">
-            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-              <p className="text-sm font-semibold">📍 Luogo preciso</p>
-              <p className="mt-1 text-sm text-zinc-700">
-                Cerca su Google Maps e affina con il pin.
-              </p>
-            </div>
-            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-              <p className="text-sm font-semibold">📸 Foto</p>
-              <p className="mt-1 text-sm text-zinc-700">
-                Una foto chiara aiuta tantissimo il ritrovamento.
-              </p>
-            </div>
-            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-              <p className="text-sm font-semibold">💬 Contatto</p>
-              <p className="mt-1 text-sm text-zinc-700">
-                Chi lo vede può contattarti subito.
-              </p>
-            </div>
-          </div>
+      {/* MISSION */}
+      <section className="mx-auto mt-12 max-w-5xl px-4 pb-14">
+        <div className="rounded-3xl border border-zinc-200 bg-zinc-50 p-8 sm:p-10">
+          <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
+            Impresa responsabile
+          </h2>
 
-          <div className="mt-4 grid gap-3 sm:grid-cols-3">
-            <div className="rounded-2xl border border-zinc-200 bg-white p-5">
-              <p className="text-xs text-zinc-500">Smarrimenti attivi oggi</p>
-              <p className="mt-1 text-3xl font-bold">
-                {loading ? "…" : activeToday}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-zinc-200 bg-white p-5">
-              <p className="text-xs text-zinc-500">Smarrimenti attivi (7 giorni)</p>
-              <p className="mt-1 text-3xl font-bold">
-                {loading ? "…" : active7d}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-zinc-200 bg-white p-5">
-              <p className="text-xs text-zinc-500">Ritrovati (7 giorni)</p>
-              <p className="mt-1 text-3xl font-bold">
-                {loading ? "…" : found7d}
-              </p>
-            </div>
-          </div>
+          <p className="mt-4 max-w-3xl text-zinc-700">
+            <span className="font-semibold">
+              “UNIMALIA nasce come impresa responsabile: una parte dei ricavi verrà reinvestita nel progetto
+              e una parte devolverà valore al mondo animale.”
+            </span>
+          </p>
 
-          <p className="text-xs text-zinc-500">
-            Nota: i contatori si basano sulla data di pubblicazione (created_at).
+          <p className="mt-4 max-w-3xl text-sm text-zinc-600">
+            Nota: UNIMALIA non sostituisce i documenti ufficiali. L’identità digitale è uno strumento pratico e
+            utile, pensato per la gestione quotidiana e per le emergenze (smarrimenti).
           </p>
         </div>
       </section>
     </main>
+  );
+}
+
+function FeatureCard({
+  title,
+  desc,
+  badge,
+}: {
+  title: string;
+  desc: string;
+  badge: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+      <div className="flex items-start justify-between gap-3">
+        <h3 className="text-lg font-semibold">{title}</h3>
+        <span className="shrink-0 rounded-full bg-zinc-100 px-3 py-1 text-xs font-semibold text-zinc-700">
+          {badge}
+        </span>
+      </div>
+      <p className="mt-3 text-sm text-zinc-700">{desc}</p>
+    </div>
+  );
+}
+
+function Step({ n, title, desc }: { n: string; title: string; desc: string }) {
+  return (
+    <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+      <div className="flex items-center gap-3">
+        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-black text-sm font-bold text-white">
+          {n}
+        </span>
+        <p className="text-base font-semibold">{title}</p>
+      </div>
+      <p className="mt-3 text-sm text-zinc-700">{desc}</p>
+    </div>
   );
 }
