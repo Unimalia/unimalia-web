@@ -7,6 +7,8 @@ import { supabase } from "@/lib/supabaseClient";
 
 type Professional = {
   id: string;
+  owner_id: string | null;
+  approved: boolean;
   display_name: string;
   category: string;
   city: string;
@@ -59,8 +61,9 @@ export default function ServizioDettaglioPage() {
   const [pro, setPro] = useState<Professional | null>(null);
   const [tagLabels, setTagLabels] = useState<string[]>([]);
 
-  // contatto (richiesta)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  // contatto (richiesta)
   const [msg, setMsg] = useState("");
   const [sending, setSending] = useState(false);
   const [info, setInfo] = useState<string | null>(null);
@@ -71,6 +74,15 @@ export default function ServizioDettaglioPage() {
     });
   }, []);
 
+  const isOwner = useMemo(() => {
+    return !!(pro?.owner_id && currentUserId && pro.owner_id === currentUserId);
+  }, [pro?.owner_id, currentUserId]);
+
+  const backHref = useMemo(() => {
+    // Se stai guardando la tua scheda (owner) torna al portale professionisti
+    return isOwner ? "/professionisti" : "/servizi";
+  }, [isOwner]);
+
   useEffect(() => {
     let alive = true;
 
@@ -80,17 +92,32 @@ export default function ServizioDettaglioPage() {
       setLoading(true);
       setError(null);
 
-      // Professionista (pubblico solo se approved)
+      // 1) carica scheda SENZA filtro approved
       const { data, error: proErr } = await supabase
         .from("professionals")
-        .select("id,display_name,category,city,province,address,phone,email,website,description")
+        .select(
+          "id,owner_id,approved,display_name,category,city,province,address,phone,email,website,description"
+        )
         .eq("id", id)
-        .eq("approved", true)
         .single();
 
       if (!alive) return;
 
       if (proErr || !data) {
+        setError("Scheda non trovata.");
+        setPro(null);
+        setTagLabels([]);
+        setLoading(false);
+        return;
+      }
+
+      const p = data as Professional;
+
+      // 2) se NON approvata, la può vedere SOLO il proprietario
+      const { data: authData } = await supabase.auth.getUser();
+      const uid = authData.user?.id ?? null;
+
+      if (!p.approved && (!uid || uid !== p.owner_id)) {
         setError("Scheda non trovata o non disponibile.");
         setPro(null);
         setTagLabels([]);
@@ -98,9 +125,9 @@ export default function ServizioDettaglioPage() {
         return;
       }
 
-      setPro(data as Professional);
+      setPro(p);
 
-      // Carico le skill
+      // 3) carica skill
       const { data: links } = await supabase
         .from("professional_tag_links")
         .select("professional_id,tag_id")
@@ -133,7 +160,7 @@ export default function ServizioDettaglioPage() {
     };
   }, [id]);
 
-  // anti-spam semplice (client-side) per richieste contatto su questa scheda
+  // anti-spam semplice (client-side)
   const COOLDOWN_SECONDS = 30;
   const cooldownKey = useMemo(() => `unimalia:pro_contact:${id}`, [id]);
 
@@ -159,15 +186,18 @@ export default function ServizioDettaglioPage() {
 
     if (!pro) return;
 
-    // login richiesto
+    // se owner, non serve inviare richiesta a se stessi
     const { data } = await supabase.auth.getUser();
     const user = data.user;
     if (!user) {
       router.push("/login");
       return;
     }
+    if (pro.owner_id && user.id === pro.owner_id) {
+      setInfo("Questa è la tua scheda: non puoi inviare richieste a te stesso.");
+      return;
+    }
 
-    // cooldown
     const last = getLastSentAt();
     const until = last + COOLDOWN_SECONDS * 1000;
     const now = Date.now();
@@ -198,7 +228,7 @@ export default function ServizioDettaglioPage() {
       setLastSentAt(Date.now());
       setMsg("");
       setInfo("Messaggio inviato ✅");
-    } catch (e: any) {
+    } catch {
       setInfo("Errore nell’invio. Riprova.");
     } finally {
       setSending(false);
@@ -238,11 +268,11 @@ export default function ServizioDettaglioPage() {
 
   return (
     <main>
-      {/* TOP BAR: indietro + link Servizi */}
+      {/* TOP BAR */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <button
           type="button"
-          onClick={() => router.push("/servizi")}
+          onClick={() => router.push(backHref)}
           className="inline-flex w-fit items-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
         >
           ← Indietro
@@ -255,10 +285,29 @@ export default function ServizioDettaglioPage() {
 
       {/* HEADER */}
       <div className="mt-6">
-        <h1 className="text-3xl font-bold tracking-tight">{pro.display_name}</h1>
-        <p className="mt-2 text-zinc-700">
-          {macroLabel(pro.category)} • {pro.city} {pro.province ? `(${pro.province})` : ""}
-        </p>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">{pro.display_name}</h1>
+            <p className="mt-2 text-zinc-700">
+              {macroLabel(pro.category)} • {pro.city} {pro.province ? `(${pro.province})` : ""}
+            </p>
+          </div>
+
+          {/* Badge approvazione */}
+          <span
+            className={[
+              "rounded-full px-3 py-1 text-xs font-semibold",
+              pro.approved ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700",
+            ].join(" ")}
+            title={
+              pro.approved
+                ? "Scheda visibile pubblicamente"
+                : "Scheda visibile solo a te finché non viene approvata"
+            }
+          >
+            {pro.approved ? "Pubblica" : "In revisione"}
+          </span>
+        </div>
 
         {tagLabels.length > 0 && (
           <div className="mt-4 flex flex-wrap gap-2">
@@ -290,33 +339,41 @@ export default function ServizioDettaglioPage() {
           <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
             <h2 className="text-lg font-semibold">Contatta</h2>
 
-            <p className="mt-3 text-sm text-zinc-700">
-              Invia una richiesta. Il professionista la riceverà nel suo portale.
-            </p>
+            {isOwner ? (
+              <p className="mt-3 text-sm text-zinc-700">
+                Sei il proprietario della scheda. Le richieste contatto arriveranno nel tuo portale.
+              </p>
+            ) : (
+              <>
+                <p className="mt-3 text-sm text-zinc-700">
+                  Invia una richiesta. Il professionista la riceverà nel suo portale.
+                </p>
 
-            <label className="mt-4 block text-sm font-medium">Messaggio</label>
-            <textarea
-              className="mt-2 w-full rounded-lg border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
-              rows={5}
-              placeholder="Es. Vorrei info su… disponibilità… prezzi…"
-              value={msg}
-              onChange={(e) => setMsg(e.target.value)}
-            />
+                <label className="mt-4 block text-sm font-medium">Messaggio</label>
+                <textarea
+                  className="mt-2 w-full rounded-lg border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
+                  rows={5}
+                  placeholder="Es. Vorrei info su… disponibilità… prezzi…"
+                  value={msg}
+                  onChange={(e) => setMsg(e.target.value)}
+                />
 
-            <button
-              type="button"
-              onClick={sendRequest}
-              disabled={sending}
-              className="mt-3 inline-flex w-full items-center justify-center rounded-lg bg-black px-5 py-3 text-sm font-semibold text-white hover:bg-zinc-800 disabled:opacity-60"
-            >
-              {sending ? "Invio..." : "Invia richiesta"}
-            </button>
+                <button
+                  type="button"
+                  onClick={sendRequest}
+                  disabled={sending}
+                  className="mt-3 inline-flex w-full items-center justify-center rounded-lg bg-black px-5 py-3 text-sm font-semibold text-white hover:bg-zinc-800 disabled:opacity-60"
+                >
+                  {sending ? "Invio..." : "Invia richiesta"}
+                </button>
 
-            {info && <p className="mt-3 text-sm text-zinc-700">{info}</p>}
+                {info && <p className="mt-3 text-sm text-zinc-700">{info}</p>}
 
-            <p className="mt-4 text-xs text-zinc-500">
-              Anti-spam: limitazione invio messaggi per evitare abusi.
-            </p>
+                <p className="mt-4 text-xs text-zinc-500">
+                  Anti-spam: limitazione invio messaggi per evitare abusi.
+                </p>
+              </>
+            )}
           </div>
         </div>
 
