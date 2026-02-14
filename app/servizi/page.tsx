@@ -102,8 +102,30 @@ export default function ServiziPage() {
         </Link>
       </div>
 
-      {/* FILTRI (sopra, ma la griglia rimane subito visibile) */}
-      <div className="mt-8 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+      {/* CATEGORIE VISIBILI (chips) */}
+      <div className="mt-6 flex flex-wrap gap-2">
+        {CATEGORIES.map((c) => {
+          const active = category === c.key;
+          return (
+            <button
+              key={c.key}
+              type="button"
+              onClick={() => setCategory(c.key)}
+              className={[
+                "rounded-full px-4 py-2 text-sm font-semibold transition",
+                active
+                  ? "bg-black text-white"
+                  : "border border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-50",
+              ].join(" ")}
+            >
+              {c.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* FILTRI */}
+      <div className="mt-6 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
         <div className="grid gap-3 sm:grid-cols-3">
           <div>
             <label className="block text-sm font-medium text-zinc-900">Città</label>
@@ -115,6 +137,7 @@ export default function ServiziPage() {
             />
           </div>
 
+          {/* Select utile soprattutto su mobile: resta */}
           <div>
             <label className="block text-sm font-medium text-zinc-900">Categoria</label>
             <select
@@ -146,7 +169,7 @@ export default function ServiziPage() {
         </p>
       </div>
 
-      {/* GRIGLIA SUBITO VISIBILE */}
+      {/* GRIGLIA */}
       <div className="mt-8">
         {loading ? (
           <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
@@ -189,15 +212,9 @@ export default function ServiziPage() {
                 )}
 
                 <div className="mt-4 flex flex-wrap gap-2 text-xs text-zinc-600">
-                  {p.phone && (
-                    <span className="rounded-full bg-zinc-100 px-3 py-1">📞 Telefono</span>
-                  )}
-                  {p.email && (
-                    <span className="rounded-full bg-zinc-100 px-3 py-1">✉️ Email</span>
-                  )}
-                  {p.website && (
-                    <span className="rounded-full bg-zinc-100 px-3 py-1">🌐 Sito</span>
-                  )}
+                  {p.phone && <span className="rounded-full bg-zinc-100 px-3 py-1">📞 Telefono</span>}
+                  {p.email && <span className="rounded-full bg-zinc-100 px-3 py-1">✉️ Email</span>}
+                  {p.website && <span className="rounded-full bg-zinc-100 px-3 py-1">🌐 Sito</span>}
                 </div>
               </Link>
             ))}
