@@ -8,7 +8,7 @@ import { supabase } from "@/lib/supabaseClient";
 type Professional = {
   id: string;
   owner_id: string | null;
-  category: string; // macro
+  category: string;
   display_name: string;
 };
 
@@ -76,7 +76,8 @@ export default function ProfessionistiSkillPage() {
         .from("professional_tags")
         .select("id,macro,key,label,sort_order,active")
         .eq("active", true)
-        .eq("macro", p.category);
+        .eq("macro", p.category)
+        .order("sort_order", { ascending: true });
 
       if (tagErr) {
         setError("Errore nel caricamento delle skill.");
@@ -109,11 +110,6 @@ export default function ProfessionistiSkillPage() {
       alive = false;
     };
   }, [router]);
-
-  // ✅ ordine alfabetico per label (come vuoi tu)
-  const tagsSorted = useMemo(() => {
-    return [...tags].sort((a, b) => a.label.localeCompare(b.label, "it", { sensitivity: "base" }));
-  }, [tags]);
 
   const selectedCount = useMemo(() => selected.size, [selected]);
 
@@ -159,6 +155,7 @@ export default function ProfessionistiSkillPage() {
         if (insErr) throw insErr;
       }
 
+      // reload (opzionale)
       const { data: linkData } = await supabase
         .from("professional_tag_links")
         .select("professional_id,tag_id")
@@ -169,7 +166,7 @@ export default function ProfessionistiSkillPage() {
       setSelected(new Set(l.map((x) => x.tag_id)));
 
       router.replace("/professionisti");
-    } catch {
+    } catch (e: any) {
       setError("Errore nel salvataggio delle skill. Riprova.");
     } finally {
       setSaving(false);
@@ -186,32 +183,44 @@ export default function ProfessionistiSkillPage() {
 
   return (
     <main>
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Scegli le skill</h1>
-          <p className="mt-2 text-zinc-700">{pro ? `Scheda: ${pro.display_name}` : "—"}</p>
-        </div>
+      {/* TOP BAR con Indietro */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <button
+          type="button"
+          onClick={() => router.push("/professionisti")}
+          className="inline-flex w-fit items-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
+        >
+          ← Indietro
+        </button>
 
-        <Link href="/professionisti" className="text-sm font-medium text-zinc-600 hover:underline">
-          ← Portale
+        <Link href="/servizi" className="text-sm font-medium text-zinc-600 hover:underline">
+          Vai ai Servizi
         </Link>
       </div>
 
+      <div className="mt-6">
+        <h1 className="text-3xl font-bold tracking-tight">Scegli le skill</h1>
+        <p className="mt-2 text-zinc-700">{pro ? `Scheda: ${pro.display_name}` : "—"}</p>
+      </div>
+
       <div className="mt-8 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <p className="text-sm text-zinc-700">
-          Seleziona i servizi che offri. Puoi modificarli in qualsiasi momento.
-        </p>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-zinc-700">
+            Seleziona i servizi che offri. Puoi modificarli in qualsiasi momento.
+          </p>
 
-        <p className="mt-3 text-xs text-zinc-500">
-          Selezionate: <span className="font-semibold text-zinc-700">{selectedCount}</span>
-        </p>
+          <p className="text-xs text-zinc-500">
+            Selezionate: <span className="font-semibold text-zinc-700">{selectedCount}</span>
+          </p>
+        </div>
 
-        {/* ✅ 2 colonne (su desktop), 1 colonna su mobile */}
-        <div className="mt-6 grid gap-3 sm:grid-cols-2">
-          {tagsSorted.length === 0 ? (
-            <p className="text-sm text-zinc-500">Nessuna skill disponibile per questa categoria (per ora).</p>
+        <div className="mt-5 space-y-2">
+          {tags.length === 0 ? (
+            <p className="text-sm text-zinc-500">
+              Nessuna skill disponibile per questa categoria (per ora).
+            </p>
           ) : (
-            tagsSorted.map((t) => (
+            tags.map((t) => (
               <label
                 key={t.id}
                 className="flex cursor-pointer items-start gap-3 rounded-xl border border-zinc-200 bg-white px-3 py-2 hover:bg-zinc-50"
@@ -222,7 +231,7 @@ export default function ProfessionistiSkillPage() {
                   checked={selected.has(t.id)}
                   onChange={() => toggleTag(t.id)}
                 />
-                <div className="min-w-0">
+                <div>
                   <p className="text-sm font-medium text-zinc-900">{t.label}</p>
                   <p className="text-xs text-zinc-500">{t.key}</p>
                 </div>
@@ -233,14 +242,24 @@ export default function ProfessionistiSkillPage() {
 
         {error && <p className="mt-4 text-sm text-red-700">{error}</p>}
 
-        <button
-          type="button"
-          disabled={saving}
-          onClick={saveSkills}
-          className="mt-6 inline-flex items-center justify-center rounded-lg bg-black px-5 py-3 text-sm font-semibold text-white hover:bg-zinc-800 disabled:opacity-60"
-        >
-          {saving ? "Salvataggio..." : "Salva skill"}
-        </button>
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+          <button
+            type="button"
+            disabled={saving}
+            onClick={saveSkills}
+            className="inline-flex items-center justify-center rounded-lg bg-black px-5 py-3 text-sm font-semibold text-white hover:bg-zinc-800 disabled:opacity-60"
+          >
+            {saving ? "Salvataggio..." : "Salva skill"}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => router.push("/professionisti")}
+            className="inline-flex items-center justify-center rounded-lg border border-zinc-200 bg-white px-5 py-3 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
+          >
+            Salta per ora
+          </button>
+        </div>
       </div>
     </main>
   );
