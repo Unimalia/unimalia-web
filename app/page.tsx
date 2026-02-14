@@ -11,15 +11,9 @@ export default function HomePage() {
           </p>
 
           <h1 className="mt-3 text-4xl font-bold tracking-tight sm:text-5xl">
-            UNIMALIA è il luogo dove animale e proprietario restano connessi.
+            UNIMALIA è un ecosistema che rende più semplice gestire la vita dell’animale:
+            smarrimenti, identità digitale, informazioni utili, e in futuro un ponte diretto con i professionisti.
           </h1>
-
-          <p className="mt-5 max-w-2xl text-base text-zinc-700 sm:text-lg">
-            Nasciamo dagli <span className="font-semibold">smarrimenti</span> (perché lì serve una
-            soluzione immediata), e costruiamo un ecosistema che rende più semplice
-            gestire la vita dell’animale: identità digitale, informazioni utili, e in futuro
-            un ponte diretto con i professionisti.
-          </p>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <Link
@@ -137,7 +131,7 @@ export default function HomePage() {
 
           <p className="mt-4 max-w-3xl text-sm text-zinc-600">
             Nota: UNIMALIA non sostituisce i documenti ufficiali. L’identità digitale è uno strumento pratico e
-            utile, pensato per la gestione quotidiana e per le emergenze (smarrimenti).
+            utile, pensato per la gestione quotidiana e per le emergenze.
           </p>
         </div>
       </section>
