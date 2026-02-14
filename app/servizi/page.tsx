@@ -19,9 +19,9 @@ type Professional = {
 
 const CATEGORIES = [
   { key: "", label: "Tutte" },
-  { key: "veterinario", label: "Veterinario" },
+  { key: "veterinario", label: "Veterinari" },
   { key: "toelettatura", label: "Toelettatura" },
-  { key: "pensione", label: "Pensione" },
+  { key: "pensione", label: "Pensioni" },
   { key: "pet_sitter", label: "Pet sitter" },
   { key: "addestramento", label: "Addestramento" },
   { key: "altro", label: "Altro" },
@@ -56,7 +56,7 @@ export default function ServiziPage() {
       if (!alive) return;
 
       if (error) {
-        setError("Errore nel caricamento dei servizi. Riprova.");
+        setError("Errore nel caricamento dei professionisti. Riprova.");
         setItems([]);
       } else {
         setItems((data as Professional[]) || []);
@@ -93,7 +93,7 @@ export default function ServiziPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Servizi</h1>
           <p className="mt-3 max-w-2xl text-zinc-700">
-            Cerca professionisti e strutture per il tuo animale: veterinari, toelettatori, pensioni, pet sitter…
+            Cerca veterinari, toelettatori, pensioni, pet sitter e altri servizi vicino a te.
           </p>
         </div>
 
@@ -102,7 +102,7 @@ export default function ServiziPage() {
         </Link>
       </div>
 
-      {/* FILTRI */}
+      {/* FILTRI (sopra, ma la griglia rimane subito visibile) */}
       <div className="mt-8 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
         <div className="grid gap-3 sm:grid-cols-3">
           <div>
@@ -146,7 +146,7 @@ export default function ServiziPage() {
         </p>
       </div>
 
-      {/* LISTA */}
+      {/* GRIGLIA SUBITO VISIBILE */}
       <div className="mt-8">
         {loading ? (
           <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
@@ -175,6 +175,7 @@ export default function ServiziPage() {
                     <p className="text-lg font-semibold">{p.display_name}</p>
                     <p className="mt-1 text-sm text-zinc-600">{catLabel(p.category)}</p>
                   </div>
+
                   <span className="text-xs text-zinc-500">
                     {p.city}
                     {p.province ? ` (${p.province})` : ""}
@@ -186,17 +187,22 @@ export default function ServiziPage() {
                 ) : (
                   <p className="mt-3 text-sm text-zinc-500">Scheda in aggiornamento.</p>
                 )}
+
+                <div className="mt-4 flex flex-wrap gap-2 text-xs text-zinc-600">
+                  {p.phone && (
+                    <span className="rounded-full bg-zinc-100 px-3 py-1">📞 Telefono</span>
+                  )}
+                  {p.email && (
+                    <span className="rounded-full bg-zinc-100 px-3 py-1">✉️ Email</span>
+                  )}
+                  {p.website && (
+                    <span className="rounded-full bg-zinc-100 px-3 py-1">🌐 Sito</span>
+                  )}
+                </div>
               </Link>
             ))}
           </div>
         )}
-      </div>
-
-      {/* CTA professionisti (futura) */}
-      <div className="mt-10 rounded-2xl border border-zinc-200 bg-zinc-50 p-6">
-        <p className="text-sm text-zinc-700">
-          Sei un professionista? A breve attiveremo la piattaforma per creare e gestire la tua scheda.
-        </p>
       </div>
     </main>
   );
