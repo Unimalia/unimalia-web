@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -18,105 +18,168 @@ type Professional = {
   description: string | null;
 };
 
-const COOLDOWN_SECONDS = 30;
+type Tag = {
+  id: string;
+  label: string;
+};
 
-function getCooldownKey(proId: string) {
-  return `unimalia:last_pro_contact_sent:${proId}`;
-}
-function getLastSentAt(proId: string) {
-  try {
-    const raw = localStorage.getItem(getCooldownKey(proId));
-    const n = raw ? Number(raw) : 0;
-    return Number.isFinite(n) ? n : 0;
-  } catch {
-    return 0;
+type TagLink = {
+  professional_id: string;
+  tag_id: string;
+};
+
+function macroLabel(key: string) {
+  switch (key) {
+    case "veterinari":
+      return "Veterinari";
+    case "toelettatura":
+      return "Toelettatura";
+    case "pensione":
+      return "Pensioni";
+    case "pet_sitter":
+      return "Pet sitter & Dog walking";
+    case "addestramento":
+      return "Addestramento";
+    case "ponte_arcobaleno":
+      return "Ponte dell’Arcobaleno";
+    case "altro":
+    default:
+      return "Altro";
   }
 }
-function setLastSentAt(proId: string, ts: number) {
-  try {
-    localStorage.setItem(getCooldownKey(proId), String(ts));
-  } catch {}
-}
 
-export default function ServizioDetailPage() {
+export default function ServizioDettaglioPage() {
   const router = useRouter();
-  const params = useParams();
-  const id = String(params?.id || "");
+  const params = useParams<{ id: string }>();
+  const id = params?.id;
 
   const [loading, setLoading] = useState(true);
-  const [item, setItem] = useState<Professional | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // modal contatto
-  const [open, setOpen] = useState(false);
-  const [message, setMessage] = useState("");
+  const [pro, setPro] = useState<Professional | null>(null);
+  const [tagLabels, setTagLabels] = useState<string[]>([]);
+
+  // contatto (richiesta)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [msg, setMsg] = useState("");
   const [sending, setSending] = useState(false);
-  const [modalMsg, setModalMsg] = useState<string | null>(null);
-  const [cooldownUntil, setCooldownUntil] = useState<number>(0);
+  const [info, setInfo] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setCurrentUserId(data.user?.id ?? null);
+    });
+  }, []);
 
   useEffect(() => {
     let alive = true;
 
     async function load() {
+      if (!id) return;
+
       setLoading(true);
       setError(null);
 
-      const { data, error } = await supabase
+      // Professionista (pubblico solo se approved)
+      const { data, error: proErr } = await supabase
         .from("professionals")
         .select("id,display_name,category,city,province,address,phone,email,website,description")
         .eq("id", id)
+        .eq("approved", true)
         .single();
 
       if (!alive) return;
 
-      if (error || !data) {
+      if (proErr || !data) {
         setError("Scheda non trovata o non disponibile.");
-        setItem(null);
-      } else {
-        setItem(data as Professional);
+        setPro(null);
+        setTagLabels([]);
+        setLoading(false);
+        return;
       }
+
+      setPro(data as Professional);
+
+      // Carico le skill
+      const { data: links } = await supabase
+        .from("professional_tag_links")
+        .select("professional_id,tag_id")
+        .eq("professional_id", id);
+
+      const linkRows = (links as TagLink[]) || [];
+      const tagIds = linkRows.map((x) => x.tag_id);
+
+      if (tagIds.length === 0) {
+        setTagLabels([]);
+        setLoading(false);
+        return;
+      }
+
+      const { data: tags } = await supabase
+        .from("professional_tags")
+        .select("id,label")
+        .in("id", tagIds);
+
+      const t = (tags as Tag[]) || [];
+      setTagLabels(t.map((x) => x.label).sort());
 
       setLoading(false);
     }
 
-    if (id) load();
+    load();
+
     return () => {
       alive = false;
     };
   }, [id]);
 
-  function openModal() {
-    setModalMsg(null);
-    setMessage("");
-    const last = getLastSentAt(id);
-    const until = last + COOLDOWN_SECONDS * 1000;
-    setCooldownUntil(until);
-    setOpen(true);
+  // anti-spam semplice (client-side) per richieste contatto su questa scheda
+  const COOLDOWN_SECONDS = 30;
+  const cooldownKey = useMemo(() => `unimalia:pro_contact:${id}`, [id]);
+
+  function getLastSentAt() {
+    try {
+      const raw = localStorage.getItem(cooldownKey);
+      const n = raw ? Number(raw) : 0;
+      return Number.isFinite(n) ? n : 0;
+    } catch {
+      return 0;
+    }
   }
 
-  async function send() {
-    if (!item) return;
+  function setLastSentAt(ts: number) {
+    try {
+      localStorage.setItem(cooldownKey, String(ts));
+    } catch {}
+  }
 
-    setModalMsg(null);
+  async function sendRequest() {
+    setInfo(null);
+    setError(null);
 
-    const now = Date.now();
-    if (now < cooldownUntil) {
-      const sec = Math.ceil((cooldownUntil - now) / 1000);
-      setModalMsg(`Attendi ${sec}s prima di inviare un altro messaggio.`);
-      return;
-    }
+    if (!pro) return;
 
-    const text = message.trim();
-    if (text.length < 5) {
-      setModalMsg("Scrivi un messaggio un po’ più completo (minimo 5 caratteri).");
-      return;
-    }
-
+    // login richiesto
     const { data } = await supabase.auth.getUser();
     const user = data.user;
-
     if (!user) {
       router.push("/login");
+      return;
+    }
+
+    // cooldown
+    const last = getLastSentAt();
+    const until = last + COOLDOWN_SECONDS * 1000;
+    const now = Date.now();
+    if (now < until) {
+      const sec = Math.ceil((until - now) / 1000);
+      setInfo(`Attendi ${sec}s prima di inviare un altro messaggio.`);
+      return;
+    }
+
+    const text = msg.trim();
+    if (text.length < 5) {
+      setInfo("Scrivi un messaggio un po’ più completo (minimo 5 caratteri).");
       return;
     }
 
@@ -125,21 +188,18 @@ export default function ServizioDetailPage() {
       await supabase.from("profiles").upsert({ id: user.id }, { onConflict: "id" });
 
       const { error } = await supabase.from("professional_contact_requests").insert({
-        professional_id: item.id,
+        professional_id: pro.id,
         sender_id: user.id,
         message: text,
       });
 
       if (error) throw error;
 
-      const ts = Date.now();
-      setLastSentAt(item.id, ts);
-      setCooldownUntil(ts + COOLDOWN_SECONDS * 1000);
-
-      setModalMsg("Messaggio inviato ✅");
-      setMessage("");
+      setLastSentAt(Date.now());
+      setMsg("");
+      setInfo("Messaggio inviato ✅");
     } catch (e: any) {
-      setModalMsg(e?.message ? "Errore nell’invio. Riprova." : "Errore nell’invio.");
+      setInfo("Errore nell’invio. Riprova.");
     } finally {
       setSending(false);
     }
@@ -148,18 +208,28 @@ export default function ServizioDetailPage() {
   if (loading) {
     return (
       <main>
-        <p className="text-sm text-zinc-700">Caricamento…</p>
+        <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+          <p className="text-sm text-zinc-700">Caricamento…</p>
+        </div>
       </main>
     );
   }
 
-  if (error || !item) {
+  if (error || !pro) {
     return (
       <main>
-        <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+        <button
+          type="button"
+          onClick={() => router.push("/servizi")}
+          className="inline-flex w-fit items-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
+        >
+          ← Indietro
+        </button>
+
+        <div className="mt-6 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
           <p className="text-sm text-zinc-700">{error ?? "Scheda non disponibile."}</p>
-          <Link href="/servizi" className="mt-4 inline-block text-sm font-medium hover:underline">
-            ← Torna ai servizi
+          <Link href="/servizi" className="mt-3 inline-block text-sm font-medium hover:underline">
+            Torna ai Servizi
           </Link>
         </div>
       </main>
@@ -168,128 +238,126 @@ export default function ServizioDetailPage() {
 
   return (
     <main>
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">{item.display_name}</h1>
-          <p className="mt-2 text-zinc-700">
-            {item.category} • {item.city}
-            {item.province ? ` (${item.province})` : ""}
-          </p>
-        </div>
+      {/* TOP BAR: indietro + link Servizi */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <button
+          type="button"
+          onClick={() => router.push("/servizi")}
+          className="inline-flex w-fit items-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
+        >
+          ← Indietro
+        </button>
 
         <Link href="/servizi" className="text-sm font-medium text-zinc-600 hover:underline">
-          ← Servizi
+          Servizi
         </Link>
       </div>
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold">Descrizione</h2>
-          <p className="mt-3 text-sm text-zinc-700">
-            {item.description ? item.description : "Scheda in aggiornamento."}
-          </p>
+      {/* HEADER */}
+      <div className="mt-6">
+        <h1 className="text-3xl font-bold tracking-tight">{pro.display_name}</h1>
+        <p className="mt-2 text-zinc-700">
+          {macroLabel(pro.category)} • {pro.city} {pro.province ? `(${pro.province})` : ""}
+        </p>
 
-          {item.address && (
-            <div className="mt-6">
-              <h3 className="text-sm font-semibold text-zinc-900">Indirizzo</h3>
-              <p className="mt-2 text-sm text-zinc-700">{item.address}</p>
-            </div>
-          )}
-        </div>
-
-        <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold">Contatti</h2>
-
-          <div className="mt-4 space-y-2 text-sm text-zinc-700">
-            <div>
-              <span className="font-medium">Telefono:</span>{" "}
-              {item.phone ? item.phone : "Non disponibile"}
-            </div>
-            <div>
-              <span className="font-medium">Email:</span>{" "}
-              {item.email ? item.email : "Non disponibile"}
-            </div>
-            <div>
-              <span className="font-medium">Sito:</span>{" "}
-              {item.website ? (
-                <a className="underline" href={item.website} target="_blank" rel="noreferrer">
-                  Apri
-                </a>
-              ) : (
-                "Non disponibile"
-              )}
-            </div>
+        {tagLabels.length > 0 && (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {tagLabels.map((l) => (
+              <span
+                key={l}
+                className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-semibold text-zinc-700"
+              >
+                {l}
+              </span>
+            ))}
           </div>
-
-          <button
-            type="button"
-            onClick={openModal}
-            className="mt-6 w-full rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800"
-          >
-            Richiedi contatto
-          </button>
-
-          <p className="mt-3 text-xs text-zinc-500">
-            Anti-spam: limitazione invio messaggi per evitare abusi.
-          </p>
-        </div>
+        )}
       </div>
 
-      {/* MODAL */}
-      {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
-            <div className="flex items-start justify-between gap-3">
+      {/* CONTENT */}
+      <div className="mt-8 grid gap-6 lg:grid-cols-3">
+        {/* LEFT */}
+        <div className="lg:col-span-2 space-y-6">
+          <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+            <h2 className="text-lg font-semibold">Descrizione</h2>
+            {pro.description ? (
+              <p className="mt-3 whitespace-pre-wrap text-sm text-zinc-700">{pro.description}</p>
+            ) : (
+              <p className="mt-3 text-sm text-zinc-500">Scheda in aggiornamento.</p>
+            )}
+          </div>
+
+          <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+            <h2 className="text-lg font-semibold">Contatta</h2>
+
+            <p className="mt-3 text-sm text-zinc-700">
+              Invia una richiesta. Il professionista la riceverà nel suo portale.
+            </p>
+
+            <label className="mt-4 block text-sm font-medium">Messaggio</label>
+            <textarea
+              className="mt-2 w-full rounded-lg border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
+              rows={5}
+              placeholder="Es. Vorrei info su… disponibilità… prezzi…"
+              value={msg}
+              onChange={(e) => setMsg(e.target.value)}
+            />
+
+            <button
+              type="button"
+              onClick={sendRequest}
+              disabled={sending}
+              className="mt-3 inline-flex w-full items-center justify-center rounded-lg bg-black px-5 py-3 text-sm font-semibold text-white hover:bg-zinc-800 disabled:opacity-60"
+            >
+              {sending ? "Invio..." : "Invia richiesta"}
+            </button>
+
+            {info && <p className="mt-3 text-sm text-zinc-700">{info}</p>}
+
+            <p className="mt-4 text-xs text-zinc-500">
+              Anti-spam: limitazione invio messaggi per evitare abusi.
+            </p>
+          </div>
+        </div>
+
+        {/* RIGHT */}
+        <div className="space-y-6">
+          <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+            <h2 className="text-lg font-semibold">Indirizzo</h2>
+            <p className="mt-3 text-sm text-zinc-700">{pro.address ?? "Non disponibile"}</p>
+          </div>
+
+          <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+            <h2 className="text-lg font-semibold">Contatti</h2>
+
+            <div className="mt-3 space-y-2 text-sm text-zinc-700">
               <div>
-                <h3 className="text-lg font-semibold">Contatta {item.display_name}</h3>
-                <p className="mt-1 text-sm text-zinc-600">
-                  Scrivi un messaggio: il professionista lo vedrà nella sua area dedicata (in arrivo).
-                </p>
+                <span className="font-medium">Telefono:</span>{" "}
+                {pro.phone ? pro.phone : "Non disponibile"}
               </div>
-
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className="rounded-lg px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
-              >
-                Chiudi
-              </button>
-            </div>
-
-            <div className="mt-4">
-              <label className="block text-sm font-medium">Messaggio</label>
-              <textarea
-                className="mt-2 w-full rounded-lg border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
-                rows={4}
-                placeholder="Es. Vorrei informazioni su… disponibilità… prezzi…"
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-              />
-
-              <button
-                type="button"
-                disabled={sending}
-                onClick={send}
-                className="mt-3 w-full rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800 disabled:opacity-60"
-              >
-                {sending ? "Invio..." : "Invia messaggio"}
-              </button>
-
-              {modalMsg && <p className="mt-3 text-sm text-zinc-700">{modalMsg}</p>}
-
-              {Date.now() < cooldownUntil && (
-                <p className="mt-2 text-xs text-zinc-500">
-                  Puoi inviare un altro messaggio tra{" "}
-                  <span className="font-medium">
-                    {Math.ceil((cooldownUntil - Date.now()) / 1000)}s
-                  </span>
-                  .
-                </p>
-              )}
+              <div>
+                <span className="font-medium">Email:</span>{" "}
+                {pro.email ? pro.email : "Non disponibile"}
+              </div>
+              <div>
+                <span className="font-medium">Sito:</span>{" "}
+                {pro.website ? (
+                  <a
+                    href={pro.website}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-zinc-900 underline underline-offset-2"
+                  >
+                    Apri sito
+                  </a>
+                ) : (
+                  "Non disponibile"
+                )}
+              </div>
             </div>
           </div>
         </div>
-      )}
+      </div>
     </main>
   );
 }
