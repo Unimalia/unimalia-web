@@ -71,6 +71,14 @@ export default function RootLayout({
                 >
                   Identità animale
                 </a>
+
+                {/* ✅ NUOVO */}
+                <a
+                  href="/servizi"
+                  className="rounded-lg px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
+                >
+                  Servizi
+                </a>
               </nav>
 
               <AuthButtons />
