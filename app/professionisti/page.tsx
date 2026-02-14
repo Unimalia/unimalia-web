@@ -88,17 +88,31 @@ export default function ProfessionistiDashboard() {
 
   return (
     <main>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Portale Professionisti</h1>
-          <p className="mt-3 max-w-2xl text-zinc-700">
-            Gestisci la tua scheda, le competenze (skill) e le richieste contatto.
-          </p>
-        </div>
+      {/* TOP BAR */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <button
+          type="button"
+          onClick={() => router.push("/servizi")}
+          className="inline-flex w-fit items-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
+        >
+          ← Indietro
+        </button>
 
-        <Link href="/servizi" className="text-sm font-medium text-zinc-600 hover:underline">
-          ← Vai ai Servizi
-        </Link>
+        <div className="flex items-center gap-4">
+          <Link href="/" className="text-sm font-medium text-zinc-600 hover:underline">
+            Home
+          </Link>
+          <Link href="/servizi" className="text-sm font-medium text-zinc-600 hover:underline">
+            Servizi
+          </Link>
+        </div>
+      </div>
+
+      <div className="mt-6">
+        <h1 className="text-3xl font-bold tracking-tight">Portale Professionisti</h1>
+        <p className="mt-3 max-w-2xl text-zinc-700">
+          Gestisci la tua scheda, le competenze (skill) e le richieste contatto.
+        </p>
       </div>
 
       {loading ? (
@@ -158,7 +172,6 @@ export default function ProfessionistiDashboard() {
             </div>
 
             <div className="mt-6 flex flex-wrap gap-3">
-              {/* Skill */}
               <Link
                 href="/professionisti/skill"
                 className="inline-flex items-center justify-center rounded-lg bg-black px-5 py-3 text-sm font-semibold text-white hover:bg-zinc-800"
@@ -166,7 +179,6 @@ export default function ProfessionistiDashboard() {
                 Gestisci skill
               </Link>
 
-              {/* Modifica scheda (per ora alias a skill: non rompe) */}
               <Link
                 href="/professionisti/modifica"
                 className="inline-flex items-center justify-center rounded-lg border border-zinc-200 bg-white px-5 py-3 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"

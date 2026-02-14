@@ -15,6 +15,11 @@ const MACRO = [
   { key: "altro", label: "Altro" },
 ];
 
+function isEmailValid(email: string) {
+  const e = email.trim();
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+}
+
 export default function NuovoProfessionistaPage() {
   const router = useRouter();
 
@@ -29,8 +34,8 @@ export default function NuovoProfessionistaPage() {
   const [address, setAddress] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
-  const [website, setWebsite] = useState("");
-  const [description, setDescription] = useState("");
+  const [website, setWebsite] = useState(""); // opzionale
+  const [description, setDescription] = useState(""); // opzionale
 
   const [userId, setUserId] = useState<string | null>(null);
 
@@ -53,7 +58,7 @@ export default function NuovoProfessionistaPage() {
 
       setUserId(user.id);
 
-      // se esiste già una scheda, rimanda a modifica
+      // se esiste già una scheda, rimanda al portale
       const { data: existing } = await supabase
         .from("professionals")
         .select("id")
@@ -61,7 +66,7 @@ export default function NuovoProfessionistaPage() {
         .limit(1);
 
       if (existing && existing.length > 0) {
-        router.replace("/professionisti/modifica");
+        router.replace("/professionisti");
         return;
       }
 
@@ -81,12 +86,29 @@ export default function NuovoProfessionistaPage() {
       setError("Devi essere loggato per creare una scheda.");
       return;
     }
+
     if (displayName.trim().length < 2) {
       setError("Inserisci un nome valido (minimo 2 caratteri).");
       return;
     }
     if (city.trim().length < 2) {
       setError("Inserisci una città valida.");
+      return;
+    }
+    if (province.trim().length < 2) {
+      setError("Inserisci una provincia valida (es. FI, PI, AR).");
+      return;
+    }
+    if (address.trim().length < 5) {
+      setError("Inserisci un indirizzo valido (es. Via Roma 10).");
+      return;
+    }
+    if (phone.trim().length < 6) {
+      setError("Inserisci un numero di telefono valido.");
+      return;
+    }
+    if (!isEmailValid(email)) {
+      setError("Inserisci un indirizzo email valido.");
       return;
     }
 
@@ -100,17 +122,17 @@ export default function NuovoProfessionistaPage() {
         display_name: displayName.trim(),
         category,
         city: city.trim(),
-        province: province.trim() || null,
-        address: address.trim() || null,
-        phone: phone.trim() || null,
-        email: email.trim() || null,
+        province: province.trim(),
+        address: address.trim(),
+        phone: phone.trim(),
+        email: email.trim(),
         website: website.trim() || null,
         description: description.trim() || null,
       });
 
       if (error) throw error;
 
-      router.replace("/professionisti/modifica");
+      router.replace("/professionisti/skill");
     } catch (e: any) {
       setError("Errore nel salvataggio. Controlla i campi e riprova.");
     } finally {
@@ -128,17 +150,37 @@ export default function NuovoProfessionistaPage() {
 
   return (
     <main>
-      <div className="flex items-center justify-between gap-3">
+      {/* TOP BAR */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <button
+          type="button"
+          onClick={() => router.push("/professionisti")}
+          className="inline-flex w-fit items-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
+        >
+          ← Indietro
+        </button>
+
+        <div className="flex items-center gap-4">
+          <Link href="/" className="text-sm font-medium text-zinc-600 hover:underline">
+            Home
+          </Link>
+          <Link href="/servizi" className="text-sm font-medium text-zinc-600 hover:underline">
+            Servizi
+          </Link>
+        </div>
+      </div>
+
+      <div className="mt-6">
         <h1 className="text-3xl font-bold tracking-tight">Crea scheda professionista</h1>
-        <Link href="/professionisti" className="text-sm font-medium text-zinc-600 hover:underline">
-          ← Portale
-        </Link>
+        <p className="mt-3 text-sm text-zinc-700">
+          Compila i dati principali. Subito dopo sceglierai le <span className="font-semibold">skill</span>.
+        </p>
       </div>
 
       <div className="mt-8 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
-            <label className="block text-sm font-medium">Nome attività / professionista</label>
+            <label className="block text-sm font-medium">Nome attività / professionista *</label>
             <input
               className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
               value={displayName}
@@ -148,7 +190,7 @@ export default function NuovoProfessionistaPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium">Categoria</label>
+            <label className="block text-sm font-medium">Categoria *</label>
             <select
               className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 outline-none focus:border-zinc-900"
               value={category}
@@ -163,7 +205,7 @@ export default function NuovoProfessionistaPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium">Città</label>
+            <label className="block text-sm font-medium">Città *</label>
             <input
               className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
               value={city}
@@ -173,27 +215,27 @@ export default function NuovoProfessionistaPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium">Provincia (opzionale)</label>
+            <label className="block text-sm font-medium">Provincia * (es. FI)</label>
             <input
               className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
               value={province}
               onChange={(e) => setProvince(e.target.value)}
-              placeholder="Es. FI"
+              placeholder="FI"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium">Indirizzo (opzionale)</label>
+            <label className="block text-sm font-medium">Indirizzo *</label>
             <input
               className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
               value={address}
               onChange={(e) => setAddress(e.target.value)}
-              placeholder="Via / numero"
+              placeholder="Via Roma 10"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium">Telefono (opzionale)</label>
+            <label className="block text-sm font-medium">Telefono *</label>
             <input
               className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
               value={phone}
@@ -203,7 +245,7 @@ export default function NuovoProfessionistaPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium">Email (opzionale)</label>
+            <label className="block text-sm font-medium">Email *</label>
             <input
               className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
               value={email}
@@ -242,12 +284,10 @@ export default function NuovoProfessionistaPage() {
           disabled={saving}
           className="mt-6 inline-flex items-center justify-center rounded-lg bg-black px-5 py-3 text-sm font-semibold text-white hover:bg-zinc-800 disabled:opacity-60"
         >
-          {saving ? "Salvataggio..." : "Crea scheda"}
+          {saving ? "Salvataggio..." : "Continua: scegli le skill →"}
         </button>
 
-        <p className="mt-4 text-xs text-zinc-500">
-          La scheda sarà visibile pubblicamente dopo approvazione.
-        </p>
+        <p className="mt-3 text-xs text-zinc-500">* Campi obbligatori</p>
       </div>
     </main>
   );
