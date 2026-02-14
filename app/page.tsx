@@ -4,16 +4,21 @@ export default function HomePage() {
   return (
     <main>
       {/* HERO */}
-      <section className="mx-auto max-w-5xl px-4 pt-10 sm:pt-14">
+      <section className="mx-auto max-w-7xl px-4 pt-10 sm:pt-14">
         <div className="rounded-3xl border border-zinc-200 bg-white p-8 shadow-sm sm:p-10">
           <p className="text-xs font-semibold tracking-wide text-zinc-500">
             HUB PER ANIMALI • SMARRIMENTI • IDENTITÀ DIGITALE • PROFESSIONISTI
           </p>
 
           <h1 className="mt-3 text-4xl font-bold tracking-tight sm:text-5xl">
-            UNIMALIA è un ecosistema che rende più semplice gestire la vita dell’animale:
-            smarrimenti, identità digitale, informazioni utili, e in futuro un ponte diretto con i professionisti.
+            Il tuo hub per la vita dell’animale.
           </h1>
+
+          <p className="mt-4 max-w-3xl text-sm text-zinc-700 sm:text-base">
+            UNIMALIA è un ecosistema che rende più semplice gestire la vita dell’animale:
+            smarrimenti, identità digitale, informazioni utili, e in futuro un{" "}
+            <span className="font-semibold">collegamento diretto</span> con i professionisti.
+          </p>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <Link
@@ -45,11 +50,11 @@ export default function HomePage() {
       </section>
 
       {/* COSA FACCIAMO */}
-      <section className="mx-auto mt-10 max-w-5xl px-4">
+      <section className="mx-auto mt-10 max-w-7xl px-4">
         <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
           Cosa fa UNIMALIA
         </h2>
-        <p className="mt-3 max-w-3xl text-zinc-700">
+        <p className="mt-3 max-w-4xl text-zinc-700">
           Unimalia non è “solo” un sito per ritrovare animali. È un hub: oggi risolve un problema urgente,
           domani diventa lo standard di gestione digitale per l’animale (senza sostituire i documenti ufficiali).
         </p>
@@ -66,7 +71,7 @@ export default function HomePage() {
             badge="In evoluzione"
           />
           <FeatureCard
-            title="Collegamento con professionisti"
+            title="Professionisti e servizi"
             desc="In futuro: veterinari, toelettature, educatori, pensioni, pet-sitter… in un solo posto."
             badge="Prossimamente"
           />
@@ -74,28 +79,16 @@ export default function HomePage() {
       </section>
 
       {/* COME FUNZIONA */}
-      <section className="mx-auto mt-12 max-w-5xl px-4">
+      <section className="mx-auto mt-12 max-w-7xl px-4">
         <div className="rounded-3xl border border-zinc-200 bg-white p-8 shadow-sm sm:p-10">
           <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
             Come funziona (in 3 passi)
           </h2>
 
           <div className="mt-6 grid gap-4 sm:grid-cols-3">
-            <Step
-              n="1"
-              title="Crea un profilo"
-              desc="Aggiungi il tuo animale: foto e informazioni essenziali."
-            />
-            <Step
-              n="2"
-              title="Se serve, segnala lo smarrimento"
-              desc="Dal profilo o in modalità rapida: pubblica l’annuncio completo."
-            />
-            <Step
-              n="3"
-              title="Diffondi e ritrova"
-              desc="Condividi l’annuncio e raccogli segnalazioni reali."
-            />
+            <Step n="1" title="Crea un profilo" desc="Aggiungi il tuo animale: foto e informazioni essenziali." />
+            <Step n="2" title="Se serve, segnala lo smarrimento" desc="Dal profilo o in modalità rapida: pubblica l’annuncio completo." />
+            <Step n="3" title="Diffondi e ritrova" desc="Condividi l’annuncio e raccogli segnalazioni reali." />
           </div>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -116,20 +109,20 @@ export default function HomePage() {
       </section>
 
       {/* MISSION */}
-      <section className="mx-auto mt-12 max-w-5xl px-4 pb-14">
+      <section className="mx-auto mt-12 max-w-7xl px-4 pb-14">
         <div className="rounded-3xl border border-zinc-200 bg-zinc-50 p-8 sm:p-10">
           <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
             Impresa responsabile
           </h2>
 
-          <p className="mt-4 max-w-3xl text-zinc-700">
+          <p className="mt-4 max-w-4xl text-zinc-700">
             <span className="font-semibold">
               “UNIMALIA nasce come impresa responsabile: una parte dei ricavi verrà reinvestita nel progetto
               e una parte devolverà valore al mondo animale.”
             </span>
           </p>
 
-          <p className="mt-4 max-w-3xl text-sm text-zinc-600">
+          <p className="mt-4 max-w-4xl text-sm text-zinc-600">
             Nota: UNIMALIA non sostituisce i documenti ufficiali. L’identità digitale è uno strumento pratico e
             utile, pensato per la gestione quotidiana e per le emergenze.
           </p>

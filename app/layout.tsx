@@ -34,9 +34,9 @@ export default function RootLayout({
             </a>
 
             {/* NAV + AUTH */}
-            <div className="flex min-w-0 items-center justify-end gap-3">
-              {/* NAV desktop minimal (nasconde su mobile) */}
-              <nav className="hidden items-center gap-1 sm:flex">
+            <div className="flex min-w-0 flex-1 items-center justify-end gap-3">
+              {/* NAV: mobile scorre orizzontalmente */}
+              <nav className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto whitespace-nowrap">
                 <a
                   href="/smarrimenti"
                   className="rounded-lg px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
@@ -45,10 +45,10 @@ export default function RootLayout({
                 </a>
 
                 <a
-                  href="/identita"
+                  href="/smarrimenti/nuovo"
                   className="rounded-lg px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
                 >
-                  Identità
+                  Pubblica smarrimento
                 </a>
 
                 <a
@@ -58,22 +58,20 @@ export default function RootLayout({
                   Ritrovati
                 </a>
 
-                {/* CTA (chiara) */}
                 <a
-                  href="/smarrimenti/nuovo"
-                  className="ml-2 inline-flex items-center justify-center rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800"
+                  href="/miei-annunci"
+                  className="rounded-lg px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
                 >
-                  Pubblica
+                  I miei annunci
+                </a>
+
+                <a
+                  href="/identita"
+                  className="rounded-lg px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
+                >
+                  Identità animale
                 </a>
               </nav>
-
-              {/* Mobile (temporaneo): solo CTA */}
-              <a
-                href="/smarrimenti/nuovo"
-                className="inline-flex items-center justify-center rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800 sm:hidden"
-              >
-                Pubblica
-              </a>
 
               <AuthButtons />
             </div>
@@ -100,11 +98,6 @@ export default function RootLayout({
               </a>
               <a className="hover:underline" href="/termini">
                 Termini
-              </a>
-
-              {/* link “silenzioso” per tornare ai propri annunci */}
-              <a className="hover:underline" href="/miei-annunci">
-                I miei annunci
               </a>
             </div>
 
