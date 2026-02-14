@@ -1,284 +1,203 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
-const MACRO = [
-  { key: "veterinari", label: "Veterinari" },
-  { key: "toelettatura", label: "Toelettatura" },
-  { key: "pensione", label: "Pensioni" },
-  { key: "pet_sitter", label: "Pet sitter & Dog walking" },
-  { key: "addestramento", label: "Addestramento" },
-  { key: "ponte_arcobaleno", label: "Ponte dell’Arcobaleno" },
-  { key: "altro", label: "Altro" },
-];
+type Professional = {
+  id: string;
+  owner_id: string | null;
+  approved: boolean;
+  display_name: string;
+  category: string;
+  city: string;
+  province: string | null;
+  subscription_status: string;
+  subscription_expires_at: string | null;
+};
 
-function isEmailValid(email: string) {
-  const e = email.trim();
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+function macroLabel(key: string) {
+  switch (key) {
+    case "veterinari":
+      return "Veterinari";
+    case "toelettatura":
+      return "Toelettatura";
+    case "pensione":
+      return "Pensioni";
+    case "pet_sitter":
+      return "Pet sitter & Dog walking";
+    case "addestramento":
+      return "Addestramento";
+    case "ponte_arcobaleno":
+      return "Ponte dell’Arcobaleno";
+    case "altro":
+    default:
+      return "Altro";
+  }
 }
 
-export default function NuovoProfessionistaPage() {
+export default function ProfessionistiDashboard() {
   const router = useRouter();
 
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [item, setItem] = useState<Professional | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  const [displayName, setDisplayName] = useState("");
-  const [category, setCategory] = useState("veterinari");
-  const [city, setCity] = useState("");
-  const [province, setProvince] = useState("");
-  const [address, setAddress] = useState("");
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
-  const [website, setWebsite] = useState(""); // opzionale
-  const [description, setDescription] = useState(""); // opzionale
-
-  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
 
-    async function init() {
+    async function load() {
       setLoading(true);
       setError(null);
 
-      const { data } = await supabase.auth.getUser();
-      const user = data.user;
+      const { data: authData, error: authErr } = await supabase.auth.getUser();
+      const user = authData.user;
 
-      if (!user) {
+      if (authErr || !user) {
         router.replace("/login");
         return;
       }
 
-      if (!alive) return;
-
-      setUserId(user.id);
-
-      // se esiste già una scheda, rimanda a modifica
-      const { data: existing } = await supabase
+      const { data, error } = await supabase
         .from("professionals")
-        .select("id")
+        .select(
+          "id,owner_id,approved,display_name,category,city,province,subscription_status,subscription_expires_at"
+        )
         .eq("owner_id", user.id)
+        .order("created_at", { ascending: false })
         .limit(1);
 
-      if (existing && existing.length > 0) {
-        router.replace("/professionisti/modifica");
-        return;
+      if (!alive) return;
+
+      if (error) {
+        setError("Errore nel caricamento. Riprova.");
+        setItem(null);
+      } else {
+        setItem((data?.[0] as Professional) ?? null);
       }
 
       setLoading(false);
     }
 
-    init();
+    load();
     return () => {
       alive = false;
     };
   }, [router]);
 
-  async function save() {
-    setError(null);
-
-    if (!userId) {
-      setError("Devi essere loggato per creare una scheda.");
-      return;
-    }
-
-    // VALIDAZIONI (NON opzionali)
-    if (displayName.trim().length < 2) {
-      setError("Inserisci un nome valido (minimo 2 caratteri).");
-      return;
-    }
-    if (city.trim().length < 2) {
-      setError("Inserisci una città valida.");
-      return;
-    }
-    if (province.trim().length < 2) {
-      setError("Inserisci una provincia valida (es. FI, PI, AR).");
-      return;
-    }
-    if (address.trim().length < 5) {
-      setError("Inserisci un indirizzo valido (es. Via Roma 10).");
-      return;
-    }
-    if (phone.trim().length < 6) {
-      setError("Inserisci un numero di telefono valido.");
-      return;
-    }
-    if (!isEmailValid(email)) {
-      setError("Inserisci un indirizzo email valido.");
-      return;
-    }
-
-    setSaving(true);
-    try {
-      await supabase.from("profiles").upsert({ id: userId }, { onConflict: "id" });
-
-      const { data: inserted, error } = await supabase
-        .from("professionals")
-        .insert({
-          owner_id: userId,
-          approved: false,
-          display_name: displayName.trim(),
-          category,
-          city: city.trim(),
-          province: province.trim(),
-          address: address.trim(),
-          phone: phone.trim(),
-          email: email.trim(),
-          website: website.trim() || null, // opzionale
-          description: description.trim() || null, // opzionale
-        })
-        .select("id")
-        .single();
-
-      if (error) throw error;
-
-      // ✅ dopo creazione → pagina skill dedicata
-      router.replace("/professionisti/skill");
-    } catch (e: any) {
-      setError("Errore nel salvataggio. Controlla i campi e riprova.");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  if (loading) {
-    return (
-      <main>
-        <p className="text-sm text-zinc-700">Caricamento…</p>
-      </main>
-    );
-  }
-
   return (
     <main>
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="text-3xl font-bold tracking-tight">Crea scheda professionista</h1>
-        <Link href="/professionisti" className="text-sm font-medium text-zinc-600 hover:underline">
-          ← Portale
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Portale Professionisti</h1>
+          <p className="mt-3 max-w-2xl text-zinc-700">
+            Gestisci la tua scheda, le competenze (skill) e le richieste contatto.
+          </p>
+        </div>
+
+        <Link href="/servizi" className="text-sm font-medium text-zinc-600 hover:underline">
+          ← Vai ai Servizi
         </Link>
       </div>
 
-      <div className="mt-8 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <p className="text-sm text-zinc-700">
-          Compila i dati principali. Subito dopo sceglierai le <span className="font-semibold">skill</span> (servizi offerti).
-        </p>
+      {loading ? (
+        <div className="mt-8 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+          <p className="text-sm text-zinc-700">Caricamento…</p>
+        </div>
+      ) : error ? (
+        <div className="mt-8 rounded-2xl border border-red-200 bg-white p-6 text-sm text-red-700 shadow-sm">
+          {error}
+        </div>
+      ) : !item ? (
+        <div className="mt-8 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+          <p className="text-sm text-zinc-700">Non hai ancora creato una scheda professionista.</p>
 
-        <div className="mt-6 grid gap-4 sm:grid-cols-2">
-          <div className="sm:col-span-2">
-            <label className="block text-sm font-medium">Nome attività / professionista *</label>
-            <input
-              className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              placeholder="Es. Clinica Veterinaria XYZ"
-            />
+          <Link
+            href="/professionisti/nuovo"
+            className="mt-4 inline-flex items-center justify-center rounded-lg bg-black px-5 py-3 text-sm font-semibold text-white hover:bg-zinc-800"
+          >
+            Crea la mia scheda
+          </Link>
+
+          <p className="mt-3 text-xs text-zinc-500">
+            Nota: la scheda sarà visibile pubblicamente solo dopo approvazione.
+          </p>
+        </div>
+      ) : (
+        <div className="mt-8 grid gap-6 lg:grid-cols-3">
+          <div className="lg:col-span-2 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold tracking-wide text-zinc-500">LA TUA SCHEDA</p>
+                <h2 className="mt-2 text-xl font-bold">{item.display_name}</h2>
+                <p className="mt-2 text-sm text-zinc-700">
+                  {macroLabel(item.category)} • {item.city}
+                  {item.province ? ` (${item.province})` : ""}
+                </p>
+
+                <p className="mt-3 text-sm">
+                  Stato pubblico:{" "}
+                  <span
+                    className={[
+                      "rounded-full px-3 py-1 text-xs font-semibold",
+                      item.approved ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700",
+                    ].join(" ")}
+                  >
+                    {item.approved ? "Visibile" : "In revisione"}
+                  </span>
+                </p>
+              </div>
+
+              <Link
+                href={`/servizi/${item.id}`}
+                className="rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
+              >
+                Apri scheda pubblica
+              </Link>
+            </div>
+
+            <div className="mt-6 flex flex-wrap gap-3">
+              {/* Skill */}
+              <Link
+                href="/professionisti/skill"
+                className="inline-flex items-center justify-center rounded-lg bg-black px-5 py-3 text-sm font-semibold text-white hover:bg-zinc-800"
+              >
+                Gestisci skill
+              </Link>
+
+              {/* Modifica scheda (per ora alias a skill: non rompe) */}
+              <Link
+                href="/professionisti/modifica"
+                className="inline-flex items-center justify-center rounded-lg border border-zinc-200 bg-white px-5 py-3 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
+              >
+                Modifica scheda
+              </Link>
+            </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium">Categoria *</label>
-            <select
-              className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 outline-none focus:border-zinc-900"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-            >
-              {MACRO.map((m) => (
-                <option key={m.key} value={m.key}>
-                  {m.label}
-                </option>
-              ))}
-            </select>
-          </div>
+          <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+            <p className="text-xs font-semibold tracking-wide text-zinc-500">ABBONAMENTO</p>
 
-          <div>
-            <label className="block text-sm font-medium">Città *</label>
-            <input
-              className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              placeholder="Es. Firenze"
-            />
-          </div>
+            <p className="mt-3 text-sm text-zinc-700">
+              Stato: <span className="font-semibold">{item.subscription_status}</span>
+            </p>
 
-          <div>
-            <label className="block text-sm font-medium">Provincia * (es. FI)</label>
-            <input
-              className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
-              value={province}
-              onChange={(e) => setProvince(e.target.value)}
-              placeholder="FI"
-            />
-          </div>
+            <p className="mt-2 text-sm text-zinc-700">
+              Scadenza:{" "}
+              <span className="font-semibold">
+                {item.subscription_expires_at
+                  ? new Date(item.subscription_expires_at).toLocaleDateString("it-IT")
+                  : "—"}
+              </span>
+            </p>
 
-          <div>
-            <label className="block text-sm font-medium">Indirizzo *</label>
-            <input
-              className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              placeholder="Via Roma 10"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium">Telefono *</label>
-            <input
-              className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="+39…"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium">Email *</label>
-            <input
-              className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="info@..."
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium">Sito (opzionale)</label>
-            <input
-              className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
-              value={website}
-              onChange={(e) => setWebsite(e.target.value)}
-              placeholder="https://..."
-            />
-          </div>
-
-          <div className="sm:col-span-2">
-            <label className="block text-sm font-medium">Descrizione (opzionale)</label>
-            <textarea
-              className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
-              rows={5}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Servizi, orari, specializzazioni..."
-            />
+            <p className="mt-4 text-xs text-zinc-500">
+              L’abbonamento verrà attivato in futuro. Per ora la scheda serve a farti trovare.
+            </p>
           </div>
         </div>
-
-        {error && <p className="mt-4 text-sm text-red-700">{error}</p>}
-
-        <button
-          type="button"
-          onClick={save}
-          disabled={saving}
-          className="mt-6 inline-flex items-center justify-center rounded-lg bg-black px-5 py-3 text-sm font-semibold text-white hover:bg-zinc-800 disabled:opacity-60"
-        >
-          {saving ? "Salvataggio..." : "Continua: scegli le skill →"}
-        </button>
-
-        <p className="mt-3 text-xs text-zinc-500">* Campi obbligatori</p>
-      </div>
+      )}
     </main>
   );
 }
