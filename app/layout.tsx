@@ -28,20 +28,15 @@ export default function RootLayout({
       <body className="min-h-screen bg-zinc-50 text-zinc-900">
         <header className="sticky top-0 z-50 border-b border-zinc-200 bg-white/80 backdrop-blur">
           <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 sm:py-4">
-            
             {/* LOGO */}
             <a href="/" className="flex items-center">
-              <img
-                src="/logo.png"
-                alt="UNIMALIA"
-                className="h-40 w-auto"
-              />
+              <img src="/logo.png" alt="UNIMALIA" className="h-40 w-auto" />
             </a>
 
             {/* NAV + AUTH */}
-            <div className="flex min-w-0 flex-1 items-center justify-end gap-3">
-              
-              <nav className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto whitespace-nowrap">
+            <div className="flex min-w-0 items-center justify-end gap-3">
+              {/* NAV desktop minimal (nasconde su mobile) */}
+              <nav className="hidden items-center gap-1 sm:flex">
                 <a
                   href="/smarrimenti"
                   className="rounded-lg px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
@@ -50,10 +45,10 @@ export default function RootLayout({
                 </a>
 
                 <a
-                  href="/smarrimenti/nuovo"
+                  href="/identita"
                   className="rounded-lg px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
                 >
-                  Pubblica smarrimento
+                  Identità
                 </a>
 
                 <a
@@ -63,27 +58,28 @@ export default function RootLayout({
                   Ritrovati
                 </a>
 
+                {/* CTA (chiara) */}
                 <a
-                  href="/miei-annunci"
-                  className="rounded-lg px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
+                  href="/smarrimenti/nuovo"
+                  className="ml-2 inline-flex items-center justify-center rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800"
                 >
-                  I miei annunci
-                </a>
-
-                <a
-                  href="/identita"
-                  className="rounded-lg px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
-                >
-                  Identità animale
+                  Pubblica
                 </a>
               </nav>
+
+              {/* Mobile (temporaneo): solo CTA */}
+              <a
+                href="/smarrimenti/nuovo"
+                className="inline-flex items-center justify-center rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800 sm:hidden"
+              >
+                Pubblica
+              </a>
 
               <AuthButtons />
             </div>
           </div>
         </header>
 
-        {/* CONTENUTO PIÙ LARGO */}
         <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10">
           {children}
         </main>
@@ -104,6 +100,11 @@ export default function RootLayout({
               </a>
               <a className="hover:underline" href="/termini">
                 Termini
+              </a>
+
+              {/* link “silenzioso” per tornare ai propri annunci */}
+              <a className="hover:underline" href="/miei-annunci">
+                I miei annunci
               </a>
             </div>
 
