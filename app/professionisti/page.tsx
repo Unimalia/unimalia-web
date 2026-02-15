@@ -90,22 +90,16 @@ export default function ProfessionistiDashboard() {
     <main>
       {/* TOP BAR */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <button
-          type="button"
-          onClick={() => router.push("/servizi")}
-          className="inline-flex w-fit items-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
-        >
-          ← Indietro
-        </button>
+        <Link href="/servizi" className="text-sm font-medium text-zinc-600 hover:underline">
+          ← Vai ai Servizi
+        </Link>
 
-        <div className="flex items-center gap-4">
-          <Link href="/" className="text-sm font-medium text-zinc-600 hover:underline">
-            Home
-          </Link>
-          <Link href="/servizi" className="text-sm font-medium text-zinc-600 hover:underline">
-            Servizi
-          </Link>
-        </div>
+        <Link
+          href="/professionisti/scansiona"
+          className="inline-flex items-center justify-center rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
+        >
+          Leggi QR / Barcode
+        </Link>
       </div>
 
       <div className="mt-6">
@@ -163,7 +157,6 @@ export default function ProfessionistiDashboard() {
                 </p>
               </div>
 
-              {/* ✅ QUI: aggiungiamo ?from=professionisti */}
               <Link
                 href={`/servizi/${item.id}?from=professionisti`}
                 className="rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
@@ -185,6 +178,13 @@ export default function ProfessionistiDashboard() {
                 className="inline-flex items-center justify-center rounded-lg border border-zinc-200 bg-white px-5 py-3 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
               >
                 Modifica scheda
+              </Link>
+
+              <Link
+                href="/professionisti/scansiona"
+                className="inline-flex items-center justify-center rounded-lg border border-zinc-200 bg-white px-5 py-3 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
+              >
+                Scanner
               </Link>
             </div>
           </div>

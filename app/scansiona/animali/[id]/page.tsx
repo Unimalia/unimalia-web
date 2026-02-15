@@ -18,7 +18,7 @@ type Animal = {
   size: string | null;
   chip_number: string | null;
   microchip_verified: boolean;
-  status: string; // home | lost | found (o safe legacy)
+  status: string;
   premium_active: boolean;
   premium_expires_at: string | null;
 };
@@ -37,11 +37,10 @@ function statusLabel(status: string) {
 }
 
 function normalizeChip(raw: string) {
-  // microchip spesso è solo numeri; togli spazi
   return raw.replace(/\s+/g, "").trim();
 }
 
-export default function AnimalProfilePage() {
+export default function ProAnimalProfilePage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const id = params?.id;
@@ -63,14 +62,7 @@ export default function AnimalProfilePage() {
       setLoading(true);
       setError(null);
 
-      const { data: authData, error: authErr } = await supabase.auth.getUser();
-      const user = authData.user;
-
-      if (authErr || !user) {
-        router.replace("/login");
-        return;
-      }
-
+      // qui assumiamo che /professionisti abbia già il layout guard (role=pro)
       const { data, error } = await supabase
         .from("animals")
         .select(
@@ -82,21 +74,13 @@ export default function AnimalProfilePage() {
       if (!alive) return;
 
       if (error || !data) {
-        setError(error?.message || "Profilo non trovato.");
+        setError("Profilo non trovato o non disponibile.");
         setAnimal(null);
         setLoading(false);
         return;
       }
 
-      const a = data as Animal;
-
-      // sicurezza extra (RLS dovrebbe già bloccare, ma meglio)
-      if (a.owner_id !== user.id) {
-        router.replace("/identita");
-        return;
-      }
-
-      setAnimal(a);
+      setAnimal(data as Animal);
       setLoading(false);
     }
 
@@ -104,27 +88,17 @@ export default function AnimalProfilePage() {
     return () => {
       alive = false;
     };
-  }, [id, router]);
+  }, [id]);
 
-  const premiumOk = useMemo(() => {
-    if (!animal) return false;
-    if (!animal.premium_active) return false;
-    if (!animal.premium_expires_at) return true;
-    return new Date(animal.premium_expires_at).getTime() > Date.now();
-  }, [animal]);
-
-  // Genera QR + Barcode quando c’è chip_number
+  // QR/Barcode se microchip presente
   useEffect(() => {
     async function buildCodes() {
       setQrDataUrl(null);
-
       if (!animal?.chip_number) return;
 
       const chip = normalizeChip(animal.chip_number);
       if (!chip) return;
 
-      // ✅ contenuto QR = stesso contenuto del barcode (microchip)
-      // Se vuoi prefisso “MICROCHIP:” basta cambiare qui:
       const qrPayload = chip;
 
       try {
@@ -150,27 +124,22 @@ export default function AnimalProfilePage() {
             fontSize: 14,
           });
         }
-      } catch {
-        // se barcode fallisce non blocchiamo la pagina
-      }
+      } catch {}
     }
 
     buildCodes();
   }, [animal?.chip_number]);
 
-  async function copyChip() {
-    if (!animal?.chip_number) return;
-    try {
-      await navigator.clipboard.writeText(normalizeChip(animal.chip_number));
-      alert("Microchip copiato ✅");
-    } catch {
-      alert("Non riesco a copiare. Copialo manualmente.");
-    }
-  }
+  const premiumOk = useMemo(() => {
+    if (!animal) return false;
+    if (!animal.premium_active) return false;
+    if (!animal.premium_expires_at) return true;
+    return new Date(animal.premium_expires_at).getTime() > Date.now();
+  }, [animal]);
 
   if (loading) {
     return (
-      <main className="max-w-3xl">
+      <main className="max-w-4xl">
         <h1 className="text-3xl font-bold tracking-tight">Profilo animale</h1>
         <p className="mt-4 text-zinc-700">Caricamento…</p>
       </main>
@@ -179,11 +148,11 @@ export default function AnimalProfilePage() {
 
   if (error || !animal) {
     return (
-      <main className="max-w-3xl">
+      <main className="max-w-4xl">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold tracking-tight">Profilo animale</h1>
-          <Link href="/identita" className="text-sm text-zinc-600 hover:underline">
-            ← Torna
+          <Link href="/professionisti" className="text-sm text-zinc-600 hover:underline">
+            ← Portale
           </Link>
         </div>
 
@@ -195,37 +164,45 @@ export default function AnimalProfilePage() {
   }
 
   return (
-    <main className="max-w-3xl">
+    <main className="max-w-4xl">
       {/* HEADER */}
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">{animal.name}</h1>
 
-          <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-zinc-700">
-              {animal.species}
-              {animal.breed ? ` • ${animal.breed}` : ""}
-              {" • "}
-              {statusLabel(animal.status)}
-            </p>
+          <p className="mt-2 text-zinc-700">
+            {animal.species}
+            {animal.breed ? ` • ${animal.breed}` : ""}
+            {" • "}
+            {statusLabel(animal.status)}
+          </p>
 
-            <Link
-              href={`/smarrimenti/nuovo?animal_id=${animal.id}`}
-              className="inline-flex items-center justify-center rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
-              title="Crea un annuncio collegato a questo profilo"
-            >
-              Segnala smarrimento
-            </Link>
-          </div>
+          <p className="mt-2 text-xs text-zinc-500">
+            Creato il {new Date(animal.created_at).toLocaleDateString("it-IT")} • Owner:{" "}
+            <span className="font-mono">{animal.owner_id}</span>
+          </p>
         </div>
 
-        <Link href="/identita" className="text-sm text-zinc-600 hover:underline">
-          ← Torna
-        </Link>
+        <div className="flex flex-col items-end gap-2">
+          <button
+            type="button"
+            onClick={() => router.push("/professionisti")}
+            className="text-sm text-zinc-600 hover:underline"
+          >
+            ← Portale
+          </button>
+
+          <Link
+            href="/professionisti/scansiona"
+            className="rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+          >
+            Apri scanner
+          </Link>
+        </div>
       </div>
 
-      {/* SEZIONI */}
-      <div className="mt-6 grid gap-4 sm:grid-cols-2">
+      {/* GRID */}
+      <div className="mt-6 grid gap-4 md:grid-cols-2">
         <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
           <h2 className="text-base font-semibold">Identità</h2>
 
@@ -255,10 +232,6 @@ export default function AnimalProfilePage() {
               <dd className="font-medium">{animal.size || "—"}</dd>
             </div>
           </dl>
-
-          <p className="mt-4 text-xs text-zinc-500">
-            Creato il {new Date(animal.created_at).toLocaleDateString("it-IT")}
-          </p>
         </section>
 
         <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
@@ -267,10 +240,11 @@ export default function AnimalProfilePage() {
           <div className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4">
             <p className="text-sm text-zinc-700">
               Profilo completo:{" "}
-              <span className="font-medium">{premiumOk ? "attualmente gratuito ✅" : "limitato"}</span>
+              <span className="font-medium">{premiumOk ? "attivo ✅" : "limitato"}</span>
             </p>
             <p className="mt-2 text-xs text-zinc-500">
-              Smarrimenti sempre gratuiti. In futuro alcune funzioni potrebbero richiedere UNIMALIA ID per sostenere il progetto.
+              Questo è l’ambiente professionisti: qui in futuro verrà gestita la vita clinica e
+              servizi dell’animale.
             </p>
           </div>
 
@@ -278,56 +252,44 @@ export default function AnimalProfilePage() {
             <h3 className="text-sm font-semibold">Microchip</h3>
             <div className="mt-2 rounded-xl border border-zinc-200 bg-white p-4">
               <p className="text-sm text-zinc-700">
-                {animal.chip_number ? "Microchip registrato ✔️" : "Microchip non ancora disponibile nel profilo."}
+                {animal.chip_number ? "Microchip presente ✔️" : "Microchip assente"}
               </p>
               <p className="mt-2 text-xs text-zinc-500">
                 {animal.chip_number
                   ? animal.microchip_verified
-                    ? "Verificato da professionista ✅"
-                    : "Verifica professionale disponibile in futuro."
-                  : "La registrazione e verifica del microchip sarà disponibile prossimamente tramite professionisti autorizzati."}
+                    ? "Verificato ✅"
+                    : "Non verificato (per ora)."
+                  : "Non disponibile."}
               </p>
-
-              {animal.chip_number && (
-                <button
-                  type="button"
-                  onClick={copyChip}
-                  className="mt-3 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-900 hover:bg-zinc-50"
-                >
-                  Copia microchip
-                </button>
-              )}
             </div>
           </div>
         </section>
       </div>
 
-      {/* CODICI IDENTIFICATIVI */}
+      {/* CODICI */}
       <div className="mt-4">
         <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <h2 className="text-base font-semibold">Codici identificativi</h2>
+          <h2 className="text-base font-semibold">Codici identificativi (professionisti)</h2>
           <p className="mt-2 text-sm text-zinc-700">
-            Barcode e QR sono visibili solo al proprietario (e in futuro ai professionisti autorizzati).
+            QR e barcode codificano il numero microchip.
           </p>
 
           {!animal.chip_number ? (
             <div className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600">
-              Disponibile quando il microchip verrà inserito/verificato.
+              Nessun microchip presente per generare i codici.
             </div>
           ) : (
             <div className="mt-5 grid gap-6 sm:grid-cols-2">
               <div className="rounded-xl border border-zinc-200 bg-white p-4">
-                <p className="text-sm font-semibold">Barcode (microchip)</p>
+                <p className="text-sm font-semibold">Barcode (CODE128)</p>
                 <div className="mt-3 overflow-x-auto">
                   <svg ref={barcodeSvgRef} />
                 </div>
-                <p className="mt-2 text-xs text-zinc-500">
-                  Formato: CODE128 • Contenuto: microchip
-                </p>
+                <p className="mt-2 text-xs text-zinc-500">Contenuto: microchip</p>
               </div>
 
               <div className="rounded-xl border border-zinc-200 bg-white p-4">
-                <p className="text-sm font-semibold">QR code (stesso contenuto)</p>
+                <p className="text-sm font-semibold">QR code</p>
                 {qrDataUrl ? (
                   <img
                     src={qrDataUrl}
@@ -337,34 +299,22 @@ export default function AnimalProfilePage() {
                 ) : (
                   <div className="mt-3 h-44 w-44 rounded-lg border border-zinc-200 bg-zinc-50" />
                 )}
-                <p className="mt-2 text-xs text-zinc-500">
-                  Contenuto: microchip • Scansione prevista in portale professionisti
-                </p>
+                <p className="mt-2 text-xs text-zinc-500">Contenuto: microchip</p>
               </div>
             </div>
           )}
         </section>
       </div>
 
-      {/* ALTRE SEZIONI */}
-      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+      {/* REPORT VITA ANIMALE (placeholder) */}
+      <div className="mt-4">
         <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <h2 className="text-base font-semibold">Cartella clinica (in arrivo)</h2>
+          <h2 className="text-base font-semibold">Report vita animale (in costruzione)</h2>
           <p className="mt-3 text-sm text-zinc-700">
-            Questa sezione sarà compilabile dal veterinario di fiducia tramite accesso professionale dedicato.
+            Qui comparirà la timeline completa: visite, vaccini, esami, diete, pensioni, ecc.
           </p>
           <div className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600">
-            Nessuna informazione registrata.
-          </div>
-        </section>
-
-        <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <h2 className="text-base font-semibold">Condivisione (in arrivo)</h2>
-          <p className="mt-3 text-sm text-zinc-700">
-            In futuro potrai condividere un link pubblico e dare accesso temporaneo ai professionisti.
-          </p>
-          <div className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600">
-            Link pubblico: disponibile prossimamente.
+            Nessun evento registrato.
           </div>
         </section>
       </div>
