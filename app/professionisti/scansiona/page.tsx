@@ -5,8 +5,56 @@ import { useRouter } from "next/navigation";
 import { BrowserMultiFormatReader } from "@zxing/browser";
 import { supabase } from "@/lib/supabaseClient";
 
-function normalize(text: string) {
-  return text.replace(/\s+/g, "").trim();
+function isUuid(s: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s);
+}
+
+/**
+ * Regola:
+ * - Se scansiono "UNIMALIA:<uuid>" => cerco animals.unimalia_code = uuid
+ * - Altrimenti => considero microchip e cerco animals.chip_number = valore normalizzato
+ *
+ * Supporto extra:
+ * - Se scansiono una URL tipo https://unimalia.it/a/<uuid> => tratto <uuid> come unimalia_code
+ */
+function parseScanned(raw: string) {
+  const t = (raw || "").trim();
+
+  // URL /a/<uuid>
+  try {
+    const u = new URL(t);
+    if (u.pathname.startsWith("/a/")) {
+      const code = u.pathname.replace("/a/", "").trim();
+      return { kind: "unimalia" as const, value: code };
+    }
+  } catch {
+    // non è una URL
+  }
+
+  // path /a/<uuid>
+  if (t.startsWith("/a/")) {
+    return { kind: "unimalia" as const, value: t.replace("/a/", "").trim() };
+  }
+
+  // UNIMALIA:<uuid>
+  if (/^UNIMALIA:/i.test(t)) {
+    return { kind: "unimalia" as const, value: t.replace(/^UNIMALIA:/i, "").trim() };
+  }
+
+  // animal uuid diretto (se qualcuno lo usa)
+  if (isUuid(t)) {
+    return { kind: "animal_id" as const, value: t };
+  }
+
+  // microchip: normalizza
+  const cleaned = t
+    .replace(/^microchip[:\s]*/i, "")
+    .replace(/^chip[:\s]*/i, "")
+    .replace(/^id[:\s]*/i, "")
+    .replace(/\s+/g, "")
+    .replace(/[^0-9a-zA-Z\-]/g, "");
+
+  return { kind: "chip" as const, value: cleaned };
 }
 
 export default function ScansionaProPage() {
@@ -15,6 +63,10 @@ export default function ScansionaProPage() {
 
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string>("Avvio fotocamera…");
+
+  // anti-loop: se legge lo stesso codice ripetutamente, lo ignoriamo per un attimo
+  const [lastKey, setLastKey] = useState<string | null>(null);
+  const lastTsRef = useRef<number>(0);
 
   useEffect(() => {
     let alive = true;
@@ -35,13 +87,76 @@ export default function ScansionaProPage() {
             if (!result) return;
 
             const raw = result.getText();
-            const chip = normalize(raw);
+            const parsed = parseScanned(raw);
+            const key = `${parsed.kind}:${parsed.value}`;
 
-            if (!chip) return;
+            const now = Date.now();
+            if (key === lastKey && now - lastTsRef.current < 1200) return; // 1.2s
+            setLastKey(key);
+            lastTsRef.current = now;
 
+            if (!parsed.value) {
+              setError("Codice non valido. Riprova.");
+              setStatus("Pronto.");
+              return;
+            }
+
+            setError(null);
             setStatus("Codice letto ✅ Cerco l’animale…");
 
-            // Cerco per microchip (chip_number)
+            // 1) UNIMALIA CODE
+            if (parsed.kind === "unimalia") {
+              const code = parsed.value;
+              if (!isUuid(code)) {
+                setError("UNIMALIA ID non valido. Riprova.");
+                setStatus("Pronto.");
+                return;
+              }
+
+              const { data, error } = await supabase
+                .from("animals")
+                .select("id")
+                .eq("unimalia_code", code)
+                .limit(1);
+
+              if (error) {
+                setError("Errore nella ricerca. Riprova.");
+                setStatus("Pronto.");
+                return;
+              }
+
+              const id = data?.[0]?.id as string | undefined;
+              if (!id) {
+                setError("Nessun animale trovato con questo UNIMALIA ID.");
+                setStatus("Pronto.");
+                return;
+              }
+
+              try {
+                controls.stop();
+              } catch {}
+
+              router.push(`/professionisti/animali/${id}`);
+              return;
+            }
+
+            // 2) animal id diretto
+            if (parsed.kind === "animal_id") {
+              try {
+                controls.stop();
+              } catch {}
+              router.push(`/professionisti/animali/${parsed.value}`);
+              return;
+            }
+
+            // 3) MICROCHIP
+            const chip = parsed.value;
+            if (chip.length < 6) {
+              setError("Codice troppo corto. Riprova.");
+              setStatus("Pronto.");
+              return;
+            }
+
             const { data, error } = await supabase
               .from("animals")
               .select("id")
@@ -49,19 +164,20 @@ export default function ScansionaProPage() {
               .limit(1);
 
             if (error) {
-              setError("Errore nella ricerca. Riprova.");
+              setError("Errore nella ricerca del microchip. Riprova.");
               setStatus("Pronto.");
               return;
             }
 
             const id = data?.[0]?.id as string | undefined;
             if (!id) {
-              setError("Nessun animale trovato con questo microchip.");
+              setError(
+                "Nessun profilo UNIMALIA trovato per questo microchip. Chiedi al proprietario di registrare l’animale in “Identità animale”."
+              );
               setStatus("Pronto.");
               return;
             }
 
-            // Stop camera e apri profilo pro
             try {
               controls.stop();
             } catch {}
@@ -76,11 +192,11 @@ export default function ScansionaProPage() {
           } catch {}
         };
 
-        setStatus("Inquadra QR o barcode (microchip)...");
+        setStatus("Inquadra QR o barcode…");
       } catch (e: any) {
         setError(
           e?.message ||
-            "Impossibile avviare la fotocamera. Controlla permessi o prova con un altro browser."
+            "Impossibile avviare la fotocamera. Controlla i permessi oppure prova con un altro browser."
         );
         setStatus("Errore.");
       }
@@ -92,7 +208,7 @@ export default function ScansionaProPage() {
       alive = false;
       if (stopFn) stopFn();
     };
-  }, [router]);
+  }, [router, lastKey]);
 
   return (
     <main>
@@ -109,8 +225,9 @@ export default function ScansionaProPage() {
       </div>
 
       <p className="mt-3 text-zinc-700">
-        Leggi un <span className="font-semibold">barcode</span> o un{" "}
-        <span className="font-semibold">QR</span> che contiene il numero microchip.
+        Scansiona:
+        <span className="font-semibold"> microchip (barcode/QR)</span> oppure
+        <span className="font-semibold"> UNIMALIA ID</span> (per animali senza microchip).
       </p>
 
       <div className="mt-8 overflow-hidden rounded-2xl border border-zinc-200 bg-black shadow-sm">
@@ -124,6 +241,15 @@ export default function ScansionaProPage() {
           {error}
         </div>
       )}
+
+      <div className="mt-4 rounded-2xl border border-zinc-200 bg-white p-4 text-xs text-zinc-600">
+        <p className="font-semibold text-zinc-800">Regola UNIMALIA</p>
+        <p className="mt-1">
+          Se l’animale ha microchip: il codice digitale è il microchip.
+          <br />
+          Se non ha microchip: il codice digitale è UNIMALIA ID (QR/Barcode interno).
+        </p>
+      </div>
     </main>
   );
 }

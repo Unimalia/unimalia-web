@@ -21,6 +21,8 @@ type Animal = {
   status: string;
   premium_active: boolean;
   premium_expires_at: string | null;
+
+  unimalia_code: string; // uuid
 };
 
 type AnimalEvent = {
@@ -124,7 +126,7 @@ export default function ProAnimalProfilePage() {
       const { data, error } = await supabase
         .from("animals")
         .select(
-          "id,owner_id,created_at,name,species,breed,color,size,chip_number,microchip_verified,status,premium_active,premium_expires_at"
+          "id,owner_id,created_at,name,species,breed,color,size,chip_number,microchip_verified,status,premium_active,premium_expires_at,unimalia_code"
         )
         .eq("id", id)
         .single();
@@ -148,19 +150,37 @@ export default function ProAnimalProfilePage() {
     };
   }, [id]);
 
-  // genera QR/Barcode se microchip presente
+  // payload codice digitale
+  const digitalCode = useMemo(() => {
+    if (!animal) return null;
+
+    // Se c'è microchip => definitivo = microchip
+    if (animal.chip_number && normalizeChip(animal.chip_number)) {
+      return {
+        kind: "microchip" as const,
+        label: "Microchip",
+        value: normalizeChip(animal.chip_number),
+      };
+    }
+
+    // altrimenti => UNIMALIA ID
+    return {
+      kind: "unimalia" as const,
+      label: "UNIMALIA ID",
+      value: `UNIMALIA:${animal.unimalia_code}`,
+    };
+  }, [animal]);
+
+  // genera QR/Barcode
   useEffect(() => {
     async function buildCodes() {
       setQrDataUrl(null);
-      if (!animal?.chip_number) return;
+      if (!digitalCode?.value) return;
 
-      const chip = normalizeChip(animal.chip_number);
-      if (!chip) return;
-
-      const qrPayload = chip;
+      const payload = digitalCode.value;
 
       try {
-        const url = await QRCode.toDataURL(qrPayload, {
+        const url = await QRCode.toDataURL(payload, {
           errorCorrectionLevel: "M",
           margin: 2,
           scale: 8,
@@ -172,7 +192,7 @@ export default function ProAnimalProfilePage() {
 
       try {
         if (barcodeSvgRef.current) {
-          JsBarcode(barcodeSvgRef.current, chip, {
+          JsBarcode(barcodeSvgRef.current, payload, {
             format: "CODE128",
             displayValue: true,
             lineColor: "#111827",
@@ -186,7 +206,7 @@ export default function ProAnimalProfilePage() {
     }
 
     buildCodes();
-  }, [animal?.chip_number]);
+  }, [digitalCode]);
 
   const premiumOk = useMemo(() => {
     if (!animal) return false;
@@ -194,6 +214,23 @@ export default function ProAnimalProfilePage() {
     if (!animal.premium_expires_at) return true;
     return new Date(animal.premium_expires_at).getTime() > Date.now();
   }, [animal]);
+
+  function typeLabel(t: string) {
+    switch (t) {
+      case "vaccino":
+        return "Vaccino";
+      case "esame":
+        return "Esame";
+      case "terapia":
+        return "Terapia";
+      case "dieta":
+        return "Dieta";
+      case "visita":
+        return "Visita";
+      default:
+        return "Altro";
+    }
+  }
 
   async function loadEvents() {
     if (!animal?.id) return;
@@ -234,38 +271,18 @@ export default function ProAnimalProfilePage() {
       }
       setFiles(by);
     } catch {
-      // messaggio comprensibile
       setFormMsg("Errore nel caricamento degli eventi. Riprova.");
     } finally {
       setEventsLoading(false);
     }
   }
 
-  // carica eventi quando animal pronto
   useEffect(() => {
     if (animal?.id) loadEvents();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [animal?.id]);
 
-  function typeLabel(t: string) {
-    switch (t) {
-      case "vaccino":
-        return "Vaccino";
-      case "esame":
-        return "Esame";
-      case "terapia":
-        return "Terapia";
-      case "dieta":
-        return "Dieta";
-      case "visita":
-        return "Visita";
-      default:
-        return "Altro";
-    }
-  }
-
   async function openFile(file: EventFile) {
-    // se già firmato lo riuso
     if (signed[file.id]) {
       window.open(signed[file.id], "_blank", "noreferrer");
       return;
@@ -273,7 +290,7 @@ export default function ProAnimalProfilePage() {
 
     const { data, error } = await supabase.storage
       .from("animal-docs")
-      .createSignedUrl(file.storage_path, 60 * 10); // 10 minuti
+      .createSignedUrl(file.storage_path, 60 * 10);
 
     if (error || !data?.signedUrl) {
       alert("Non riesco ad aprire il documento. Riprova.");
@@ -286,7 +303,6 @@ export default function ProAnimalProfilePage() {
 
   async function saveEvent() {
     setFormMsg(null);
-
     if (!animal?.id) return;
 
     const cleanTitle = title.trim();
@@ -308,7 +324,6 @@ export default function ProAnimalProfilePage() {
         return;
       }
 
-      // 1) crea evento
       const { data: inserted, error: insErr } = await supabase
         .from("animal_events")
         .insert({
@@ -323,27 +338,19 @@ export default function ProAnimalProfilePage() {
         .single();
 
       if (insErr || !inserted?.id) throw insErr || new Error("Insert failed");
-
       const eventId = inserted.id as string;
 
-      // 2) upload documenti (se presenti)
       const list = docFiles ? Array.from(docFiles) : [];
       for (const f of list) {
-        // path: animalId/eventId/timestamp_filename
         const safeName = f.name.replace(/[^\w.\-() ]+/g, "_");
         const path = `${animal.id}/${eventId}/${Date.now()}_${safeName}`;
 
-        const { error: upErr } = await supabase.storage
-          .from("animal-docs")
-          .upload(path, f, {
-            contentType: f.type || "application/octet-stream",
-            upsert: false,
-          });
+        const { error: upErr } = await supabase.storage.from("animal-docs").upload(path, f, {
+          contentType: f.type || "application/octet-stream",
+          upsert: false,
+        });
 
-        if (upErr) {
-          // messaggio umano
-          throw new Error("Caricamento documento non riuscito. Riprova.");
-        }
+        if (upErr) throw new Error("Caricamento documento non riuscito. Riprova.");
 
         const { error: rowErr } = await supabase.from("animal_event_files").insert({
           event_id: eventId,
@@ -356,7 +363,6 @@ export default function ProAnimalProfilePage() {
         if (rowErr) throw new Error("Errore nel salvataggio del documento. Riprova.");
       }
 
-      // reset form
       setTitle("");
       setNotes("");
       setDocFiles(null);
@@ -474,7 +480,8 @@ export default function ProAnimalProfilePage() {
 
           <div className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4">
             <p className="text-sm text-zinc-700">
-              Profilo completo: <span className="font-medium">{premiumOk ? "attivo ✅" : "limitato"}</span>
+              Profilo completo:{" "}
+              <span className="font-medium">{premiumOk ? "attivo ✅" : "limitato"}</span>
             </p>
             <p className="mt-2 text-xs text-zinc-500">
               Ambiente professionisti: inserisci eventi e documenti in modo rapido.
@@ -492,7 +499,7 @@ export default function ProAnimalProfilePage() {
                   ? animal.microchip_verified
                     ? "Verificato ✅"
                     : "Non verificato (per ora)."
-                  : "Non disponibile."}
+                  : "Animale identificato tramite UNIMALIA ID."}
               </p>
             </div>
           </div>
@@ -502,38 +509,46 @@ export default function ProAnimalProfilePage() {
       {/* CODICI */}
       <div className="mt-4">
         <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <h2 className="text-base font-semibold">Codici identificativi</h2>
-          <p className="mt-2 text-sm text-zinc-700">QR e barcode codificano il numero microchip.</p>
+          <h2 className="text-base font-semibold">Codice digitale</h2>
 
-          {!animal.chip_number ? (
-            <div className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600">
-              Nessun microchip presente per generare i codici.
-            </div>
-          ) : (
-            <div className="mt-5 grid gap-6 sm:grid-cols-2">
-              <div className="rounded-xl border border-zinc-200 bg-white p-4">
-                <p className="text-sm font-semibold">Barcode (CODE128)</p>
-                <div className="mt-3 overflow-x-auto">
-                  <svg ref={barcodeSvgRef} />
-                </div>
-                <p className="mt-2 text-xs text-zinc-500">Contenuto: microchip</p>
-              </div>
+          <div className="mt-3 rounded-xl border border-zinc-200 bg-zinc-50 p-4">
+            <p className="text-sm text-zinc-800">
+              Tipo: <span className="font-semibold">{digitalCode?.label}</span>
+            </p>
+            <p className="mt-1 text-xs text-zinc-600">
+              {digitalCode?.label === "Microchip"
+                ? "Questo è il codice definitivo dell’animale."
+                : "Questo codice è valido per animali senza microchip."}
+            </p>
+          </div>
 
-              <div className="rounded-xl border border-zinc-200 bg-white p-4">
-                <p className="text-sm font-semibold">QR code</p>
-                {qrDataUrl ? (
-                  <img
-                    src={qrDataUrl}
-                    alt="QR microchip"
-                    className="mt-3 h-44 w-44 rounded-lg border border-zinc-200 bg-white object-contain"
-                  />
-                ) : (
-                  <div className="mt-3 h-44 w-44 rounded-lg border border-zinc-200 bg-zinc-50" />
-                )}
-                <p className="mt-2 text-xs text-zinc-500">Contenuto: microchip</p>
+          <div className="mt-5 grid gap-6 sm:grid-cols-2">
+            <div className="rounded-xl border border-zinc-200 bg-white p-4">
+              <p className="text-sm font-semibold">Barcode (CODE128)</p>
+              <div className="mt-3 overflow-x-auto">
+                <svg ref={barcodeSvgRef} />
               </div>
+              <p className="mt-2 text-xs text-zinc-500">
+                Contenuto: {digitalCode?.label}
+              </p>
             </div>
-          )}
+
+            <div className="rounded-xl border border-zinc-200 bg-white p-4">
+              <p className="text-sm font-semibold">QR code</p>
+              {qrDataUrl ? (
+                <img
+                  src={qrDataUrl}
+                  alt="QR codice digitale"
+                  className="mt-3 h-44 w-44 rounded-lg border border-zinc-200 bg-white object-contain"
+                />
+              ) : (
+                <div className="mt-3 h-44 w-44 rounded-lg border border-zinc-200 bg-zinc-50" />
+              )}
+              <p className="mt-2 text-xs text-zinc-500">
+                Contenuto: {digitalCode?.label}
+              </p>
+            </div>
+          </div>
         </section>
       </div>
 
@@ -655,9 +670,7 @@ export default function ProAnimalProfilePage() {
                         <p className="mt-2 whitespace-pre-wrap text-sm text-zinc-600">{e.notes}</p>
                       )}
                     </div>
-                    <p className="text-xs text-zinc-500">
-                      {new Date(e.created_at).toLocaleString("it-IT")}
-                    </p>
+                    <p className="text-xs text-zinc-500">{new Date(e.created_at).toLocaleString("it-IT")}</p>
                   </div>
 
                   {files[e.id]?.length ? (
