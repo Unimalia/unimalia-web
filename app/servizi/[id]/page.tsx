@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
 type Professional = {
@@ -53,7 +53,12 @@ function macroLabel(key: string) {
 export default function ServizioDettaglioPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
+  const searchParams = useSearchParams();
+
   const id = params?.id;
+
+  const from = (searchParams?.get("from") || "").toLowerCase();
+  const preferBackToProfessionisti = from === "professionisti";
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -78,10 +83,11 @@ export default function ServizioDettaglioPage() {
     return !!(pro?.owner_id && currentUserId && pro.owner_id === currentUserId);
   }, [pro?.owner_id, currentUserId]);
 
+  // ✅ back “intelligente ma deterministico”
   const backHref = useMemo(() => {
-    // Se stai guardando la tua scheda (owner) torna al portale professionisti
-    return isOwner ? "/professionisti" : "/servizi";
-  }, [isOwner]);
+    if (preferBackToProfessionisti) return "/professionisti";
+    return "/servizi";
+  }, [preferBackToProfessionisti]);
 
   useEffect(() => {
     let alive = true;
@@ -92,7 +98,6 @@ export default function ServizioDettaglioPage() {
       setLoading(true);
       setError(null);
 
-      // 1) carica scheda SENZA filtro approved
       const { data, error: proErr } = await supabase
         .from("professionals")
         .select(
@@ -113,7 +118,7 @@ export default function ServizioDettaglioPage() {
 
       const p = data as Professional;
 
-      // 2) se NON approvata, la può vedere SOLO il proprietario
+      // se NON approvata: visibile solo a owner
       const { data: authData } = await supabase.auth.getUser();
       const uid = authData.user?.id ?? null;
 
@@ -127,7 +132,6 @@ export default function ServizioDettaglioPage() {
 
       setPro(p);
 
-      // 3) carica skill
       const { data: links } = await supabase
         .from("professional_tag_links")
         .select("professional_id,tag_id")
@@ -160,7 +164,7 @@ export default function ServizioDettaglioPage() {
     };
   }, [id]);
 
-  // anti-spam semplice (client-side)
+  // anti-spam client-side
   const COOLDOWN_SECONDS = 30;
   const cooldownKey = useMemo(() => `unimalia:pro_contact:${id}`, [id]);
 
@@ -186,7 +190,6 @@ export default function ServizioDettaglioPage() {
 
     if (!pro) return;
 
-    // se owner, non serve inviare richiesta a se stessi
     const { data } = await supabase.auth.getUser();
     const user = data.user;
     if (!user) {
@@ -250,7 +253,7 @@ export default function ServizioDettaglioPage() {
       <main>
         <button
           type="button"
-          onClick={() => router.push("/servizi")}
+          onClick={() => router.push(backHref)}
           className="inline-flex w-fit items-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
         >
           ← Indietro
@@ -258,8 +261,8 @@ export default function ServizioDettaglioPage() {
 
         <div className="mt-6 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
           <p className="text-sm text-zinc-700">{error ?? "Scheda non disponibile."}</p>
-          <Link href="/servizi" className="mt-3 inline-block text-sm font-medium hover:underline">
-            Torna ai Servizi
+          <Link href={backHref} className="mt-3 inline-block text-sm font-medium hover:underline">
+            Torna indietro
           </Link>
         </div>
       </main>
@@ -268,7 +271,6 @@ export default function ServizioDettaglioPage() {
 
   return (
     <main>
-      {/* TOP BAR */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <button
           type="button"
@@ -283,7 +285,6 @@ export default function ServizioDettaglioPage() {
         </Link>
       </div>
 
-      {/* HEADER */}
       <div className="mt-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -293,7 +294,6 @@ export default function ServizioDettaglioPage() {
             </p>
           </div>
 
-          {/* Badge approvazione */}
           <span
             className={[
               "rounded-full px-3 py-1 text-xs font-semibold",
@@ -323,9 +323,7 @@ export default function ServizioDettaglioPage() {
         )}
       </div>
 
-      {/* CONTENT */}
       <div className="mt-8 grid gap-6 lg:grid-cols-3">
-        {/* LEFT */}
         <div className="lg:col-span-2 space-y-6">
           <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
             <h2 className="text-lg font-semibold">Descrizione</h2>
@@ -377,7 +375,6 @@ export default function ServizioDettaglioPage() {
           </div>
         </div>
 
-        {/* RIGHT */}
         <div className="space-y-6">
           <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
             <h2 className="text-lg font-semibold">Indirizzo</h2>
