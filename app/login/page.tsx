@@ -109,7 +109,7 @@ export default function LoginPage() {
           return;
         }
 
-        // se supabase richiede email confirmation, l'utente potrebbe NON essere loggato subito
+        // se richiede conferma email, potresti non essere loggato subito
         const { data } = await supabase.auth.getUser();
         if (!data.user) {
           setMsg("Registrazione ok ✅ Controlla la tua email per confermare l’account, poi fai login.");
@@ -182,7 +182,9 @@ export default function LoginPage() {
             type="button"
             onClick={() => setMode("login")}
             className={`rounded-lg px-3 py-2 text-sm font-medium ${
-              mode === "login" ? "bg-black text-white" : "border border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-50"
+              mode === "login"
+                ? "bg-black text-white"
+                : "border border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-50"
             }`}
           >
             Accedi
@@ -192,7 +194,9 @@ export default function LoginPage() {
             type="button"
             onClick={() => setMode("signup")}
             className={`rounded-lg px-3 py-2 text-sm font-medium ${
-              mode === "signup" ? "bg-black text-white" : "border border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-50"
+              mode === "signup"
+                ? "bg-black text-white"
+                : "border border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-50"
             }`}
           >
             Registrati
