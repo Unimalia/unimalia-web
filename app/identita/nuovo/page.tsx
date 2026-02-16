@@ -29,7 +29,6 @@ function humanError(msg?: string) {
     return "Problema di connessione. Controlla internet e riprova.";
   }
 
-  // default
   return "Si è verificato un errore. Riprova tra poco.";
 }
 
@@ -60,11 +59,9 @@ export default function NuovoProfiloAnimalePage() {
   const [color, setColor] = useState("");
   const [size, setSize] = useState("");
 
-  // Microchip: sì/no
   const [hasChip, setHasChip] = useState<"yes" | "no">("no");
   const [chipNumber, setChipNumber] = useState("");
 
-  // Foto
   const [photoUrl, setPhotoUrl] = useState<string>("");
 
   const [uploading, setUploading] = useState(false);
@@ -72,6 +69,7 @@ export default function NuovoProfiloAnimalePage() {
   const [error, setError] = useState<string | null>(null);
 
   const cleanedChip = useMemo(() => normalizeChip(chipNumber), [chipNumber]);
+  const canSubmit = !saving && !uploading;
 
   async function uploadPhoto(file: File | null) {
     setError(null);
@@ -112,13 +110,8 @@ export default function NuovoProfiloAnimalePage() {
 
       if (uploadError) throw new Error(uploadError.message);
 
-      // NB: getPublicUrl funziona se bucket è Public.
-      // Se in futuro rendi privato animal-photos, passeremo a signed URLs.
       const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
-
-      if (!data?.publicUrl) {
-        throw new Error("public_url_missing");
-      }
+      if (!data?.publicUrl) throw new Error("public_url_missing");
 
       setPhotoUrl(data.publicUrl);
     } catch (e: any) {
@@ -182,7 +175,6 @@ export default function NuovoProfiloAnimalePage() {
         status: "home",
       };
 
-      // Se ha microchip lo salviamo (NON verificato: lo farà il vet)
       if (hasChip === "yes") {
         payload.chip_number = cleanedChip;
         payload.microchip_verified = false;
@@ -206,7 +198,6 @@ export default function NuovoProfiloAnimalePage() {
     <main className="max-w-2xl">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight">Crea profilo animale</h1>
-
         <Link href="/identita" className="text-sm text-zinc-600 hover:underline">
           ← Torna
         </Link>
@@ -277,12 +268,7 @@ export default function NuovoProfiloAnimalePage() {
 
           <div className="mt-3 flex flex-wrap gap-3">
             <label className="inline-flex items-center gap-2 text-sm">
-              <input
-                type="radio"
-                name="hasChip"
-                checked={hasChip === "yes"}
-                onChange={() => setHasChip("yes")}
-              />
+              <input type="radio" name="hasChip" checked={hasChip === "yes"} onChange={() => setHasChip("yes")} />
               Sì, ha microchip
             </label>
 
@@ -309,9 +295,7 @@ export default function NuovoProfiloAnimalePage() {
                 className="rounded-lg border border-zinc-300 px-3 py-2"
                 placeholder="Es. 380260123456789"
               />
-              <p className="text-xs text-zinc-500">
-                Per ora inserimento manuale. La verifica verrà fatta dal veterinario.
-              </p>
+              <p className="text-xs text-zinc-500">Per ora inserimento manuale. La verifica verrà fatta dal veterinario.</p>
             </div>
           )}
 
@@ -352,10 +336,10 @@ export default function NuovoProfiloAnimalePage() {
 
               <p className="text-xs text-zinc-500">Formati consigliati: JPG/PNG/WebP. Max 8MB.</p>
 
-              {!photoUrl && (
-                <p className="text-sm font-medium text-red-700">
-                  Per creare il profilo devi caricare una foto.
-                </p>
+              {photoUrl ? (
+                <p className="text-sm font-medium text-emerald-700">Foto caricata ✅</p>
+              ) : (
+                <p className="text-sm text-zinc-600">Carica una foto per continuare.</p>
               )}
             </div>
           </div>
@@ -371,8 +355,9 @@ export default function NuovoProfiloAnimalePage() {
           <button
             type="button"
             onClick={submit}
-            disabled={saving || uploading}
+            disabled={!canSubmit || !photoUrl}
             className="rounded-lg bg-black px-5 py-3 text-white hover:bg-zinc-800 disabled:opacity-60"
+            title={!photoUrl ? "Carica una foto prima di creare il profilo" : undefined}
           >
             {saving ? "Salvataggio…" : "Crea profilo"}
           </button>
