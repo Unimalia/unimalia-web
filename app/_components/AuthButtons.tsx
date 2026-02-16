@@ -1,23 +1,83 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
-import { supabase } from "../../lib/supabaseClient";
+import { supabase } from "@/lib/supabaseClient";
+
+type ProfileRow = {
+  full_name: string | null;
+};
 
 export default function AuthButtons() {
-  const [email, setEmail] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [label, setLabel] = useState<string | null>(null); // Nome Cognome (fallback email)
+  const [loading, setLoading] = useState(true);
+
+  async function loadLabel(sessionUserId: string, fallbackEmail: string | null) {
+    try {
+      // assicura riga profiles (se non esiste)
+      await supabase.from("profiles").upsert({ id: sessionUserId }, { onConflict: "id" });
+
+      const { data } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("id", sessionUserId)
+        .single();
+
+      const p = data as ProfileRow | null;
+      const name = (p?.full_name ?? "").trim();
+
+      setLabel(name.length >= 3 ? name : fallbackEmail);
+    } catch {
+      setLabel(fallbackEmail);
+    }
+  }
 
   useEffect(() => {
-    // session iniziale
-    supabase.auth.getSession().then(({ data }) => {
-      setEmail(data.session?.user?.email ?? null);
-    });
+    let alive = true;
 
-    // listen cambi sessione
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      setEmail(session?.user?.email ?? null);
+    async function init() {
+      setLoading(true);
+
+      const { data } = await supabase.auth.getSession();
+      const user = data.session?.user ?? null;
+
+      if (!alive) return;
+
+      if (!user) {
+        setUserId(null);
+        setLabel(null);
+        setLoading(false);
+        return;
+      }
+
+      setUserId(user.id);
+      await loadLabel(user.id, user.email ?? null);
+
+      if (!alive) return;
+      setLoading(false);
+    }
+
+    init();
+
+    const { data: sub } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      const user = session?.user ?? null;
+
+      if (!user) {
+        setUserId(null);
+        setLabel(null);
+        setLoading(false);
+        return;
+      }
+
+      setUserId(user.id);
+      setLoading(true);
+      await loadLabel(user.id, user.email ?? null);
+      setLoading(false);
     });
 
     return () => {
+      alive = false;
       sub.subscription.unsubscribe();
     };
   }, []);
@@ -26,7 +86,8 @@ export default function AuthButtons() {
     await supabase.auth.signOut();
   }
 
-  if (!email) {
+  // Non loggato
+  if (!userId) {
     return (
       <a
         href="/login"
@@ -39,7 +100,14 @@ export default function AuthButtons() {
 
   return (
     <div className="flex items-center gap-3">
-      <span className="hidden text-sm text-zinc-600 sm:inline">{email}</span>
+      <Link
+        href="/profilo"
+        className="hidden max-w-[240px] truncate text-sm text-zinc-700 hover:underline sm:inline"
+        title={label ?? "Profilo"}
+      >
+        {loading ? "Profilo…" : label ?? "Profilo"}
+      </Link>
+
       <button
         onClick={handleLogout}
         className="rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
