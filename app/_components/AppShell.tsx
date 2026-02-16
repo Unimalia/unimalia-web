@@ -1,53 +1,179 @@
+// app/_components/AppShell.tsx
 "use client";
 
-import { usePathname } from "next/navigation";
-import AuthButtons from "./AuthButtons";
+import type { ReactNode } from "react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
+import AuthButtons from "@/app/_components/AuthButtons";
 
-export default function AppShell({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
+export default function AppShell({ children }: { children: ReactNode }) {
+  const pathname = usePathname() || "/";
+  const isPro = pathname.startsWith("/professionisti");
+  const router = useRouter();
 
-  // ✅ Se siamo nel portale professionisti, NON mostrare header/footer del sito pubblico
-  const isPro = pathname?.startsWith("/professionisti");
+  // (opzionale) mostra email in pro
+  const [proEmail, setProEmail] = useState<string | null>(null);
 
-  if (isPro) return <>{children}</>;
+  useEffect(() => {
+    if (!isPro) return;
 
+    supabase.auth.getSession().then(({ data }) => {
+      setProEmail(data.session?.user?.email ?? null);
+    });
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      setProEmail(session?.user?.email ?? null);
+    });
+
+    return () => {
+      sub.subscription.unsubscribe();
+    };
+  }, [isPro]);
+
+  async function proLogout() {
+    await supabase.auth.signOut();
+    router.push("/professionisti/login");
+  }
+
+  // ======================
+  // LAYOUT PROFESSIONISTI
+  // ======================
+  if (isPro) {
+    return (
+      <>
+        <header className="sticky top-0 z-50 border-b border-zinc-200 bg-white/80 backdrop-blur">
+          <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
+            <Link href="/professionisti" className="flex items-center gap-2">
+              <img src="/logo.png" alt="UNIMALIA" className="h-10 w-auto" />
+              <span className="hidden text-sm font-semibold text-zinc-900 sm:inline">
+                Professionisti
+              </span>
+            </Link>
+
+            <nav className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto whitespace-nowrap">
+              <Link
+                href="/professionisti"
+                className="rounded-lg px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
+              >
+                Dashboard
+              </Link>
+              <Link
+                href="/professionisti/scansiona"
+                className="rounded-lg px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
+              >
+                Scansiona
+              </Link>
+              <Link
+                href="/professionisti/skill"
+                className="rounded-lg px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
+              >
+                Skill
+              </Link>
+            </nav>
+
+            <div className="flex items-center gap-3">
+              <Link
+                href="/servizi"
+                className="hidden rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50 sm:inline-flex"
+                title="Vai alla parte pubblica (servizi)"
+              >
+                Vai ai Servizi
+              </Link>
+
+              {proEmail ? (
+                <>
+                  <span className="hidden text-sm text-zinc-600 sm:inline">{proEmail}</span>
+                  <button
+                    onClick={proLogout}
+                    className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+                  >
+                    Esci
+                  </button>
+                </>
+              ) : (
+                <Link
+                  href="/professionisti/login"
+                  className="rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800"
+                >
+                  Accedi
+                </Link>
+              )}
+            </div>
+          </div>
+        </header>
+
+        <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
+          {children}
+        </main>
+
+        <footer className="mt-14 border-t border-zinc-200 bg-white">
+          <div className="mx-auto max-w-6xl px-4 py-8 text-sm text-zinc-600 sm:px-6">
+            <p className="text-xs text-zinc-500">
+              © {new Date().getFullYear()} UNIMALIA • Portale Professionisti
+            </p>
+          </div>
+        </footer>
+      </>
+    );
+  }
+
+  // ==============
+  // LAYOUT PUBBLICO
+  // ==============
   return (
-    <div className="min-h-screen bg-zinc-50 text-zinc-900">
+    <>
       <header className="sticky top-0 z-50 border-b border-zinc-200 bg-white/80 backdrop-blur">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3 sm:px-6 sm:py-4">
-          <a href="/" className="flex items-center">
-            <img src="/logo.png" alt="UNIMALIA" className="h-40 w-auto -mt-10" />
-          </a>
+          <Link href="/" className="flex items-center">
+            <img src="/logo.png" alt="UNIMALIA" className="h-40 w-auto -ml-10" />
+          </Link>
 
           <div className="flex min-w-0 flex-1 items-center justify-end gap-3">
             <nav className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto whitespace-nowrap">
-              <a
+              <Link
                 href="/smarrimenti"
                 className="rounded-lg px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
               >
                 Smarrimenti
-              </a>
+              </Link>
 
-              <a
+              <Link
                 href="/smarrimento"
                 className="rounded-lg px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
               >
                 Pubblica smarrimento
-              </a>
+              </Link>
 
-              <a
+              <Link
                 href="/ritrovati"
                 className="rounded-lg px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
               >
                 Ritrovati
-              </a>
+              </Link>
 
-              <a
+              <Link
                 href="/servizi"
                 className="rounded-lg px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
               >
                 Servizi
-              </a>
+              </Link>
+
+              {/* ✅ RIPRISTINATE */}
+              <Link
+                href="/miei-annunci"
+                className="rounded-lg px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
+              >
+                I miei annunci
+              </Link>
+
+              <Link
+                href="/identita"
+                className="rounded-lg px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
+              >
+                Identità animale
+              </Link>
             </nav>
 
             <AuthButtons />
@@ -55,9 +181,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-10">
-        {children}
-      </main>
+      <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-10">{children}</main>
 
       <footer className="mt-14 border-t border-zinc-200 bg-white">
         <div className="mx-auto max-w-5xl px-4 py-8 text-sm text-zinc-600 sm:px-6">
@@ -67,15 +191,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </p>
 
           <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-sm">
-            <a className="hover:underline" href="/privacy">
+            <Link className="hover:underline" href="/privacy">
               Privacy
-            </a>
-            <a className="hover:underline" href="/cookie">
+            </Link>
+            <Link className="hover:underline" href="/cookie">
               Cookie
-            </a>
-            <a className="hover:underline" href="/termini">
+            </Link>
+            <Link className="hover:underline" href="/termini">
               Termini
-            </a>
+            </Link>
           </div>
 
           <p className="mt-4 text-xs text-zinc-500">
@@ -83,6 +207,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </p>
         </div>
       </footer>
-    </div>
+    </>
   );
 }
