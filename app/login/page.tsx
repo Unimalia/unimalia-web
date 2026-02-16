@@ -106,7 +106,6 @@ export default function LoginPage() {
           return;
         }
 
-        // Se richiede conferma email, potresti non essere loggato subito
         const { data } = await supabase.auth.getUser();
         if (!data.user) {
           setMsg("Registrazione ok ✅ Controlla la tua email per confermare l’account, poi fai login.");
