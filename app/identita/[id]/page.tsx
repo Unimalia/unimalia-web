@@ -18,11 +18,10 @@ type Animal = {
   size: string | null;
   chip_number: string | null;
   microchip_verified: boolean;
-  status: string; // home | lost | found (o safe legacy)
+  status: string;
   premium_active: boolean;
   premium_expires_at: string | null;
-
-  unimalia_code: string; // uuid
+  unimalia_code: string;
 };
 
 function statusLabel(status: string) {
@@ -39,7 +38,7 @@ function statusLabel(status: string) {
 }
 
 function normalizeChip(raw: string) {
-  return raw.replace(/\s+/g, "").trim();
+  return (raw || "").replace(/\s+/g, "").trim();
 }
 
 export default function AnimalProfilePage() {
@@ -51,7 +50,6 @@ export default function AnimalProfilePage() {
   const [animal, setAnimal] = useState<Animal | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // QR + BARCODE owner-only
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const barcodeSvgRef = useRef<SVGSVGElement | null>(null);
 
@@ -91,7 +89,6 @@ export default function AnimalProfilePage() {
 
       const a = data as Animal;
 
-      // sicurezza extra (RLS dovrebbe già bloccare, ma meglio)
       if (a.owner_id !== user.id) {
         router.replace("/identita");
         return;
@@ -114,7 +111,6 @@ export default function AnimalProfilePage() {
     return new Date(animal.premium_expires_at).getTime() > Date.now();
   }, [animal]);
 
-  // Regola: codice digitale = microchip se presente, altrimenti UNIMALIA ID
   const digitalCode = useMemo(() => {
     if (!animal) return null;
 
@@ -122,22 +118,22 @@ export default function AnimalProfilePage() {
       return {
         label: "Microchip",
         value: normalizeChip(animal.chip_number),
-        note: "Questo è il codice digitale definitivo dell’animale.",
+        note: animal.microchip_verified
+          ? "Microchip verificato da veterinario ✅"
+          : "Microchip inserito (non verificato). La verifica sarà eseguita dal veterinario.",
       };
     }
 
     return {
       label: "UNIMALIA ID",
       value: `UNIMALIA:${animal.unimalia_code}`,
-      note: "Codice digitale per animali senza microchip.",
+      note: "Animale senza microchip: viene usato UNIMALIA ID come codice digitale.",
     };
   }, [animal]);
 
-  // genera QR/Barcode (solo per owner)
   useEffect(() => {
     async function buildCodes() {
       setQrDataUrl(null);
-
       if (!digitalCode?.value) return;
 
       try {
@@ -197,7 +193,6 @@ export default function AnimalProfilePage() {
 
   return (
     <main className="max-w-3xl">
-      {/* HEADER */}
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">{animal.name}</h1>
@@ -225,7 +220,6 @@ export default function AnimalProfilePage() {
         </Link>
       </div>
 
-      {/* SEZIONI */}
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
           <h2 className="text-base font-semibold">Identità</h2>
@@ -278,22 +272,30 @@ export default function AnimalProfilePage() {
           <div className="mt-5">
             <h3 className="text-sm font-semibold">Microchip</h3>
             <div className="mt-2 rounded-xl border border-zinc-200 bg-white p-4">
-              <p className="text-sm text-zinc-700">
-                {animal.chip_number ? "Microchip inserito ✔️" : "Microchip non presente"}
-              </p>
-              <p className="mt-2 text-xs text-zinc-500">
-                {animal.chip_number
-                  ? animal.microchip_verified
-                    ? "Verificato da veterinario ✅"
-                    : "Non verificato (verifica disponibile tramite veterinario)."
-                  : "Se il tuo animale non ha microchip, viene identificato tramite UNIMALIA ID."}
-              </p>
+              {animal.chip_number ? (
+                <>
+                  <p className="text-sm text-zinc-700">
+                    Microchip: <span className="font-medium">{normalizeChip(animal.chip_number)}</span>
+                  </p>
+                  <p className="mt-2 text-xs text-zinc-500">
+                    {animal.microchip_verified
+                      ? "Verificato da veterinario ✅"
+                      : "Inserito (non verificato). Il veterinario potrà verificarlo dal portale professionisti."}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm text-zinc-700">Microchip non presente</p>
+                  <p className="mt-2 text-xs text-zinc-500">
+                    In assenza di microchip, UNIMALIA usa un codice interno (UNIMALIA ID) come identificativo digitale.
+                  </p>
+                </>
+              )}
             </div>
           </div>
         </section>
       </div>
 
-      {/* CODICI DIGITALI (OWNER ONLY) */}
       <div className="mt-4">
         <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
           <h2 className="text-base font-semibold">Codice digitale</h2>
@@ -334,7 +336,6 @@ export default function AnimalProfilePage() {
         </section>
       </div>
 
-      {/* Cartella clinica ghost (owner) */}
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
           <h2 className="text-base font-semibold">Cartella clinica (in arrivo)</h2>
