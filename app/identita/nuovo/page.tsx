@@ -13,12 +13,12 @@ const PROFILE_FOLDER = "profiles";
 function humanError(msg?: string) {
   const m = (msg || "").toLowerCase();
 
-  if (m.includes("permission") || m.includes("row level security") || m.includes("not authorized")) {
-    return "Non hai i permessi per eseguire questa operazione. Fai login e riprova.";
+  if (m.includes("row level security") || m.includes("rls") || m.includes("permission") || m.includes("not authorized")) {
+    return "Non hai i permessi per caricare la foto (policy di sicurezza). Fai login e riprova.";
   }
 
   if (m.includes("bucket") && (m.includes("not found") || m.includes("missing"))) {
-    return "Configurazione foto non corretta (bucket non trovato). Contatta l’assistenza UNIMALIA.";
+    return "Errore configurazione: bucket foto non trovato. Contatta l’assistenza UNIMALIA.";
   }
 
   if (m.includes("mime") || m.includes("content-type")) {
@@ -29,7 +29,7 @@ function humanError(msg?: string) {
     return "Problema di connessione. Controlla internet e riprova.";
   }
 
-  return "Si è verificato un errore. Riprova tra poco.";
+  return "Errore nel caricamento della foto. Riprova.";
 }
 
 function extFromFile(file: File) {
@@ -67,12 +67,14 @@ export default function NuovoProfiloAnimalePage() {
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [debugError, setDebugError] = useState<string | null>(null);
 
   const cleanedChip = useMemo(() => normalizeChip(chipNumber), [chipNumber]);
   const canSubmit = !saving && !uploading;
 
   async function uploadPhoto(file: File | null) {
     setError(null);
+    setDebugError(null);
 
     if (!file) {
       setError("Seleziona una foto prima di continuare.");
@@ -108,14 +110,21 @@ export default function NuovoProfiloAnimalePage() {
         contentType: file.type,
       });
 
-      if (uploadError) throw new Error(uploadError.message);
+      if (uploadError) {
+        setDebugError(uploadError.message);
+        throw new Error(uploadError.message);
+      }
 
       const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
-      if (!data?.publicUrl) throw new Error("public_url_missing");
+      if (!data?.publicUrl) {
+        setDebugError("public_url_missing");
+        throw new Error("public_url_missing");
+      }
 
       setPhotoUrl(data.publicUrl);
     } catch (e: any) {
       setError(humanError(e?.message));
+      if (!debugError) setDebugError(e?.message || String(e));
     } finally {
       setUploading(false);
     }
@@ -123,34 +132,18 @@ export default function NuovoProfiloAnimalePage() {
 
   async function submit() {
     setError(null);
+    setDebugError(null);
 
     const cleanName = name.trim();
     const cleanSpecies = species.trim();
 
-    if (!cleanName) {
-      setError("Inserisci il nome dell’animale.");
-      return;
-    }
-
-    if (!cleanSpecies) {
-      setError("Seleziona il tipo animale (Cane, Gatto, ecc.).");
-      return;
-    }
-
-    if (!photoUrl) {
-      setError("Per creare il profilo devi caricare una foto.");
-      return;
-    }
+    if (!cleanName) return setError("Inserisci il nome dell’animale.");
+    if (!cleanSpecies) return setError("Seleziona il tipo animale (Cane, Gatto, ecc.).");
+    if (!photoUrl) return setError("Per creare il profilo devi caricare una foto.");
 
     if (hasChip === "yes") {
-      if (!cleanedChip) {
-        setError("Hai selezionato microchip: inserisci il numero del microchip.");
-        return;
-      }
-      if (cleanedChip.length < 10) {
-        setError("Numero microchip non valido (troppo corto). Controlla e riprova.");
-        return;
-      }
+      if (!cleanedChip) return setError("Hai selezionato microchip: inserisci il numero del microchip.");
+      if (cleanedChip.length < 10) return setError("Numero microchip non valido (troppo corto). Controlla e riprova.");
     }
 
     setSaving(true);
@@ -184,11 +177,15 @@ export default function NuovoProfiloAnimalePage() {
       }
 
       const { error: insertError } = await supabase.from("animals").insert(payload);
-      if (insertError) throw new Error(insertError.message);
+      if (insertError) {
+        setDebugError(insertError.message);
+        throw new Error(insertError.message);
+      }
 
       router.push("/identita");
     } catch (e: any) {
       setError(humanError(e?.message));
+      if (!debugError) setDebugError(e?.message || String(e));
     } finally {
       setSaving(false);
     }
@@ -207,21 +204,12 @@ export default function NuovoProfiloAnimalePage() {
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="grid gap-2">
             <span className="text-sm font-medium">Nome *</span>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="rounded-lg border border-zinc-300 px-3 py-2"
-              placeholder="Es. Zara"
-            />
+            <input value={name} onChange={(e) => setName(e.target.value)} className="rounded-lg border border-zinc-300 px-3 py-2" placeholder="Es. Zara" />
           </label>
 
           <label className="grid gap-2">
             <span className="text-sm font-medium">Tipo animale *</span>
-            <select
-              value={species}
-              onChange={(e) => setSpecies(e.target.value)}
-              className="rounded-lg border border-zinc-300 bg-white px-3 py-2"
-            >
+            <select value={species} onChange={(e) => setSpecies(e.target.value)} className="rounded-lg border border-zinc-300 bg-white px-3 py-2">
               <option value="">Seleziona…</option>
               <option value="Cane">Cane</option>
               <option value="Gatto">Gatto</option>
@@ -233,33 +221,20 @@ export default function NuovoProfiloAnimalePage() {
 
           <label className="grid gap-2">
             <span className="text-sm font-medium">Razza</span>
-            <input
-              value={breed}
-              onChange={(e) => setBreed(e.target.value)}
-              className="rounded-lg border border-zinc-300 px-3 py-2"
-            />
+            <input value={breed} onChange={(e) => setBreed(e.target.value)} className="rounded-lg border border-zinc-300 px-3 py-2" />
           </label>
 
           <label className="grid gap-2">
             <span className="text-sm font-medium">Colore / segni</span>
-            <input
-              value={color}
-              onChange={(e) => setColor(e.target.value)}
-              className="rounded-lg border border-zinc-300 px-3 py-2"
-            />
+            <input value={color} onChange={(e) => setColor(e.target.value)} className="rounded-lg border border-zinc-300 px-3 py-2" />
           </label>
 
           <label className="grid gap-2">
             <span className="text-sm font-medium">Taglia</span>
-            <input
-              value={size}
-              onChange={(e) => setSize(e.target.value)}
-              className="rounded-lg border border-zinc-300 px-3 py-2"
-            />
+            <input value={size} onChange={(e) => setSize(e.target.value)} className="rounded-lg border border-zinc-300 px-3 py-2" />
           </label>
         </div>
 
-        {/* MICROCHIP */}
         <div className="mt-6 rounded-2xl border border-zinc-200 bg-white p-5">
           <p className="text-sm font-semibold text-zinc-900">Microchip</p>
           <p className="mt-1 text-sm text-zinc-700">
@@ -289,12 +264,7 @@ export default function NuovoProfiloAnimalePage() {
           {hasChip === "yes" && (
             <div className="mt-4 grid gap-2">
               <label className="text-sm font-medium">Numero microchip *</label>
-              <input
-                value={chipNumber}
-                onChange={(e) => setChipNumber(e.target.value)}
-                className="rounded-lg border border-zinc-300 px-3 py-2"
-                placeholder="Es. 380260123456789"
-              />
+              <input value={chipNumber} onChange={(e) => setChipNumber(e.target.value)} className="rounded-lg border border-zinc-300 px-3 py-2" placeholder="Es. 380260123456789" />
               <p className="text-xs text-zinc-500">Per ora inserimento manuale. La verifica verrà fatta dal veterinario.</p>
             </div>
           )}
@@ -306,7 +276,6 @@ export default function NuovoProfiloAnimalePage() {
           )}
         </div>
 
-        {/* FOTO */}
         <div className="mt-6">
           <h2 className="text-base font-semibold">Foto *</h2>
 
@@ -325,13 +294,7 @@ export default function NuovoProfiloAnimalePage() {
             <div className="flex flex-col gap-3">
               <label className="cursor-pointer rounded-lg bg-black px-4 py-2 text-center text-sm font-semibold text-white hover:bg-zinc-800">
                 {uploading ? "Caricamento…" : "Sfoglia e carica foto"}
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => uploadPhoto(e.target.files?.[0] ?? null)}
-                  disabled={uploading}
-                />
+                <input type="file" accept="image/*" className="hidden" onChange={(e) => uploadPhoto(e.target.files?.[0] ?? null)} disabled={uploading} />
               </label>
 
               <p className="text-xs text-zinc-500">Formati consigliati: JPG/PNG/WebP. Max 8MB.</p>
@@ -347,7 +310,13 @@ export default function NuovoProfiloAnimalePage() {
 
         {error && (
           <div className="mt-5 rounded-xl border border-red-200 bg-white p-4 text-sm text-red-700">
-            {error}
+            <p>{error}</p>
+            {debugError && (
+              <details className="mt-2 text-xs text-zinc-600">
+                <summary className="cursor-pointer">Dettagli tecnici</summary>
+                <pre className="mt-2 whitespace-pre-wrap break-words">{debugError}</pre>
+              </details>
+            )}
           </div>
         )}
 
