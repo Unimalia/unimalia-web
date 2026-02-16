@@ -21,6 +21,8 @@ type Animal = {
   status: string; // home | lost | found (o safe legacy)
   premium_active: boolean;
   premium_expires_at: string | null;
+
+  unimalia_code: string; // uuid
 };
 
 function statusLabel(status: string) {
@@ -37,7 +39,6 @@ function statusLabel(status: string) {
 }
 
 function normalizeChip(raw: string) {
-  // microchip spesso è solo numeri; togli spazi
   return raw.replace(/\s+/g, "").trim();
 }
 
@@ -50,7 +51,7 @@ export default function AnimalProfilePage() {
   const [animal, setAnimal] = useState<Animal | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // QR + BARCODE
+  // QR + BARCODE owner-only
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const barcodeSvgRef = useRef<SVGSVGElement | null>(null);
 
@@ -74,7 +75,7 @@ export default function AnimalProfilePage() {
       const { data, error } = await supabase
         .from("animals")
         .select(
-          "id,owner_id,created_at,name,species,breed,color,size,chip_number,microchip_verified,status,premium_active,premium_expires_at"
+          "id,owner_id,created_at,name,species,breed,color,size,chip_number,microchip_verified,status,premium_active,premium_expires_at,unimalia_code"
         )
         .eq("id", id)
         .single();
@@ -113,22 +114,34 @@ export default function AnimalProfilePage() {
     return new Date(animal.premium_expires_at).getTime() > Date.now();
   }, [animal]);
 
-  // Genera QR + Barcode quando c’è chip_number
+  // Regola: codice digitale = microchip se presente, altrimenti UNIMALIA ID
+  const digitalCode = useMemo(() => {
+    if (!animal) return null;
+
+    if (animal.chip_number && normalizeChip(animal.chip_number)) {
+      return {
+        label: "Microchip",
+        value: normalizeChip(animal.chip_number),
+        note: "Questo è il codice digitale definitivo dell’animale.",
+      };
+    }
+
+    return {
+      label: "UNIMALIA ID",
+      value: `UNIMALIA:${animal.unimalia_code}`,
+      note: "Codice digitale per animali senza microchip.",
+    };
+  }, [animal]);
+
+  // genera QR/Barcode (solo per owner)
   useEffect(() => {
     async function buildCodes() {
       setQrDataUrl(null);
 
-      if (!animal?.chip_number) return;
-
-      const chip = normalizeChip(animal.chip_number);
-      if (!chip) return;
-
-      // ✅ contenuto QR = stesso contenuto del barcode (microchip)
-      // Se vuoi prefisso “MICROCHIP:” basta cambiare qui:
-      const qrPayload = chip;
+      if (!digitalCode?.value) return;
 
       try {
-        const url = await QRCode.toDataURL(qrPayload, {
+        const url = await QRCode.toDataURL(digitalCode.value, {
           errorCorrectionLevel: "M",
           margin: 2,
           scale: 8,
@@ -140,7 +153,7 @@ export default function AnimalProfilePage() {
 
       try {
         if (barcodeSvgRef.current) {
-          JsBarcode(barcodeSvgRef.current, chip, {
+          JsBarcode(barcodeSvgRef.current, digitalCode.value, {
             format: "CODE128",
             displayValue: true,
             lineColor: "#111827",
@@ -150,23 +163,11 @@ export default function AnimalProfilePage() {
             fontSize: 14,
           });
         }
-      } catch {
-        // se barcode fallisce non blocchiamo la pagina
-      }
+      } catch {}
     }
 
     buildCodes();
-  }, [animal?.chip_number]);
-
-  async function copyChip() {
-    if (!animal?.chip_number) return;
-    try {
-      await navigator.clipboard.writeText(normalizeChip(animal.chip_number));
-      alert("Microchip copiato ✅");
-    } catch {
-      alert("Non riesco a copiare. Copialo manualmente.");
-    }
-  }
+  }, [digitalCode]);
 
   if (loading) {
     return (
@@ -278,75 +279,62 @@ export default function AnimalProfilePage() {
             <h3 className="text-sm font-semibold">Microchip</h3>
             <div className="mt-2 rounded-xl border border-zinc-200 bg-white p-4">
               <p className="text-sm text-zinc-700">
-                {animal.chip_number ? "Microchip registrato ✔️" : "Microchip non ancora disponibile nel profilo."}
+                {animal.chip_number ? "Microchip inserito ✔️" : "Microchip non presente"}
               </p>
               <p className="mt-2 text-xs text-zinc-500">
                 {animal.chip_number
                   ? animal.microchip_verified
-                    ? "Verificato da professionista ✅"
-                    : "Verifica professionale disponibile in futuro."
-                  : "La registrazione e verifica del microchip sarà disponibile prossimamente tramite professionisti autorizzati."}
+                    ? "Verificato da veterinario ✅"
+                    : "Non verificato (verifica disponibile tramite veterinario)."
+                  : "Se il tuo animale non ha microchip, viene identificato tramite UNIMALIA ID."}
               </p>
-
-              {animal.chip_number && (
-                <button
-                  type="button"
-                  onClick={copyChip}
-                  className="mt-3 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-900 hover:bg-zinc-50"
-                >
-                  Copia microchip
-                </button>
-              )}
             </div>
           </div>
         </section>
       </div>
 
-      {/* CODICI IDENTIFICATIVI */}
+      {/* CODICI DIGITALI (OWNER ONLY) */}
       <div className="mt-4">
         <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <h2 className="text-base font-semibold">Codici identificativi</h2>
+          <h2 className="text-base font-semibold">Codice digitale</h2>
           <p className="mt-2 text-sm text-zinc-700">
-            Barcode e QR sono visibili solo al proprietario (e in futuro ai professionisti autorizzati).
+            Barcode e QR sono visibili solo a te. Servono per far aprire velocemente la scheda ai professionisti autorizzati.
           </p>
 
-          {!animal.chip_number ? (
-            <div className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600">
-              Disponibile quando il microchip verrà inserito/verificato.
-            </div>
-          ) : (
-            <div className="mt-5 grid gap-6 sm:grid-cols-2">
-              <div className="rounded-xl border border-zinc-200 bg-white p-4">
-                <p className="text-sm font-semibold">Barcode (microchip)</p>
-                <div className="mt-3 overflow-x-auto">
-                  <svg ref={barcodeSvgRef} />
-                </div>
-                <p className="mt-2 text-xs text-zinc-500">
-                  Formato: CODE128 • Contenuto: microchip
-                </p>
-              </div>
+          <div className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4">
+            <p className="text-sm text-zinc-800">
+              Tipo: <span className="font-semibold">{digitalCode?.label}</span>
+            </p>
+            <p className="mt-1 text-xs text-zinc-600">{digitalCode?.note}</p>
+          </div>
 
-              <div className="rounded-xl border border-zinc-200 bg-white p-4">
-                <p className="text-sm font-semibold">QR code (stesso contenuto)</p>
-                {qrDataUrl ? (
-                  <img
-                    src={qrDataUrl}
-                    alt="QR microchip"
-                    className="mt-3 h-44 w-44 rounded-lg border border-zinc-200 bg-white object-contain"
-                  />
-                ) : (
-                  <div className="mt-3 h-44 w-44 rounded-lg border border-zinc-200 bg-zinc-50" />
-                )}
-                <p className="mt-2 text-xs text-zinc-500">
-                  Contenuto: microchip • Scansione prevista in portale professionisti
-                </p>
+          <div className="mt-5 grid gap-6 sm:grid-cols-2">
+            <div className="rounded-xl border border-zinc-200 bg-white p-4">
+              <p className="text-sm font-semibold">Barcode (CODE128)</p>
+              <div className="mt-3 overflow-x-auto">
+                <svg ref={barcodeSvgRef} />
               </div>
+              <p className="mt-2 text-xs text-zinc-500">Contenuto: {digitalCode?.label}</p>
             </div>
-          )}
+
+            <div className="rounded-xl border border-zinc-200 bg-white p-4">
+              <p className="text-sm font-semibold">QR code</p>
+              {qrDataUrl ? (
+                <img
+                  src={qrDataUrl}
+                  alt="QR codice digitale"
+                  className="mt-3 h-44 w-44 rounded-lg border border-zinc-200 bg-white object-contain"
+                />
+              ) : (
+                <div className="mt-3 h-44 w-44 rounded-lg border border-zinc-200 bg-zinc-50" />
+              )}
+              <p className="mt-2 text-xs text-zinc-500">Contenuto: {digitalCode?.label}</p>
+            </div>
+          </div>
         </section>
       </div>
 
-      {/* ALTRE SEZIONI */}
+      {/* Cartella clinica ghost (owner) */}
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
           <h2 className="text-base font-semibold">Cartella clinica (in arrivo)</h2>
@@ -361,7 +349,7 @@ export default function AnimalProfilePage() {
         <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
           <h2 className="text-base font-semibold">Condivisione (in arrivo)</h2>
           <p className="mt-3 text-sm text-zinc-700">
-            In futuro potrai condividere un link pubblico e dare accesso temporaneo ai professionisti.
+            In futuro potrai dare accesso temporaneo ai professionisti e condividere un link controllato.
           </p>
           <div className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600">
             Link pubblico: disponibile prossimamente.
