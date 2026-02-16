@@ -21,40 +21,23 @@ function isProfileComplete(p: any) {
   );
 }
 
-/**
- * Redirect intelligente:
- * - prova a garantire/leggere profiles
- * - se fallisce per RLS o altro, NON bloccare: vai su fallback
- */
 async function decideRedirect(router: ReturnType<typeof useRouter>, fallback: string) {
   const { data: authData } = await supabase.auth.getUser();
   const user = authData.user;
   if (!user) return;
 
-  try {
-    // prova a garantire riga profiles
-    await supabase.from("profiles").upsert({ id: user.id }, { onConflict: "id" });
+  // assicura riga profiles
+  await supabase.from("profiles").upsert({ id: user.id }, { onConflict: "id" });
 
-    const { data: profile, error } = await supabase
-      .from("profiles")
-      .select("full_name,fiscal_code,address,city,province,cap")
-      .eq("id", user.id)
-      .single();
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("full_name,fiscal_code,address,city,province,cap")
+    .eq("id", user.id)
+    .single();
 
-    // se non riesco a leggere il profilo, non blocco: vado su fallback
-    if (error) {
-      router.replace(fallback);
-      return;
-    }
-
-    if (!isProfileComplete(profile)) {
-      router.replace("/profilo");
-      return;
-    }
-
-    router.replace(fallback);
-  } catch {
-    // qualunque errore => non rimanere bloccato
+  if (!isProfileComplete(profile)) {
+    router.replace("/profilo");
+  } else {
     router.replace(fallback);
   }
 }
@@ -72,32 +55,20 @@ export default function LoginClient() {
   const [submitting, setSubmitting] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
-  // ✅ anti-loop: dopo 4s, se qualcosa va storto, esci comunque dal loading
-  useEffect(() => {
-    const t = setTimeout(() => setLoadingPage(false), 4000);
-    return () => clearTimeout(t);
-  }, []);
-
-  // ✅ se già loggato, non restare su /login
+  // Se già loggato, non restare su /login
   useEffect(() => {
     let alive = true;
 
     async function init() {
-      setMsg(null);
+      const { data } = await supabase.auth.getUser();
+      if (!alive) return;
 
-      try {
-        const { data } = await supabase.auth.getUser();
-        if (!alive) return;
-
-        if (data.user) {
-          await decideRedirect(router, next);
-          return;
-        }
-      } catch {
-        // ignoro, ma non blocco
-      } finally {
-        if (alive) setLoadingPage(false);
+      if (data.user) {
+        await decideRedirect(router, next);
+        return;
       }
+
+      setLoadingPage(false);
     }
 
     init();
@@ -120,28 +91,39 @@ export default function LoginClient() {
 
     const e1 = email.trim();
     if (!e1) return setMsg("Inserisci email.");
-    if (!password || password.length < 6) return setMsg("Inserisci una password (min 6 caratteri).");
+    if (!password || password.length < 6)
+      return setMsg("Inserisci una password (min 6 caratteri).");
 
     setSubmitting(true);
 
     try {
       if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({ email: e1, password });
+        const { error } = await supabase.auth.signUp({
+          email: e1,
+          password,
+        });
+
         if (error) {
-          setMsg("Registrazione non riuscita. Controlla i dati e riprova.");
+          setMsg(error.message);
           return;
         }
 
-        // se serve conferma email, potresti non essere loggato subito
         const { data } = await supabase.auth.getUser();
+
         if (!data.user) {
-          setMsg("Registrazione ok ✅ Controlla la tua email per confermare l’account, poi fai login.");
+          setMsg(
+            "Registrazione ok ✅ Controlla la tua email per confermare l’account, poi fai login."
+          );
           return;
         }
 
         await decideRedirect(router, next);
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email: e1, password });
+        const { error } = await supabase.auth.signInWithPassword({
+          email: e1,
+          password,
+        });
+
         if (error) {
           setMsg("Credenziali non valide. Controlla email e password.");
           return;
@@ -149,8 +131,15 @@ export default function LoginClient() {
 
         await decideRedirect(router, next);
       }
-    } catch {
-      setMsg("Errore di connessione. Riprova.");
+    } catch (err: any) {
+      console.error("LOGIN ERROR:", err);
+      const message =
+        err?.message ||
+        (typeof err === "string" ? err : "") ||
+        (navigator.onLine
+          ? "Errore di rete (fetch). Controlla URL Supabase / AdBlock."
+          : "Sei offline. Controlla internet.");
+      setMsg(message);
     } finally {
       setSubmitting(false);
     }
@@ -160,18 +149,32 @@ export default function LoginClient() {
     setMsg(null);
 
     const e1 = email.trim();
-    if (!e1) return setMsg("Scrivi prima la tua email, poi clicca “Password dimenticata”.");
+    if (!e1)
+      return setMsg(
+        "Scrivi prima la tua email, poi clicca “Password dimenticata”."
+      );
 
     setSubmitting(true);
+
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(e1);
       if (error) {
-        setMsg("Errore nel reset password. Riprova.");
+        setMsg(error.message);
         return;
       }
-      setMsg("Ok ✅ Se l’email è corretta, riceverai un link per reimpostare la password.");
-    } catch {
-      setMsg("Errore di connessione. Riprova.");
+
+      setMsg(
+        "Ok ✅ Se l’email è corretta, riceverai un link per reimpostare la password."
+      );
+    } catch (err: any) {
+      console.error("RESET ERROR:", err);
+      const message =
+        err?.message ||
+        (typeof err === "string" ? err : "") ||
+        (navigator.onLine
+          ? "Errore di rete (fetch). Controlla URL Supabase / AdBlock."
+          : "Sei offline. Controlla internet.");
+      setMsg(message);
     } finally {
       setSubmitting(false);
     }
@@ -198,7 +201,8 @@ export default function LoginClient() {
       </div>
 
       <p className="mt-3 text-zinc-700">
-        Per pubblicare uno smarrimento e creare l’identità animale serve un account.
+        Per pubblicare uno smarrimento e creare l’identità animale serve un
+        account.
       </p>
 
       <div className="mt-6 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
@@ -236,7 +240,6 @@ export default function LoginClient() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="tuo@email.it"
-              autoComplete="email"
               required
             />
           </div>
@@ -249,7 +252,6 @@ export default function LoginClient() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Minimo 6 caratteri"
-              autoComplete={mode === "login" ? "current-password" : "new-password"}
               required
             />
           </div>
