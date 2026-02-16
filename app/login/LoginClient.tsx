@@ -21,23 +21,40 @@ function isProfileComplete(p: any) {
   );
 }
 
+/**
+ * Redirect intelligente:
+ * - prova a garantire/leggere profiles
+ * - se fallisce per RLS o altro, NON bloccare: vai su fallback
+ */
 async function decideRedirect(router: ReturnType<typeof useRouter>, fallback: string) {
   const { data: authData } = await supabase.auth.getUser();
   const user = authData.user;
   if (!user) return;
 
-  // assicura riga profiles
-  await supabase.from("profiles").upsert({ id: user.id }, { onConflict: "id" });
+  try {
+    // prova a garantire riga profiles
+    await supabase.from("profiles").upsert({ id: user.id }, { onConflict: "id" });
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("full_name,fiscal_code,address,city,province,cap")
-    .eq("id", user.id)
-    .single();
+    const { data: profile, error } = await supabase
+      .from("profiles")
+      .select("full_name,fiscal_code,address,city,province,cap")
+      .eq("id", user.id)
+      .single();
 
-  if (!isProfileComplete(profile)) {
-    router.replace("/profilo");
-  } else {
+    // se non riesco a leggere il profilo, non blocco: vado su fallback
+    if (error) {
+      router.replace(fallback);
+      return;
+    }
+
+    if (!isProfileComplete(profile)) {
+      router.replace("/profilo");
+      return;
+    }
+
+    router.replace(fallback);
+  } catch {
+    // qualunque errore => non rimanere bloccato
     router.replace(fallback);
   }
 }
@@ -55,22 +72,32 @@ export default function LoginClient() {
   const [submitting, setSubmitting] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
+  // ✅ anti-loop: dopo 4s, se qualcosa va storto, esci comunque dal loading
+  useEffect(() => {
+    const t = setTimeout(() => setLoadingPage(false), 4000);
+    return () => clearTimeout(t);
+  }, []);
+
+  // ✅ se già loggato, non restare su /login
   useEffect(() => {
     let alive = true;
 
     async function init() {
-      setLoadingPage(true);
       setMsg(null);
 
-      const { data } = await supabase.auth.getUser();
-      if (!alive) return;
+      try {
+        const { data } = await supabase.auth.getUser();
+        if (!alive) return;
 
-      if (data.user) {
-        await decideRedirect(router, next);
-        return;
+        if (data.user) {
+          await decideRedirect(router, next);
+          return;
+        }
+      } catch {
+        // ignoro, ma non blocco
+      } finally {
+        if (alive) setLoadingPage(false);
       }
-
-      setLoadingPage(false);
     }
 
     init();
@@ -105,7 +132,7 @@ export default function LoginClient() {
           return;
         }
 
-        // Se richiede conferma email, potresti non essere loggato subito
+        // se serve conferma email, potresti non essere loggato subito
         const { data } = await supabase.auth.getUser();
         if (!data.user) {
           setMsg("Registrazione ok ✅ Controlla la tua email per confermare l’account, poi fai login.");
@@ -162,7 +189,9 @@ export default function LoginClient() {
   return (
     <main className="max-w-md">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">{mode === "login" ? "Accedi" : "Crea account"}</h1>
+        <h1 className="text-3xl font-bold tracking-tight">
+          {mode === "login" ? "Accedi" : "Crea account"}
+        </h1>
         <Link href="/" className="text-sm text-zinc-600 hover:underline">
           ← Home
         </Link>
@@ -185,7 +214,6 @@ export default function LoginClient() {
           >
             Accedi
           </button>
-
           <button
             type="button"
             onClick={() => setMode("signup")}
