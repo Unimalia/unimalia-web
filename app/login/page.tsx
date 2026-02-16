@@ -28,7 +28,6 @@ async function decideRedirect(router: ReturnType<typeof useRouter>, fallback: st
   const user = authData.user;
   if (!user) return;
 
-  // assicura riga profiles
   await supabase.from("profiles").upsert({ id: user.id }, { onConflict: "id" });
 
   const { data: profile } = await supabase
@@ -50,7 +49,6 @@ export default function LoginPage() {
   const next = searchParams.get("next") || "/identita";
 
   const [mode, setMode] = useState<"login" | "signup">("login");
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -58,7 +56,6 @@ export default function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
-  // ✅ se già loggato, non restare su /login
   useEffect(() => {
     let alive = true;
 
@@ -109,7 +106,7 @@ export default function LoginPage() {
           return;
         }
 
-        // se richiede conferma email, potresti non essere loggato subito
+        // Se richiede conferma email, potresti non essere loggato subito
         const { data } = await supabase.auth.getUser();
         if (!data.user) {
           setMsg("Registrazione ok ✅ Controlla la tua email per confermare l’account, poi fai login.");
