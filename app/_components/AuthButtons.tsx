@@ -86,7 +86,6 @@ export default function AuthButtons() {
     await supabase.auth.signOut();
   }
 
-  // Non loggato
   if (!userId) {
     return (
       <a
