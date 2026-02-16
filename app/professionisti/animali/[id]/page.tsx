@@ -1,7 +1,5 @@
 "use client";
 
-export const dynamic = "force-dynamic";
-
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -10,9 +8,8 @@ import QRCode from "qrcode";
 import JsBarcode from "jsbarcode";
 
 type OwnerProfile = {
-  full_name?: string | null;
-  name?: string | null; // fallback se già esiste nel tuo schema
-  fiscal_code?: string | null;
+  full_name: string | null;
+  fiscal_code: string | null;
 };
 
 type Animal = {
@@ -31,14 +28,8 @@ type Animal = {
   premium_expires_at: string | null;
   unimalia_code: string;
 
-  // join owner
-  profiles?: OwnerProfile | null;
-};
-
-type ProfessionalRow = {
-  id: string;
-  owner_id: string;
-  is_vet: boolean;
+  // ✅ Supabase join spesso torna come array (0 o 1 elemento)
+  owner_profile: OwnerProfile[] | null;
 };
 
 type AnimalEvent = {
@@ -108,9 +99,6 @@ export default function ProAnimalProfilePage() {
   const [animal, setAnimal] = useState<Animal | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // ruolo professionista
-  const [pro, setPro] = useState<ProfessionalRow | null>(null);
-
   // QR + BARCODE
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const barcodeSvgRef = useRef<SVGSVGElement | null>(null);
@@ -132,20 +120,7 @@ export default function ProAnimalProfilePage() {
   // signed urls cache
   const [signed, setSigned] = useState<Record<string, string>>({});
 
-  const isVet = !!pro?.is_vet;
-
-  const ownerName = useMemo(() => {
-    const p = animal?.profiles;
-    const n = (p?.full_name || p?.name || "").trim();
-    return n || "Nome non disponibile";
-  }, [animal]);
-
-  const ownerCF = useMemo(() => {
-    const cf = (animal?.profiles?.fiscal_code || "").trim();
-    return cf || null;
-  }, [animal]);
-
-  // carica animale + ruolo pro
+  // carica animale + join owner profile (full_name!)
   useEffect(() => {
     let alive = true;
 
@@ -155,38 +130,14 @@ export default function ProAnimalProfilePage() {
       setLoading(true);
       setError(null);
 
-      const { data: authData, error: authErr } = await supabase.auth.getUser();
-      const user = authData.user;
-
-      if (authErr || !user) {
-        router.replace("/login");
-        return;
-      }
-
-      // ruolo professionista (serve per bottone verifica microchip)
-      const { data: proData, error: proErr } = await supabase
-        .from("professionals")
-        .select("id,owner_id,is_vet")
-        .eq("owner_id", user.id)
-        .maybeSingle();
-
-      if (!alive) return;
-
-      if (proErr) {
-        // non blocco: la pagina può comunque funzionare, ma senza bottone vet
-        setPro(null);
-      } else {
-        setPro((proData as ProfessionalRow) || null);
-      }
-
-      // carica animale + owner profile (nome/cf)
       const { data, error } = await supabase
         .from("animals")
         .select(
           `
-          id,owner_id,created_at,name,species,breed,color,size,chip_number,microchip_verified,status,premium_active,premium_expires_at,unimalia_code,
-          profiles:owner_id ( full_name, name, fiscal_code )
-        `
+            id,owner_id,created_at,name,species,breed,color,size,
+            chip_number,microchip_verified,status,premium_active,premium_expires_at,unimalia_code,
+            owner_profile:profiles!animals_owner_id_fkey(full_name,fiscal_code)
+          `
         )
         .eq("id", id)
         .single();
@@ -194,13 +145,13 @@ export default function ProAnimalProfilePage() {
       if (!alive) return;
 
       if (error || !data) {
-        setError(error?.message || "Profilo non trovato o non disponibile.");
+        setError("Profilo non trovato o non disponibile.");
         setAnimal(null);
         setLoading(false);
         return;
       }
 
-      setAnimal(data as Animal);
+      setAnimal(data as unknown as Animal);
       setLoading(false);
     }
 
@@ -208,13 +159,12 @@ export default function ProAnimalProfilePage() {
     return () => {
       alive = false;
     };
-  }, [id, router]);
+  }, [id]);
 
   // payload codice digitale
   const digitalCode = useMemo(() => {
     if (!animal) return null;
 
-    // Se c'è microchip => definitivo = microchip
     if (animal.chip_number && normalizeChip(animal.chip_number)) {
       return {
         kind: "microchip" as const,
@@ -223,7 +173,6 @@ export default function ProAnimalProfilePage() {
       };
     }
 
-    // altrimenti => UNIMALIA ID
     return {
       kind: "unimalia" as const,
       label: "UNIMALIA ID",
@@ -464,6 +413,9 @@ export default function ProAnimalProfilePage() {
     );
   }
 
+  const ownerRow = animal.owner_profile?.[0] ?? null;
+  const ownerName = ownerRow?.full_name?.trim() || null;
+
   return (
     <main className="max-w-5xl">
       {/* HEADER */}
@@ -479,20 +431,13 @@ export default function ProAnimalProfilePage() {
           </p>
 
           <p className="mt-2 text-xs text-zinc-500">
-            Creato il {new Date(animal.created_at).toLocaleDateString("it-IT")} • Proprietario:{" "}
-            <span className="font-medium">{ownerName}</span>
-            {" • "}
-            Codice fiscale:{" "}
-            <span className={`font-medium ${ownerCF ? "" : "text-amber-700"}`}>
-              {ownerCF ? ownerCF : "Non inserito (obbligatorio)"}
-            </span>
+            Creato il {new Date(animal.created_at).toLocaleDateString("it-IT")} • Owner:{" "}
+            {ownerName ? (
+              <span className="font-medium text-zinc-700">{ownerName}</span>
+            ) : (
+              <span className="font-mono">{animal.owner_id}</span>
+            )}
           </p>
-
-          {!ownerCF && (
-            <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-              Il codice fiscale del proprietario è obbligatorio per completare l’identità digitale. (Da inserire lato proprietario.)
-            </div>
-          )}
         </div>
 
         <div className="flex flex-col items-end gap-2">
@@ -560,21 +505,7 @@ export default function ProAnimalProfilePage() {
           </div>
 
           <div className="mt-5">
-            <div className="flex items-center justify-between gap-3">
-              <h3 className="text-sm font-semibold">Microchip</h3>
-
-              {/* ✅ 1 click: SOLO veterinari */}
-              {isVet && (
-                <Link
-                  href={`/professionisti/animali/${animal.id}/verifica`}
-                  className="rounded-lg bg-black px-3 py-2 text-xs font-semibold text-white hover:bg-zinc-800"
-                  title="Verifica o correggi il microchip"
-                >
-                  Verifica microchip ✅
-                </Link>
-              )}
-            </div>
-
+            <h3 className="text-sm font-semibold">Microchip</h3>
             <div className="mt-2 rounded-xl border border-zinc-200 bg-white p-4">
               <p className="text-sm text-zinc-700">
                 {animal.chip_number ? "Microchip presente ✔️" : "Microchip assente"}
@@ -583,16 +514,10 @@ export default function ProAnimalProfilePage() {
                 {animal.chip_number
                   ? animal.microchip_verified
                     ? "Verificato ✅"
-                    : "Inserito (non verificato)."
+                    : "Non verificato (per ora)."
                   : "Animale identificato tramite UNIMALIA ID."}
               </p>
             </div>
-
-            {!isVet && (
-              <p className="mt-2 text-xs text-zinc-500">
-                La verifica microchip è disponibile solo per veterinari autorizzati.
-              </p>
-            )}
           </div>
         </section>
       </div>
@@ -619,7 +544,6 @@ export default function ProAnimalProfilePage() {
               <div className="mt-3 overflow-x-auto">
                 <svg ref={barcodeSvgRef} />
               </div>
-              <p className="mt-2 text-xs text-zinc-500">Contenuto: {digitalCode?.label}</p>
             </div>
 
             <div className="rounded-xl border border-zinc-200 bg-white p-4">
@@ -633,7 +557,6 @@ export default function ProAnimalProfilePage() {
               ) : (
                 <div className="mt-3 h-44 w-44 rounded-lg border border-zinc-200 bg-zinc-50" />
               )}
-              <p className="mt-2 text-xs text-zinc-500">Contenuto: {digitalCode?.label}</p>
             </div>
           </div>
         </section>
@@ -749,17 +672,14 @@ export default function ProAnimalProfilePage() {
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-sm font-semibold">
-                        {typeLabel(e.event_type)} •{" "}
-                        {new Date(e.event_date).toLocaleDateString("it-IT")}
+                        {typeLabel(e.event_type)} • {new Date(e.event_date).toLocaleDateString("it-IT")}
                       </p>
                       <p className="mt-1 text-sm text-zinc-700">{e.title}</p>
                       {e.notes && (
                         <p className="mt-2 whitespace-pre-wrap text-sm text-zinc-600">{e.notes}</p>
                       )}
                     </div>
-                    <p className="text-xs text-zinc-500">
-                      {new Date(e.created_at).toLocaleString("it-IT")}
-                    </p>
+                    <p className="text-xs text-zinc-500">{new Date(e.created_at).toLocaleString("it-IT")}</p>
                   </div>
 
                   {files[e.id]?.length ? (
@@ -782,9 +702,7 @@ export default function ProAnimalProfilePage() {
                           </button>
                         ))}
                       </div>
-                      <p className="mt-2 text-[11px] text-zinc-500">
-                        Link temporanei (signed URL) per sicurezza.
-                      </p>
+                      <p className="mt-2 text-[11px] text-zinc-500">Link temporanei (signed URL) per sicurezza.</p>
                     </div>
                   ) : null}
                 </div>
