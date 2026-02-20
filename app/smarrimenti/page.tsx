@@ -4,6 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 
+import { PageShell } from "@/_components/ui/page-shell";
+import { ButtonPrimary, ButtonSecondary } from "@/_components/ui/button";
+import { Card } from "@/_components/ui/card";
+
 type LostEvent = {
   id: string;
   created_at: string;
@@ -66,7 +70,6 @@ export default function SmarrimentiPage() {
         console.error(error.message);
         setItems([]);
       } else {
-        // Cast sicuro: i campi sono quelli selezionati sopra
         setItems((data as unknown as LostEvent[]) ?? []);
       }
 
@@ -140,20 +143,54 @@ export default function SmarrimentiPage() {
     setItems((prev) => prev.filter((x) => x.id !== item.id));
   }
 
-  if (loading) return <p>Caricamento smarrimenti…</p>;
+  if (loading) {
+    return (
+      <PageShell
+        title="Smarrimenti"
+        subtitle="Segnalazioni attive di animali smarriti."
+        backFallbackHref="/"
+        boxed
+        actions={
+          <>
+            <ButtonSecondary href="/smarrimenti/miei">I miei</ButtonSecondary>
+            <ButtonPrimary href="/smarrimenti/nuovo">+ Nuovo</ButtonPrimary>
+          </>
+        }
+      >
+        <div className="grid gap-4 sm:grid-cols-2">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div
+              key={i}
+              className="h-64 rounded-2xl border border-zinc-200 bg-white shadow-sm"
+            />
+          ))}
+        </div>
+      </PageShell>
+    );
+  }
 
   return (
-    <main>
-      <h1 className="text-3xl font-bold tracking-tight">Animali smarriti</h1>
-      <p className="mt-3 text-zinc-700">Segnalazioni attive di animali smarriti.</p>
-
+    <PageShell
+      title="Smarrimenti"
+      subtitle="Segnalazioni attive di animali smarriti."
+      backFallbackHref="/"
+      boxed={false}
+      actions={
+        <>
+          <ButtonSecondary href="/smarrimenti/miei">I miei</ButtonSecondary>
+          <ButtonPrimary href="/smarrimenti/nuovo">+ Nuovo</ButtonPrimary>
+        </>
+      }
+    >
       {/* FILTRI */}
-      <div className="mt-6 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+      <Card>
         <div className="grid gap-3 sm:grid-cols-3">
           <div>
-            <label className="block text-sm font-medium text-zinc-900">Città</label>
+            <label className="block text-sm font-semibold text-zinc-900">
+              Città
+            </label>
             <input
-              className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2"
+              className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900"
               placeholder="Es. Firenze"
               value={cityFilter}
               onChange={(e) => setCityFilter(e.target.value)}
@@ -161,9 +198,11 @@ export default function SmarrimentiPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-zinc-900">Provincia</label>
+            <label className="block text-sm font-semibold text-zinc-900">
+              Provincia
+            </label>
             <select
-              className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2"
+              className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900"
               value={provinceFilter}
               onChange={(e) => setProvinceFilter(e.target.value)}
             >
@@ -180,21 +219,25 @@ export default function SmarrimentiPage() {
             <button
               type="button"
               onClick={resetFilters}
-              className="w-full rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
+              className="w-full rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
             >
               Reset
             </button>
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* LISTA */}
       {filtered.length === 0 ? (
-        <p className="mt-8 text-zinc-700">
-          Nessuno smarrimento corrisponde ai filtri selezionati.
-        </p>
+        <div className="mt-6">
+          <Card>
+            <p className="text-sm text-zinc-700">
+              Nessuno smarrimento corrisponde ai filtri selezionati.
+            </p>
+          </Card>
+        </div>
       ) : (
-        <div className="mt-8 grid gap-6 sm:grid-cols-2">
+        <div className="mt-6 grid gap-6 sm:grid-cols-2">
           {filtered.map((item) => {
             const imgSrc =
               (item.primary_photo_url || "/placeholder-animal.jpg") +
@@ -220,14 +263,14 @@ export default function SmarrimentiPage() {
                   }}
                 />
 
-                <div className="p-4">
+                <div className="p-5">
                   <div className="flex items-start justify-between gap-3">
-                    <h2 className="text-lg font-semibold">
+                    <h2 className="text-lg font-semibold text-zinc-900">
                       {displaySpecies}
                       {displayName ? ` – ${displayName}` : ""}
                     </h2>
 
-                    {isOwner && (
+                    {isOwner ? (
                       <button
                         type="button"
                         onClick={() => markFound(item)}
@@ -236,7 +279,7 @@ export default function SmarrimentiPage() {
                       >
                         Segna come ritrovato
                       </button>
-                    )}
+                    ) : null}
                   </div>
 
                   <p className="mt-1 text-sm text-zinc-600">
@@ -249,7 +292,7 @@ export default function SmarrimentiPage() {
                   <div className="mt-4 flex flex-wrap gap-2">
                     <a
                       href={detailUrl(item)}
-                      className="inline-flex items-center justify-center rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
+                      className="inline-flex items-center justify-center rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
                     >
                       Apri annuncio
                     </a>
@@ -258,7 +301,7 @@ export default function SmarrimentiPage() {
                       href={mapsUrl(item)}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center justify-center rounded-lg bg-black px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
+                      className="inline-flex items-center justify-center rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800"
                     >
                       Google Maps
                     </a>
@@ -269,6 +312,6 @@ export default function SmarrimentiPage() {
           })}
         </div>
       )}
-    </main>
+    </PageShell>
   );
 }
