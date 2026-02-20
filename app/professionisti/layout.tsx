@@ -1,7 +1,15 @@
-// app/professionisti/layout.tsx
-import type { ReactNode } from "react";
+import type { Metadata } from "next";
+import ProShell from "./_components/ProShell";
 
-export default function ProfessionistiLayout({ children }: { children: ReactNode }) {
-  // Qui NON mettiamo header/menu: lo gestisce AppShell (globale)
-  return <>{children}</>;
+export const metadata: Metadata = {
+  title: "UNIMALIA — Professionisti",
+  description: "Portale professionisti UNIMALIA",
+};
+
+export default function ProfessionistiLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return <ProShell>{children}</ProShell>;
 }

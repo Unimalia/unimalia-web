@@ -1,83 +1,49 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 
-type ProfileRow = {
+type Profile = {
   full_name: string | null;
 };
 
 export default function AuthButtons() {
-  const [userId, setUserId] = useState<string | null>(null);
-  const [label, setLabel] = useState<string | null>(null); // Nome Cognome (fallback email)
-  const [loading, setLoading] = useState(true);
+  const [email, setEmail] = useState<string | null>(null);
+  const [fullName, setFullName] = useState<string | null>(null);
 
-  async function loadLabel(sessionUserId: string, fallbackEmail: string | null) {
-    try {
-      // assicura riga profiles (se non esiste)
-      await supabase.from("profiles").upsert({ id: sessionUserId }, { onConflict: "id" });
+  async function refresh() {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const user = sessionData.session?.user ?? null;
 
-      const { data } = await supabase
-        .from("profiles")
-        .select("full_name")
-        .eq("id", sessionUserId)
-        .single();
+    setEmail(user?.email ?? null);
 
-      const p = data as ProfileRow | null;
-      const name = (p?.full_name ?? "").trim();
-
-      setLabel(name.length >= 3 ? name : fallbackEmail);
-    } catch {
-      setLabel(fallbackEmail);
+    if (!user) {
+      setFullName(null);
+      return;
     }
+
+    // prova a leggere profilo
+    const { data: p } = await supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("id", user.id)
+      .single();
+
+    const prof = (p as Profile | null) ?? null;
+    const name = (prof?.full_name ?? "").trim();
+
+    setFullName(name.length >= 3 ? name : null);
   }
 
   useEffect(() => {
-    let alive = true;
+    refresh();
 
-    async function init() {
-      setLoading(true);
-
-      const { data } = await supabase.auth.getSession();
-      const user = data.session?.user ?? null;
-
-      if (!alive) return;
-
-      if (!user) {
-        setUserId(null);
-        setLabel(null);
-        setLoading(false);
-        return;
-      }
-
-      setUserId(user.id);
-      await loadLabel(user.id, user.email ?? null);
-
-      if (!alive) return;
-      setLoading(false);
-    }
-
-    init();
-
-    const { data: sub } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      const user = session?.user ?? null;
-
-      if (!user) {
-        setUserId(null);
-        setLabel(null);
-        setLoading(false);
-        return;
-      }
-
-      setUserId(user.id);
-      setLoading(true);
-      await loadLabel(user.id, user.email ?? null);
-      setLoading(false);
+    const { data: sub } = supabase.auth.onAuthStateChange(() => {
+      refresh();
     });
 
     return () => {
-      alive = false;
       sub.subscription.unsubscribe();
     };
   }, []);
@@ -86,14 +52,14 @@ export default function AuthButtons() {
     await supabase.auth.signOut();
   }
 
-  if (!userId) {
+  if (!email) {
     return (
-      <a
+      <Link
         href="/login"
         className="rounded-lg bg-black px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
       >
         Accedi
-      </a>
+      </Link>
     );
   }
 
@@ -101,10 +67,10 @@ export default function AuthButtons() {
     <div className="flex items-center gap-3">
       <Link
         href="/profilo"
-        className="hidden max-w-[240px] truncate text-sm text-zinc-700 hover:underline sm:inline"
-        title={label ?? "Profilo"}
+        className="hidden text-sm text-zinc-700 hover:underline sm:inline"
+        title="Apri il tuo profilo"
       >
-        {loading ? "Profilo…" : label ?? "Profilo"}
+        {fullName ?? email}
       </Link>
 
       <button

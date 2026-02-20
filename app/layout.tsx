@@ -1,14 +1,15 @@
-// app/layout.tsx
 import "./globals.css";
-import type { ReactNode } from "react";
+import type { Metadata } from "next";
 import AppShell from "./_components/AppShell";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "UNIMALIA",
-  description: "UNIMALIA è un ecosistema per la vita dell’animale.",
+  description:
+    "UNIMALIA è un ecosistema che rende più semplice gestire la vita dell’animale: smarrimenti, identità digitale, informazioni utili, e in futuro un collegamento con i professionisti.",
   openGraph: {
     title: "UNIMALIA",
-    description: "UNIMALIA è un ecosistema per la vita dell’animale.",
+    description:
+      "UNIMALIA è un ecosistema che rende più semplice gestire la vita dell’animale: smarrimenti, identità digitale, informazioni utili, e in futuro un collegamento con i professionisti.",
     url: "https://unimalia.it",
     siteName: "UNIMALIA",
     type: "website",
@@ -16,14 +17,15 @@ export const metadata = {
   twitter: {
     card: "summary_large_image",
     title: "UNIMALIA",
-    description: "UNIMALIA è un ecosistema per la vita dell’animale.",
+    description:
+      "UNIMALIA è un ecosistema che rende più semplice gestire la vita dell’animale: smarrimenti, identità digitale, informazioni utili, e in futuro un collegamento con i professionisti.",
   },
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="it">
-      <body className="min-h-screen bg-zinc-50 text-zinc-900">
+      <body>
         <AppShell>{children}</AppShell>
       </body>
     </html>
