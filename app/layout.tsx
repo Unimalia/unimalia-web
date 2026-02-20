@@ -1,33 +1,17 @@
-import "./globals.css";
-import type { Metadata } from "next";
-import AppShell from "./_components/AppShell";
-
-export const metadata: Metadata = {
-  title: "UNIMALIA",
-  description:
-    "UNIMALIA è un ecosistema che rende più semplice gestire la vita dell’animale: smarrimenti, identità digitale, informazioni utili, e in futuro un collegamento con i professionisti.",
-  openGraph: {
-    title: "UNIMALIA",
-    description:
-      "UNIMALIA è un ecosistema che rende più semplice gestire la vita dell’animale: smarrimenti, identità digitale, informazioni utili, e in futuro un collegamento con i professionisti.",
-    url: "https://unimalia.it",
-    siteName: "UNIMALIA",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "UNIMALIA",
-    description:
-      "UNIMALIA è un ecosistema che rende più semplice gestire la vita dell’animale: smarrimenti, identità digitale, informazioni utili, e in futuro un collegamento con i professionisti.",
-  },
-};
-
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="it">
-      <body>
-        <AppShell>{children}</AppShell>
-      </body>
-    </html>
-  );
-}
+<nav className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto whitespace-nowrap">
+  <a href="/smarrimenti" className="rounded-lg px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100">
+    Smarrimenti
+  </a>
+  <a href="/smarrimento" className="rounded-lg px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100">
+    Pubblica smarrimento
+  </a>
+  <a href="/identita" className="rounded-lg px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100">
+    Identità animale
+  </a>
+  <a href="/servizi" className="rounded-lg px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100">
+    Servizi
+  </a>
+  <a href="/adotta" className="rounded-lg px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100">
+    Adotta
+  </a>
+</nav>
