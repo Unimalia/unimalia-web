@@ -42,6 +42,9 @@ export default function SmarrimentiPage() {
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
+  // mappa inline: per non caricare tante iframe insieme
+  const [openMapId, setOpenMapId] = useState<string | null>(null);
+
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       setCurrentUserId(data.user?.id ?? null);
@@ -111,6 +114,15 @@ export default function SmarrimentiPage() {
     return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
   }
 
+  // embed pubblico (senza API key)
+  function mapsEmbedUrl(item: LostEvent) {
+    if (item.lat != null && item.lng != null) {
+      return `https://www.google.com/maps?q=${item.lat},${item.lng}&output=embed`;
+    }
+    const q = `${item.city || ""} ${item.province || ""} Italia`.trim();
+    return `https://www.google.com/maps?q=${encodeURIComponent(q)}&output=embed`;
+  }
+
   function detailUrl(item: LostEvent) {
     return `/smarrimenti/${item.id}`;
   }
@@ -141,6 +153,7 @@ export default function SmarrimentiPage() {
     }
 
     setItems((prev) => prev.filter((x) => x.id !== item.id));
+    if (openMapId === item.id) setOpenMapId(null);
   }
 
   if (loading) {
@@ -249,6 +262,8 @@ export default function SmarrimentiPage() {
             const displaySpecies = linkedAnimal?.species || item.species || "Animale";
             const displayName = linkedAnimal?.name || item.animal_name || null;
 
+            const mapOpen = openMapId === item.id;
+
             return (
               <div
                 key={item.id}
@@ -297,6 +312,15 @@ export default function SmarrimentiPage() {
                       Apri annuncio
                     </a>
 
+                    <button
+                      type="button"
+                      onClick={() => setOpenMapId((prev) => (prev === item.id ? null : item.id))}
+                      className="inline-flex items-center justify-center rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+                      title="Mostra/Nascondi mappa"
+                    >
+                      {mapOpen ? "Nascondi mappa" : "Mappa"}
+                    </button>
+
                     <a
                       href={mapsUrl(item)}
                       target="_blank"
@@ -306,6 +330,18 @@ export default function SmarrimentiPage() {
                       Google Maps
                     </a>
                   </div>
+
+                  {mapOpen ? (
+                    <div className="mt-4 overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50">
+                      <iframe
+                        title={`Mappa ${item.id}`}
+                        src={mapsEmbedUrl(item)}
+                        className="h-56 w-full"
+                        loading="lazy"
+                        referrerPolicy="no-referrer-when-downgrade"
+                      />
+                    </div>
+                  ) : null}
                 </div>
               </div>
             );
