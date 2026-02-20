@@ -5,6 +5,10 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 
+import { PageShell } from "@/_components/ui/page-shell";
+import { ButtonPrimary, ButtonSecondary } from "@/_components/ui/button";
+import { Card } from "@/_components/ui/card";
+
 type LostEvent = {
   id: string;
   created_at: string;
@@ -71,7 +75,7 @@ export default function SmarrimentoDetailPage() {
         setItem(null);
         setError(error?.message || "Annuncio non trovato.");
       } else {
-        setItem((data as unknown) as LostEvent);
+        setItem(data as unknown as LostEvent);
       }
 
       setLoading(false);
@@ -99,6 +103,16 @@ export default function SmarrimentoDetailPage() {
     return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
   }
 
+  // embed pubblico (senza API key)
+  function mapsEmbedUrl() {
+    if (!item) return "";
+    if (item.lat != null && item.lng != null) {
+      return `https://www.google.com/maps?q=${item.lat},${item.lng}&output=embed`;
+    }
+    const q = `${item.city || ""} ${item.province || ""} Italia`.trim();
+    return `https://www.google.com/maps?q=${encodeURIComponent(q)}&output=embed`;
+  }
+
   async function copyLink() {
     if (!baseUrl || !item) return;
     const link = `${baseUrl}/smarrimenti/${item.id}`;
@@ -113,43 +127,50 @@ export default function SmarrimentoDetailPage() {
   function whatsappLink() {
     if (!baseUrl || !item) return "https://wa.me/";
     const link = `${baseUrl}/smarrimenti/${item.id}`;
-    const text = `🐾 ANIMALE SMARRITO\n${displaySpecies}${displayName ? " – " + displayName : ""}\n${item.city || ""} ${
-      item.province ? "(" + item.province + ")" : ""
-    }\nLink: ${link}`;
+    const text = `🐾 ANIMALE SMARRITO\n${displaySpecies}${
+      displayName ? " – " + displayName : ""
+    }\n${item.city || ""} ${item.province ? "(" + item.province + ")" : ""}\nLink: ${link}`;
     return `https://wa.me/?text=${encodeURIComponent(text)}`;
   }
 
   if (loading) {
     return (
-      <main className="max-w-3xl">
-        <h1 className="text-3xl font-bold tracking-tight">Annuncio smarrimento</h1>
-        <p className="mt-4 text-zinc-700">Caricamento…</p>
-      </main>
+      <PageShell
+        title="Annuncio smarrimento"
+        subtitle="Caricamento…"
+        backFallbackHref="/smarrimenti"
+        actions={
+          <>
+            <ButtonSecondary href="/smarrimenti">Smarrimenti</ButtonSecondary>
+            <ButtonPrimary href="/smarrimenti/nuovo">+ Nuovo</ButtonPrimary>
+          </>
+        }
+      >
+        <div className="grid gap-4">
+          <div className="h-72 rounded-2xl border border-zinc-200 bg-white shadow-sm" />
+          <div className="h-40 rounded-2xl border border-zinc-200 bg-white shadow-sm" />
+        </div>
+      </PageShell>
     );
   }
 
   if (error || !item) {
     return (
-      <main className="max-w-3xl">
-        <h1 className="text-3xl font-bold tracking-tight">Annuncio smarrimento</h1>
-        <div className="mt-6 rounded-2xl border border-red-200 bg-white p-6 text-sm text-red-700 shadow-sm">
+      <PageShell
+        title="Annuncio smarrimento"
+        subtitle="Non riesco a trovare questo annuncio."
+        backFallbackHref="/smarrimenti"
+        actions={
+          <>
+            <ButtonSecondary href="/">Home</ButtonSecondary>
+            <ButtonPrimary href="/smarrimenti">Vedi smarrimenti</ButtonPrimary>
+          </>
+        }
+      >
+        <div className="rounded-2xl border border-red-200 bg-white p-6 text-sm text-red-700 shadow-sm">
           {error || "Annuncio non trovato."}
         </div>
-        <div className="mt-6 flex gap-2">
-          <Link
-            href="/"
-            className="rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
-          >
-            Torna alla Home
-          </Link>
-          <Link
-            href="/smarrimenti"
-            className="rounded-lg bg-black px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
-          >
-            Vedi smarrimenti
-          </Link>
-        </div>
-      </main>
+      </PageShell>
     );
   }
 
@@ -157,93 +178,167 @@ export default function SmarrimentoDetailPage() {
     (item.primary_photo_url || "/placeholder-animal.jpg") +
     `?v=${encodeURIComponent(item.created_at)}`;
 
+  const title = `${displaySpecies}${displayName ? ` – ${displayName}` : ""}`;
+
+  const subtitle = `${item.city || "—"}${item.province ? ` (${item.province})` : ""} • Smarrito il ${new Date(
+    item.lost_date
+  ).toLocaleDateString("it-IT")}`;
+
   return (
-    <main className="max-w-3xl">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            {displaySpecies}
-            {displayName ? ` – ${displayName}` : ""}
-          </h1>
-          <p className="mt-2 text-zinc-700">
-            {(item.city || "—")} {item.province ? `(${item.province})` : ""} • Smarrito il{" "}
-            {new Date(item.lost_date).toLocaleDateString("it-IT")}
-          </p>
-          <p className="mt-1 text-sm text-zinc-500">
-            Stato annuncio: <span className="font-medium">{item.status === "active" ? "Attivo" : "Chiuso"}</span>
-          </p>
+    <PageShell
+      title={title}
+      subtitle={subtitle}
+      backFallbackHref="/smarrimenti"
+      boxed={false}
+      actions={
+        <>
+          <ButtonSecondary href="/miei-annunci">I miei annunci</ButtonSecondary>
+          <ButtonSecondary href={mapsUrl()}>Google Maps</ButtonSecondary>
+          <ButtonPrimary href="/smarrimenti">Torna alla lista</ButtonPrimary>
+        </>
+      }
+    >
+      <div className="grid gap-6">
+        {/* HERO CARD */}
+        <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
+          <img
+            src={imgSrc}
+            alt={title}
+            className="h-80 w-full object-cover"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).src = "/placeholder-animal.jpg";
+            }}
+          />
+
+          <div className="p-6">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-zinc-600">
+                Stato annuncio:{" "}
+                <span className="font-semibold text-zinc-900">
+                  {item.status === "active" ? "Attivo" : "Chiuso"}
+                </span>
+              </p>
+
+              <p className="text-xs text-zinc-500">
+                Pubblicato il {new Date(item.created_at).toLocaleDateString("it-IT")}
+              </p>
+            </div>
+
+            <div className="mt-5 grid gap-6 md:grid-cols-12">
+              {/* Descrizione + Azioni */}
+              <div className="md:col-span-7">
+                <h2 className="text-base font-semibold text-zinc-900">Descrizione</h2>
+                <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-zinc-700">
+                  {item.description}
+                </p>
+
+                <div className="mt-5 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={copyLink}
+                    className="inline-flex items-center justify-center rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+                  >
+                    Copia link
+                  </button>
+
+                  <a
+                    href={whatsappLink()}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center justify-center rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+                  >
+                    Condividi su WhatsApp
+                  </a>
+
+                  <a
+                    href={mapsUrl()}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center justify-center rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800"
+                  >
+                    Apri su Maps
+                  </a>
+                </div>
+
+                <p className="mt-4 text-xs text-zinc-500">
+                  {item.animal_id
+                    ? "Collegato al profilo animale ✅"
+                    : "Smarrimento rapido (non collegato a profilo)"}
+                </p>
+              </div>
+
+              {/* Contatti */}
+              <div className="md:col-span-5">
+                <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-5">
+                  <p className="text-sm font-semibold text-zinc-900">Contatti</p>
+
+                  <div className="mt-3 grid gap-2 text-sm">
+                    <div className="flex items-center justify-between gap-4">
+                      <span className="text-zinc-500">Telefono</span>
+                      <span className="font-medium text-zinc-900">
+                        {item.contact_phone || "Non disponibile"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-4">
+                      <span className="text-zinc-500">Email</span>
+                      <span className="font-medium text-zinc-900">
+                        {item.contact_email || "Non disponibile"}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="mt-4">
+                    <Link
+                      href="/miei-annunci"
+                      className="inline-flex w-full items-center justify-center rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+                    >
+                      Vai a “I miei annunci”
+                    </Link>
+                  </div>
+
+                  <p className="mt-3 text-[11px] leading-relaxed text-zinc-500">
+                    Se trovi l’animale, contatta subito il proprietario. Se non risponde, salva il link e riprova.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <Link href="/smarrimenti" className="text-sm text-zinc-600 hover:underline">
-          ← Indietro
-        </Link>
-      </div>
+        {/* MAPPA SEMPRE VISIBILE */}
+        <Card>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-base font-semibold text-zinc-900">Posizione</p>
+              <p className="mt-1 text-sm text-zinc-600">
+                {item.lat != null && item.lng != null
+                  ? "Coordinate disponibili."
+                  : "Posizione stimata dalla città/provincia."}
+              </p>
+            </div>
 
-      <div className="mt-6 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
-        <img
-          src={imgSrc}
-          alt={displayName ? `${displaySpecies} – ${displayName}` : displaySpecies}
-          className="h-80 w-full object-cover"
-          onError={(e) => {
-            (e.currentTarget as HTMLImageElement).src = "/placeholder-animal.jpg";
-          }}
-        />
-        <div className="p-6">
-          <h2 className="text-base font-semibold">Descrizione</h2>
-          <p className="mt-2 text-zinc-700">{item.description}</p>
-
-          <div className="mt-6 grid gap-3 sm:grid-cols-2">
             <a
               href={mapsUrl()}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center justify-center rounded-lg bg-black px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
+              className="inline-flex items-center justify-center rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800"
             >
               Apri su Google Maps
             </a>
-
-            <button
-              type="button"
-              onClick={copyLink}
-              className="inline-flex items-center justify-center rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
-            >
-              Copia link
-            </button>
-
-            <a
-              href={whatsappLink()}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center justify-center rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
-            >
-              Condividi su WhatsApp
-            </a>
-
-            <Link
-              href="/miei-annunci"
-              className="inline-flex items-center justify-center rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
-            >
-              Vai a “I miei annunci”
-            </Link>
           </div>
 
-          <div className="mt-6 rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm">
-            <p className="font-medium text-zinc-900">Contatti (se disponibili)</p>
-            <p className="mt-2 text-zinc-700">
-              <span className="font-medium">Telefono:</span> {item.contact_phone || "Non disponibile"}
-            </p>
-            <p className="mt-1 text-zinc-700">
-              <span className="font-medium">Email:</span> {item.contact_email || "Non disponibile"}
-            </p>
+          <div className="mt-4 overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50">
+            <iframe
+              title={`Mappa ${item.id}`}
+              src={mapsEmbedUrl()}
+              className="h-80 w-full"
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+            />
           </div>
-
-          {item.animal_id ? (
-            <p className="mt-4 text-xs text-zinc-500">Collegato al profilo animale ✅</p>
-          ) : (
-            <p className="mt-4 text-xs text-zinc-500">Smarrimento rapido (non collegato a profilo)</p>
-          )}
-        </div>
+        </Card>
       </div>
-    </main>
+    </PageShell>
   );
 }
