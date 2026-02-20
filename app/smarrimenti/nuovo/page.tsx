@@ -1,14 +1,26 @@
 import { Suspense } from "react";
 import NuovoSmarrimentoClient from "./NuovoSmarrimentoClient";
 
+import { PageShell } from "@/_components/ui/page-shell";
+import { ButtonPrimary, ButtonSecondary } from "@/_components/ui/button";
+
 export default function Page() {
   return (
     <Suspense
       fallback={
-        <main className="max-w-2xl">
-          <h1 className="text-3xl font-bold tracking-tight">Pubblica smarrimento</h1>
-          <p className="mt-4 text-zinc-700">Caricamento…</p>
-        </main>
+        <PageShell
+          title="Nuovo smarrimento"
+          subtitle="Caricamento…"
+          backFallbackHref="/smarrimenti"
+          actions={
+            <>
+              <ButtonSecondary href="/miei-annunci">I miei annunci</ButtonSecondary>
+              <ButtonPrimary href="/smarrimenti">Smarrimenti</ButtonPrimary>
+            </>
+          }
+        >
+          <div className="text-sm text-zinc-600">Sto caricando il modulo…</div>
+        </PageShell>
       }
     >
       <NuovoSmarrimentoClient />

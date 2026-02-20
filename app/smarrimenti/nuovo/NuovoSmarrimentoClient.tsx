@@ -5,6 +5,10 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
+import { PageShell } from "@/_components/ui/page-shell";
+import { ButtonPrimary, ButtonSecondary } from "@/_components/ui/button";
+import { Card } from "@/_components/ui/card";
+
 type AnimalRow = {
   id: string;
   name: string;
@@ -274,27 +278,37 @@ export default function NuovoSmarrimentoClient() {
 
   if (checking) {
     return (
-      <main className="max-w-2xl">
-        <h1 className="text-3xl font-bold tracking-tight">Pubblica smarrimento</h1>
-        <p className="mt-4 text-zinc-700">Caricamento…</p>
-      </main>
+      <PageShell
+        title="Nuovo smarrimento"
+        subtitle="Caricamento…"
+        backFallbackHref="/smarrimenti"
+        actions={
+          <>
+            <ButtonSecondary href="/miei-annunci">I miei annunci</ButtonSecondary>
+            <ButtonPrimary href="/smarrimenti">Smarrimenti</ButtonPrimary>
+          </>
+        }
+      >
+        <div className="text-sm text-zinc-600">Sto preparando la pagina…</div>
+      </PageShell>
     );
   }
 
   return (
-    <main className="max-w-2xl">
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="text-3xl font-bold tracking-tight">Pubblica smarrimento</h1>
-        <Link href="/miei-annunci" className="text-sm text-zinc-600 hover:underline">
-          ← I miei annunci
-        </Link>
-      </div>
-
-      <p className="mt-3 text-zinc-700">
-        Pubblica uno smarrimento rapido oppure collegalo a un profilo animale (con foto profilo come default).
-      </p>
-
-      <div className="mt-6 flex gap-2">
+    <PageShell
+      title="Nuovo smarrimento"
+      subtitle="Pubblica rapido oppure collega un profilo animale (con foto profilo come default)."
+      backFallbackHref="/smarrimenti"
+      boxed={false}
+      actions={
+        <>
+          <ButtonSecondary href="/miei-annunci">I miei annunci</ButtonSecondary>
+          <ButtonPrimary href="/smarrimenti">Smarrimenti</ButtonPrimary>
+        </>
+      }
+    >
+      {/* MODE */}
+      <div className="flex flex-wrap gap-2">
         <button
           type="button"
           onClick={() => setMode("rapido")}
@@ -319,214 +333,226 @@ export default function NuovoSmarrimentoClient() {
         </button>
       </div>
 
-      {mode === "profilo" && (
-        <div className="mt-6 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-          <h2 className="text-base font-semibold">Seleziona un profilo animale</h2>
+      {/* PROFILO */}
+      {mode === "profilo" ? (
+        <div className="mt-6">
+          <Card>
+            <h2 className="text-base font-semibold text-zinc-900">
+              Seleziona un profilo animale
+            </h2>
 
-          {animals.length === 0 ? (
-            <p className="mt-3 text-sm text-zinc-700">
-              Non hai ancora creato profili animali.{" "}
-              <Link href="/identita/nuovo" className="font-medium underline">
-                Crea un profilo
-              </Link>
-            </p>
-          ) : (
-            <div className="mt-4 grid gap-3">
-              <select
-                value={animalId}
-                onChange={(e) => setAnimalId(e.target.value)}
-                className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2"
-              >
-                <option value="">Seleziona…</option>
-                {animals.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.name} — {a.species}
-                    {a.breed ? ` (${a.breed})` : ""}
-                  </option>
-                ))}
-              </select>
-
-              {selectedAnimal && (
-                <p className="text-xs text-zinc-500">
-                  Collegato a: <span className="font-medium">{selectedAnimal.name}</span>. Puoi modificare tutto prima di pubblicare.
-                </p>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      <div className="mt-6 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <h2 className="text-base font-semibold">Foto *</h2>
-
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <div className="overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50">
-            <img
-              src={photoUrl || "/placeholder-animal.jpg"}
-              alt="Anteprima foto"
-              className="h-56 w-full object-cover"
-              onError={(e) => {
-                (e.currentTarget as HTMLImageElement).src = "/placeholder-animal.jpg";
-              }}
-            />
-          </div>
-
-          <div className="flex flex-col gap-3">
-            {mode === "profilo" && profilePhotoUrl ? (
-              <button
-                type="button"
-                onClick={useProfilePhoto}
-                className="rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
-              >
-                Usa foto profilo
-              </button>
+            {animals.length === 0 ? (
+              <p className="mt-3 text-sm text-zinc-700">
+                Non hai ancora creato profili animali.{" "}
+                <Link href="/identita/nuovo" className="font-semibold underline">
+                  Crea un profilo
+                </Link>
+              </p>
             ) : (
-              <div className="rounded-lg border border-zinc-200 bg-white p-3 text-sm text-zinc-700">
-                Nessuna foto profilo disponibile.
+              <div className="mt-4 grid gap-3">
+                <select
+                  value={animalId}
+                  onChange={(e) => setAnimalId(e.target.value)}
+                  className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm"
+                >
+                  <option value="">Seleziona…</option>
+                  {animals.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name} — {a.species}
+                      {a.breed ? ` (${a.breed})` : ""}
+                    </option>
+                  ))}
+                </select>
+
+                {selectedAnimal ? (
+                  <p className="text-xs text-zinc-500">
+                    Collegato a:{" "}
+                    <span className="font-semibold">{selectedAnimal.name}</span>. Puoi modificare tutto prima di pubblicare.
+                  </p>
+                ) : null}
               </div>
             )}
+          </Card>
+        </div>
+      ) : null}
 
-            <label className="rounded-lg bg-black px-4 py-2 text-center text-sm font-semibold text-white hover:bg-zinc-800 cursor-pointer">
-              {uploading ? "Caricamento foto…" : "Sfoglia e carica una nuova foto"}
+      {/* FOTO */}
+      <div className="mt-6">
+        <Card>
+          <h2 className="text-base font-semibold text-zinc-900">Foto *</h2>
+
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div className="overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50">
+              <img
+                src={photoUrl || "/placeholder-animal.jpg"}
+                alt="Anteprima foto"
+                className="h-56 w-full object-cover"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = "/placeholder-animal.jpg";
+                }}
+              />
+            </div>
+
+            <div className="flex flex-col gap-3">
+              {mode === "profilo" && profilePhotoUrl ? (
+                <button
+                  type="button"
+                  onClick={useProfilePhoto}
+                  className="rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+                >
+                  Usa foto profilo
+                </button>
+              ) : (
+                <div className="rounded-lg border border-zinc-200 bg-white p-3 text-sm text-zinc-700">
+                  Nessuna foto profilo disponibile.
+                </div>
+              )}
+
+              <label className="cursor-pointer rounded-lg bg-black px-4 py-2 text-center text-sm font-semibold text-white hover:bg-zinc-800">
+                {uploading ? "Caricamento foto…" : "Sfoglia e carica una nuova foto"}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => onPickFile(e.target.files?.[0] ?? null)}
+                  disabled={uploading}
+                />
+              </label>
+
+              {!photoUrl ? (
+                <p className="text-sm font-semibold text-red-700">
+                  Per pubblicare l’annuncio devi caricare una foto.
+                </p>
+              ) : null}
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* DATI */}
+      <div className="mt-6">
+        <Card>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="grid gap-2">
+              <span className="text-sm font-semibold text-zinc-900">Tipo animale *</span>
+              <select
+                value={species}
+                onChange={(e) => setSpecies(e.target.value)}
+                className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm"
+              >
+                <option value="">Seleziona…</option>
+                <option value="Cane">Cane</option>
+                <option value="Gatto">Gatto</option>
+                <option value="Pappagallo">Pappagallo</option>
+                <option value="Coniglio">Coniglio</option>
+                <option value="Altro">Altro</option>
+              </select>
+            </label>
+
+            <label className="grid gap-2">
+              <span className="text-sm font-semibold text-zinc-900">Nome (opzionale)</span>
               <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => onPickFile(e.target.files?.[0] ?? null)}
-                disabled={uploading}
+                value={animalName}
+                onChange={(e) => setAnimalName(e.target.value)}
+                className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm"
+                placeholder="Es. Zara"
               />
             </label>
 
-            {!photoUrl && (
-              <p className="text-sm font-medium text-red-700">
-                Per pubblicare l’annuncio devi caricare una foto.
-              </p>
-            )}
-          </div>
-        </div>
-      </div>
+            <label className="grid gap-2">
+              <span className="text-sm font-semibold text-zinc-900">Razza (opzionale)</span>
+              <input
+                value={breed}
+                onChange={(e) => setBreed(e.target.value)}
+                className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm"
+                placeholder="Es. Incrocio"
+              />
+            </label>
 
-      <div className="mt-6 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <label className="grid gap-2">
-            <span className="text-sm font-medium">Tipo animale *</span>
-            <select
-              value={species}
-              onChange={(e) => setSpecies(e.target.value)}
-              className="rounded-lg border border-zinc-300 bg-white px-3 py-2"
+            <label className="grid gap-2">
+              <span className="text-sm font-semibold text-zinc-900">Data smarrimento *</span>
+              <input
+                type="date"
+                value={lostDate}
+                onChange={(e) => setLostDate(e.target.value)}
+                className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm"
+              />
+            </label>
+
+            <label className="grid gap-2 sm:col-span-2">
+              <span className="text-sm font-semibold text-zinc-900">Descrizione *</span>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm"
+                rows={4}
+                placeholder="Segni particolari, collare, taglia, carattere, zona precisa, ecc."
+              />
+            </label>
+
+            <label className="grid gap-2">
+              <span className="text-sm font-semibold text-zinc-900">Città *</span>
+              <input
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm"
+                placeholder="Es. Firenze"
+              />
+            </label>
+
+            <label className="grid gap-2">
+              <span className="text-sm font-semibold text-zinc-900">Provincia</span>
+              <input
+                value={province}
+                onChange={(e) => setProvince(e.target.value)}
+                className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm"
+                placeholder="Es. FI"
+              />
+            </label>
+
+            <label className="grid gap-2">
+              <span className="text-sm font-semibold text-zinc-900">Telefono</span>
+              <input
+                value={contactPhone}
+                onChange={(e) => setContactPhone(e.target.value)}
+                className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm"
+                placeholder="+39..."
+              />
+            </label>
+
+            <label className="grid gap-2">
+              <span className="text-sm font-semibold text-zinc-900">Email</span>
+              <input
+                value={contactEmail}
+                onChange={(e) => setContactEmail(e.target.value)}
+                className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm"
+                placeholder="nome@email.it"
+              />
+            </label>
+          </div>
+
+          {error ? (
+            <div className="mt-5 rounded-xl border border-red-200 bg-white p-4 text-sm text-red-700">
+              {error}
+            </div>
+          ) : null}
+
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs text-zinc-500">
+              Smarrimenti sempre gratuiti. Se colleghi un profilo animale, lo stato verrà aggiornato automaticamente.
+            </p>
+
+            <button
+              type="button"
+              onClick={submit}
+              disabled={saving || uploading}
+              className="rounded-lg bg-black px-5 py-3 text-sm font-semibold text-white hover:bg-zinc-800 disabled:opacity-60"
             >
-              <option value="">Seleziona…</option>
-              <option value="Cane">Cane</option>
-              <option value="Gatto">Gatto</option>
-              <option value="Pappagallo">Pappagallo</option>
-              <option value="Coniglio">Coniglio</option>
-              <option value="Altro">Altro</option>
-            </select>
-          </label>
-
-          <label className="grid gap-2">
-            <span className="text-sm font-medium">Nome (opzionale)</span>
-            <input
-              value={animalName}
-              onChange={(e) => setAnimalName(e.target.value)}
-              className="rounded-lg border border-zinc-300 px-3 py-2"
-              placeholder="Es. Zara"
-            />
-          </label>
-
-          <label className="grid gap-2">
-            <span className="text-sm font-medium">Razza (opzionale)</span>
-            <input
-              value={breed}
-              onChange={(e) => setBreed(e.target.value)}
-              className="rounded-lg border border-zinc-300 px-3 py-2"
-              placeholder="Es. Incrocio"
-            />
-          </label>
-
-          <label className="grid gap-2">
-            <span className="text-sm font-medium">Data smarrimento *</span>
-            <input
-              type="date"
-              value={lostDate}
-              onChange={(e) => setLostDate(e.target.value)}
-              className="rounded-lg border border-zinc-300 px-3 py-2"
-            />
-          </label>
-
-          <label className="grid gap-2 sm:col-span-2">
-            <span className="text-sm font-medium">Descrizione *</span>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="rounded-lg border border-zinc-300 px-3 py-2"
-              rows={4}
-              placeholder="Segni particolari, collare, taglia, carattere, zona precisa, ecc."
-            />
-          </label>
-
-          <label className="grid gap-2">
-            <span className="text-sm font-medium">Città *</span>
-            <input
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              className="rounded-lg border border-zinc-300 px-3 py-2"
-              placeholder="Es. Firenze"
-            />
-          </label>
-
-          <label className="grid gap-2">
-            <span className="text-sm font-medium">Provincia</span>
-            <input
-              value={province}
-              onChange={(e) => setProvince(e.target.value)}
-              className="rounded-lg border border-zinc-300 px-3 py-2"
-              placeholder="Es. FI"
-            />
-          </label>
-
-          <label className="grid gap-2">
-            <span className="text-sm font-medium">Telefono</span>
-            <input
-              value={contactPhone}
-              onChange={(e) => setContactPhone(e.target.value)}
-              className="rounded-lg border border-zinc-300 px-3 py-2"
-              placeholder="+39..."
-            />
-          </label>
-
-          <label className="grid gap-2">
-            <span className="text-sm font-medium">Email</span>
-            <input
-              value={contactEmail}
-              onChange={(e) => setContactEmail(e.target.value)}
-              className="rounded-lg border border-zinc-300 px-3 py-2"
-              placeholder="nome@email.it"
-            />
-          </label>
-        </div>
-
-        {error && (
-          <div className="mt-5 rounded-xl border border-red-200 bg-white p-4 text-sm text-red-700">
-            {error}
+              {uploading ? "Carico foto…" : saving ? "Pubblico…" : "Pubblica smarrimento"}
+            </button>
           </div>
-        )}
-
-        <div className="mt-6 flex items-center justify-between gap-3">
-          <p className="text-xs text-zinc-500">
-            Smarrimenti sempre gratuiti. Se colleghi un profilo animale, lo stato verrà aggiornato automaticamente.
-          </p>
-
-          <button
-            type="button"
-            onClick={submit}
-            disabled={saving || uploading}
-            className="rounded-lg bg-black px-5 py-3 text-white hover:bg-zinc-800 disabled:opacity-60"
-          >
-            {uploading ? "Carico foto…" : saving ? "Pubblico…" : "Pubblica smarrimento"}
-          </button>
-        </div>
+        </Card>
       </div>
-    </main>
+    </PageShell>
   );
 }
