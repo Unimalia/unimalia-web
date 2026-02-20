@@ -55,14 +55,10 @@ export default function AnimalProfilePage() {
   const [animal, setAnimal] = useState<Animal | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const [qrValue, setQrValue] = useState<string>("");
-
-  useEffect(() => {
-    // QR: link alla pagina pubblica di scansione (esiste nel tuo routing)
-    // Nota: window esiste perché siamo in client component
-    const origin =
-      typeof window !== "undefined" ? window.location.origin : "";
-    if (origin && id) setQrValue(`${origin}/scansiona/animali/${id}`);
+  const qrValue = useMemo(() => {
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    if (!id) return "";
+    return origin ? `${origin}/scansiona/animali/${id}` : `UNIMALIA:${id}`;
   }, [id]);
 
   useEffect(() => {
@@ -160,15 +156,13 @@ export default function AnimalProfilePage() {
       backFallbackHref="/identita"
       actions={
         <>
-          <ButtonSecondary href={`/identita/${animal.id}/modifica`}>
-            Modifica
-          </ButtonSecondary>
+          <ButtonSecondary href={`/identita/${animal.id}/modifica`}>Modifica</ButtonSecondary>
+          <ButtonSecondary href={`/identita/${animal.id}/stampa`}>Stampa</ButtonSecondary>
           <ButtonPrimary href="/identita">Tutte le identità</ButtonPrimary>
         </>
       }
     >
       <div className="flex flex-col gap-6">
-        {/* meta */}
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs text-zinc-500">
             Creato il {new Date(animal.created_at).toLocaleDateString("it-IT")}
@@ -181,7 +175,6 @@ export default function AnimalProfilePage() {
           ) : null}
         </div>
 
-        {/* info */}
         <div className="grid gap-4 md:grid-cols-2">
           <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
             <h2 className="text-base font-semibold text-zinc-900">Identità</h2>
@@ -230,13 +223,10 @@ export default function AnimalProfilePage() {
                   </p>
                 </>
               ) : (
-                <p className="text-sm text-zinc-700">
-                  Nessun microchip registrato.
-                </p>
+                <p className="text-sm text-zinc-700">Nessun microchip registrato.</p>
               )}
             </div>
 
-            {/* link utili */}
             <div className="mt-4 flex flex-wrap gap-2">
               <Link
                 href={`/identita/${animal.id}/modifica`}
@@ -254,7 +244,6 @@ export default function AnimalProfilePage() {
           </section>
         </div>
 
-        {/* CODES */}
         <AnimalCodes
           qrValue={qrValue || `UNIMALIA:${animal.id}`}
           barcodeValue={barcodeValue}
