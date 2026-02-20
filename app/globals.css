@@ -29,9 +29,19 @@ a {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Utility “container” più largo (prima era troppo stretto) */
+/* Container più largo (prima era troppo stretto)
+   NB: niente sm:px-6 dentro @apply (causa errore build) */
 .container-page {
-  @apply mx-auto w-full max-w-6xl px-4 sm:px-6;
+  @apply mx-auto w-full max-w-6xl;
+  padding-left: 1rem;  /* px-4 */
+  padding-right: 1rem; /* px-4 */
+}
+
+@media (min-width: 640px) {
+  .container-page {
+    padding-left: 1.5rem;  /* sm:px-6 */
+    padding-right: 1.5rem; /* sm:px-6 */
+  }
 }
 
 /* Card base riutilizzabile */
