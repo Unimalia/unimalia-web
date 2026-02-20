@@ -1,4 +1,4 @@
-// components/ui/page-shell.tsx
+// _components/ui/page-shell.tsx
 import { Container } from "./container";
 import { Card } from "./card";
 import { BackButton } from "./back-button";
@@ -9,6 +9,7 @@ type Props = {
   back?: boolean;
   backFallbackHref?: string;
   actions?: React.ReactNode;
+  boxed?: boolean; // default true
   children: React.ReactNode;
 };
 
@@ -18,6 +19,7 @@ export function PageShell({
   back = true,
   backFallbackHref = "/",
   actions,
+  boxed = true,
   children,
 }: Props) {
   return (
@@ -39,11 +41,11 @@ export function PageShell({
               </div>
             </div>
 
-            {actions ? <div className="flex gap-3">{actions}</div> : null}
+            {actions ? <div className="flex flex-wrap gap-3">{actions}</div> : null}
           </div>
 
           <div className="mt-6">
-            <Card>{children}</Card>
+            {boxed ? <Card>{children}</Card> : children}
           </div>
         </div>
       </Container>
