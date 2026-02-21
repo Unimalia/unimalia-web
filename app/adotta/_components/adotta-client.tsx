@@ -4,9 +4,9 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
+import type { AuthChangeEvent, Session, User } from "@supabase/supabase-js";
 
-// IMPORT RELATIVO (così non dipendi da alias @/ o tsconfig paths)
+// Import RELATIVO: evita problemi con alias @/
 import { supabase } from "../../../lib/supabaseClient";
 
 import { AdottaFilters } from "./adotta-filters";
@@ -17,7 +17,6 @@ type ShelterType = "canile" | "gattile" | "rifugio";
 
 type BreedOpt = { id: string; name: string };
 type ShelterOpt = { id: string; name: string; type: ShelterType; city: string | null };
-
 type CityRow = { city: string | null };
 
 function getSpecies(sp: URLSearchParams): Species {
@@ -31,14 +30,34 @@ function truthyParam(v: string | null) {
   return v === "1" || v === "true";
 }
 
-function readFirstName(row: any) {
-  return String(row?.first_name ?? row?.nome ?? row?.name ?? row?.firstName ?? "").trim();
+function pickFirstName(obj: any) {
+  return String(obj?.first_name ?? obj?.nome ?? obj?.name ?? obj?.firstName ?? "").trim();
 }
-function readLastName(row: any) {
-  return String(row?.last_name ?? row?.cognome ?? row?.surname ?? row?.lastName ?? "").trim();
+function pickLastName(obj: any) {
+  return String(obj?.last_name ?? obj?.cognome ?? obj?.surname ?? obj?.lastName ?? "").trim();
 }
-function readPhone(row: any) {
-  return String(row?.phone ?? row?.telefono ?? row?.phone_number ?? row?.phoneNumber ?? "").trim();
+function pickPhone(obj: any) {
+  return String(obj?.phone ?? obj?.telefono ?? obj?.phone_number ?? obj?.phoneNumber ?? "").trim();
+}
+
+function parseFromUser(user: User | null) {
+  if (!user) return { first: "", last: "", phone: "" };
+
+  const md: any = user.user_metadata ?? {};
+
+  // Proviamo vari naming comuni
+  const first = String(md.first_name ?? md.nome ?? md.given_name ?? md.name ?? "").trim();
+  const last = String(md.last_name ?? md.cognome ?? md.family_name ?? md.surname ?? "").trim();
+
+  // Supabase può avere user.phone (se usi login phone) oppure metadata
+  const phone = String((user as any).phone ?? md.phone ?? md.telefono ?? md.phone_number ?? "").trim();
+
+  // Se hai un full_name e non hai separato nome/cognome, teniamo tutto in "first"
+  const full = String(md.full_name ?? md.fullName ?? "").trim();
+  const safeFirst = first || (full ? full : "");
+  const safeLast = last || "";
+
+  return { first: safeFirst, last: safeLast, phone };
 }
 
 export function AdottaClient() {
@@ -55,7 +74,12 @@ export function AdottaClient() {
 
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileOk, setProfileOk] = useState(false);
-  const [profileDebug, setProfileDebug] = useState<{ first: string; last: string; phone: string } | null>(null);
+  const [profileDebug, setProfileDebug] = useState<{
+    source: "profiles" | "auth_metadata" | "none";
+    first: string;
+    last: string;
+    phone: string;
+  } | null>(null);
 
   // --- Options + results ---
   const [optionsLoading, setOptionsLoading] = useState(true);
@@ -102,7 +126,10 @@ export function AdottaClient() {
     };
   }, []);
 
-  // 2) Profile completeness
+  // 2) Profile completeness:
+  // - prima profiles
+  // - se vuoto => fallback auth user_metadata
+  // - se metadata ok e profiles vuoto => tenta upsert su profiles
   useEffect(() => {
     let mounted = true;
 
@@ -117,22 +144,69 @@ export function AdottaClient() {
       setProfileOk(false);
       setProfileDebug(null);
 
-      const { data, error } = await supabase.from("profiles").select("*").eq("id", sessionUser.id).maybeSingle();
+      // 2a) Prova profiles
+      const { data: prof, error: profErr } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", sessionUser.id)
+        .maybeSingle();
 
       if (!mounted) return;
 
-      if (error) {
+      if (!profErr && prof) {
+        const first = pickFirstName(prof);
+        const last = pickLastName(prof);
+        const phone = pickPhone(prof);
+
+        if (first && last && phone && sessionUser.email) {
+          setProfileDebug({ source: "profiles", first, last, phone });
+          setProfileOk(true);
+          setProfileLoading(false);
+          return;
+        }
+      }
+
+      // 2b) Fallback: Auth user_metadata
+      const { data: userData, error: userErr } = await supabase.auth.getUser();
+      if (!mounted) return;
+
+      if (userErr) {
+        setProfileDebug({ source: "none", first: "", last: "", phone: "" });
         setProfileOk(false);
         setProfileLoading(false);
         return;
       }
 
-      const first = readFirstName(data);
-      const last = readLastName(data);
-      const phone = readPhone(data);
+      const u = userData.user ?? null;
+      const fromAuth = parseFromUser(u);
 
-      setProfileDebug({ first, last, phone });
-      setProfileOk(Boolean(sessionUser.email && first && last && phone));
+      // Se da auth non arriva niente, blocco
+      if (!(sessionUser.email && fromAuth.first && fromAuth.last && fromAuth.phone)) {
+        setProfileDebug({ source: "auth_metadata", ...fromAuth });
+        setProfileOk(false);
+        setProfileLoading(false);
+        return;
+      }
+
+      // 2c) Tentativo sync su profiles (best effort)
+      // Se RLS blocca, non è grave: /adotta sblocca comunque via metadata.
+      try {
+        await supabase.from("profiles").upsert(
+          {
+            id: sessionUser.id,
+            email: sessionUser.email,
+            first_name: fromAuth.first,
+            last_name: fromAuth.last,
+            phone: fromAuth.phone,
+          },
+          { onConflict: "id" },
+        );
+      } catch {
+        // ignora
+      }
+
+      setProfileDebug({ source: "auth_metadata", ...fromAuth });
+      setProfileOk(true);
       setProfileLoading(false);
     }
 
@@ -154,7 +228,7 @@ export function AdottaClient() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 4) Load options
+  // 4) Load options after profile ok
   useEffect(() => {
     let mounted = true;
 
@@ -188,7 +262,6 @@ export function AdottaClient() {
       }
 
       setBreeds((breedsData ?? []).map((b: any) => ({ id: b.id, name: b.name })));
-
       setShelters(
         (sheltersData ?? []).map((s: any) => ({
           id: s.id,
@@ -350,11 +423,14 @@ export function AdottaClient() {
         <p className="mt-2 text-amber-900/80">
           Per accedere alle adozioni servono: <b>email</b>, <b>nome</b>, <b>cognome</b> e <b>telefono</b>.
         </p>
+
         {profileDebug ? (
           <p className="mt-3 text-xs text-amber-900/70">
-            Debug: nome="{profileDebug.first}", cognome="{profileDebug.last}", telefono="{profileDebug.phone}"
+            Debug (source: {profileDebug.source}): nome="{profileDebug.first}", cognome="{profileDebug.last}",
+            telefono="{profileDebug.phone}"
           </p>
         ) : null}
+
         <div className="mt-4">
           <Link
             href="/profilo?returnTo=/adotta"
