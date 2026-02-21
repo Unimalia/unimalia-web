@@ -8,6 +8,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { PageShell } from "@/_components/ui/page-shell";
 import { ButtonPrimary, ButtonSecondary } from "@/_components/ui/button";
 import { Card } from "@/_components/ui/card";
+import LocationPicker from "@/_components/maps/location-picker";
 
 type AnimalRow = {
   id: string;
@@ -80,6 +81,11 @@ export default function NuovoSmarrimentoClient() {
   const [contactPhone, setContactPhone] = useState("");
   const [contactEmail, setContactEmail] = useState("");
 
+  // POSIZIONE PRECISA
+  const [lat, setLat] = useState<number | null>(null);
+  const [lng, setLng] = useState<number | null>(null);
+  const [locating, setLocating] = useState(false);
+
   // FOTO
   const [profilePhotoUrl, setProfilePhotoUrl] = useState<string>("");
   const [photoUrl, setPhotoUrl] = useState<string>("");
@@ -87,6 +93,8 @@ export default function NuovoSmarrimentoClient() {
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const gmapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
   // auto profilo se arriva animal_id
   useEffect(() => {
@@ -215,6 +223,42 @@ export default function NuovoSmarrimentoClient() {
     setPhotoUrl(profilePhotoUrl);
   }
 
+  async function useMyLocation() {
+    setError(null);
+
+    if (typeof window === "undefined") return;
+    if (!("geolocation" in navigator)) {
+      setError("Geolocalizzazione non disponibile su questo dispositivo/browser.");
+      return;
+    }
+
+    setLocating(true);
+    try {
+      const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 0,
+        });
+      });
+
+      setLat(Number(pos.coords.latitude.toFixed(6)));
+      setLng(Number(pos.coords.longitude.toFixed(6)));
+    } catch (e: any) {
+      const code = e?.code;
+      if (code === 1) setError("Permesso negato. Consenti la posizione e riprova.");
+      else if (code === 3) setError("Timeout geolocalizzazione. Riprova.");
+      else setError("Non riesco a ottenere la posizione. Riprova o cerca l’indirizzo.");
+    } finally {
+      setLocating(false);
+    }
+  }
+
+  function clearLocation() {
+    setLat(null);
+    setLng(null);
+  }
+
   async function submit() {
     if (!userId) return;
 
@@ -247,6 +291,8 @@ export default function NuovoSmarrimentoClient() {
         contact_phone: contactPhone.trim() || null,
         contact_email: contactEmail.trim() || null,
         status: "active",
+        lat: lat,
+        lng: lng,
       };
 
       if (mode === "profilo") payload.animal_id = animalId;
@@ -337,9 +383,7 @@ export default function NuovoSmarrimentoClient() {
       {mode === "profilo" ? (
         <div className="mt-6">
           <Card>
-            <h2 className="text-base font-semibold text-zinc-900">
-              Seleziona un profilo animale
-            </h2>
+            <h2 className="text-base font-semibold text-zinc-900">Seleziona un profilo animale</h2>
 
             {animals.length === 0 ? (
               <p className="mt-3 text-sm text-zinc-700">
@@ -366,8 +410,7 @@ export default function NuovoSmarrimentoClient() {
 
                 {selectedAnimal ? (
                   <p className="text-xs text-zinc-500">
-                    Collegato a:{" "}
-                    <span className="font-semibold">{selectedAnimal.name}</span>. Puoi modificare tutto prima di pubblicare.
+                    Collegato a: <span className="font-semibold">{selectedAnimal.name}</span>. Puoi modificare tutto prima di pubblicare.
                   </p>
                 ) : null}
               </div>
@@ -486,7 +529,7 @@ export default function NuovoSmarrimentoClient() {
                 onChange={(e) => setDescription(e.target.value)}
                 className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm"
                 rows={4}
-                placeholder="Segni particolari, collare, taglia, carattere, zona precisa, ecc."
+                placeholder="Segni particolari, collare, taglia, carattere, via/zona precisa, ecc."
               />
             </label>
 
@@ -509,7 +552,64 @@ export default function NuovoSmarrimentoClient() {
                 placeholder="Es. FI"
               />
             </label>
+          </div>
 
+          {/* POSIZIONE PRECISA (MAPPA + PIN) */}
+          <div className="mt-6 rounded-2xl border border-zinc-200 bg-zinc-50 p-5">
+            <p className="text-sm font-semibold text-zinc-900">Posizione precisa (consigliata)</p>
+            <p className="mt-1 text-xs text-zinc-600">
+              Cerca un indirizzo e poi trascina il pin nel punto esatto. In alternativa usa la tua posizione.
+            </p>
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={useMyLocation}
+                disabled={locating}
+                className="rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800 disabled:opacity-60"
+              >
+                {locating ? "Recupero posizione…" : "Usa la mia posizione"}
+              </button>
+
+              <button
+                type="button"
+                onClick={clearLocation}
+                disabled={locating || (lat == null && lng == null)}
+                className="rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50 disabled:opacity-60"
+              >
+                Rimuovi posizione
+              </button>
+            </div>
+
+            <div className="mt-4">
+              <LocationPicker
+                apiKey={gmapsKey}
+                value={{ lat, lng }}
+                onChange={(v) => {
+                  setLat(v.lat);
+                  setLng(v.lng);
+                }}
+              />
+            </div>
+
+            <div className="mt-4 grid gap-2 text-sm">
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-zinc-500">Lat</span>
+                <span className="font-mono font-medium text-zinc-900">{lat ?? "—"}</span>
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-zinc-500">Lng</span>
+                <span className="font-mono font-medium text-zinc-900">{lng ?? "—"}</span>
+              </div>
+            </div>
+
+            <p className="mt-3 text-[11px] text-zinc-500">
+              Se lasci vuoto, useremo città/provincia (meno preciso).
+            </p>
+          </div>
+
+          {/* CONTATTI */}
+          <div className="mt-6 grid gap-4 sm:grid-cols-2">
             <label className="grid gap-2">
               <span className="text-sm font-semibold text-zinc-900">Telefono</span>
               <input
@@ -545,7 +645,7 @@ export default function NuovoSmarrimentoClient() {
             <button
               type="button"
               onClick={submit}
-              disabled={saving || uploading}
+              disabled={saving || uploading || locating}
               className="rounded-lg bg-black px-5 py-3 text-sm font-semibold text-white hover:bg-zinc-800 disabled:opacity-60"
             >
               {uploading ? "Carico foto…" : saving ? "Pubblico…" : "Pubblica smarrimento"}
