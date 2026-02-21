@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader } from "@googlemaps/js-api-loader";
+import { importLibrary, setOptions } from "@googlemaps/js-api-loader";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 type Value = { lat: number | null; lng: number | null };
@@ -11,6 +11,8 @@ type Props = {
   onChange: (v: Value) => void;
   className?: string;
 };
+
+let mapsLoaderConfigured = false;
 
 export default function LocationPicker({ apiKey, value, onChange, className }: Props) {
   const mapDivRef = useRef<HTMLDivElement | null>(null);
@@ -24,7 +26,7 @@ export default function LocationPicker({ apiKey, value, onChange, className }: P
   const [loadErr, setLoadErr] = useState<string | null>(null);
 
   const defaultCenter = useMemo(() => {
-    // Firenze fallback (coerente con il progetto)
+    // fallback (Firenze)
     return { lat: 43.769562, lng: 11.255814 };
   }, []);
 
@@ -40,13 +42,16 @@ export default function LocationPicker({ apiKey, value, onChange, className }: P
           return;
         }
 
-        const loader = new Loader({
-          apiKey,
-          version: "weekly",
-          libraries: ["places"],
-        });
+        if (!mapsLoaderConfigured) {
+          setOptions({
+            key: apiKey,
+            v: "weekly",
+          });
+          mapsLoaderConfigured = true;
+        }
 
-        await loader.load();
+        await Promise.all([importLibrary("maps"), importLibrary("places")]);
+
         if (cancelled) return;
 
         const el = mapDivRef.current;
@@ -76,7 +81,7 @@ export default function LocationPicker({ apiKey, value, onChange, className }: P
         markerRef.current = marker;
 
         // click su mappa = sposta pin
-        map.addListener("click", (e) => {
+        map.addListener("click", (e: google.maps.MapMouseEvent) => {
           if (!e.latLng) return;
           const lat = Number(e.latLng.lat().toFixed(6));
           const lng = Number(e.latLng.lng().toFixed(6));
@@ -127,9 +132,9 @@ export default function LocationPicker({ apiKey, value, onChange, className }: P
     return () => {
       cancelled = true;
     };
-  }, [apiKey, defaultCenter, onChange]);
+  }, [apiKey, defaultCenter, onChange, value.lat, value.lng]);
 
-  // quando value cambia dall’esterno (es. “Usa la mia posizione”), aggiorna pin + centro
+  // quando value cambia dall’esterno, aggiorna pin + centro
   useEffect(() => {
     const map = mapRef.current;
     const marker = markerRef.current;
@@ -157,7 +162,7 @@ export default function LocationPicker({ apiKey, value, onChange, className }: P
         ref={inputRef}
         className="mt-2 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm outline-none focus:border-zinc-900"
         placeholder="Es. Via Roma 10, Firenze"
-        disabled={!ready && !loadErr ? true : false}
+        disabled={!ready && !loadErr}
       />
 
       {loadErr ? (
