@@ -76,8 +76,8 @@ export default function NuovoSmarrimentoClient() {
 
   // FOTO
   const [profilePhotoUrl, setProfilePhotoUrl] = useState<string>("");
-  const [photoUrl, setPhotoUrl] = useState<string>(""); // URL pubblico su Supabase
-  const [localPreviewUrl, setLocalPreviewUrl] = useState<string>(""); // preview immediata
+  const [photoUrl, setPhotoUrl] = useState<string>("");
+  const [localPreviewUrl, setLocalPreviewUrl] = useState<string>("");
   const [uploading, setUploading] = useState(false);
 
   const [saving, setSaving] = useState(false);
@@ -85,7 +85,6 @@ export default function NuovoSmarrimentoClient() {
 
   const gmapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
-  // cleanup objectURL
   useEffect(() => {
     return () => {
       try {
@@ -94,12 +93,10 @@ export default function NuovoSmarrimentoClient() {
     };
   }, [localPreviewUrl]);
 
-  // auto profilo se arriva animal_id
   useEffect(() => {
     if (preselectedAnimalId) setMode("profilo");
   }, [preselectedAnimalId]);
 
-  // login + carica animali
   useEffect(() => {
     let alive = true;
 
@@ -145,7 +142,6 @@ export default function NuovoSmarrimentoClient() {
     [animals, animalId]
   );
 
-  // precompila + foto profilo default
   useEffect(() => {
     if (mode !== "profilo") return;
     if (!selectedAnimal) {
@@ -190,14 +186,12 @@ export default function NuovoSmarrimentoClient() {
       return;
     }
 
-    // preview immediata
     try {
       if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl);
     } catch {}
     const preview = URL.createObjectURL(file);
     setLocalPreviewUrl(preview);
 
-    // reset URL remoto finché non finisce l’upload
     setPhotoUrl("");
 
     setUploading(true);
@@ -298,8 +292,6 @@ export default function NuovoSmarrimentoClient() {
     if (!lostDate) return setError("Inserisci la data dello smarrimento.");
     if (desc.length < 10) return setError("Descrizione troppo corta. Scrivi almeno 10 caratteri.");
     if (!c) return setError("Inserisci almeno la città (serve come riferimento).");
-
-    // ✅ ora il controllo foto è chiaro: serve URL remoto
     if (!photoUrl) return setError("Carica una foto prima di pubblicare.");
 
     setSaving(true);
@@ -371,7 +363,7 @@ export default function NuovoSmarrimentoClient() {
   return (
     <PageShell
       title="Nuovo smarrimento"
-      subtitle="Inserisci i dati e posiziona il punto esatto sulla mappa."
+      subtitle="Cerca un indirizzo e trascina il pin nel punto esatto."
       backFallbackHref="/smarrimenti"
       boxed={false}
       actions={
@@ -381,7 +373,6 @@ export default function NuovoSmarrimentoClient() {
         </>
       }
     >
-      {/* MODE */}
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
@@ -407,7 +398,6 @@ export default function NuovoSmarrimentoClient() {
         </button>
       </div>
 
-      {/* PROFILO */}
       {mode === "profilo" ? (
         <div className="mt-6">
           <Card>
@@ -447,7 +437,6 @@ export default function NuovoSmarrimentoClient() {
         </div>
       ) : null}
 
-      {/* FOTO */}
       <div className="mt-6">
         <Card>
           <h2 className="text-base font-semibold text-zinc-900">Foto *</h2>
@@ -490,7 +479,6 @@ export default function NuovoSmarrimentoClient() {
                 />
               </label>
 
-              {/* ✅ stato chiaro */}
               <div className="text-sm">
                 {uploading ? (
                   <p className="font-medium text-zinc-700">Sto caricando su server…</p>
@@ -511,7 +499,6 @@ export default function NuovoSmarrimentoClient() {
         </Card>
       </div>
 
-      {/* DATI */}
       <div className="mt-6">
         <Card>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -573,11 +560,10 @@ export default function NuovoSmarrimentoClient() {
             </label>
           </div>
 
-          {/* MAPPA + città/prov nello stesso box */}
           <div className="mt-6 rounded-2xl border border-zinc-200 bg-zinc-50 p-5">
             <p className="text-sm font-semibold text-zinc-900">Luogo dello smarrimento *</p>
             <p className="mt-1 text-xs text-zinc-600">
-              Cerca un indirizzo e poi trascina il pin nel punto esatto. Se non vuoi, inserisci almeno città e provincia.
+              Cerca l’indirizzo e trascina il pin. Città e provincia si compilano da sole (puoi modificarle).
             </p>
 
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -629,6 +615,11 @@ export default function NuovoSmarrimentoClient() {
                 onChange={(v) => {
                   setLat(v.lat);
                   setLng(v.lng);
+                }}
+                onAddress={(a) => {
+                  // ✅ auto-fill “gentile”: compila solo se vuoto o se arriva un valore
+                  if (a.city && city.trim().length === 0) setCity(a.city);
+                  if (a.province && province.trim().length === 0) setProvince(a.province);
                 }}
               />
             </div>

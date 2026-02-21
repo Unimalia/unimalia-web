@@ -5,16 +5,49 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 type Value = { lat: number | null; lng: number | null };
 
+type AddressPayload = {
+  formattedAddress?: string | null;
+  city?: string | null;
+  province?: string | null; // 2 lettere (FI, MI, ...)
+};
+
 type Props = {
   apiKey: string;
   value: Value;
   onChange: (v: Value) => void;
+  onAddress?: (a: AddressPayload) => void;
   className?: string;
 };
 
 let mapsLoaderConfigured = false;
 
-export default function LocationPicker({ apiKey, value, onChange, className }: Props) {
+function pickCity(components?: google.maps.GeocoderAddressComponent[] | null) {
+  if (!components || components.length === 0) return null;
+
+  const byType = (t: string) => components.find((c) => c.types?.includes(t))?.long_name ?? null;
+
+  // ordine realistico per Italia
+  return (
+    byType("locality") ||
+    byType("postal_town") ||
+    byType("administrative_area_level_3") ||
+    byType("sublocality") ||
+    byType("sublocality_level_1") ||
+    null
+  );
+}
+
+function pickProvince(components?: google.maps.GeocoderAddressComponent[] | null) {
+  if (!components || components.length === 0) return null;
+  const prov = components.find((c) => c.types?.includes("administrative_area_level_2"));
+  const short = (prov?.short_name || "").trim().toUpperCase();
+  if (short.length === 2) return short;
+  // fallback: prova a estrarre 2 lettere se arriva in modo “strano”
+  if (short.length > 2) return short.slice(0, 2);
+  return null;
+}
+
+export default function LocationPicker({ apiKey, value, onChange, onAddress, className }: Props) {
   const mapDivRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
@@ -46,6 +79,9 @@ export default function LocationPicker({ apiKey, value, onChange, className }: P
           setOptions({
             key: apiKey,
             v: "weekly",
+            // region/language aiutano l'autocomplete in IT
+            region: "IT",
+            language: "it",
           });
           mapsLoaderConfigured = true;
         }
@@ -102,8 +138,12 @@ export default function LocationPicker({ apiKey, value, onChange, className }: P
         const input = inputRef.current;
         if (input) {
           const ac = new google.maps.places.Autocomplete(input, {
-            fields: ["geometry", "formatted_address", "name"],
+            // fondamentale: address_components per città/prov
+            fields: ["geometry", "formatted_address", "address_components", "name"],
+            // tieni l'autocomplete in Italia
+            componentRestrictions: { country: "it" },
           });
+
           autocompleteRef.current = ac;
 
           ac.addListener("place_changed", () => {
@@ -119,6 +159,19 @@ export default function LocationPicker({ apiKey, value, onChange, className }: P
             marker.setPosition({ lat, lng });
 
             onChange({ lat, lng });
+
+            // ✅ autofill città/provincia
+            if (onAddress) {
+              const components = place.address_components ?? null;
+              const city = pickCity(components);
+              const province = pickProvince(components);
+
+              onAddress({
+                formattedAddress: place.formatted_address ?? place.name ?? null,
+                city,
+                province,
+              });
+            }
           });
         }
 
@@ -132,7 +185,7 @@ export default function LocationPicker({ apiKey, value, onChange, className }: P
     return () => {
       cancelled = true;
     };
-  }, [apiKey, defaultCenter, onChange, value.lat, value.lng]);
+  }, [apiKey, defaultCenter, onChange, onAddress, value.lat, value.lng]);
 
   // quando value cambia dall’esterno, aggiorna pin + centro
   useEffect(() => {
@@ -158,6 +211,7 @@ export default function LocationPicker({ apiKey, value, onChange, className }: P
       <label className="block text-sm font-semibold text-zinc-900">
         Cerca via / luogo (consigliato)
       </label>
+
       <input
         ref={inputRef}
         className="mt-2 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm outline-none focus:border-zinc-900"
