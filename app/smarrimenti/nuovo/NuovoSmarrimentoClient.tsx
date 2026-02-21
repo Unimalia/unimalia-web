@@ -21,7 +21,7 @@ type AnimalRow = {
 
 type Mode = "rapido" | "profilo";
 
-const BUCKET = "public"; // se il tuo bucket NON si chiama "public", dimmelo
+const BUCKET = "public"; // se il tuo bucket NON si chiama "public", cambia qui
 const LOST_FOLDER = "lost-events";
 
 function todayIso() {
@@ -30,20 +30,6 @@ function todayIso() {
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
   return `${yyyy}-${mm}-${dd}`;
-}
-
-function humanError(msg?: string) {
-  const m = (msg || "").toLowerCase();
-  if (m.includes("row level security") || m.includes("permission") || m.includes("not allowed")) {
-    return "Non hai i permessi per completare questa operazione. Fai login e riprova.";
-  }
-  if (m.includes("bucket") || m.includes("storage") || m.includes("object")) {
-    return "Errore nel caricamento della foto. Riprova o contattaci se il problema continua.";
-  }
-  if (m.includes("failed to fetch") || m.includes("network") || m.includes("timeout")) {
-    return "Problema di connessione. Controlla internet e riprova.";
-  }
-  return "Si è verificato un errore. Riprova tra poco.";
 }
 
 function extFromFile(file: File) {
@@ -86,10 +72,10 @@ export default function NuovoSmarrimentoClient() {
   const [lng, setLng] = useState<number | null>(null);
   const [locating, setLocating] = useState(false);
 
-  // FOTO (robusto)
+  // FOTO
   const [profilePhotoUrl, setProfilePhotoUrl] = useState<string>("");
-  const [photoUrl, setPhotoUrl] = useState<string>(""); // URL pubblico finale su Supabase
-  const [localPreviewUrl, setLocalPreviewUrl] = useState<string>(""); // preview immediata (objectURL)
+  const [photoUrl, setPhotoUrl] = useState<string>(""); // URL pubblico su Supabase (necessario per submit)
+  const [localPreviewUrl, setLocalPreviewUrl] = useState<string>(""); // preview immediata
   const [uploading, setUploading] = useState(false);
 
   const [saving, setSaving] = useState(false);
@@ -217,24 +203,35 @@ export default function NuovoSmarrimentoClient() {
       const name = `lost_${Date.now()}_${Math.random().toString(16).slice(2)}.${ext}`;
       const path = `${LOST_FOLDER}/${name}`;
 
-      const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file, {
+      const { data: upData, error: upErr } = await supabase.storage.from(BUCKET).upload(path, file, {
         cacheControl: "3600",
         upsert: false,
         contentType: file.type,
       });
 
-      if (upErr) throw new Error(upErr.message);
+      if (upErr) {
+        console.error("UPLOAD ERROR:", upErr);
+        throw new Error(
+          `[storage.upload] ${upErr.message}${
+            (upErr as any)?.statusCode ? ` (status ${(upErr as any).statusCode})` : ""
+          }`
+        );
+      }
 
-      const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(path);
+      if (!upData?.path) {
+        throw new Error("[storage.upload] upload_ok_but_missing_path");
+      }
+
+      // getPublicUrl non espone error nei tipi attuali
+      const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(upData.path);
       const url = pub?.publicUrl;
 
-      if (!url) throw new Error("public_url_missing");
+      if (!url) throw new Error("[storage.getPublicUrl] public_url_missing");
 
       setPhotoUrl(url);
     } catch (e: any) {
-      // IMPORTANT: se upload fallisce, lasciamo la preview locale, ma blocchiamo submit con errore
       setPhotoUrl("");
-      setError(humanError(e?.message));
+      setError(e?.message || "Errore nel caricamento della foto.");
     } finally {
       setUploading(false);
     }
@@ -242,12 +239,14 @@ export default function NuovoSmarrimentoClient() {
 
   function useProfilePhoto() {
     if (!profilePhotoUrl) return;
-    // se uso foto profilo, tolgo la preview locale (se c’era)
+
     try {
       if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl);
     } catch {}
+
     setLocalPreviewUrl("");
     setPhotoUrl(profilePhotoUrl);
+    setError(null);
   }
 
   async function useMyLocation() {
@@ -302,7 +301,6 @@ export default function NuovoSmarrimentoClient() {
     if (!lostDate) return setError("Inserisci la data dello smarrimento.");
     if (desc.length < 10) return setError("Descrizione troppo corta. Scrivi almeno 10 caratteri.");
 
-    // Qui vogliamo un URL pubblico valido (non basta preview locale)
     if (!photoUrl) return setError("Per pubblicare l’annuncio devi caricare una foto (upload completato).");
 
     setSaving(true);
@@ -345,7 +343,7 @@ export default function NuovoSmarrimentoClient() {
 
       router.push(`/smarrimenti/${ev.id}`);
     } catch (e: any) {
-      setError(humanError(e?.message));
+      setError(e?.message || "Errore nel salvataggio. Riprova.");
     } finally {
       setSaving(false);
     }
