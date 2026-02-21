@@ -86,15 +86,25 @@ export default function NuovoSmarrimentoClient() {
   const [lng, setLng] = useState<number | null>(null);
   const [locating, setLocating] = useState(false);
 
-  // FOTO
+  // FOTO (robusto)
   const [profilePhotoUrl, setProfilePhotoUrl] = useState<string>("");
-  const [photoUrl, setPhotoUrl] = useState<string>("");
-
+  const [photoUrl, setPhotoUrl] = useState<string>(""); // URL pubblico finale su Supabase
+  const [localPreviewUrl, setLocalPreviewUrl] = useState<string>(""); // preview immediata (objectURL)
   const [uploading, setUploading] = useState(false);
+
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const gmapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
+
+  // cleanup objectURL
+  useEffect(() => {
+    return () => {
+      try {
+        if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl);
+      } catch {}
+    };
+  }, [localPreviewUrl]);
 
   // auto profilo se arriva animal_id
   useEffect(() => {
@@ -161,6 +171,8 @@ export default function NuovoSmarrimentoClient() {
 
     const prof = selectedAnimal.photo_url || "";
     setProfilePhotoUrl(prof);
+
+    // se non ho scelto una foto nuova, tengo quella profilo come base
     setPhotoUrl((prev) => prev || prof);
   }, [mode, selectedAnimal]);
 
@@ -191,6 +203,14 @@ export default function NuovoSmarrimentoClient() {
       return;
     }
 
+    // preview immediata (anche se upload fallisce)
+    try {
+      if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl);
+    } catch {}
+    const preview = URL.createObjectURL(file);
+    setLocalPreviewUrl(preview);
+
+    // upload su Supabase
     setUploading(true);
     try {
       const ext = extFromFile(file);
@@ -212,6 +232,8 @@ export default function NuovoSmarrimentoClient() {
 
       setPhotoUrl(url);
     } catch (e: any) {
+      // IMPORTANT: se upload fallisce, lasciamo la preview locale, ma blocchiamo submit con errore
+      setPhotoUrl("");
       setError(humanError(e?.message));
     } finally {
       setUploading(false);
@@ -220,6 +242,11 @@ export default function NuovoSmarrimentoClient() {
 
   function useProfilePhoto() {
     if (!profilePhotoUrl) return;
+    // se uso foto profilo, tolgo la preview locale (se c’era)
+    try {
+      if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl);
+    } catch {}
+    setLocalPreviewUrl("");
     setPhotoUrl(profilePhotoUrl);
   }
 
@@ -274,7 +301,9 @@ export default function NuovoSmarrimentoClient() {
     if (!c) return setError("Inserisci la città.");
     if (!lostDate) return setError("Inserisci la data dello smarrimento.");
     if (desc.length < 10) return setError("Descrizione troppo corta. Scrivi almeno 10 caratteri.");
-    if (!photoUrl) return setError("Per pubblicare l’annuncio devi caricare una foto.");
+
+    // Qui vogliamo un URL pubblico valido (non basta preview locale)
+    if (!photoUrl) return setError("Per pubblicare l’annuncio devi caricare una foto (upload completato).");
 
     setSaving(true);
 
@@ -340,10 +369,12 @@ export default function NuovoSmarrimentoClient() {
     );
   }
 
+  const imageSrc = localPreviewUrl || photoUrl || "/placeholder-animal.jpg";
+
   return (
     <PageShell
       title="Nuovo smarrimento"
-      subtitle="Pubblica rapido oppure collega un profilo animale (con foto profilo come default)."
+      subtitle="Pubblica rapido oppure collega un profilo animale."
       backFallbackHref="/smarrimenti"
       boxed={false}
       actions={
@@ -410,7 +441,7 @@ export default function NuovoSmarrimentoClient() {
 
                 {selectedAnimal ? (
                   <p className="text-xs text-zinc-500">
-                    Collegato a: <span className="font-semibold">{selectedAnimal.name}</span>. Puoi modificare tutto prima di pubblicare.
+                    Collegato a: <span className="font-semibold">{selectedAnimal.name}</span>.
                   </p>
                 ) : null}
               </div>
@@ -427,7 +458,7 @@ export default function NuovoSmarrimentoClient() {
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <div className="overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50">
               <img
-                src={photoUrl || "/placeholder-animal.jpg"}
+                src={imageSrc}
                 alt="Anteprima foto"
                 className="h-56 w-full object-cover"
                 onError={(e) => {
@@ -462,9 +493,14 @@ export default function NuovoSmarrimentoClient() {
                 />
               </label>
 
+              <div className="text-xs text-zinc-600">
+                {localPreviewUrl && !photoUrl ? "Anteprima pronta. Sto caricando su server…" : null}
+                {photoUrl ? "Foto caricata ✅" : null}
+              </div>
+
               {!photoUrl ? (
                 <p className="text-sm font-semibold text-red-700">
-                  Per pubblicare l’annuncio devi caricare una foto.
+                  Per pubblicare l’annuncio devi caricare una foto (upload completato).
                 </p>
               ) : null}
             </div>
@@ -472,7 +508,7 @@ export default function NuovoSmarrimentoClient() {
         </Card>
       </div>
 
-      {/* DATI */}
+      {/* DATI + MAPPA */}
       <div className="mt-6">
         <Card>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -554,7 +590,6 @@ export default function NuovoSmarrimentoClient() {
             </label>
           </div>
 
-          {/* POSIZIONE PRECISA (MAPPA + PIN) */}
           <div className="mt-6 rounded-2xl border border-zinc-200 bg-zinc-50 p-5">
             <p className="text-sm font-semibold text-zinc-900">Posizione precisa (consigliata)</p>
             <p className="mt-1 text-xs text-zinc-600">
@@ -602,13 +637,8 @@ export default function NuovoSmarrimentoClient() {
                 <span className="font-mono font-medium text-zinc-900">{lng ?? "—"}</span>
               </div>
             </div>
-
-            <p className="mt-3 text-[11px] text-zinc-500">
-              Se lasci vuoto, useremo città/provincia (meno preciso).
-            </p>
           </div>
 
-          {/* CONTATTI */}
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
             <label className="grid gap-2">
               <span className="text-sm font-semibold text-zinc-900">Telefono</span>
