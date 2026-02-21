@@ -4,7 +4,11 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient";
+import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
+
+// IMPORT RELATIVO (così non dipendi da alias @/ o tsconfig paths)
+import { supabase } from "../../../lib/supabaseClient";
+
 import { AdottaFilters } from "./adotta-filters";
 import { AdottaResults } from "./adotta-results";
 
@@ -13,6 +17,8 @@ type ShelterType = "canile" | "gattile" | "rifugio";
 
 type BreedOpt = { id: string; name: string };
 type ShelterOpt = { id: string; name: string; type: ShelterType; city: string | null };
+
+type CityRow = { city: string | null };
 
 function getSpecies(sp: URLSearchParams): Species {
   const s = (sp.get("species") || "").toLowerCase();
@@ -83,10 +89,12 @@ export function AdottaClient() {
 
     loadSession();
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      const u = session?.user;
-      setSessionUser(u ? { id: u.id, email: u.email ?? null } : null);
-    });
+    const { data: sub } = supabase.auth.onAuthStateChange(
+      (_event: AuthChangeEvent, session: Session | null) => {
+        const u = session?.user;
+        setSessionUser(u ? { id: u.id, email: u.email ?? null } : null);
+      },
+    );
 
     return () => {
       mounted = false;
@@ -94,7 +102,7 @@ export function AdottaClient() {
     };
   }, []);
 
-  // 2) Profile completeness (email + nome + cognome + telefono)
+  // 2) Profile completeness
   useEffect(() => {
     let mounted = true;
 
@@ -109,11 +117,7 @@ export function AdottaClient() {
       setProfileOk(false);
       setProfileDebug(null);
 
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", sessionUser.id)
-        .maybeSingle();
+      const { data, error } = await supabase.from("profiles").select("*").eq("id", sessionUser.id).maybeSingle();
 
       if (!mounted) return;
 
@@ -150,7 +154,7 @@ export function AdottaClient() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 4) Load options after profile ok
+  // 4) Load options
   useEffect(() => {
     let mounted = true;
 
@@ -160,17 +164,20 @@ export function AdottaClient() {
       setOptionsLoading(true);
       setErrorMsg("");
 
-      const [{ data: breedsData, error: breedsErr }, { data: sheltersData, error: sheltersErr }, { data: cityRows, error: cityErr }] =
-        await Promise.all([
-          supabase.from("breeds").select("id,name,species").eq("species", species).order("name", { ascending: true }),
-          supabase.from("shelters").select("id,name,type,city").order("name", { ascending: true }),
-          supabase
-            .from("adoption_animals")
-            .select("city")
-            .eq("species", species)
-            .eq("status", "available")
-            .not("city", "is", null),
-        ]);
+      const [
+        { data: breedsData, error: breedsErr },
+        { data: sheltersData, error: sheltersErr },
+        { data: cityRows, error: cityErr },
+      ] = await Promise.all([
+        supabase.from("breeds").select("id,name").eq("species", species).order("name", { ascending: true }),
+        supabase.from("shelters").select("id,name,type,city").order("name", { ascending: true }),
+        supabase
+          .from("adoption_animals")
+          .select("city")
+          .eq("species", species)
+          .eq("status", "available")
+          .not("city", "is", null),
+      ]);
 
       if (!mounted) return;
 
@@ -181,10 +188,19 @@ export function AdottaClient() {
       }
 
       setBreeds((breedsData ?? []).map((b: any) => ({ id: b.id, name: b.name })));
-      setShelters((sheltersData ?? []).map((s: any) => ({ id: s.id, name: s.name, type: s.type, city: s.city ?? null })));
 
-      const uniqueCities = Array.from(
-        new Set((cityRows ?? []).map((r: any) => String(r.city ?? "").trim()).filter(Boolean)),
+      setShelters(
+        (sheltersData ?? []).map((s: any) => ({
+          id: s.id,
+          name: s.name,
+          type: s.type as ShelterType,
+          city: (s.city ?? null) as string | null,
+        })),
+      );
+
+      const rows = (cityRows ?? []) as CityRow[];
+      const uniqueCities: string[] = Array.from(
+        new Set(rows.map((r) => String(r.city ?? "").trim()).filter(Boolean)),
       ).sort((a, b) => a.localeCompare(b, "it"));
 
       setCities(uniqueCities);
@@ -334,14 +350,11 @@ export function AdottaClient() {
         <p className="mt-2 text-amber-900/80">
           Per accedere alle adozioni servono: <b>email</b>, <b>nome</b>, <b>cognome</b> e <b>telefono</b>.
         </p>
-
-        {/* Debug visivo leggero (lo togli quando tutto è ok) */}
         {profileDebug ? (
           <p className="mt-3 text-xs text-amber-900/70">
             Debug: nome="{profileDebug.first}", cognome="{profileDebug.last}", telefono="{profileDebug.phone}"
           </p>
         ) : null}
-
         <div className="mt-4">
           <Link
             href="/profilo?returnTo=/adotta"
