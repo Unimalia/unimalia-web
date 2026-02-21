@@ -21,7 +21,7 @@ type AnimalRow = {
 
 type Mode = "rapido" | "profilo";
 
-const BUCKET = "public"; // se il tuo bucket NON si chiama "public", cambia qui
+const BUCKET = "lost-photos"; // ✅ bucket reale su Supabase
 const LOST_FOLDER = "lost-events";
 
 function todayIso() {
@@ -158,7 +158,6 @@ export default function NuovoSmarrimentoClient() {
     const prof = selectedAnimal.photo_url || "";
     setProfilePhotoUrl(prof);
 
-    // se non ho scelto una foto nuova, tengo quella profilo come base
     setPhotoUrl((prev) => prev || prof);
   }, [mode, selectedAnimal]);
 
