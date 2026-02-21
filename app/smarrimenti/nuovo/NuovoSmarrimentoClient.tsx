@@ -21,7 +21,7 @@ type AnimalRow = {
 
 type Mode = "rapido" | "profilo";
 
-const BUCKET = "lost-photos"; // ✅ bucket reale su Supabase
+const BUCKET = "lost-photos";
 const LOST_FOLDER = "lost-events";
 
 function todayIso() {
@@ -60,21 +60,23 @@ export default function NuovoSmarrimentoClient() {
   const [animalName, setAnimalName] = useState("");
   const [breed, setBreed] = useState("");
   const [description, setDescription] = useState("");
+  const [lostDate, setLostDate] = useState(todayIso);
+
+  // località (fallback + contesto)
   const [city, setCity] = useState("");
   const [province, setProvince] = useState("");
-  const [lostDate, setLostDate] = useState(todayIso);
 
   const [contactPhone, setContactPhone] = useState("");
   const [contactEmail, setContactEmail] = useState("");
 
-  // POSIZIONE PRECISA
+  // POSIZIONE
   const [lat, setLat] = useState<number | null>(null);
   const [lng, setLng] = useState<number | null>(null);
   const [locating, setLocating] = useState(false);
 
   // FOTO
   const [profilePhotoUrl, setProfilePhotoUrl] = useState<string>("");
-  const [photoUrl, setPhotoUrl] = useState<string>(""); // URL pubblico su Supabase (necessario per submit)
+  const [photoUrl, setPhotoUrl] = useState<string>(""); // URL pubblico su Supabase
   const [localPreviewUrl, setLocalPreviewUrl] = useState<string>(""); // preview immediata
   const [uploading, setUploading] = useState(false);
 
@@ -188,44 +190,41 @@ export default function NuovoSmarrimentoClient() {
       return;
     }
 
-    // preview immediata (anche se upload fallisce)
+    // preview immediata
     try {
       if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl);
     } catch {}
     const preview = URL.createObjectURL(file);
     setLocalPreviewUrl(preview);
 
-    // upload su Supabase
+    // reset URL remoto finché non finisce l’upload
+    setPhotoUrl("");
+
     setUploading(true);
     try {
       const ext = extFromFile(file);
       const name = `lost_${Date.now()}_${Math.random().toString(16).slice(2)}.${ext}`;
       const path = `${LOST_FOLDER}/${name}`;
 
-      const { data: upData, error: upErr } = await supabase.storage.from(BUCKET).upload(path, file, {
-        cacheControl: "3600",
-        upsert: false,
-        contentType: file.type,
-      });
+      const { data: upData, error: upErr } = await supabase.storage
+        .from(BUCKET)
+        .upload(path, file, {
+          cacheControl: "3600",
+          upsert: false,
+          contentType: file.type,
+        });
 
       if (upErr) {
         console.error("UPLOAD ERROR:", upErr);
-        throw new Error(
-          `[storage.upload] ${upErr.message}${
-            (upErr as any)?.statusCode ? ` (status ${(upErr as any).statusCode})` : ""
-          }`
-        );
+        throw new Error(upErr.message);
       }
 
-      if (!upData?.path) {
-        throw new Error("[storage.upload] upload_ok_but_missing_path");
-      }
+      if (!upData?.path) throw new Error("Upload completato ma path mancante.");
 
-      // getPublicUrl non espone error nei tipi attuali
       const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(upData.path);
       const url = pub?.publicUrl;
 
-      if (!url) throw new Error("[storage.getPublicUrl] public_url_missing");
+      if (!url) throw new Error("URL pubblico non disponibile.");
 
       setPhotoUrl(url);
     } catch (e: any) {
@@ -296,11 +295,12 @@ export default function NuovoSmarrimentoClient() {
 
     if (!sp) return setError("Seleziona il tipo animale (es. Cane, Gatto…).");
     if (mode === "profilo" && !animalId) return setError("Seleziona un profilo animale.");
-    if (!c) return setError("Inserisci la città.");
     if (!lostDate) return setError("Inserisci la data dello smarrimento.");
     if (desc.length < 10) return setError("Descrizione troppo corta. Scrivi almeno 10 caratteri.");
+    if (!c) return setError("Inserisci almeno la città (serve come riferimento).");
 
-    if (!photoUrl) return setError("Per pubblicare l’annuncio devi caricare una foto (upload completato).");
+    // ✅ ora il controllo foto è chiaro: serve URL remoto
+    if (!photoUrl) return setError("Carica una foto prima di pubblicare.");
 
     setSaving(true);
 
@@ -371,7 +371,7 @@ export default function NuovoSmarrimentoClient() {
   return (
     <PageShell
       title="Nuovo smarrimento"
-      subtitle="Pubblica rapido oppure collega un profilo animale."
+      subtitle="Inserisci i dati e posiziona il punto esatto sulla mappa."
       backFallbackHref="/smarrimenti"
       boxed={false}
       actions={
@@ -490,14 +490,20 @@ export default function NuovoSmarrimentoClient() {
                 />
               </label>
 
-              <div className="text-xs text-zinc-600">
-                {localPreviewUrl && !photoUrl ? "Anteprima pronta. Sto caricando su server…" : null}
-                {photoUrl ? "Foto caricata ✅" : null}
+              {/* ✅ stato chiaro */}
+              <div className="text-sm">
+                {uploading ? (
+                  <p className="font-medium text-zinc-700">Sto caricando su server…</p>
+                ) : photoUrl ? (
+                  <p className="font-semibold text-emerald-700">Caricata ✅</p>
+                ) : (
+                  <p className="font-medium text-zinc-700">Non ancora caricata</p>
+                )}
               </div>
 
               {!photoUrl ? (
                 <p className="text-sm font-semibold text-red-700">
-                  Per pubblicare l’annuncio devi caricare una foto (upload completato).
+                  Per pubblicare l’annuncio devi caricare una foto.
                 </p>
               ) : null}
             </div>
@@ -505,7 +511,7 @@ export default function NuovoSmarrimentoClient() {
         </Card>
       </div>
 
-      {/* DATI + MAPPA */}
+      {/* DATI */}
       <div className="mt-6">
         <Card>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -565,33 +571,36 @@ export default function NuovoSmarrimentoClient() {
                 placeholder="Segni particolari, collare, taglia, carattere, via/zona precisa, ecc."
               />
             </label>
-
-            <label className="grid gap-2">
-              <span className="text-sm font-semibold text-zinc-900">Città *</span>
-              <input
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm"
-                placeholder="Es. Firenze"
-              />
-            </label>
-
-            <label className="grid gap-2">
-              <span className="text-sm font-semibold text-zinc-900">Provincia</span>
-              <input
-                value={province}
-                onChange={(e) => setProvince(e.target.value)}
-                className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm"
-                placeholder="Es. FI"
-              />
-            </label>
           </div>
 
+          {/* MAPPA + città/prov nello stesso box */}
           <div className="mt-6 rounded-2xl border border-zinc-200 bg-zinc-50 p-5">
-            <p className="text-sm font-semibold text-zinc-900">Posizione precisa (consigliata)</p>
+            <p className="text-sm font-semibold text-zinc-900">Luogo dello smarrimento *</p>
             <p className="mt-1 text-xs text-zinc-600">
-              Cerca un indirizzo e poi trascina il pin nel punto esatto. In alternativa usa la tua posizione.
+              Cerca un indirizzo e poi trascina il pin nel punto esatto. Se non vuoi, inserisci almeno città e provincia.
             </p>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <label className="grid gap-2">
+                <span className="text-sm font-semibold text-zinc-900">Città *</span>
+                <input
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm"
+                  placeholder="Es. Firenze"
+                />
+              </label>
+
+              <label className="grid gap-2">
+                <span className="text-sm font-semibold text-zinc-900">Provincia</span>
+                <input
+                  value={province}
+                  onChange={(e) => setProvince(e.target.value)}
+                  className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm"
+                  placeholder="Es. FI"
+                />
+              </label>
+            </div>
 
             <div className="mt-4 flex flex-wrap gap-2">
               <button
@@ -609,7 +618,7 @@ export default function NuovoSmarrimentoClient() {
                 disabled={locating || (lat == null && lng == null)}
                 className="rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50 disabled:opacity-60"
               >
-                Rimuovi posizione
+                Rimuovi pin
               </button>
             </div>
 
@@ -624,16 +633,11 @@ export default function NuovoSmarrimentoClient() {
               />
             </div>
 
-            <div className="mt-4 grid gap-2 text-sm">
-              <div className="flex items-center justify-between gap-4">
-                <span className="text-zinc-500">Lat</span>
-                <span className="font-mono font-medium text-zinc-900">{lat ?? "—"}</span>
-              </div>
-              <div className="flex items-center justify-between gap-4">
-                <span className="text-zinc-500">Lng</span>
-                <span className="font-mono font-medium text-zinc-900">{lng ?? "—"}</span>
-              </div>
-            </div>
+            <p className="mt-3 text-xs text-zinc-600">
+              {lat != null && lng != null
+                ? "Pin impostato ✅ (posizione precisa)"
+                : "Pin non impostato (ok lo stesso: verrà centrata la città)"}
+            </p>
           </div>
 
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
