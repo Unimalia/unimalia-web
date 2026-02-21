@@ -17,12 +17,22 @@ type ShelterOpt = { id: string; name: string; type: ShelterType; city: string | 
 function getSpecies(sp: URLSearchParams): Species {
   const s = (sp.get("species") || "").toLowerCase();
   if (s === "cat" || s === "other") return s;
-  return "dog"; // default coerente
+  return "dog";
 }
 
 function truthyParam(v: string | null) {
   if (!v) return undefined;
   return v === "1" || v === "true";
+}
+
+function readFirstName(row: any) {
+  return String(row?.first_name ?? row?.nome ?? row?.name ?? row?.firstName ?? "").trim();
+}
+function readLastName(row: any) {
+  return String(row?.last_name ?? row?.cognome ?? row?.surname ?? row?.lastName ?? "").trim();
+}
+function readPhone(row: any) {
+  return String(row?.phone ?? row?.telefono ?? row?.phone_number ?? row?.phoneNumber ?? "").trim();
 }
 
 export function AdottaClient() {
@@ -39,8 +49,9 @@ export function AdottaClient() {
 
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileOk, setProfileOk] = useState(false);
+  const [profileDebug, setProfileDebug] = useState<{ first: string; last: string; phone: string } | null>(null);
 
-  // --- Data options + results ---
+  // --- Options + results ---
   const [optionsLoading, setOptionsLoading] = useState(true);
   const [breeds, setBreeds] = useState<BreedOpt[]>([]);
   const [shelters, setShelters] = useState<ShelterOpt[]>([]);
@@ -83,24 +94,24 @@ export function AdottaClient() {
     };
   }, []);
 
-  // 2) Profile completeness (nome+cognome+telefono)
+  // 2) Profile completeness (email + nome + cognome + telefono)
   useEffect(() => {
     let mounted = true;
 
     async function loadProfile() {
       if (!sessionUser?.id) {
         setProfileOk(false);
+        setProfileDebug(null);
         return;
       }
 
       setProfileLoading(true);
       setProfileOk(false);
+      setProfileDebug(null);
 
-      // NOTE: se la tua tabella si chiama diversamente (es. "user_profiles"),
-      // cambia qui.
       const { data, error } = await supabase
         .from("profiles")
-        .select("first_name,last_name,phone")
+        .select("*")
         .eq("id", sessionUser.id)
         .maybeSingle();
 
@@ -112,10 +123,11 @@ export function AdottaClient() {
         return;
       }
 
-      const first = (data?.first_name || "").trim();
-      const last = (data?.last_name || "").trim();
-      const phone = (data?.phone || "").trim();
+      const first = readFirstName(data);
+      const last = readLastName(data);
+      const phone = readPhone(data);
 
+      setProfileDebug({ first, last, phone });
       setProfileOk(Boolean(sessionUser.email && first && last && phone));
       setProfileLoading(false);
     }
@@ -127,7 +139,7 @@ export function AdottaClient() {
     };
   }, [sessionUser?.id, sessionUser?.email]);
 
-  // 3) Ensure species param always present in URL (UX stabile)
+  // 3) Ensure species param always present
   useEffect(() => {
     const cur = sp.get("species");
     if (cur) return;
@@ -138,7 +150,7 @@ export function AdottaClient() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 4) Load options (breeds/shelters/cities) after profile ok
+  // 4) Load options after profile ok
   useEffect(() => {
     let mounted = true;
 
@@ -150,17 +162,8 @@ export function AdottaClient() {
 
       const [{ data: breedsData, error: breedsErr }, { data: sheltersData, error: sheltersErr }, { data: cityRows, error: cityErr }] =
         await Promise.all([
-          supabase
-            .from("breeds")
-            .select("id,name,species")
-            .eq("species", species)
-            .order("name", { ascending: true }),
-
-          supabase
-            .from("shelters")
-            .select("id,name,type,city")
-            .order("name", { ascending: true }),
-
+          supabase.from("breeds").select("id,name,species").eq("species", species).order("name", { ascending: true }),
+          supabase.from("shelters").select("id,name,type,city").order("name", { ascending: true }),
           supabase
             .from("adoption_animals")
             .select("city")
@@ -172,7 +175,7 @@ export function AdottaClient() {
       if (!mounted) return;
 
       if (breedsErr || sheltersErr || cityErr) {
-        setErrorMsg(breedsErr?.message || sheltersErr?.message || cityErr?.message || "Errore nel caricamento opzioni");
+        setErrorMsg(breedsErr?.message || sheltersErr?.message || cityErr?.message || "Errore nel caricamento filtri");
         setOptionsLoading(false);
         return;
       }
@@ -195,7 +198,7 @@ export function AdottaClient() {
     };
   }, [sessionUser?.id, profileOk, species]);
 
-  // 5) Load results (depends on filters in URL)
+  // 5) Load results
   useEffect(() => {
     let mounted = true;
 
@@ -210,9 +213,9 @@ export function AdottaClient() {
       const shelterId = (sp.get("shelterId") || "").trim();
       const breedId = (sp.get("breedId") || "").trim();
       const mixed = truthyParam(sp.get("mixed"));
-      const size = (sp.get("size") || "").trim(); // s|m|l
-      const sex = (sp.get("sex") || "").trim(); // m|f
-      const age = (sp.get("age") || "").trim(); // 0-2 | 3-6 | 7+
+      const size = (sp.get("size") || "").trim();
+      const sex = (sp.get("sex") || "").trim();
+      const age = (sp.get("age") || "").trim();
       const withDogs = truthyParam(sp.get("withDogs"));
       const withCats = truthyParam(sp.get("withCats"));
       const withKids = truthyParam(sp.get("withKids"));
@@ -220,7 +223,6 @@ export function AdottaClient() {
       const specialNeeds = truthyParam(sp.get("specialNeeds"));
       const hasPhoto = truthyParam(sp.get("hasPhoto"));
 
-      // Se la tua colonna è "photo_url" ok. Se è "photoUrl" o simile, cambia qui.
       let q = supabase
         .from("adoption_animals")
         .select(
@@ -298,9 +300,7 @@ export function AdottaClient() {
   if (!sessionUser) {
     return (
       <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <p className="text-sm text-zinc-700">
-          Per vedere gli annunci di adozione devi effettuare l’accesso.
-        </p>
+        <p className="text-sm text-zinc-700">Per vedere gli annunci di adozione devi effettuare l’accesso.</p>
         <div className="mt-4 flex flex-wrap gap-2">
           <Link
             href="/login"
@@ -334,9 +334,17 @@ export function AdottaClient() {
         <p className="mt-2 text-amber-900/80">
           Per accedere alle adozioni servono: <b>email</b>, <b>nome</b>, <b>cognome</b> e <b>telefono</b>.
         </p>
+
+        {/* Debug visivo leggero (lo togli quando tutto è ok) */}
+        {profileDebug ? (
+          <p className="mt-3 text-xs text-amber-900/70">
+            Debug: nome="{profileDebug.first}", cognome="{profileDebug.last}", telefono="{profileDebug.phone}"
+          </p>
+        ) : null}
+
         <div className="mt-4">
           <Link
-            href="/profilo"
+            href="/profilo?returnTo=/adotta"
             className="inline-flex items-center justify-center rounded-xl bg-zinc-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-zinc-800"
           >
             Vai al profilo
@@ -356,11 +364,7 @@ export function AdottaClient() {
         <AdottaFilters species={species} breeds={breeds} shelters={shelters} cities={cities} isPending={isPending} />
       )}
 
-      <AdottaResults
-        animals={animals}
-        loading={resultsLoading}
-        errorMessage={errorMsg}
-      />
+      <AdottaResults animals={animals} loading={resultsLoading} errorMessage={errorMsg} />
     </div>
   );
 }

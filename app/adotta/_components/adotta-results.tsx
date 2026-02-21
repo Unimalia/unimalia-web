@@ -29,13 +29,11 @@ function formatAge(ageMonths: number | null) {
   const years = Math.floor(ageMonths / 12);
   return years === 1 ? "1 anno" : `${years} anni`;
 }
-
 function formatSex(sex: Animal["sex"]) {
   if (sex === "m") return "Maschio";
   if (sex === "f") return "Femmina";
   return "Sesso non indicato";
 }
-
 function formatSize(size: Animal["size"]) {
   if (size === "s") return "Taglia piccola";
   if (size === "m") return "Taglia media";

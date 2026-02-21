@@ -272,7 +272,7 @@ function FilterPill({
   onChange,
 }: {
   label: string;
-  value: string; // "" | "true"
+  value: string;
   onChange: (next: string) => void;
 }) {
   const active = value === "true";
