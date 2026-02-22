@@ -1,5 +1,6 @@
 // playwright.config.ts
 import { defineConfig } from "@playwright/test";
+import "dotenv/config";
 
 export default defineConfig({
   testDir: "./e2e",
@@ -14,4 +15,11 @@ export default defineConfig({
     video: "retain-on-failure",
   },
   reporter: [["list"], ["html", { open: "never" }]],
+
+  webServer: {
+    command: "npm run dev -- --port 3000",
+    url: "http://localhost:3000",
+    reuseExistingServer: true,
+    timeout: 120_000
+  }
 });
