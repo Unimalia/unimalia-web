@@ -17,15 +17,14 @@ type ShelterOpt = { id: string; name: string; type: ShelterType; city: string | 
 type CityRow = { city: string | null };
 type DbRow = Record<string, any>;
 
+const ADOPTION_TABLE = "adoption_animals"; // ✅ se in futuro la tabella si chiama diversamente, cambi qui
+const BREEDS_TABLE = "breeds";
+const SHELTERS_TABLE = "shelters";
+
 function getSpecies(sp: URLSearchParams): Species {
   const s = (sp.get("species") || "").toLowerCase();
   if (s === "cat" || s === "other") return s;
   return "dog";
-}
-
-function truthyParam(v: string | null) {
-  if (!v) return undefined;
-  return v === "1" || v === "true";
 }
 
 export function AdottaClient() {
@@ -42,7 +41,13 @@ export function AdottaClient() {
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileOk, setProfileOk] = useState(false);
 
-  const [profileDebug, setProfileDebug] = useState<any>(null);
+  const [profileDebug, setProfileDebug] = useState<{
+    fullName: string;
+    phone: string;
+    profilesRowFound: boolean;
+    profilesError: string;
+    profilesKeys: string;
+  } | null>(null);
 
   const [optionsLoading, setOptionsLoading] = useState(true);
   const [breeds, setBreeds] = useState<BreedOpt[]>([]);
@@ -52,6 +57,8 @@ export function AdottaClient() {
   const [resultsLoading, setResultsLoading] = useState(true);
   const [animals, setAnimals] = useState<any[]>([]);
   const [errorMsg, setErrorMsg] = useState("");
+
+  const [adoptionTableMissing, setAdoptionTableMissing] = useState(false);
 
   /* ===========================
      SESSION
@@ -122,12 +129,7 @@ export function AdottaClient() {
         profilesKeys: row ? Object.keys(row).join(", ") : "",
       });
 
-      if (sessionUser.email && fullName && phone) {
-        setProfileOk(true);
-      } else {
-        setProfileOk(false);
-      }
-
+      setProfileOk(Boolean(sessionUser.email && fullName && phone));
       setProfileLoading(false);
     }
 
@@ -137,6 +139,19 @@ export function AdottaClient() {
       mounted = false;
     };
   }, [sessionUser?.id, sessionUser?.email]);
+
+  /* ===========================
+     ENSURE species param exists
+  ============================ */
+  useEffect(() => {
+    const cur = sp.get("species");
+    if (cur) return;
+
+    const params = new URLSearchParams(sp.toString());
+    params.set("species", "dog");
+    startTransition(() => router.replace(`${pathname}?${params.toString()}`));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /* ===========================
      LOAD FILTER OPTIONS (SAFE)
@@ -150,34 +165,34 @@ export function AdottaClient() {
 
       setOptionsLoading(true);
       setErrorMsg("");
+      setAdoptionTableMissing(false);
 
+      // breeds opzionale
       const breedsReq = supabase
-        .from("breeds")
+        .from(BREEDS_TABLE)
         .select("id,name")
         .eq("species", species)
         .order("name", { ascending: true });
 
+      // shelters opzionale
       const sheltersReq = supabase
-        .from("shelters")
+        .from(SHELTERS_TABLE)
         .select("id,name,type,city")
         .order("name", { ascending: true });
 
+      // cities da adoption table (ma può mancare)
       const citiesReq = supabase
-        .from("adoption_animals")
+        .from(ADOPTION_TABLE)
         .select("city")
         .eq("species", species)
         .eq("status", "available")
         .not("city", "is", null);
 
-      const [breedsRes, sheltersRes, citiesRes] = await Promise.all([
-        breedsReq,
-        sheltersReq,
-        citiesReq,
-      ]);
+      const [breedsRes, sheltersRes, citiesRes] = await Promise.all([breedsReq, sheltersReq, citiesReq]);
 
       if (!mounted) return;
 
-      /* BREEDS */
+      // BREEDS
       if (breedsRes.error) {
         const msg = breedsRes.error.message || "";
         if (msg.includes("Could not find the table") || msg.includes("schema cache")) {
@@ -189,9 +204,15 @@ export function AdottaClient() {
         setBreeds((breedsRes.data ?? []).map((b: any) => ({ id: b.id, name: b.name })));
       }
 
-      /* SHELTERS */
+      // SHELTERS
       if (sheltersRes.error) {
-        setShelters([]);
+        const msg = sheltersRes.error.message || "";
+        if (msg.includes("Could not find the table") || msg.includes("schema cache")) {
+          setShelters([]);
+        } else {
+          setErrorMsg((prev) => prev || sheltersRes.error.message);
+          setShelters([]);
+        }
       } else {
         setShelters(
           (sheltersRes.data ?? []).map((s: any) => ({
@@ -203,15 +224,22 @@ export function AdottaClient() {
         );
       }
 
-      /* CITIES */
+      // CITIES (adoption_animals può mancare)
       if (citiesRes.error) {
-        setCities([]);
+        const msg = citiesRes.error.message || "";
+        if (msg.includes("Could not find the table") || msg.includes("schema cache")) {
+          setCities([]);
+          setAdoptionTableMissing(true);
+          // non è un errore “bloccante”: la sezione non è ancora configurata
+        } else {
+          setErrorMsg((prev) => prev || citiesRes.error.message);
+          setCities([]);
+        }
       } else {
         const rows = (citiesRes.data ?? []) as CityRow[];
-        const uniqueCities = Array.from(
-          new Set(rows.map((r) => String(r.city ?? "").trim()).filter(Boolean)),
-        ).sort((a, b) => a.localeCompare(b, "it"));
-
+        const uniqueCities = Array.from(new Set(rows.map((r) => String(r.city ?? "").trim()).filter(Boolean))).sort(
+          (a, b) => a.localeCompare(b, "it"),
+        );
         setCities(uniqueCities);
       }
 
@@ -226,7 +254,7 @@ export function AdottaClient() {
   }, [sessionUser?.id, profileOk, species]);
 
   /* ===========================
-     RESULTS
+     RESULTS (SAFE)
   ============================ */
 
   useEffect(() => {
@@ -238,20 +266,24 @@ export function AdottaClient() {
       setResultsLoading(true);
       setErrorMsg("");
 
-      let q = supabase
-        .from("adoption_animals")
+      const { data, error } = await supabase
+        .from(ADOPTION_TABLE)
         .select("*")
         .eq("species", species)
         .eq("status", "available")
         .order("created_at", { ascending: false });
 
-      const { data, error } = await q;
-
       if (!mounted) return;
 
       if (error) {
-        setErrorMsg(error.message);
-        setAnimals([]);
+        const msg = error.message || "";
+        if (msg.includes("Could not find the table") || msg.includes("schema cache")) {
+          setAdoptionTableMissing(true);
+          setAnimals([]);
+        } else {
+          setErrorMsg(error.message);
+          setAnimals([]);
+        }
       } else {
         setAnimals(data ?? []);
       }
@@ -271,54 +303,87 @@ export function AdottaClient() {
   ============================ */
 
   if (authLoading) {
-    return <div className="rounded-2xl border p-4 shadow-sm">Caricamento…</div>;
+    return (
+      <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+        <p className="text-sm text-zinc-700">Caricamento…</p>
+      </div>
+    );
   }
 
   if (!sessionUser) {
     return (
-      <div className="rounded-2xl border p-6 shadow-sm">
-        <p>Devi effettuare l’accesso.</p>
-        <Link href="/login" className="mt-4 inline-block rounded-xl bg-black px-4 py-2 text-white">
-          Accedi
-        </Link>
+      <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+        <p className="text-sm text-zinc-700">Per vedere le adozioni devi effettuare l’accesso.</p>
+        <div className="mt-4">
+          <Link
+            href="/login"
+            className="inline-flex items-center justify-center rounded-xl bg-zinc-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-zinc-800"
+          >
+            Accedi
+          </Link>
+        </div>
       </div>
     );
   }
 
   if (profileLoading) {
-    return <div className="rounded-2xl border p-4 shadow-sm">Verifica profilo…</div>;
+    return (
+      <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+        <p className="text-sm text-zinc-700">Verifica profilo…</p>
+      </div>
+    );
   }
 
   if (!profileOk) {
     return (
-      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm">
+      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900">
         <p className="font-medium">Completa il profilo per continuare</p>
-        <p className="mt-2">
+        <p className="mt-2 text-amber-900/80">
           Servono: <b>email</b>, <b>nome e cognome</b> e <b>telefono</b>.
         </p>
 
-        {profileDebug && (
-          <div className="mt-3 text-xs opacity-70">
+        {profileDebug ? (
+          <div className="mt-3 space-y-1 text-xs text-amber-900/70">
             <div>full_name="{profileDebug.fullName}"</div>
             <div>phone="{profileDebug.phone}"</div>
             <div>profilesRowFound: {String(profileDebug.profilesRowFound)}</div>
           </div>
-        )}
+        ) : null}
 
-        <Link
-          href="/profilo?returnTo=/adotta"
-          className="mt-4 inline-block rounded-xl bg-black px-4 py-2 text-white"
-        >
-          Vai al profilo
-        </Link>
+        <div className="mt-4">
+          <Link
+            href="/profilo?returnTo=/adotta"
+            className="inline-flex items-center justify-center rounded-xl bg-zinc-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-zinc-800"
+          >
+            Vai al profilo
+          </Link>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
+      {adoptionTableMissing ? (
+        <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+          <p className="text-sm font-medium text-zinc-900">Sezione “Adotta” non ancora configurata</p>
+          <p className="mt-2 text-sm text-zinc-700">
+            Nel database Supabase non esiste la tabella <b>{ADOPTION_TABLE}</b>.
+            <br />
+            La pagina è pronta: appena crei la tabella (o mi dici il nome reale), colleghiamo tutto e compaiono gli
+            annunci.
+          </p>
+          <p className="mt-3 text-xs text-zinc-500">
+            Suggerimento: in Supabase vai su <b>Table Editor</b> e cerca se esiste una tabella tipo{" "}
+            <b>adoptions</b>, <b>adoption_listings</b>, <b>animals_for_adoption</b>, ecc.
+          </p>
+        </div>
+      ) : null}
+
       {optionsLoading ? (
-        <div className="rounded-2xl border p-4 shadow-sm">Caricamento filtri…</div>
+        <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+          <p className="text-sm text-zinc-700">Caricamento filtri…</p>
+        </div>
       ) : (
         <AdottaFilters species={species} breeds={breeds} shelters={shelters} cities={cities} isPending={isPending} />
       )}
