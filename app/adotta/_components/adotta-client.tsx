@@ -5,8 +5,6 @@ import Link from "next/link";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { AuthChangeEvent, Session, User } from "@supabase/supabase-js";
-
-// Import RELATIVO: evita problemi con alias @/
 import { supabase } from "../../../lib/supabaseClient";
 
 import { AdottaFilters } from "./adotta-filters";
@@ -18,6 +16,7 @@ type ShelterType = "canile" | "gattile" | "rifugio";
 type BreedOpt = { id: string; name: string };
 type ShelterOpt = { id: string; name: string; type: ShelterType; city: string | null };
 type CityRow = { city: string | null };
+type DbRow = Record<string, any>;
 
 function getSpecies(sp: URLSearchParams): Species {
   const s = (sp.get("species") || "").toLowerCase();
@@ -30,34 +29,12 @@ function truthyParam(v: string | null) {
   return v === "1" || v === "true";
 }
 
-function pickFirstName(obj: any) {
-  return String(obj?.first_name ?? obj?.nome ?? obj?.name ?? obj?.firstName ?? "").trim();
-}
-function pickLastName(obj: any) {
-  return String(obj?.last_name ?? obj?.cognome ?? obj?.surname ?? obj?.lastName ?? "").trim();
-}
-function pickPhone(obj: any) {
-  return String(obj?.phone ?? obj?.telefono ?? obj?.phone_number ?? obj?.phoneNumber ?? "").trim();
-}
-
 function parseFromUser(user: User | null) {
-  if (!user) return { first: "", last: "", phone: "" };
-
+  if (!user) return { fullName: "", phone: "" };
   const md: any = user.user_metadata ?? {};
-
-  // Proviamo vari naming comuni
-  const first = String(md.first_name ?? md.nome ?? md.given_name ?? md.name ?? "").trim();
-  const last = String(md.last_name ?? md.cognome ?? md.family_name ?? md.surname ?? "").trim();
-
-  // Supabase può avere user.phone (se usi login phone) oppure metadata
+  const fullName = String(md.full_name ?? md.fullName ?? md.name ?? "").trim();
   const phone = String((user as any).phone ?? md.phone ?? md.telefono ?? md.phone_number ?? "").trim();
-
-  // Se hai un full_name e non hai separato nome/cognome, teniamo tutto in "first"
-  const full = String(md.full_name ?? md.fullName ?? "").trim();
-  const safeFirst = first || (full ? full : "");
-  const safeLast = last || "";
-
-  return { first: safeFirst, last: safeLast, phone };
+  return { fullName, phone };
 }
 
 export function AdottaClient() {
@@ -68,20 +45,20 @@ export function AdottaClient() {
 
   const species = useMemo(() => getSpecies(sp), [sp]);
 
-  // --- Auth / Profile gate ---
   const [authLoading, setAuthLoading] = useState(true);
   const [sessionUser, setSessionUser] = useState<{ id: string; email: string | null } | null>(null);
 
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileOk, setProfileOk] = useState(false);
+
   const [profileDebug, setProfileDebug] = useState<{
     source: "profiles" | "auth_metadata" | "none";
-    first: string;
-    last: string;
+    fullName: string;
     phone: string;
+    profilesError?: string;
+    profilesRowFound?: boolean;
   } | null>(null);
 
-  // --- Options + results ---
   const [optionsLoading, setOptionsLoading] = useState(true);
   const [breeds, setBreeds] = useState<BreedOpt[]>([]);
   const [shelters, setShelters] = useState<ShelterOpt[]>([]);
@@ -126,10 +103,7 @@ export function AdottaClient() {
     };
   }, []);
 
-  // 2) Profile completeness:
-  // - prima profiles
-  // - se vuoto => fallback auth user_metadata
-  // - se metadata ok e profiles vuoto => tenta upsert su profiles
+  // 2) Profile completeness (schema reale)
   useEffect(() => {
     let mounted = true;
 
@@ -144,34 +118,41 @@ export function AdottaClient() {
       setProfileOk(false);
       setProfileDebug(null);
 
-      // 2a) Prova profiles
       const { data: prof, error: profErr } = await supabase
         .from("profiles")
-        .select("*")
+        .select("id, full_name, phone")
         .eq("id", sessionUser.id)
         .maybeSingle();
 
       if (!mounted) return;
 
-      if (!profErr && prof) {
-        const first = pickFirstName(prof);
-        const last = pickLastName(prof);
-        const phone = pickPhone(prof);
+      const row = (prof ?? null) as DbRow | null;
+      const fullName = String(row?.full_name ?? "").trim();
+      const phone = String(row?.phone ?? "").trim();
 
-        if (first && last && phone && sessionUser.email) {
-          setProfileDebug({ source: "profiles", first, last, phone });
-          setProfileOk(true);
-          setProfileLoading(false);
-          return;
-        }
+      // ✅ requisito: email + full_name + phone
+      if (!profErr && row && sessionUser.email && fullName && phone) {
+        setProfileDebug({ source: "profiles", fullName, phone, profilesRowFound: true });
+        setProfileOk(true);
+        setProfileLoading(false);
+        return;
       }
 
-      // 2b) Fallback: Auth user_metadata
+      const profilesErrorMsg = profErr?.message || "";
+      const profilesRowFound = Boolean(row);
+
+      // fallback: auth metadata (solo per debug o prefill futuro)
       const { data: userData, error: userErr } = await supabase.auth.getUser();
       if (!mounted) return;
 
       if (userErr) {
-        setProfileDebug({ source: "none", first: "", last: "", phone: "" });
+        setProfileDebug({
+          source: "none",
+          fullName: "",
+          phone: "",
+          profilesError: profilesErrorMsg,
+          profilesRowFound,
+        });
         setProfileOk(false);
         setProfileLoading(false);
         return;
@@ -180,33 +161,15 @@ export function AdottaClient() {
       const u = userData.user ?? null;
       const fromAuth = parseFromUser(u);
 
-      // Se da auth non arriva niente, blocco
-      if (!(sessionUser.email && fromAuth.first && fromAuth.last && fromAuth.phone)) {
-        setProfileDebug({ source: "auth_metadata", ...fromAuth });
-        setProfileOk(false);
-        setProfileLoading(false);
-        return;
-      }
+      setProfileDebug({
+        source: "auth_metadata",
+        fullName: fromAuth.fullName,
+        phone: fromAuth.phone,
+        profilesError: profilesErrorMsg,
+        profilesRowFound,
+      });
 
-      // 2c) Tentativo sync su profiles (best effort)
-      // Se RLS blocca, non è grave: /adotta sblocca comunque via metadata.
-      try {
-        await supabase.from("profiles").upsert(
-          {
-            id: sessionUser.id,
-            email: sessionUser.email,
-            first_name: fromAuth.first,
-            last_name: fromAuth.last,
-            phone: fromAuth.phone,
-          },
-          { onConflict: "id" },
-        );
-      } catch {
-        // ignora
-      }
-
-      setProfileDebug({ source: "auth_metadata", ...fromAuth });
-      setProfileOk(true);
+      setProfileOk(false);
       setProfileLoading(false);
     }
 
@@ -228,7 +191,7 @@ export function AdottaClient() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 4) Load options after profile ok
+  // 4) Load options
   useEffect(() => {
     let mounted = true;
 
@@ -377,7 +340,6 @@ export function AdottaClient() {
     };
   }, [sessionUser?.id, profileOk, species, sp]);
 
-  // --- UI states ---
   if (authLoading) {
     return (
       <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
@@ -421,14 +383,17 @@ export function AdottaClient() {
       <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900">
         <p className="font-medium">Completa il profilo per continuare</p>
         <p className="mt-2 text-amber-900/80">
-          Per accedere alle adozioni servono: <b>email</b>, <b>nome</b>, <b>cognome</b> e <b>telefono</b>.
+          Per accedere alle adozioni servono: <b>email</b>, <b>nome e cognome</b> e <b>telefono</b>.
         </p>
 
         {profileDebug ? (
-          <p className="mt-3 text-xs text-amber-900/70">
-            Debug (source: {profileDebug.source}): nome="{profileDebug.first}", cognome="{profileDebug.last}",
-            telefono="{profileDebug.phone}"
-          </p>
+          <div className="mt-3 space-y-1 text-xs text-amber-900/70">
+            <div>
+              Debug (source: {profileDebug.source}): full_name="{profileDebug.fullName}", phone="{profileDebug.phone}"
+            </div>
+            {profileDebug.profilesError ? <div>profilesError: {profileDebug.profilesError}</div> : null}
+            <div>profilesRowFound: {String(profileDebug.profilesRowFound)}</div>
+          </div>
         ) : null}
 
         <div className="mt-4">
