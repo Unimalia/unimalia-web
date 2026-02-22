@@ -184,6 +184,8 @@ export default function HomePage() {
           </div>
 
           {/* 4 SEZIONI */}
+          <h2 className="sr-only">Sezioni principali</h2>
+
           <div className="mt-6 grid gap-6 md:grid-cols-2">
             <ActionCard
               title="Smarrimenti"

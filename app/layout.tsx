@@ -1,10 +1,8 @@
-// app/layout.tsx
-import "./globals.css";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "UNIMALIA",
-  description: "Ecosistema digitale serio ma umano per la vita dell’animale.",
+  description: "Un ecosistema digitale per proteggere la vita dell’animale.",
 };
 
 export default function RootLayout({
@@ -14,9 +12,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="it">
-      <body className="min-h-screen bg-zinc-50 text-zinc-900">
-        {children}
-      </body>
+      <body>{children}</body>
     </html>
   );
 }
