@@ -1,10 +1,9 @@
-// app/adotta/_components/adotta-client.tsx
 "use client";
 
 import Link from "next/link";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import type { AuthChangeEvent, Session, User } from "@supabase/supabase-js";
+import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 import { supabase } from "../../../lib/supabaseClient";
 
 import { AdottaFilters } from "./adotta-filters";
@@ -29,14 +28,6 @@ function truthyParam(v: string | null) {
   return v === "1" || v === "true";
 }
 
-function parseFromUser(user: User | null) {
-  if (!user) return { fullName: "", phone: "" };
-  const md: any = user.user_metadata ?? {};
-  const fullName = String(md.full_name ?? md.fullName ?? md.name ?? "").trim();
-  const phone = String((user as any).phone ?? md.phone ?? md.telefono ?? md.phone_number ?? "").trim();
-  return { fullName, phone };
-}
-
 export function AdottaClient() {
   const router = useRouter();
   const pathname = usePathname();
@@ -51,13 +42,7 @@ export function AdottaClient() {
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileOk, setProfileOk] = useState(false);
 
-  const [profileDebug, setProfileDebug] = useState<{
-    source: "profiles" | "auth_metadata" | "none";
-    fullName: string;
-    phone: string;
-    profilesError?: string;
-    profilesRowFound?: boolean;
-  } | null>(null);
+  const [profileDebug, setProfileDebug] = useState<any>(null);
 
   const [optionsLoading, setOptionsLoading] = useState(true);
   const [breeds, setBreeds] = useState<BreedOpt[]>([]);
@@ -66,22 +51,19 @@ export function AdottaClient() {
 
   const [resultsLoading, setResultsLoading] = useState(true);
   const [animals, setAnimals] = useState<any[]>([]);
-  const [errorMsg, setErrorMsg] = useState<string>("");
+  const [errorMsg, setErrorMsg] = useState("");
 
-  // 1) Session
+  /* ===========================
+     SESSION
+  ============================ */
+
   useEffect(() => {
     let mounted = true;
 
     async function loadSession() {
       setAuthLoading(true);
-      const { data, error } = await supabase.auth.getSession();
+      const { data } = await supabase.auth.getSession();
       if (!mounted) return;
-
-      if (error) {
-        setSessionUser(null);
-        setAuthLoading(false);
-        return;
-      }
 
       const u = data.session?.user;
       setSessionUser(u ? { id: u.id, email: u.email ?? null } : null);
@@ -103,7 +85,10 @@ export function AdottaClient() {
     };
   }, []);
 
-  // 2) Profile completeness (schema reale)
+  /* ===========================
+     PROFILE GATE
+  ============================ */
+
   useEffect(() => {
     let mounted = true;
 
@@ -115,61 +100,34 @@ export function AdottaClient() {
       }
 
       setProfileLoading(true);
-      setProfileOk(false);
-      setProfileDebug(null);
 
-      const { data: prof, error: profErr } = await supabase
+      const { data: prof, error } = await supabase
         .from("profiles")
-        .select("id, full_name, phone")
+        .select("*")
         .eq("id", sessionUser.id)
         .maybeSingle();
 
       if (!mounted) return;
 
       const row = (prof ?? null) as DbRow | null;
+
       const fullName = String(row?.full_name ?? "").trim();
       const phone = String(row?.phone ?? "").trim();
 
-      // ✅ requisito: email + full_name + phone
-      if (!profErr && row && sessionUser.email && fullName && phone) {
-        setProfileDebug({ source: "profiles", fullName, phone, profilesRowFound: true });
-        setProfileOk(true);
-        setProfileLoading(false);
-        return;
-      }
-
-      const profilesErrorMsg = profErr?.message || "";
-      const profilesRowFound = Boolean(row);
-
-      // fallback: auth metadata (solo per debug o prefill futuro)
-      const { data: userData, error: userErr } = await supabase.auth.getUser();
-      if (!mounted) return;
-
-      if (userErr) {
-        setProfileDebug({
-          source: "none",
-          fullName: "",
-          phone: "",
-          profilesError: profilesErrorMsg,
-          profilesRowFound,
-        });
-        setProfileOk(false);
-        setProfileLoading(false);
-        return;
-      }
-
-      const u = userData.user ?? null;
-      const fromAuth = parseFromUser(u);
-
       setProfileDebug({
-        source: "auth_metadata",
-        fullName: fromAuth.fullName,
-        phone: fromAuth.phone,
-        profilesError: profilesErrorMsg,
-        profilesRowFound,
+        fullName,
+        phone,
+        profilesRowFound: Boolean(row),
+        profilesError: error?.message || "",
+        profilesKeys: row ? Object.keys(row).join(", ") : "",
       });
 
-      setProfileOk(false);
+      if (sessionUser.email && fullName && phone) {
+        setProfileOk(true);
+      } else {
+        setProfileOk(false);
+      }
+
       setProfileLoading(false);
     }
 
@@ -180,18 +138,10 @@ export function AdottaClient() {
     };
   }, [sessionUser?.id, sessionUser?.email]);
 
-  // 3) Ensure species param always present
-  useEffect(() => {
-    const cur = sp.get("species");
-    if (cur) return;
+  /* ===========================
+     LOAD FILTER OPTIONS (SAFE)
+  ============================ */
 
-    const params = new URLSearchParams(sp.toString());
-    params.set("species", "dog");
-    startTransition(() => router.replace(`${pathname}?${params.toString()}`));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // 4) Load options
   useEffect(() => {
     let mounted = true;
 
@@ -201,45 +151,70 @@ export function AdottaClient() {
       setOptionsLoading(true);
       setErrorMsg("");
 
-      const [
-        { data: breedsData, error: breedsErr },
-        { data: sheltersData, error: sheltersErr },
-        { data: cityRows, error: cityErr },
-      ] = await Promise.all([
-        supabase.from("breeds").select("id,name").eq("species", species).order("name", { ascending: true }),
-        supabase.from("shelters").select("id,name,type,city").order("name", { ascending: true }),
-        supabase
-          .from("adoption_animals")
-          .select("city")
-          .eq("species", species)
-          .eq("status", "available")
-          .not("city", "is", null),
+      const breedsReq = supabase
+        .from("breeds")
+        .select("id,name")
+        .eq("species", species)
+        .order("name", { ascending: true });
+
+      const sheltersReq = supabase
+        .from("shelters")
+        .select("id,name,type,city")
+        .order("name", { ascending: true });
+
+      const citiesReq = supabase
+        .from("adoption_animals")
+        .select("city")
+        .eq("species", species)
+        .eq("status", "available")
+        .not("city", "is", null);
+
+      const [breedsRes, sheltersRes, citiesRes] = await Promise.all([
+        breedsReq,
+        sheltersReq,
+        citiesReq,
       ]);
 
       if (!mounted) return;
 
-      if (breedsErr || sheltersErr || cityErr) {
-        setErrorMsg(breedsErr?.message || sheltersErr?.message || cityErr?.message || "Errore nel caricamento filtri");
-        setOptionsLoading(false);
-        return;
+      /* BREEDS */
+      if (breedsRes.error) {
+        const msg = breedsRes.error.message || "";
+        if (msg.includes("Could not find the table") || msg.includes("schema cache")) {
+          setBreeds([]);
+        } else {
+          setErrorMsg(breedsRes.error.message);
+        }
+      } else {
+        setBreeds((breedsRes.data ?? []).map((b: any) => ({ id: b.id, name: b.name })));
       }
 
-      setBreeds((breedsData ?? []).map((b: any) => ({ id: b.id, name: b.name })));
-      setShelters(
-        (sheltersData ?? []).map((s: any) => ({
-          id: s.id,
-          name: s.name,
-          type: s.type as ShelterType,
-          city: (s.city ?? null) as string | null,
-        })),
-      );
+      /* SHELTERS */
+      if (sheltersRes.error) {
+        setShelters([]);
+      } else {
+        setShelters(
+          (sheltersRes.data ?? []).map((s: any) => ({
+            id: s.id,
+            name: s.name,
+            type: s.type as ShelterType,
+            city: s.city ?? null,
+          })),
+        );
+      }
 
-      const rows = (cityRows ?? []) as CityRow[];
-      const uniqueCities: string[] = Array.from(
-        new Set(rows.map((r) => String(r.city ?? "").trim()).filter(Boolean)),
-      ).sort((a, b) => a.localeCompare(b, "it"));
+      /* CITIES */
+      if (citiesRes.error) {
+        setCities([]);
+      } else {
+        const rows = (citiesRes.data ?? []) as CityRow[];
+        const uniqueCities = Array.from(
+          new Set(rows.map((r) => String(r.city ?? "").trim()).filter(Boolean)),
+        ).sort((a, b) => a.localeCompare(b, "it"));
 
-      setCities(uniqueCities);
+        setCities(uniqueCities);
+      }
+
       setOptionsLoading(false);
     }
 
@@ -250,7 +225,10 @@ export function AdottaClient() {
     };
   }, [sessionUser?.id, profileOk, species]);
 
-  // 5) Load results
+  /* ===========================
+     RESULTS
+  ============================ */
+
   useEffect(() => {
     let mounted = true;
 
@@ -260,63 +238,12 @@ export function AdottaClient() {
       setResultsLoading(true);
       setErrorMsg("");
 
-      const city = (sp.get("city") || "").trim();
-      const shelterType = (sp.get("shelterType") || "").trim();
-      const shelterId = (sp.get("shelterId") || "").trim();
-      const breedId = (sp.get("breedId") || "").trim();
-      const mixed = truthyParam(sp.get("mixed"));
-      const size = (sp.get("size") || "").trim();
-      const sex = (sp.get("sex") || "").trim();
-      const age = (sp.get("age") || "").trim();
-      const withDogs = truthyParam(sp.get("withDogs"));
-      const withCats = truthyParam(sp.get("withCats"));
-      const withKids = truthyParam(sp.get("withKids"));
-      const urgent = truthyParam(sp.get("urgent"));
-      const specialNeeds = truthyParam(sp.get("specialNeeds"));
-      const hasPhoto = truthyParam(sp.get("hasPhoto"));
-
       let q = supabase
         .from("adoption_animals")
-        .select(
-          `
-          id,
-          name,
-          species,
-          city,
-          province,
-          age_months,
-          sex,
-          size,
-          is_mixed,
-          photo_url,
-          urgent,
-          shelters:shelter_id ( id, name, type, city )
-        `,
-        )
+        .select("*")
         .eq("species", species)
         .eq("status", "available")
         .order("created_at", { ascending: false });
-
-      if (city) q = q.eq("city", city);
-      if (shelterType) q = q.eq("shelter_type", shelterType);
-      if (shelterId) q = q.eq("shelter_id", shelterId);
-      if (breedId) q = q.eq("breed_id", breedId);
-      if (mixed !== undefined) q = q.eq("is_mixed", mixed);
-      if (size) q = q.eq("size", size);
-      if (sex) q = q.eq("sex", sex);
-
-      if (age) {
-        if (age === "0-2") q = q.gte("age_months", 0).lte("age_months", 24);
-        if (age === "3-6") q = q.gte("age_months", 36).lte("age_months", 72);
-        if (age === "7+") q = q.gte("age_months", 84);
-      }
-
-      if (withDogs !== undefined) q = q.eq("good_with_dogs", withDogs);
-      if (withCats !== undefined) q = q.eq("good_with_cats", withCats);
-      if (withKids !== undefined) q = q.eq("good_with_kids", withKids);
-      if (urgent !== undefined) q = q.eq("urgent", urgent);
-      if (specialNeeds !== undefined) q = q.eq("special_needs", specialNeeds);
-      if (hasPhoto) q = q.not("photo_url", "is", null);
 
       const { data, error } = await q;
 
@@ -325,11 +252,10 @@ export function AdottaClient() {
       if (error) {
         setErrorMsg(error.message);
         setAnimals([]);
-        setResultsLoading(false);
-        return;
+      } else {
+        setAnimals(data ?? []);
       }
 
-      setAnimals(data ?? []);
       setResultsLoading(false);
     }
 
@@ -338,72 +264,53 @@ export function AdottaClient() {
     return () => {
       mounted = false;
     };
-  }, [sessionUser?.id, profileOk, species, sp]);
+  }, [sessionUser?.id, profileOk, species]);
+
+  /* ===========================
+     UI STATES
+  ============================ */
 
   if (authLoading) {
-    return (
-      <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-        <p className="text-sm text-zinc-700">Caricamento…</p>
-      </div>
-    );
+    return <div className="rounded-2xl border p-4 shadow-sm">Caricamento…</div>;
   }
 
   if (!sessionUser) {
     return (
-      <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <p className="text-sm text-zinc-700">Per vedere gli annunci di adozione devi effettuare l’accesso.</p>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Link
-            href="/login"
-            className="inline-flex items-center justify-center rounded-xl bg-zinc-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-zinc-800"
-          >
-            Accedi
-          </Link>
-          <Link
-            href="/"
-            className="inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-900 shadow-sm hover:bg-zinc-50"
-          >
-            Torna alla home
-          </Link>
-        </div>
+      <div className="rounded-2xl border p-6 shadow-sm">
+        <p>Devi effettuare l’accesso.</p>
+        <Link href="/login" className="mt-4 inline-block rounded-xl bg-black px-4 py-2 text-white">
+          Accedi
+        </Link>
       </div>
     );
   }
 
   if (profileLoading) {
-    return (
-      <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-        <p className="text-sm text-zinc-700">Verifica profilo…</p>
-      </div>
-    );
+    return <div className="rounded-2xl border p-4 shadow-sm">Verifica profilo…</div>;
   }
 
   if (!profileOk) {
     return (
-      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900">
+      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm">
         <p className="font-medium">Completa il profilo per continuare</p>
-        <p className="mt-2 text-amber-900/80">
-          Per accedere alle adozioni servono: <b>email</b>, <b>nome e cognome</b> e <b>telefono</b>.
+        <p className="mt-2">
+          Servono: <b>email</b>, <b>nome e cognome</b> e <b>telefono</b>.
         </p>
 
-        {profileDebug ? (
-          <div className="mt-3 space-y-1 text-xs text-amber-900/70">
-            <div>
-              Debug (source: {profileDebug.source}): full_name="{profileDebug.fullName}", phone="{profileDebug.phone}"
-            </div>
-            {profileDebug.profilesError ? <div>profilesError: {profileDebug.profilesError}</div> : null}
+        {profileDebug && (
+          <div className="mt-3 text-xs opacity-70">
+            <div>full_name="{profileDebug.fullName}"</div>
+            <div>phone="{profileDebug.phone}"</div>
             <div>profilesRowFound: {String(profileDebug.profilesRowFound)}</div>
           </div>
-        ) : null}
+        )}
 
-        <div className="mt-4">
-          <Link
-            href="/profilo?returnTo=/adotta"
-            className="inline-flex items-center justify-center rounded-xl bg-zinc-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-zinc-800"
-          >
-            Vai al profilo
-          </Link>
-        </div>
+        <Link
+          href="/profilo?returnTo=/adotta"
+          className="mt-4 inline-block rounded-xl bg-black px-4 py-2 text-white"
+        >
+          Vai al profilo
+        </Link>
       </div>
     );
   }
@@ -411,9 +318,7 @@ export function AdottaClient() {
   return (
     <div className="space-y-6">
       {optionsLoading ? (
-        <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-          <p className="text-sm text-zinc-700">Caricamento filtri…</p>
-        </div>
+        <div className="rounded-2xl border p-4 shadow-sm">Caricamento filtri…</div>
       ) : (
         <AdottaFilters species={species} breeds={breeds} shelters={shelters} cities={cities} isPending={isPending} />
       )}
