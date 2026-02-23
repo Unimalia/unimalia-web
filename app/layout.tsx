@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   title: "UNIMALIA",
   description: "Un ecosistema digitale per proteggere la vita dell’animale.",
   icons: {
-    icon: "/favicon.ico",
+    icon: "/favicon-32.png",
     apple: "/apple-touch-icon.png",
   },
   openGraph: {
