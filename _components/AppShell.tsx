@@ -9,11 +9,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       {/* HEADER */}
       <header className="sticky top-0 z-50 border-b border-zinc-200 bg-white/80 backdrop-blur">
         <div className="container-page flex items-center justify-between gap-4 py-3 sm:py-4">
-          
           {/* LOGO */}
-          <Link href="/" className="flex items-center gap-2">
+          <Link
+            href="/"
+            className="flex items-center gap-2"
+            aria-label="Vai alla home UNIMALIA"
+          >
             <Image
-              src="/logo-128.webp"   // assicurati che sia in /public
+              src="/logo-128.webp" // assicurati che sia in /public
               alt="UNIMALIA"
               width={28}
               height={28}
@@ -37,9 +40,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
               <Link
                 href="/smarrimento"
+                aria-label="Pubblica smarrimento (pagina rapida)"
                 className="rounded-xl px-3 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100"
               >
-                Pubblica
+                Pubblica (rapido)
               </Link>
 
               <Link
@@ -47,6 +51,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 className="rounded-xl px-3 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100"
               >
                 Ritrovati
+              </Link>
+
+              {/* ✅ Nuovo: Adozioni */}
+              <Link
+                href="/adotta"
+                className="rounded-xl px-3 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100"
+              >
+                Adozioni
               </Link>
 
               <Link
@@ -63,16 +75,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </header>
 
       {/* MAIN */}
-      <main className="container-page py-8 sm:py-10">
-        {children}
-      </main>
+      <main className="container-page py-8 sm:py-10">{children}</main>
 
       {/* FOOTER */}
       <footer className="mt-14 border-t border-zinc-200 bg-white">
         <div className="container-page py-8 text-sm text-zinc-600">
           <p>
             UNIMALIA nasce come impresa responsabile: una parte dei ricavi verrà
-            reinvestita nel progetto e una parte devolverà valore al mondo animale.
+            reinvestita nel progetto e una parte devolverà valore al mondo
+            animale.
           </p>
 
           <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-sm">
