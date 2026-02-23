@@ -1,3 +1,4 @@
+// _components/AppShell.tsx
 import React from "react";
 import Link from "next/link";
 import Image from "next/image";
@@ -9,27 +10,27 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       {/* HEADER */}
       <header className="sticky top-0 z-50 border-b border-zinc-200 bg-white/80 backdrop-blur">
         <div className="container-page flex items-center justify-between gap-4 py-3 sm:py-4">
-          {/* LOGO + WORDMARK */}
-          <Link
-            href="/"
-            className="flex items-center gap-3"
-            aria-label="Vai alla home UNIMALIA"
-          >
+          {/* LOGO */}
+          <Link href="/" className="flex items-center gap-3" aria-label="Vai alla home UNIMALIA">
             <Image
-              src="/logo-128.webp"
+              src="/logo-main.webp"
               alt="UNIMALIA"
-              width={44}
-              height={44}
+              width={120}
+              height={110}
               priority
-              className="h-11 w-11"
+              className="h-11 w-auto sm:h-12"
             />
 
-            {/* Wordmark più “brand” */}
+            {/* Wordmark (solo desktop) */}
             <span className="hidden sm:inline">
-              <span className="relative inline-block text-lg font-semibold tracking-tight text-zinc-900">
-                UNIMALIA
-                <span className="pointer-events-none absolute -bottom-1 left-0 h-1 w-full rounded-full bg-gradient-to-r from-amber-300/80 via-orange-300/60 to-teal-300/70" />
-              </span>
+              <Image
+                src="/wordmark.webp"
+                alt="UNIMALIA"
+                width={220}
+                height={60}
+                priority
+                className="h-8 w-auto"
+              />
             </span>
           </Link>
 
@@ -85,8 +86,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <footer className="mt-14 border-t border-zinc-200 bg-white">
         <div className="container-page py-8 text-sm text-zinc-600">
           <p>
-            UNIMALIA nasce come impresa responsabile: una parte dei ricavi verrà
-            reinvestita nel progetto e una parte devolverà valore al mondo animale.
+            UNIMALIA nasce come impresa responsabile: una parte dei ricavi verrà reinvestita nel progetto e una parte
+            devolverà valore al mondo animale.
           </p>
 
           <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-sm">
@@ -101,9 +102,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </Link>
           </div>
 
-          <p className="mt-4 text-xs text-zinc-500">
-            © {new Date().getFullYear()} UNIMALIA
-          </p>
+          <p className="mt-4 text-xs text-zinc-500">© {new Date().getFullYear()} UNIMALIA</p>
         </div>
       </footer>
     </div>
