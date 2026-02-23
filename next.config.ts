@@ -8,8 +8,6 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
 
   async headers() {
-    // CSP: includiamo Google Maps (script/connect/img/frame)
-    // e togliamo Trusted Types per evitare errori console e rotture runtime.
     const CSP = cspValue(`
       default-src 'self';
       base-uri 'self';
@@ -19,12 +17,21 @@ const nextConfig: NextConfig = {
 
       img-src 'self' data: https: https://*.googleusercontent.com https://*.gstatic.com;
       font-src 'self' data: https:;
-      style-src 'self' 'unsafe-inline';
+      style-src 'self' 'unsafe-inline' https://cdn.iubenda.com;
 
       script-src 'self' 'unsafe-inline'
         https://vercel.live
         https://maps.googleapis.com
-        https://maps.gstatic.com;
+        https://maps.gstatic.com
+        https://cdn.iubenda.com
+        https://embeds.iubenda.com;
+
+      script-src-elem 'self' 'unsafe-inline'
+        https://vercel.live
+        https://maps.googleapis.com
+        https://maps.gstatic.com
+        https://cdn.iubenda.com
+        https://embeds.iubenda.com;
 
       connect-src 'self'
         https://*.supabase.co
