@@ -9,22 +9,27 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       {/* HEADER */}
       <header className="sticky top-0 z-50 border-b border-zinc-200 bg-white/80 backdrop-blur">
         <div className="container-page flex items-center justify-between gap-4 py-3 sm:py-4">
-          {/* LOGO */}
+          {/* LOGO + WORDMARK */}
           <Link
             href="/"
-            className="flex items-center gap-2"
+            className="flex items-center gap-3"
             aria-label="Vai alla home UNIMALIA"
           >
             <Image
-              src="/logo-128.webp" // assicurati che sia in /public
+              src="/logo-128.webp"
               alt="UNIMALIA"
-              width={28}
-              height={28}
+              width={44}
+              height={44}
               priority
-              className="h-7 w-7"
+              className="h-11 w-11"
             />
-            <span className="hidden sm:inline text-sm font-semibold tracking-tight">
-              UNIMALIA
+
+            {/* Wordmark più “brand” */}
+            <span className="hidden sm:inline">
+              <span className="relative inline-block text-lg font-semibold tracking-tight text-zinc-900">
+                UNIMALIA
+                <span className="pointer-events-none absolute -bottom-1 left-0 h-1 w-full rounded-full bg-gradient-to-r from-amber-300/80 via-orange-300/60 to-teal-300/70" />
+              </span>
             </span>
           </Link>
 
@@ -53,7 +58,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 Ritrovati
               </Link>
 
-              {/* ✅ Nuovo: Adozioni */}
               <Link
                 href="/adotta"
                 className="rounded-xl px-3 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100"
@@ -82,8 +86,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <div className="container-page py-8 text-sm text-zinc-600">
           <p>
             UNIMALIA nasce come impresa responsabile: una parte dei ricavi verrà
-            reinvestita nel progetto e una parte devolverà valore al mondo
-            animale.
+            reinvestita nel progetto e una parte devolverà valore al mondo animale.
           </p>
 
           <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-sm">
