@@ -10,14 +10,11 @@ export default function PrivacyPage() {
       </h1>
 
       <div className="mt-6">
-        <div
-          className="iubenda-embed iubenda-nostyle"
-          data-iub-purposes="0"
-        />
+        <div className="iubenda-embed iubenda-nostyle" data-iub-purposes="0" />
       </div>
 
       <Script
-        src="https://embeds.iubenda.com/widgets/07e113aa-50b7-4a54-a626-63dbdb71aa57.js"
+        src="https://embeds.iubenda.com/widgets/0c85298b-fa1c-45b8-bd23-ea6bf73aec9c.js"
         strategy="afterInteractive"
       />
     </main>
