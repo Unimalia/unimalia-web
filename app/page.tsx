@@ -1,5 +1,6 @@
 // app/page.tsx
 import Link from "next/link";
+import Image from "next/image";
 
 function Container({ children }: { children: React.ReactNode }) {
   return <div className="mx-auto w-full max-w-7xl px-4 sm:px-8">{children}</div>;
@@ -20,7 +21,9 @@ function Pill({
         : "border-zinc-200 bg-white/80 text-zinc-700";
 
   return (
-    <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold shadow-sm ${cls}`}>
+    <span
+      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold shadow-sm ${cls}`}
+    >
       {children}
     </span>
   );
@@ -121,9 +124,7 @@ function FeatureCard({
 
       <div className="mt-auto px-7 pb-7">
         <div className="h-px w-full bg-zinc-200/70" />
-        <p className="mt-3 text-xs text-zinc-500">
-          Poche cose, fatte bene. E veloci quando serve.
-        </p>
+        <p className="mt-3 text-xs text-zinc-500">Poche cose, fatte bene. E veloci quando serve.</p>
       </div>
     </div>
   );
@@ -187,20 +188,38 @@ export default function HomePage() {
             <div className="mt-10 grid gap-10 lg:grid-cols-12 lg:items-start">
               {/* Left */}
               <div className="lg:col-span-7">
-                <h1 className="text-4xl font-semibold tracking-tight text-zinc-900 sm:text-6xl">
-                  UNIMALIA
-                </h1>
+                {/* Brand row: logo + wordmark */}
+                <div className="flex items-center gap-4">
+                  <div className="rounded-3xl border border-zinc-200 bg-white p-3 shadow-sm">
+                    <Image
+                      src="/logo-128.webp"
+                      alt="UNIMALIA"
+                      width={72}
+                      height={72}
+                      priority
+                      className="h-16 w-16 sm:h-[72px] sm:w-[72px]"
+                    />
+                  </div>
 
-                <p className="mt-5 max-w-2xl text-base leading-relaxed text-zinc-700">
-                  Un ecosistema digitale per proteggere la vita dell’animale.
-                  <br />
-                  Poche cose, fatte bene: identità, codici, smarrimenti e strumenti per i professionisti.
-                </p>
+                  <div>
+                    <h1 className="text-4xl font-semibold tracking-tight text-zinc-900 sm:text-6xl">
+                      <span className="relative inline-block">
+                        UNIMALIA
+                        <span className="pointer-events-none absolute -bottom-1 left-0 h-1 w-full rounded-full bg-gradient-to-r from-amber-300/80 via-orange-300/60 to-teal-300/70" />
+                      </span>
+                    </h1>
+
+                    <p className="mt-3 max-w-2xl text-base leading-relaxed text-zinc-700">
+                      Un ecosistema digitale per proteggere la vita dell’animale.
+                      <span className="block mt-1 text-zinc-600">
+                        Poche cose, fatte bene: identità, codici, smarrimenti e strumenti per i professionisti.
+                      </span>
+                    </p>
+                  </div>
+                </div>
 
                 <div className="mt-7 rounded-3xl border border-amber-200 bg-amber-50 p-6 shadow-sm">
-                  <p className="text-sm font-semibold text-amber-900">
-                    In emergenza conta la semplicità.
-                  </p>
+                  <p className="text-sm font-semibold text-amber-900">In emergenza conta la semplicità.</p>
                   <p className="mt-2 text-sm leading-relaxed text-amber-800">
                     Apri la scheda dell’animale e hai QR/Barcode pronti per condivisione o verifica.
                   </p>
@@ -214,12 +233,10 @@ export default function HomePage() {
                   </Link>
                 </div>
 
-                <p className="mt-8 text-xs text-zinc-500">
-                  “Si diventa enormi facendo benissimo una cosa minuscola.”
-                </p>
+                <p className="mt-8 text-xs text-zinc-500">“Si diventa enormi facendo benissimo una cosa minuscola.”</p>
               </div>
 
-              {/* Right: “dashboard” visual (no images, just design) */}
+              {/* Right */}
               <div className="lg:col-span-5">
                 <div className="rounded-3xl border border-zinc-200 bg-white p-7 shadow-sm">
                   <p className="text-sm font-semibold text-zinc-900">Azioni rapide</p>
@@ -250,16 +267,12 @@ export default function HomePage() {
                     <div className="rounded-3xl border border-teal-200 bg-teal-50 p-5">
                       <p className="text-xs font-semibold text-teal-900">Fiducia</p>
                       <p className="mt-2 text-sm font-semibold text-zinc-900">Dati essenziali</p>
-                      <p className="mt-1 text-xs leading-relaxed text-teal-800">
-                        Solo ciò che serve, in modo leggibile.
-                      </p>
+                      <p className="mt-1 text-xs leading-relaxed text-teal-800">Solo ciò che serve, in modo leggibile.</p>
                     </div>
                     <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5">
                       <p className="text-xs font-semibold text-amber-900">Velocità</p>
                       <p className="mt-2 text-sm font-semibold text-zinc-900">QR pronto</p>
-                      <p className="mt-1 text-xs leading-relaxed text-amber-800">
-                        Condivisione immediata quando conta.
-                      </p>
+                      <p className="mt-1 text-xs leading-relaxed text-amber-800">Condivisione immediata quando conta.</p>
                     </div>
                   </div>
                 </div>
@@ -271,36 +284,19 @@ export default function HomePage() {
         </Container>
       </section>
 
-      {/* HOW IT WORKS full-width alt bg */}
+      {/* HOW IT WORKS */}
       <section className="bg-white">
         <Container>
           <div className="py-14 sm:py-16">
-            <h2 className="text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl">
-              Come funziona
-            </h2>
+            <h2 className="text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl">Come funziona</h2>
             <p className="mt-3 max-w-2xl text-sm leading-relaxed text-zinc-600">
               Pensato per essere utile in due momenti: prevenzione e emergenza.
             </p>
 
             <div className="mt-8 grid gap-6 lg:grid-cols-3">
-              <Step
-                n="1"
-                title="Crea l’identità"
-                desc="Inserisci i dati essenziali. Ottieni QR/Barcode pronti."
-                tone="amber"
-              />
-              <Step
-                n="2"
-                title="Condividi e proteggi"
-                desc="Stampa, salva, condividi. L’identità è sempre accessibile."
-                tone="teal"
-              />
-              <Step
-                n="3"
-                title="In emergenza: agisci subito"
-                desc="Pubblica smarrimento e fai girare l’informazione in modo pulito."
-                tone="zinc"
-              />
+              <Step n="1" title="Crea l’identità" desc="Inserisci i dati essenziali. Ottieni QR/Barcode pronti." tone="amber" />
+              <Step n="2" title="Condividi e proteggi" desc="Stampa, salva, condividi. L’identità è sempre accessibile." tone="teal" />
+              <Step n="3" title="In emergenza: agisci subito" desc="Pubblica smarrimento e fai girare l’informazione in modo pulito." tone="zinc" />
             </div>
           </div>
         </Container>
@@ -345,7 +341,7 @@ export default function HomePage() {
                 title="Adotta"
                 desc="Annunci e filtri (in arrivo). Prima pulito, poi potente."
                 hrefPrimary="/adotta"
-                labelPrimary="Vai ad adota"
+                labelPrimary="Vai ad adotta" /* Fix sotto */
                 icon="🏡"
                 tone="zinc"
               />
@@ -355,7 +351,7 @@ export default function HomePage() {
       </section>
 
       {/* FINAL CTA */}
-      <section className="bg-white border-t border-zinc-200">
+      <section className="border-t border-zinc-200 bg-white">
         <Container>
           <div className="py-14 sm:py-16">
             <div className="rounded-[2.5rem] border border-zinc-200 bg-gradient-to-br from-amber-50 via-white to-teal-50 p-8 shadow-sm sm:p-10">
