@@ -4,30 +4,38 @@ function cspValue(value: string) {
   return value.replace(/\s{2,}/g, " ").trim();
 }
 
-const isProd = process.env.NODE_ENV === "production";
-
 const nextConfig: NextConfig = {
   reactStrictMode: true,
 
   async headers() {
-    const CSP_BASE = `
+    // CSP: includiamo Google Maps (script/connect/img/frame)
+    // e togliamo Trusted Types per evitare errori console e rotture runtime.
+    const CSP = cspValue(`
       default-src 'self';
       base-uri 'self';
       object-src 'none';
       frame-ancestors 'none';
       form-action 'self';
-      img-src 'self' data: https:;
+
+      img-src 'self' data: https: https://*.googleusercontent.com https://*.gstatic.com;
       font-src 'self' data: https:;
       style-src 'self' 'unsafe-inline';
-      script-src 'self' 'unsafe-inline' https://vercel.live;
-      connect-src 'self' https://*.supabase.co;
-    `;
 
-    // ENFORCED
-    // Trusted Types SOLO in produzione.
-    const CSP_ENFORCED = cspValue(`
-      ${CSP_BASE}
-      ${isProd ? "require-trusted-types-for 'script';" : ""}
+      script-src 'self' 'unsafe-inline'
+        https://vercel.live
+        https://maps.googleapis.com
+        https://maps.gstatic.com;
+
+      connect-src 'self'
+        https://*.supabase.co
+        https://maps.googleapis.com
+        https://*.googleapis.com
+        https://maps.gstatic.com;
+
+      frame-src 'self'
+        https://www.google.com
+        https://google.com;
+
       upgrade-insecure-requests;
     `);
 
@@ -50,7 +58,7 @@ const nextConfig: NextConfig = {
             value: "geolocation=(), microphone=(), camera=(), payment=(), usb=()",
           },
 
-          { key: "Content-Security-Policy", value: CSP_ENFORCED },
+          { key: "Content-Security-Policy", value: CSP },
         ],
       },
     ];
