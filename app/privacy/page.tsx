@@ -9,8 +9,19 @@ export default function PrivacyPage() {
         Privacy Policy
       </h1>
 
+      <p className="mt-3 text-sm text-zinc-600">
+        La Privacy Policy è gestita tramite Iubenda.
+      </p>
+
+      {/* Iubenda anchor (metodo più compatibile) */}
       <div className="mt-6">
-        <div className="iubenda-embed iubenda-nostyle" data-iub-purposes="0" />
+        <a
+          href="https://www.iubenda.com/privacy-policy/XXXXXXXX"
+          className="iubenda-white iubenda-noiframe iubenda-embed iubenda-nostyle"
+          title="Privacy Policy"
+        >
+          Privacy Policy
+        </a>
       </div>
 
       <Script

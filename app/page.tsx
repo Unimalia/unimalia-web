@@ -162,7 +162,7 @@ function Step({
 export default function HomePage() {
   return (
     <main className="bg-zinc-50">
-      {/* HERO full-bleed */}
+      {/* HERO */}
       <section className="relative overflow-hidden border-b border-zinc-200">
         <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-b from-amber-50 via-zinc-50 to-zinc-50" />
         <div aria-hidden="true" className="pointer-events-none absolute -top-32 -right-24 h-96 w-96 rounded-full bg-amber-300/25 blur-3xl" />
@@ -186,20 +186,23 @@ export default function HomePage() {
             </div>
 
             <div className="mt-10 grid gap-10 lg:grid-cols-12 lg:items-start">
-              {/* Left */}
+              {/* LEFT */}
               <div className="lg:col-span-7">
-                {/* Brand row: SOLO wordmark qui */}
-                <div className="max-w-3xl">
-                  <Image
-                    src="/wordmark.png"
-                    alt="UNIMALIA"
-                    width={520}
-                    height={140}
-                    priority
-                    className="h-14 w-auto sm:h-16"
-                  />
 
-                  <p className="mt-4 max-w-2xl text-base leading-relaxed text-zinc-700">
+                {/* Wordmark brand forte */}
+                <div className="max-w-4xl">
+                  <h1 className="relative text-5xl sm:text-7xl font-bold tracking-tight">
+                    <span className="bg-gradient-to-r from-teal-600 via-emerald-500 to-lime-500 bg-clip-text text-transparent">
+                      UNIMALIA
+                    </span>
+
+                    {/* Swoosh sotto */}
+                    <span className="absolute left-0 right-0 -bottom-6 flex justify-center">
+                      <span className="h-3 w-2/3 rounded-full bg-gradient-to-r from-yellow-400 via-lime-400 to-teal-500 blur-[0.3px]" />
+                    </span>
+                  </h1>
+
+                  <p className="mt-10 max-w-2xl text-base leading-relaxed text-zinc-700">
                     Un ecosistema digitale per proteggere la vita dell’animale.
                     <span className="block mt-1 text-zinc-600">
                       Poche cose, fatte bene: identità, codici, smarrimenti e strumenti per i professionisti.
@@ -225,7 +228,7 @@ export default function HomePage() {
                 <p className="mt-8 text-xs text-zinc-500">“Si diventa enormi facendo benissimo una cosa minuscola.”</p>
               </div>
 
-              {/* Right */}
+              {/* RIGHT */}
               <div className="lg:col-span-5">
                 <div className="rounded-3xl border border-zinc-200 bg-white p-7 shadow-sm">
                   <p className="text-sm font-semibold text-zinc-900">Azioni rapide</p>
@@ -330,7 +333,7 @@ export default function HomePage() {
                 title="Adotta"
                 desc="Annunci e filtri (in arrivo). Prima pulito, poi potente."
                 hrefPrimary="/adotta"
-                labelPrimary="Vai ad adotta" /* Fix sotto */
+                labelPrimary="Vai ad adotta"
                 icon="🏡"
                 tone="zinc"
               />
