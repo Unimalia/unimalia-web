@@ -188,34 +188,23 @@ export default function HomePage() {
             <div className="mt-10 grid gap-10 lg:grid-cols-12 lg:items-start">
               {/* Left */}
               <div className="lg:col-span-7">
-                {/* Brand row: logo + wordmark */}
-                <div className="flex items-center gap-4">
-                  <div className="rounded-3xl border border-zinc-200 bg-white p-3 shadow-sm">
-                    <Image
-                      src="/logo-128.webp"
-                      alt="UNIMALIA"
-                      width={72}
-                      height={72}
-                      priority
-                      className="h-16 w-16 sm:h-[72px] sm:w-[72px]"
-                    />
-                  </div>
+                {/* Brand row: SOLO wordmark qui */}
+                <div className="max-w-3xl">
+                  <Image
+                    src="/wordmark.png"
+                    alt="UNIMALIA"
+                    width={520}
+                    height={140}
+                    priority
+                    className="h-14 w-auto sm:h-16"
+                  />
 
-                  <div>
-                    <h1 className="text-4xl font-semibold tracking-tight text-zinc-900 sm:text-6xl">
-                      <span className="relative inline-block">
-                        UNIMALIA
-                        <span className="pointer-events-none absolute -bottom-1 left-0 h-1 w-full rounded-full bg-gradient-to-r from-amber-300/80 via-orange-300/60 to-teal-300/70" />
-                      </span>
-                    </h1>
-
-                    <p className="mt-3 max-w-2xl text-base leading-relaxed text-zinc-700">
-                      Un ecosistema digitale per proteggere la vita dell’animale.
-                      <span className="block mt-1 text-zinc-600">
-                        Poche cose, fatte bene: identità, codici, smarrimenti e strumenti per i professionisti.
-                      </span>
-                    </p>
-                  </div>
+                  <p className="mt-4 max-w-2xl text-base leading-relaxed text-zinc-700">
+                    Un ecosistema digitale per proteggere la vita dell’animale.
+                    <span className="block mt-1 text-zinc-600">
+                      Poche cose, fatte bene: identità, codici, smarrimenti e strumenti per i professionisti.
+                    </span>
+                  </p>
                 </div>
 
                 <div className="mt-7 rounded-3xl border border-amber-200 bg-amber-50 p-6 shadow-sm">

@@ -10,28 +10,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       {/* HEADER */}
       <header className="sticky top-0 z-50 border-b border-zinc-200 bg-white/80 backdrop-blur">
         <div className="container-page flex items-center justify-between gap-4 py-3 sm:py-4">
-          {/* LOGO */}
+          {/* LOGO (animali) solo qui */}
           <Link href="/" className="flex items-center gap-3" aria-label="Vai alla home UNIMALIA">
             <Image
-              src="/logo-main.webp"
+              src="/logo-main.png"
               alt="UNIMALIA"
               width={120}
               height={110}
               priority
               className="h-11 w-auto sm:h-12"
             />
-
-            {/* Wordmark (solo desktop) */}
-            <span className="hidden sm:inline">
-              <Image
-                src="/wordmark.webp"
-                alt="UNIMALIA"
-                width={220}
-                height={60}
-                priority
-                className="h-8 w-auto"
-              />
-            </span>
           </Link>
 
           {/* NAV + AUTH */}
