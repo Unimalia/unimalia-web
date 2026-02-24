@@ -9,7 +9,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-zinc-50 text-zinc-900">
       {/* HEADER */}
       <header className="sticky top-0 z-50 border-b border-zinc-200 bg-white/80 backdrop-blur">
-        <div className="container-page flex items-center justify-between gap-4 py-3 sm:py-4">
+        <div className="container-page flex items-center justify-between gap-4 py-4 sm:py-5 pl-2 sm:pl-4">
           {/* LOGO (animali) solo qui */}
           <Link href="/" className="flex items-center gap-3" aria-label="Vai alla home UNIMALIA">
             <Image

@@ -1,6 +1,7 @@
 // playwright.config.ts
 import { defineConfig } from "@playwright/test";
-import "dotenv/config";
+import dotenv from "dotenv";
+dotenv.config({ path: ".env", override: true });
 
 export default defineConfig({
   testDir: "./e2e",
