@@ -43,3 +43,7 @@ next-env.d.ts
 .vercel
 breeds.sql
 scripts/gen-dog-breeds-it.mjs
+
+
+playwright-report/
+test-results/
