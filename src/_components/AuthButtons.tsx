@@ -1,81 +1,85 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
-type Profile = {
-  full_name: string | null;
-};
+function cx(...classes: Array<string | false | null | undefined>) {
+  return classes.filter(Boolean).join(" ");
+}
+
+const pill =
+  "inline-flex items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold transition " +
+  "border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-100";
+
+const primary =
+  "inline-flex items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold transition " +
+  "bg-black text-white hover:bg-zinc-900";
 
 export default function AuthButtons() {
-  const [email, setEmail] = useState<string | null>(null);
-  const [fullName, setFullName] = useState<string | null>(null);
-
-  async function refresh() {
-    const { data: sessionData } = await supabase.auth.getSession();
-    const user = sessionData.session?.user ?? null;
-
-    setEmail(user?.email ?? null);
-
-    if (!user) {
-      setFullName(null);
-      return;
-    }
-
-    // prova a leggere profilo
-    const { data: p } = await supabase
-      .from("profiles")
-      .select("full_name")
-      .eq("id", user.id)
-      .single();
-
-    const prof = (p as Profile | null) ?? null;
-    const name = (prof?.full_name ?? "").trim();
-
-    setFullName(name.length >= 3 ? name : null);
-  }
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
-    refresh();
+    let mounted = true;
 
-    const { data: sub } = supabase.auth.onAuthStateChange(() => {
-      refresh();
-    });
+    async function load() {
+      const { data } = await supabase.auth.getUser();
+      if (!mounted) return;
+      setUser(data.user ?? null);
+      setLoading(false);
+    }
+
+    load();
+
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setUser(session?.user ?? null);
+      }
+    );
 
     return () => {
-      sub.subscription.unsubscribe();
+      mounted = false;
+      listener.subscription.unsubscribe();
     };
   }, []);
 
-  async function handleLogout() {
-    await supabase.auth.signOut();
-  }
-
-  if (!email) {
+  if (loading) {
     return (
-      <Link
-        href="/login"
-        className="rounded-lg bg-black px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
-      >
-        Accedi
-      </Link>
+      <div className="flex items-center gap-2">
+        <div className="h-9 w-20 animate-pulse rounded-xl bg-zinc-200" />
+      </div>
     );
   }
 
+  // === NON LOGGATO ===
+  if (!user) {
+    return (
+      <div className="flex items-center gap-2">
+        <Link href="/login" className={pill}>
+          Accedi
+        </Link>
+
+        <Link href="/identita/nuovo" className={primary}>
+          Registrati
+        </Link>
+      </div>
+    );
+  }
+
+  // === LOGGATO ===
   return (
-    <div className="flex items-center gap-3">
-      <Link
-        href="/profilo"
-        className="hidden text-sm text-zinc-700 hover:underline sm:inline"
-        title="Apri il tuo profilo"
-      >
-        {fullName ?? email}
+    <div className="flex items-center gap-2">
+      <Link href="/profilo" className={pill}>
+        Profilo
       </Link>
 
       <button
-        onClick={handleLogout}
-        className="rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
+        onClick={async () => {
+          await supabase.auth.signOut();
+          window.location.href = "/";
+        }}
+        className={primary}
       >
         Esci
       </button>
