@@ -6,10 +6,15 @@ export const metadata: Metadata = {
   description: "Portale professionisti UNIMALIA",
 };
 
-export default function ProfessionistiLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return <ProShell>{children}</ProShell>;
+export default function ProfessionistiLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <>
+      {/* Nasconde il HEADER pubblico solo quando esiste il portale nel DOM */}
+      <style>{`
+        body:has([data-pro-portal="true"]) > header { display: none !important; }
+      `}</style>
+
+      <ProShell>{children}</ProShell>
+    </>
+  );
 }

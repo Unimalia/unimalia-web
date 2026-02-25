@@ -2,8 +2,9 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { ProfessionistiBrand } from "./ProfessionistiBrand";
+import { supabase } from "@/lib/supabaseClient";
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -33,9 +34,7 @@ function SideLink({
       onClick={onClick}
       className={cx(
         "flex items-center rounded-xl px-3 py-2 text-sm font-medium transition",
-        active
-          ? "bg-black text-white"
-          : "text-zinc-700 hover:bg-zinc-100 hover:text-black"
+        active ? "bg-black text-white" : "text-zinc-700 hover:bg-zinc-100 hover:text-black"
       )}
     >
       {label}
@@ -43,13 +42,51 @@ function SideLink({
   );
 }
 
-export default function ProShell({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const [open, setOpen] = useState(false);
+function isProfessionalUser(u: any) {
+  // ✅ Qui decidiamo “chi è professionista”.
+  // Imposta true in app_metadata o user_metadata, es:
+  // user.app_metadata.is_professional = true
+  // oppure user.user_metadata.is_professional = true
+  return Boolean(u?.app_metadata?.is_professional || u?.user_metadata?.is_professional);
+}
 
+export default function ProShell({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const [open, setOpen] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
+
+  // BLINDATURA: in /professionisti serve login professionista
+  useEffect(() => {
+    let alive = true;
+
+    async function check() {
+      // lascia passare la pagina di login professionisti
+      if (pathname?.startsWith("/professionisti/login")) {
+        if (alive) setAuthChecked(true);
+        return;
+      }
+
+      const { data } = await supabase.auth.getUser();
+      const user = data.user;
+
+      if (!alive) return;
+
+      if (!user || !isProfessionalUser(user)) {
+        router.replace("/professionisti/login?next=" + encodeURIComponent(pathname || "/professionisti"));
+        return;
+      }
+
+      setAuthChecked(true);
+    }
+
+    check();
+    return () => {
+      alive = false;
+    };
+  }, [router, pathname]);
+
+  // ESC chiude drawer
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") setOpen(false);
@@ -58,6 +95,7 @@ export default function ProShell({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
+  // lock scroll drawer
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
@@ -73,18 +111,30 @@ export default function ProShell({
       { href: "/professionisti/scansiona", label: "Scansiona" },
       { href: "/professionisti/animali", label: "Animali" },
       { href: "/professionisti/richieste", label: "Richieste" },
-      { href: "/professionisti/nuovo", label: "Nuovo" },
       { href: "/professionisti/impostazioni", label: "Impostazioni" },
     ],
     []
   );
 
+  if (!authChecked) {
+    return (
+      <div data-pro-portal="true" className="min-h-screen bg-zinc-50 text-zinc-900">
+        <div className="container-page px-3 sm:px-0 py-10">
+          <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
+            <div className="h-6 w-40 rounded bg-zinc-200/70" />
+            <div className="mt-3 h-4 w-full max-w-xl rounded bg-zinc-200/50" />
+            <div className="mt-1 h-4 w-full max-w-lg rounded bg-zinc-200/40" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-zinc-50 text-zinc-900">
-      {/* TOP BAR */}
+    <div data-pro-portal="true" className="min-h-screen bg-zinc-50 text-zinc-900">
+      {/* TOP BAR (solo portale) */}
       <header className="sticky top-0 z-50 border-b border-zinc-200 bg-white/80 backdrop-blur">
         <div className="container-page flex items-center justify-between gap-3 py-3 sm:py-4 px-3 sm:px-0">
-          {/* BRAND IDENTICO ALLA HOME */}
           <Link
             href="/professionisti"
             className="min-w-0 select-none"
@@ -93,20 +143,10 @@ export default function ProShell({
             <div className="leading-none">
               <ProfessionistiBrand />
             </div>
-            <div className="mt-2 hidden truncate text-xs text-zinc-600 sm:block">
-              Portale Professionisti
-            </div>
+            <div className="mt-2 hidden truncate text-xs text-zinc-600 sm:block">Portale Professionisti</div>
           </Link>
 
-          {/* ACTIONS */}
           <div className="flex items-center gap-2">
-            <Link
-              href="/professionisti/nuovo"
-              className="hidden sm:inline-flex items-center justify-center rounded-xl bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-900"
-            >
-              Nuovo
-            </Link>
-
             <button
               type="button"
               className="inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold shadow-sm hover:bg-zinc-50 lg:hidden"
@@ -119,28 +159,16 @@ export default function ProShell({
         </div>
       </header>
 
-      {/* MAIN GRID */}
+      {/* LAYOUT */}
       <div className="container-page grid grid-cols-1 gap-6 py-6 sm:py-8 lg:grid-cols-[260px_1fr] px-3 sm:px-0">
         {/* SIDEBAR DESKTOP */}
         <aside className="hidden lg:block">
           <div className="rounded-2xl border border-zinc-200 bg-white p-2 shadow-sm">
-            <div className="px-3 py-2 text-xs font-semibold text-zinc-500">
-              Menu
-            </div>
-
+            <div className="px-3 py-2 text-xs font-semibold text-zinc-500">Menu</div>
             <div className="flex flex-col gap-1">
               {items.map((it) => (
                 <SideLink key={it.href} href={it.href} label={it.label} />
               ))}
-            </div>
-
-            <div className="mt-3 border-t border-zinc-200 pt-3 px-2">
-              <Link
-                href="/professionisti/nuovo"
-                className="inline-flex w-full items-center justify-center rounded-xl bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-900"
-              >
-                Crea nuova scheda
-              </Link>
             </div>
           </div>
         </aside>
@@ -158,19 +186,15 @@ export default function ProShell({
             aria-label="Chiudi menu"
             onClick={() => setOpen(false)}
           />
-
           <div className="fixed right-0 top-0 z-50 h-full w-[86%] max-w-sm border-l border-zinc-200 bg-white shadow-2xl">
-            <div className="flex flex-col gap-2 px-4 pt-4">
+            <div className="flex items-center justify-between px-4 py-4">
               <div className="select-none">
                 <ProfessionistiBrand />
+                <div className="mt-2 text-xs text-zinc-600">Portale Professionisti</div>
               </div>
-              <div className="text-xs text-zinc-600">
-                Portale Professionisti
-              </div>
-
               <button
                 type="button"
-                className="ml-auto rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold"
+                className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold"
                 onClick={() => setOpen(false)}
                 aria-label="Chiudi menu"
               >
@@ -178,26 +202,11 @@ export default function ProShell({
               </button>
             </div>
 
-            <div className="px-2 pb-6 pt-4">
+            <div className="px-2 pb-6">
               <div className="flex flex-col gap-1">
                 {items.map((it) => (
-                  <SideLink
-                    key={it.href}
-                    href={it.href}
-                    label={it.label}
-                    onClick={() => setOpen(false)}
-                  />
+                  <SideLink key={it.href} href={it.href} label={it.label} onClick={() => setOpen(false)} />
                 ))}
-              </div>
-
-              <div className="mt-4 border-t border-zinc-200 pt-4 px-2">
-                <Link
-                  href="/professionisti/nuovo"
-                  onClick={() => setOpen(false)}
-                  className="inline-flex w-full items-center justify-center rounded-xl bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-900"
-                >
-                  Crea nuova scheda
-                </Link>
               </div>
             </div>
           </div>
