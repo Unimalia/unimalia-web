@@ -1,11 +1,62 @@
 import Stripe from "stripe";
+import { createClient } from "@supabase/supabase-js";
 
-export const runtime = "nodejs"; // importante su Vercel
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+function requireEnv(name: string): string {
+  const v = process.env[name];
+  if (!v) throw new Error(`Missing env: ${name}`);
+  return v;
+}
+
+const stripe = new Stripe(requireEnv("STRIPE_SECRET_KEY"), {
   apiVersion: "2026-01-28.clover",
 });
+
+const supabase = createClient(
+  requireEnv("SUPABASE_URL"),
+  requireEnv("SUPABASE_SERVICE_ROLE_KEY"),
+  { auth: { persistSession: false } }
+);
+
+async function upsertSubscriptionFromStripe(subId: string) {
+  const sub = await stripe.subscriptions.retrieve(subId);
+
+  const userId = sub.metadata?.user_id;
+  if (!userId) {
+    console.log("⚠️ subscription missing metadata.user_id", { subId });
+    return;
+  }
+
+  const payload = {
+    user_id: userId,
+    stripe_customer_id: typeof sub.customer === "string" ? sub.customer : sub.customer.id,
+    stripe_subscription_id: sub.id,
+    status: sub.status,
+    role: sub.metadata?.role ?? null,
+    billing_interval: sub.metadata?.billing_interval ?? null,
+    current_period_end: sub.current_period_end
+      ? new Date(sub.current_period_end * 1000).toISOString()
+      : null,
+    cancel_at_period_end: sub.cancel_at_period_end ?? false,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { error } = await supabase
+    .from("subscriptions")
+    .upsert(payload, { onConflict: "user_id" });
+
+  if (error) {
+    console.log("❌ Supabase upsert error", error);
+  } else {
+    console.log("✅ Supabase upsert subscriptions OK", {
+      user_id: userId,
+      stripe_subscription_id: sub.id,
+      status: sub.status,
+    });
+  }
+}
 
 export async function POST(req: Request) {
   const sig = req.headers.get("stripe-signature");
@@ -17,15 +68,49 @@ export async function POST(req: Request) {
   let event: Stripe.Event;
 
   try {
-    const body = await req.text(); // IMPORTANT: raw body
+    const body = await req.text();
     event = stripe.webhooks.constructEvent(body, sig, webhookSecret);
   } catch (err: any) {
     return new Response(`Webhook Error: ${err?.message ?? "Unknown error"}`, { status: 400 });
   }
 
-  // TODO: qui gestisci gli eventi e scrivi su Supabase
-  // Per ora confermiamo solo che arriva
-  console.log("✅ Stripe webhook received:", event.type);
+  try {
+    switch (event.type) {
+      // ✅ evento più importante: contiene session.subscription
+      case "checkout.session.completed": {
+        const session = event.data.object as Stripe.Checkout.Session;
+        const subId = session.subscription ? String(session.subscription) : null;
+
+        console.log("checkout.session.completed", {
+          id: session.id,
+          subscription: subId,
+          customer: session.customer,
+        });
+
+        if (subId) await upsertSubscriptionFromStripe(subId);
+        break;
+      }
+
+      // ✅ questi mantengono sincronizzato lo status nel tempo
+      case "customer.subscription.created":
+      case "customer.subscription.updated":
+      case "customer.subscription.deleted": {
+        const sub = event.data.object as Stripe.Subscription;
+        console.log(event.type, { id: sub.id, status: sub.status });
+        await upsertSubscriptionFromStripe(sub.id);
+        break;
+      }
+
+      default:
+        // tienilo per debug
+        console.log("ℹ️ Unhandled event type:", event.type);
+    }
+  } catch (e: any) {
+    console.log("❌ Webhook handler error:", e?.message ?? e);
+    // rispondiamo 200 comunque? Dipende.
+    // Io preferisco 500 per far ritentare Stripe se la scrittura su DB fallisce.
+    return new Response("Webhook handler error", { status: 500 });
+  }
 
   return new Response("ok", { status: 200 });
 }
