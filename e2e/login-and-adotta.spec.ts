@@ -15,8 +15,8 @@ test("Login + open Adotta", async ({ page }) => {
     await tabAccedi.click().catch(() => {});
   }
 
-  await page.locator('input[type="email"]').fill(email);
-  await page.locator('input[type="password"]').fill(password);
+  await page.locator('input[type="email"]').fill(email.trim());
+  await page.locator('input[type="password"]').fill(password.trim());
 
   // Intercetta la chiamata Supabase auth (signInWithPassword)
   const authResponsePromise = page.waitForResponse(
