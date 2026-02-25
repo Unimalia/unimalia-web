@@ -1,40 +1,29 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname } from "next/navigation";
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
-
-function isActivePath(pathname: string, href: string) {
-  if (href === "/") return pathname === "/";
-  return pathname === href || pathname.startsWith(href + "/");
+function isActive(pathname: string, href: string) {
+  return href === "/professionisti" ? pathname === href : pathname.startsWith(href);
 }
 
-function ProNavLink({
-  href,
-  label,
-  onClick,
-}: {
-  href: string;
-  label: string;
-  onClick?: () => void;
-}) {
+type Item = { href: string; label: string };
+
+function SideLink({ href, label, onClick }: { href: string; label: string; onClick?: () => void }) {
   const pathname = usePathname();
-  const active = isActivePath(pathname, href);
+  const active = isActive(pathname, href);
 
   return (
     <Link
       href={href}
       onClick={onClick}
       className={cx(
-        "inline-flex items-center rounded-xl px-3 py-2 text-sm font-semibold transition",
-        active
-          ? "bg-black text-white"
-          : "text-zinc-700 hover:bg-zinc-100 hover:text-black"
+        "flex items-center rounded-xl px-3 py-2 text-sm font-medium transition",
+        active ? "bg-black text-white" : "text-zinc-700 hover:bg-zinc-100 hover:text-black"
       )}
     >
       {label}
@@ -62,62 +51,44 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
     };
   }, [open]);
 
-  const nav = [
-    { href: "/professionisti", label: "Dashboard" },
-    { href: "/professionisti/scansiona", label: "Scansiona" },
-    { href: "/professionisti/nuovo", label: "Nuovo" },
-    { href: "/professionisti/modifica", label: "Modifica" },
-  ];
+  const items: Item[] = useMemo(
+    () => [
+      { href: "/professionisti", label: "Dashboard" },
+      { href: "/professionisti/scansiona", label: "Scansiona" },
+      { href: "/professionisti/animali", label: "Animali" },
+      { href: "/professionisti/richieste", label: "Richieste" },
+      { href: "/professionisti/nuovo", label: "Nuovo" },
+      { href: "/professionisti/impostazioni", label: "Impostazioni" },
+    ],
+    []
+  );
 
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900">
-      {/* HEADER */}
+      {/* TOP BAR */}
       <header className="sticky top-0 z-50 border-b border-zinc-200 bg-white/80 backdrop-blur">
-        {/* stesso contenitore del main, ma con padding mobile più evidente */}
-        <div className="container-page px-3 sm:px-4">
-          <div className="flex h-16 items-center justify-between gap-3">
-            {/* Logo */}
-            <Link href="/" className="flex items-center gap-3" aria-label="Vai alla home UNIMALIA">
-              <Image
-                src="/logo-main.png"
-                alt="UNIMALIA"
-                width={120}
-                height={110}
-                priority
-                className="h-11 w-auto sm:h-12"
-              />
-              <span className="hidden text-sm font-semibold tracking-tight text-zinc-900 md:inline">
-                Professionisti
-              </span>
+        {/* allineamento come body: usa container-page */}
+        <div className="container-page flex items-center justify-between gap-3 py-3 sm:py-4 px-3 sm:px-0">
+          {/* Wordmark + payoff (qui lo rendiamo “come home” dopo che mi incolli il pezzo hero) */}
+          <Link href="/" className="min-w-0" aria-label="Vai alla home UNIMALIA">
+            <div className="truncate text-sm font-semibold tracking-tight text-zinc-900">UNIMALIA</div>
+            <div className="hidden truncate text-xs text-zinc-600 sm:block">
+              Portale Professionisti
+            </div>
+          </Link>
+
+          {/* actions */}
+          <div className="flex items-center gap-2">
+            <Link
+              href="/professionisti/nuovo"
+              className="hidden sm:inline-flex items-center justify-center rounded-xl bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-900"
+            >
+              Nuovo
             </Link>
 
-            {/* Desktop nav */}
-            <nav className="hidden items-center gap-1 md:flex">
-              {nav.map((item) => (
-                <ProNavLink key={item.href} href={item.href} label={item.label} />
-              ))}
-            </nav>
-
-            {/* Desktop actions */}
-            <div className="hidden items-center gap-2 md:flex">
-              <Link
-                href="/professionisti/scansiona"
-                className="inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 shadow-sm transition hover:bg-zinc-50"
-              >
-                Scansiona
-              </Link>
-              <Link
-                href="/professionisti/nuovo"
-                className="inline-flex items-center justify-center rounded-xl bg-black px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-900"
-              >
-                Nuovo
-              </Link>
-            </div>
-
-            {/* Mobile menu button */}
             <button
               type="button"
-              className="inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-900 shadow-sm transition hover:bg-zinc-50 md:hidden"
+              className="inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold shadow-sm hover:bg-zinc-50 lg:hidden"
               onClick={() => setOpen(true)}
               aria-label="Apri menu"
             >
@@ -125,65 +96,82 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
             </button>
           </div>
         </div>
+      </header>
 
-        {/* Mobile drawer */}
-        {open && (
-          <div className="md:hidden">
-            <button
-              type="button"
-              className="fixed inset-0 z-40 cursor-default bg-black/30"
-              aria-label="Chiudi menu"
-              onClick={() => setOpen(false)}
-            />
-            <div className="fixed right-0 top-0 z-50 h-full w-[86%] max-w-sm border-l border-zinc-200 bg-white shadow-2xl">
-              <div className="flex h-16 items-center justify-between px-4">
-                <span className="text-sm font-semibold">Professionisti</span>
-                <button
-                  type="button"
-                  className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold"
-                  onClick={() => setOpen(false)}
-                  aria-label="Chiudi menu"
-                >
-                  ✕
-                </button>
+      {/* LAYOUT */}
+      <div className="container-page grid grid-cols-1 gap-6 py-6 sm:py-8 lg:grid-cols-[260px_1fr] px-3 sm:px-0">
+        {/* SIDEBAR DESKTOP */}
+        <aside className="hidden lg:block">
+          <div className="rounded-2xl border border-zinc-200 bg-white p-2 shadow-sm">
+            <div className="px-3 py-2 text-xs font-semibold text-zinc-500">Menu</div>
+            <div className="flex flex-col gap-1">
+              {items.map((it) => (
+                <SideLink key={it.href} href={it.href} label={it.label} />
+              ))}
+            </div>
+
+            <div className="mt-3 border-t border-zinc-200 pt-3 px-2">
+              <Link
+                href="/professionisti/nuovo"
+                className="inline-flex w-full items-center justify-center rounded-xl bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-900"
+              >
+                Crea nuova scheda
+              </Link>
+            </div>
+          </div>
+        </aside>
+
+        {/* CONTENT */}
+        <main className="min-w-0">{children}</main>
+      </div>
+
+      {/* MOBILE DRAWER */}
+      {open && (
+        <div className="lg:hidden">
+          <button
+            type="button"
+            className="fixed inset-0 z-40 cursor-default bg-black/30"
+            aria-label="Chiudi menu"
+            onClick={() => setOpen(false)}
+          />
+          <div className="fixed right-0 top-0 z-50 h-full w-[86%] max-w-sm border-l border-zinc-200 bg-white shadow-2xl">
+            <div className="flex h-16 items-center justify-between px-4">
+              <span className="text-sm font-semibold">Portale Professionisti</span>
+              <button
+                type="button"
+                className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold"
+                onClick={() => setOpen(false)}
+                aria-label="Chiudi menu"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="px-2 pb-6">
+              <div className="flex flex-col gap-1">
+                {items.map((it) => (
+                  <SideLink
+                    key={it.href}
+                    href={it.href}
+                    label={it.label}
+                    onClick={() => setOpen(false)}
+                  />
+                ))}
               </div>
 
-              <div className="px-3 pb-6">
-                <div className="flex flex-col gap-1">
-                  {nav.map((item) => (
-                    <ProNavLink
-                      key={item.href}
-                      href={item.href}
-                      label={item.label}
-                      onClick={() => setOpen(false)}
-                    />
-                  ))}
-                </div>
-
-                <div className="mt-4 border-t border-zinc-200 pt-4">
-                  <Link
-                    href="/professionisti/nuovo"
-                    onClick={() => setOpen(false)}
-                    className="inline-flex w-full items-center justify-center rounded-xl bg-black px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-900"
-                  >
-                    Nuovo
-                  </Link>
-                  <Link
-                    href="/professionisti/scansiona"
-                    onClick={() => setOpen(false)}
-                    className="mt-2 inline-flex w-full items-center justify-center rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 shadow-sm transition hover:bg-zinc-50"
-                  >
-                    Scansiona
-                  </Link>
-                </div>
+              <div className="mt-4 border-t border-zinc-200 pt-4 px-2">
+                <Link
+                  href="/professionisti/nuovo"
+                  onClick={() => setOpen(false)}
+                  className="inline-flex w-full items-center justify-center rounded-xl bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-900"
+                >
+                  Crea nuova scheda
+                </Link>
               </div>
             </div>
           </div>
-        )}
-      </header>
-
-      {/* MAIN */}
-      <main className="container-page px-3 sm:px-4 py-8 sm:py-10">{children}</main>
+        </div>
+      )}
     </div>
   );
 }

@@ -2,84 +2,83 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabaseClient";
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
 
-const pill =
-  "inline-flex items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold transition " +
-  "border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-100";
-
-const primary =
-  "inline-flex items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold transition " +
-  "bg-black text-white hover:bg-zinc-900";
-
 export default function AuthButtons() {
+  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
     let mounted = true;
 
-    async function load() {
-      const { data } = await supabase.auth.getUser();
+    supabase.auth.getSession().then(({ data }) => {
       if (!mounted) return;
-      setUser(data.user ?? null);
+      setSession(data.session ?? null);
       setLoading(false);
-    }
+    });
 
-    load();
-
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setUser(session?.user ?? null);
-      }
-    );
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession);
+    });
 
     return () => {
       mounted = false;
-      listener.subscription.unsubscribe();
+      sub.subscription.unsubscribe();
     };
   }, []);
 
+  async function signOut() {
+    await supabase.auth.signOut();
+  }
+
   if (loading) {
     return (
-      <div className="flex items-center gap-2">
-        <div className="h-9 w-20 animate-pulse rounded-xl bg-zinc-200" />
+      <div className="hidden md:flex items-center gap-2">
+        <div className="h-9 w-24 rounded-xl bg-zinc-100" />
       </div>
     );
   }
 
-  // === NON LOGGATO ===
-  if (!user) {
+  if (!session) {
     return (
       <div className="flex items-center gap-2">
-        <Link href="/login" className={pill}>
+        <Link
+          href="/login"
+          className={cx(
+            "inline-flex items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold transition",
+            "border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50"
+          )}
+        >
           Accedi
-        </Link>
-
-        <Link href="/identita/nuovo" className={primary}>
-          Registrati
         </Link>
       </div>
     );
   }
 
-  // === LOGGATO ===
   return (
     <div className="flex items-center gap-2">
-      <Link href="/profilo" className={pill}>
+      <Link
+        href="/profilo"
+        className={cx(
+          "inline-flex items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold transition",
+          "border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50"
+        )}
+      >
         Profilo
       </Link>
 
       <button
-        onClick={async () => {
-          await supabase.auth.signOut();
-          window.location.href = "/";
-        }}
-        className={primary}
+        type="button"
+        onClick={signOut}
+        className={cx(
+          "inline-flex items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold transition",
+          "bg-zinc-900 text-white hover:bg-black"
+        )}
       >
         Esci
       </button>
