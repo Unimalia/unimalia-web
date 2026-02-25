@@ -1,12 +1,5 @@
 import Stripe from "stripe";
 
-const stripeSecret = process.env.STRIPE_SECRET_KEY;
-if (!stripeSecret) {
-  throw new Error("Missing env: STRIPE_SECRET_KEY");
-}
-
-const stripe = new Stripe(stripeSecret);
-
 type Role =
   | "owner"
   | "veterinarian"
@@ -64,8 +57,10 @@ function getPriceId(role: Role, interval: Interval): string {
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
+    const stripe = new Stripe(requireEnv("STRIPE_SECRET_KEY"));
+    const appUrl = requireEnv("APP_URL");
 
+    const body = await req.json();
     const userId = String(body?.userId ?? "");
     const email = String(body?.email ?? "");
     const role = body?.role as Role;
@@ -75,7 +70,6 @@ export async function POST(req: Request) {
       return new Response("Missing fields", { status: 400 });
     }
 
-    const appUrl = requireEnv("APP_URL");
     const priceId = getPriceId(role, interval);
 
     const session = await stripe.checkout.sessions.create({
@@ -84,6 +78,16 @@ export async function POST(req: Request) {
       line_items: [{ price: priceId, quantity: 1 }],
       success_url: `${appUrl}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${appUrl}/billing/cancel`,
+
+      // IMPORTANTISSIMO: copia metadata sulla Subscription (non solo sulla session)
+      subscription_data: {
+        metadata: {
+          user_id: userId,
+          role,
+          billing_interval: interval,
+        },
+      },
+
       metadata: {
         user_id: userId,
         role,
