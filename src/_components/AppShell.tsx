@@ -1,8 +1,27 @@
-// _components/AppShell.tsx
+"use client";
+
 import React from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import AuthButtons from "./AuthButtons";
+
+function NavLink({ href, children }: { href: string; children: React.ReactNode }) {
+  const pathname = usePathname();
+  const active = pathname === href;
+
+  return (
+    <Link
+      href={href}
+      className={`
+        relative px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200
+        ${active ? "bg-black text-white" : "text-gray-700 hover:bg-gray-100 hover:text-black"}
+      `}
+    >
+      {children}
+    </Link>
+  );
+}
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
@@ -25,41 +44,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           {/* NAV + AUTH */}
           <div className="flex min-w-0 flex-1 items-center justify-end gap-3">
             <nav className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto whitespace-nowrap">
-              <Link
-                href="/smarrimenti"
-                className="rounded-xl px-3 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100"
-              >
-                Smarrimenti
-              </Link>
+              <NavLink href="/smarrimenti">Smarrimenti</NavLink>
 
-              <Link
-                href="/smarrimento"
-                aria-label="Pubblica smarrimento (pagina rapida)"
-                className="rounded-xl px-3 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100"
-              >
-                Pubblica (rapido)
-              </Link>
+              <NavLink href="/smarrimento">Pubblica (rapido)</NavLink>
 
-              <Link
-                href="/ritrovati"
-                className="rounded-xl px-3 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100"
-              >
-                Ritrovati
-              </Link>
+              <NavLink href="/ritrovati">Ritrovati</NavLink>
 
-              <Link
-                href="/adotta"
-                className="rounded-xl px-3 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100"
-              >
-                Adozioni
-              </Link>
+              <NavLink href="/adotta">Adozioni</NavLink>
 
-              <Link
-                href="/servizi"
-                className="rounded-xl px-3 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100"
-              >
-                Servizi
-              </Link>
+              <NavLink href="/servizi">Servizi</NavLink>
             </nav>
 
             <AuthButtons />
