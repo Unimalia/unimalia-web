@@ -21,7 +21,8 @@ const supabase = createClient(
 );
 
 async function upsertSubscriptionFromStripe(subId: string) {
-  const sub = await stripe.subscriptions.retrieve(subId);
+  const res = await stripe.subscriptions.retrieve(subId);
+  const sub = ("data" in res ? res.data : res) as Stripe.Subscription;
 
   const userId = sub.metadata?.user_id;
   if (!userId) {
