@@ -101,12 +101,10 @@ export function ProfiloClient() {
 
     load();
 
-    const { data: sub } = supabase.auth.onAuthStateChange(
-      (_event: AuthChangeEvent, session: Session | null) => {
-        const u = session?.user;
-        setUser(u ? { id: u.id, email: u.email ?? null } : null);
-      },
-    );
+    const { data: sub } = supabase.auth.onAuthStateChange((_event: AuthChangeEvent, session: Session | null) => {
+      const u = session?.user;
+      setUser(u ? { id: u.id, email: u.email ?? null } : null);
+    });
 
     return () => {
       mounted = false;
@@ -242,6 +240,13 @@ export function ProfiloClient() {
         >
           {saving ? "Salvataggio…" : "Salva"}
         </button>
+
+        <Link
+          href="/profilo/abbonamento"
+          className="inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-900 shadow-sm hover:bg-zinc-50"
+        >
+          Abbonamento
+        </Link>
 
         {returnTo ? (
           <Link
