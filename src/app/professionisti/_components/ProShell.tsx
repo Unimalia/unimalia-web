@@ -43,16 +43,25 @@ function SideLink({
 }
 
 function isProfessionalUser(u: any) {
-  // ✅ Qui decidiamo “chi è professionista”.
-  // Imposta true in app_metadata o user_metadata, es:
-  // user.app_metadata.is_professional = true
-  // oppure user.user_metadata.is_professional = true
+  if (!u) return false;
+
+  // ✅ PASSAPARTOUT: allowlist email (subito funzionante senza Supabase meta)
+  const email = String(u.email || "").toLowerCase();
+  const allow = new Set([
+    "valentinotwister@hotmail.it",
+    // aggiungi altre email professionisti qui:
+    // "clinica@example.com",
+  ]);
+  if (allow.has(email)) return true;
+
+  // ✅ In futuro: ruolo vero su metadata
   return Boolean(u?.app_metadata?.is_professional || u?.user_metadata?.is_professional);
 }
 
 export default function ProShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
+
   const [open, setOpen] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
 
@@ -73,7 +82,9 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
       if (!alive) return;
 
       if (!user || !isProfessionalUser(user)) {
-        router.replace("/professionisti/login?next=" + encodeURIComponent(pathname || "/professionisti"));
+        router.replace(
+          "/professionisti/login?next=" + encodeURIComponent(pathname || "/professionisti")
+        );
         return;
       }
 
@@ -116,6 +127,7 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
     []
   );
 
+  // skeleton mentre verifica auth
   if (!authChecked) {
     return (
       <div data-pro-portal="true" className="min-h-screen bg-zinc-50 text-zinc-900">
@@ -143,7 +155,9 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
             <div className="leading-none">
               <ProfessionistiBrand />
             </div>
-            <div className="mt-2 hidden truncate text-xs text-zinc-600 sm:block">Portale Professionisti</div>
+            <div className="mt-2 hidden truncate text-xs text-zinc-600 sm:block">
+              Portale Professionisti
+            </div>
           </Link>
 
           <div className="flex items-center gap-2">
@@ -205,7 +219,12 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
             <div className="px-2 pb-6">
               <div className="flex flex-col gap-1">
                 {items.map((it) => (
-                  <SideLink key={it.href} href={it.href} label={it.label} onClick={() => setOpen(false)} />
+                  <SideLink
+                    key={it.href}
+                    href={it.href}
+                    label={it.label}
+                    onClick={() => setOpen(false)}
+                  />
                 ))}
               </div>
             </div>
