@@ -1,30 +1,26 @@
-export default function BillingSuccessPage({
-  searchParams,
-}: {
-  searchParams?: { session_id?: string };
-}) {
-  const sessionId = searchParams?.session_id ?? "";
-
+export default function BillingSuccessPage() {
   return (
-    <main className="mx-auto max-w-xl p-6">
-      <h1 className="text-2xl font-semibold">Pagamento completato ✅</h1>
-
-      <p className="mt-3">
-        Se tra qualche secondo non vedi le funzionalità attive, ricarica la pagina o esci/rientra.
+    <main className="mx-auto max-w-3xl px-4 py-10">
+      <h1 className="text-3xl font-bold tracking-tight">Pagamento completato ✅</h1>
+      <p className="mt-3 text-zinc-700">
+        Grazie! Il tuo abbonamento verrà attivato automaticamente entro pochi secondi.
+      </p>
+      <p className="mt-3 text-zinc-700">
+        Se non vedi subito le modifiche, aggiorna la pagina o esci e rientra.
       </p>
 
-      {sessionId ? (
-        <p className="mt-4 text-sm opacity-80">
-          Session ID: <span className="font-mono">{sessionId}</span>
-        </p>
-      ) : null}
-
-      <div className="mt-6 flex gap-3">
-        <a className="underline" href="/">
+      <div className="mt-6 flex gap-2">
+        <a
+          href="/"
+          className="rounded-lg bg-black px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
+        >
           Torna alla Home
         </a>
-        <a className="underline" href="/account">
-          Vai al tuo account
+        <a
+          href="/profilo"
+          className="rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
+        >
+          Vai al profilo
         </a>
       </div>
     </main>
