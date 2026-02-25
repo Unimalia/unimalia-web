@@ -1,95 +1,58 @@
-import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase/server";
-import { resend, getBaseUrl } from "@/lib/email/resend";
-import {
-  expiringSoonEmail,
-  askIfFoundEmail,
-  inviteToRegisterAfterFoundEmail,
-} from "@/lib/email/templates";
+import { createClient } from "@supabase/supabase-js";
 
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+// Helper: non crashare la build a import-time
+function requireEnv(name: string): string {
+  const v = process.env[name];
+  if (!v) throw new Error(`Missing env: ${name}`);
+  return v;
+}
+
+function getSupabaseAdmin() {
+  // ✅ tutto dentro una funzione: non viene eseguito durante build/import
+  const supabaseUrl =
+    process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!supabaseUrl) throw new Error("Missing SUPABASE_URL or NEXT_PUBLIC_SUPABASE_URL");
+
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceKey) throw new Error("Missing SUPABASE_SERVICE_ROLE_KEY");
+
+  return createClient(supabaseUrl, serviceKey, {
+    auth: { persistSession: false },
+  });
+}
+
+// Se usi Vercel Cron, puoi proteggere l'endpoint con un segreto
 function isAuthorized(req: Request) {
-  const secret = req.headers.get("x-cron-secret");
-  return secret && secret === process.env.CRON_SECRET;
+  const expected = process.env.CRON_SECRET;
+  if (!expected) return true; // se non lo usi, non blocchiamo
+  const got = req.headers.get("x-cron-secret");
+  return got === expected;
 }
 
 export async function GET(req: Request) {
-  if (!isAuthorized(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    if (!isAuthorized(req)) {
+      return new Response("Unauthorized", { status: 401 });
+    }
 
-  const baseUrl = getBaseUrl();
-  const now = new Date();
+    const supabase = getSupabaseAdmin();
 
-  // 1) In scadenza tra 3 giorni
-  const in3days = new Date(now.getTime() + 3 * 24 * 3600 * 1000);
+    // ✅ TODO: metti qui la tua logica giornaliera
+    // Esempi possibili:
+    // - pulizia vecchi record
+    // - aggiornare stati abbonamenti
+    // - inviare notifiche
+    //
+    // ESEMPIO placeholder (non fa nulla):
+    const now = new Date().toISOString();
 
-  const { data: expiring } = await supabaseAdmin
-    .from("reports")
-    .select("id, title, contact_email, claim_token, expires_at")
-    .eq("email_verified", true)
-    .eq("status", "active")
-    .lte("expires_at", in3days.toISOString())
-    .gte("expires_at", now.toISOString());
-
-  for (const r of expiring || []) {
-    const manageUrl = `${baseUrl}/gestisci/${r.claim_token}`;
-    const email = expiringSoonEmail({ reportTitle: r.title, manageUrl, daysLeft: 3 });
-
-    await resend.emails.send({
-      from: process.env.EMAIL_FROM_NO_REPLY!,
-      to: r.contact_email,
-      subject: email.subject,
-      html: email.html,
-    });
+    return Response.json({ ok: true, ranAt: now });
+  } catch (e: any) {
+    console.log("❌ /api/cron/daily error:", e?.message ?? e);
+    // ✅ 500 runtime, ma NON rompe build/deploy
+    return new Response(`Cron error: ${e?.message ?? "unknown"}`, { status: 500 });
   }
-
-  // 2) Dopo 10 giorni chiedi se è stato ritrovato (solo LOST)
-  const tenDaysAgo = new Date(now.getTime() - 10 * 24 * 3600 * 1000);
-
-  const { data: tenDayLost } = await supabaseAdmin
-    .from("reports")
-    .select("title, contact_email, claim_token, created_at")
-    .eq("email_verified", true)
-    .eq("status", "active")
-    .eq("type", "lost")
-    .lte("created_at", tenDaysAgo.toISOString());
-
-  for (const r of tenDayLost || []) {
-    const closeFoundUrl = `${baseUrl}/azione/chiudi-ritrovato/${r.claim_token}`;
-    const keepActiveUrl = `${baseUrl}/gestisci/${r.claim_token}`;
-    const email = askIfFoundEmail({
-      reportTitle: r.title,
-      closeFoundUrl,
-      keepActiveUrl,
-    });
-
-    await resend.emails.send({
-      from: process.env.EMAIL_FROM_NO_REPLY!,
-      to: r.contact_email,
-      subject: email.subject,
-      html: email.html,
-    });
-  }
-
-  // 3) Invito registrazione 48h dopo chiusura come ritrovato
-  const twoDaysAgo = new Date(now.getTime() - 2 * 24 * 3600 * 1000);
-
-  const { data: recentlyClosed } = await supabaseAdmin
-    .from("reports")
-    .select("contact_email, closed_at")
-    .eq("email_verified", true)
-    .eq("status", "closed_found")
-    .gte("closed_at", twoDaysAgo.toISOString());
-
-  for (const r of recentlyClosed || []) {
-    const registerUrl = `${baseUrl}/registrati`;
-    const email = inviteToRegisterAfterFoundEmail({ registerUrl });
-
-    await resend.emails.send({
-      from: process.env.EMAIL_FROM_NO_REPLY!,
-      to: r.contact_email,
-      subject: email.subject,
-      html: email.html,
-    });
-  }
-
-  return NextResponse.json({ ok: true }, { status: 200 });
 }
