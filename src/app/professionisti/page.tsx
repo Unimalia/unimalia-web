@@ -1,79 +1,34 @@
+// src/app/professionisti/page.tsx
+
 import Link from "next/link";
 
-function Card({
-  title,
-  desc,
-  href,
-  cta,
-}: {
-  title: string;
-  desc: string;
-  href: string;
-  cta: string;
-}) {
+export default function ProfessionistiHome() {
   return (
-    <Link
-      href={href}
-      prefetch={false}
-      className="group block rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-zinc-900/10 active:translate-y-0"
-    >
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <h3 className="text-lg font-semibold text-zinc-900">{title}</h3>
-          <p className="mt-2 text-sm leading-relaxed text-zinc-600">{desc}</p>
-
-          <div className="mt-4 inline-flex rounded-2xl bg-black px-4 py-2 text-sm font-semibold text-white">
-            {cta}
-          </div>
-        </div>
-
-        <span
-          className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-zinc-200 bg-white shadow-sm transition group-hover:translate-x-0.5"
-          aria-hidden="true"
-        >
-          <span className="text-lg">→</span>
-        </span>
-      </div>
-    </Link>
-  );
-}
-
-export default function ProfessionistiDashboardPage() {
-  return (
-    <div className="space-y-6">
-      <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <h2 className="text-xl font-semibold text-zinc-900">Dashboard</h2>
-        <p className="mt-2 text-sm text-zinc-600">
-          Dopo la scansione di QR/Barcode si apre la scheda completa dell’animale (già esistente).
-          Qui trovi solo strumenti professionali.
-        </p>
-      </div>
+    <div className="max-w-3xl mx-auto p-6 space-y-6">
+      <h1 className="text-2xl font-semibold">
+        Area Professionisti
+      </h1>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Card
-          title="Scansiona"
-          desc="Apri rapidamente la scheda dell’animale da QR/Barcode."
+        <Link
           href="/professionisti/scansiona"
-          cta="Avvia scansione"
-        />
-        <Card
-          title="Richieste"
-          desc="Inbox consulti: in attesa, accettate, rifiutate, scadute. Emergenze sempre in cima."
+          className="rounded-2xl border p-4 hover:shadow transition"
+        >
+          <div className="text-lg font-medium">🔍 Scansiona Microchip</div>
+          <div className="text-sm opacity-70">
+            Scanner tramite fotocamera, inserimento manuale o lettore USB
+          </div>
+        </Link>
+
+        <Link
           href="/professionisti/richieste"
-          cta="Apri inbox"
-        />
-        <Card
-          title="Animali"
-          desc="Storico e ricerca: animali verificati/visitati e accessi recenti."
-          href="/professionisti/animali"
-          cta="Vai agli animali"
-        />
-        <Card
-          title="Impostazioni"
-          desc="Limite richieste, blocco, gestione codice emergenza, profilo."
-          href="/professionisti/impostazioni"
-          cta="Configura"
-        />
+          className="rounded-2xl border p-4 hover:shadow transition"
+        >
+          <div className="text-lg font-medium">📋 Richieste</div>
+          <div className="text-sm opacity-70">
+            Gestisci richieste e segnalazioni
+          </div>
+        </Link>
       </div>
     </div>
   );
