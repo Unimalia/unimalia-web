@@ -14,18 +14,24 @@ function Card({
   return (
     <Link
       href={href}
-      className="group block rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+      prefetch={false}
+      className="group block rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-zinc-900/10 active:translate-y-0"
     >
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <h3 className="text-lg font-semibold text-zinc-900">{title}</h3>
           <p className="mt-2 text-sm leading-relaxed text-zinc-600">{desc}</p>
+
           <div className="mt-4 inline-flex rounded-2xl bg-black px-4 py-2 text-sm font-semibold text-white">
             {cta}
           </div>
         </div>
-        <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-zinc-200 bg-white shadow-sm">
-          <span className="text-lg" aria-hidden="true">→</span>
+
+        <span
+          className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-zinc-200 bg-white shadow-sm transition group-hover:translate-x-0.5"
+          aria-hidden="true"
+        >
+          <span className="text-lg">→</span>
         </span>
       </div>
     </Link>
