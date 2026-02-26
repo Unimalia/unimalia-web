@@ -1,30 +1,25 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
-export async function POST(req: Request) {
-  const body = await req.json().catch(() => null);
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const animalId = searchParams.get("animalId");
 
-  const animalId = body?.animalId as string | undefined;
-  const type = body?.type as string | undefined;
-  const title = body?.title as string | undefined;
-  const dueDate = body?.dueDate as string | undefined; // ISO date or timestamptz
-
-  if (!animalId || !type || !title || !dueDate) {
-    return NextResponse.json({ error: "Missing fields" }, { status: 400 });
+  if (!animalId) {
+    return NextResponse.json({ error: "Missing animalId" }, { status: 400 });
   }
 
+  // Tabella consigliata: animal_reminders
   const { data, error } = await supabaseAdmin
     .from("animal_reminders")
-    .insert({
-      animal_id: animalId,
-      type,
-      title,
-      due_date: dueDate,
-      status: "active",
-    })
     .select("id, animal_id, type, title, due_date, status, created_at")
-    .single();
+    .eq("animal_id", animalId)
+    .neq("status", "cancelled")
+    .order("due_date", { ascending: true });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ reminder: data });
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ reminders: data ?? [] });
 }
