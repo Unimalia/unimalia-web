@@ -32,7 +32,6 @@ export default function ScansionaPage() {
 
   const [mode, setMode] = useState<"scan" | "manual">("scan");
   const [manualValue, setManualValue] = useState("");
-
   const manualValueTrim = useMemo(() => manualValue.trim(), [manualValue]);
 
   const [error, setError] = useState<string | null>(null);
@@ -141,6 +140,9 @@ export default function ScansionaPage() {
             <p className="mt-2 text-sm text-zinc-600">
               Scansiona con la fotocamera oppure inserisci un codice manualmente.
             </p>
+
+            {/* marker visivo per capire subito se sei sulla versione nuova */}
+            <p className="mt-2 text-xs text-zinc-400">build: manual-tab-v1</p>
           </div>
 
           <div className="flex items-center gap-2">
