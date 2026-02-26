@@ -5,48 +5,69 @@ import { normalizeScanResult } from "@/lib/normalizeScanResult";
 
 type Props = {
   onScan: (code: string) => Promise<void> | void;
+  disabled?: boolean;
 };
 
-export default function UsbScannerMode({ onScan }: Props) {
+function Spinner({ className = "" }: { className?: string }) {
+  return (
+    <span
+      className={`inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent ${className}`}
+      aria-label="loading"
+    />
+  );
+}
+
+export default function UsbScannerMode({ onScan, disabled = false }: Props) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [buffer, setBuffer] = useState("");
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [isProcessingLocal, setIsProcessingLocal] = useState(false);
 
   const placeholder = useMemo(
     () => "Collega il lettore USB e scansiona: il codice verrà scritto qui e invierà ENTER.",
     []
   );
 
-  // Focus automatico + “anti-perdita focus”
   useEffect(() => {
     const focus = () => inputRef.current?.focus();
     focus();
 
     const id = window.setInterval(() => {
-      if (document.activeElement !== inputRef.current) focus();
+      if (!disabled && document.activeElement !== inputRef.current) focus();
     }, 800);
 
     return () => window.clearInterval(id);
-  }, []);
+  }, [disabled]);
 
   async function handleEnter() {
+    if (disabled || isProcessingLocal) return;
+
     const code = normalizeScanResult(buffer);
-    if (!code || isProcessing) return;
+    if (!code) return;
 
     try {
-      setIsProcessing(true);
+      setIsProcessingLocal(true);
       await onScan(code);
     } finally {
-      setIsProcessing(false);
+      setIsProcessingLocal(false);
       setBuffer("");
       inputRef.current?.focus();
     }
   }
 
+  const busy = disabled || isProcessingLocal;
+
   return (
     <div className="space-y-3">
       <div className="rounded-2xl border p-4">
-        <div className="text-sm font-medium mb-2">🔫 Lettore esterno (USB)</div>
+        <div className="flex items-center justify-between gap-3 mb-2">
+          <div className="text-sm font-medium">🔫 Lettore esterno (USB)</div>
+          {busy ? (
+            <div className="text-xs opacity-70 flex items-center gap-2">
+              <Spinner />
+              <span>in attesa…</span>
+            </div>
+          ) : null}
+        </div>
 
         <input
           ref={inputRef}
@@ -64,10 +85,11 @@ export default function UsbScannerMode({ onScan }: Props) {
           inputMode="none"
           autoComplete="off"
           spellCheck={false}
+          disabled={busy}
         />
 
         <div className="text-xs opacity-70 mt-2">
-          Stato: {isProcessing ? "elaborazione..." : "in attesa di scansione"}
+          Stato: {busy ? "elaborazione..." : "in attesa di scansione"}
         </div>
       </div>
     </div>
