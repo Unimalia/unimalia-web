@@ -32,6 +32,7 @@ export default function ScansionaPage() {
 
   const [mode, setMode] = useState<"scan" | "manual">("scan");
   const [manualValue, setManualValue] = useState("");
+
   const manualValueTrim = useMemo(() => manualValue.trim(), [manualValue]);
 
   const [error, setError] = useState<string | null>(null);
@@ -101,32 +102,32 @@ export default function ScansionaPage() {
     }
   }, [router, stop]);
 
-  // Avvio/stop automatico in base al mode
   useEffect(() => {
     if (mode === "scan") start();
     else stop();
-
     return () => stop();
   }, [mode, start, stop]);
 
   const onSubmitManual = useCallback(() => {
     setError(null);
 
-    const path = normalizeScanResult(manualValueTrim);
     if (!manualValueTrim) {
       setError("Inserisci un codice o un link.");
       return;
     }
 
-    // Caso riconosciuto: /a/<token> (o UUID convertito)
+    const path = normalizeScanResult(manualValueTrim);
+
     if (isAPath(path)) {
       router.push(path);
       return;
     }
 
-    // Caso non riconosciuto: lo portiamo a una pagina dedicata
-    const q = encodeURIComponent(manualValueTrim);
-    router.push(`/professionisti/scansiona/manuale?value=${q}`);
+    router.push(
+      `/professionisti/scansiona/manuale?value=${encodeURIComponent(
+        manualValueTrim
+      )}`
+    );
   }, [manualValueTrim, router]);
 
   return (
@@ -135,10 +136,10 @@ export default function ScansionaPage() {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <h1 className="text-2xl font-bold tracking-tight text-zinc-900">
-              Scansiona
+              Leggi QR / Codice a barre
             </h1>
             <p className="mt-2 text-sm text-zinc-600">
-              Apri rapidamente la scheda animale da QR/Barcode oppure inserisci il codice manualmente.
+              Scansiona con la fotocamera oppure inserisci un codice manualmente.
             </p>
           </div>
 
@@ -209,10 +210,11 @@ export default function ScansionaPage() {
         </div>
       ) : (
         <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-zinc-900">Inserimento manuale</h2>
+          <h2 className="text-lg font-semibold text-zinc-900">
+            Inserimento manuale
+          </h2>
           <p className="mt-2 text-sm text-zinc-600">
-            Incolla un link UNIMALIA, un UUID, un barcode o qualsiasi testo. Se non riconosciuto,
-            lo gestiremo manualmente nella schermata successiva.
+            Incolla un link UNIMALIA, un UUID, un barcode o qualsiasi testo.
           </p>
 
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
