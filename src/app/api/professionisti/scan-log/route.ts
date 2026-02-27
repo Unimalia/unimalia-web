@@ -45,10 +45,8 @@ export async function POST(req: Request) {
     note,
   });
 
-  if (error) {
-    // Non blocchiamo lo scanner: ritorniamo 200 ma segnaliamo
-    return NextResponse.json({ ok: false, error: error.message }, { status: 200 });
-  }
+  // best-effort: non deve bloccare lo scanner
+  if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 200 });
 
   return NextResponse.json({ ok: true });
 }

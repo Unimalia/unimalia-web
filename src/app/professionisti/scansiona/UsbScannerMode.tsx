@@ -64,7 +64,7 @@ export default function UsbScannerMode({ onScan, disabled = false }: Props) {
           {busy ? (
             <div className="text-xs opacity-70 flex items-center gap-2">
               <Spinner />
-              <span>in attesa…</span>
+              <span>elaborazione…</span>
             </div>
           ) : null}
         </div>

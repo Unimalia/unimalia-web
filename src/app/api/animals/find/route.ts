@@ -5,7 +5,7 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const chip = (searchParams.get("chip") ?? "").trim();
 
-  // Accettiamo stringhe numeriche (di solito 15 cifre)
+  // microchip tipico 15 cifre; accetto 10-20 per tolleranza (se vuoi stringente lo rendiamo 15)
   if (!chip || !/^\d{10,20}$/.test(chip)) {
     return NextResponse.json({ error: "Invalid chip" }, { status: 400 });
   }

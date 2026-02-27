@@ -26,10 +26,8 @@ function extractAnimalIdFromScan(raw: string): { animalId?: string; error?: stri
   const code = normalizeScanResult(raw);
   if (!code) return { error: "Codice vuoto" };
 
-  // UUID diretto
   if (isUuid(code)) return { animalId: code };
 
-  // URL QR
   const url = tryParseUrl(code);
   if (url) {
     const path = url.pathname || "";
@@ -105,7 +103,6 @@ export default function ScannerPage() {
     animalId?: string | null;
     note?: string | null;
   }) {
-    // best-effort: se fallisce non deve bloccare lo scan
     try {
       await fetch("/api/professionisti/scan-log", {
         method: "POST",
@@ -113,12 +110,13 @@ export default function ScannerPage() {
         body: JSON.stringify(payload),
       });
     } catch {
-      // ignora
+      // best-effort
     }
   }
 
   async function handleScan(raw: string) {
     const normalized = normalizeScanResult(raw);
+
     if (!normalized) {
       showBanner({ kind: "error", text: "Codice vuoto." });
       void logScan({ raw, normalized, outcome: "invalid", animalId: null, note: "empty" });
@@ -139,9 +137,7 @@ export default function ScannerPage() {
     showBanner({ kind: "info", text: "Elaborazione in corso…" }, 0);
 
     try {
-      // =========================
-      // ✅ MICROCHIP 15 CIFRE
-      // =========================
+      // ✅ MICROCHIP 15 CIFRE -> lookup su animals.chip_number
       if (/^\d{15}$/.test(normalized)) {
         const res = await fetch(`/api/animals/find?chip=${encodeURIComponent(normalized)}`, {
           cache: "no-store",
@@ -173,9 +169,7 @@ export default function ScannerPage() {
         return;
       }
 
-      // =========================
       // ✅ QR / UUID
-      // =========================
       const { animalId, error } = extractAnimalIdFromScan(normalized);
 
       if (!animalId) {
@@ -190,7 +184,7 @@ export default function ScannerPage() {
         return;
       }
 
-      showBanner({ kind: "success", text: "Link/ID riconosciuto. Apertura scheda…" }, 1500);
+      showBanner({ kind: "success", text: "Codice riconosciuto. Apertura scheda…" }, 1500);
       void logScan({
         raw,
         normalized,
@@ -257,13 +251,13 @@ export default function ScannerPage() {
         <div className="rounded-2xl border p-4">
           <div className="text-sm font-medium mb-2">📷 Modalità fotocamera</div>
 
-          {/* Qui inserisci il tuo componente camera esistente */}
+          {/* ✅ ULTIMO STEP: qui collegheremo il componente fotocamera già esistente */}
           {/* Esempio:
               <CameraScanner onScan={(value) => handleScan(value)} />
           */}
 
           <div className="text-xs opacity-70">
-            Nota: lo scanner accetta QR UNIMALIA (link), UUID diretto o microchip 15 cifre.
+            Supporta QR UNIMALIA (link), UUID diretto o microchip 15 cifre.
           </div>
         </div>
       )}
@@ -296,17 +290,11 @@ export default function ScannerPage() {
             {busy ? <Spinner /> : null}
             <span>Apri scheda</span>
           </button>
-
-          <div className="text-xs opacity-70">
-            Tip: con il lettore USB di solito arriva il valore + ENTER: meglio usare la modalità USB.
-          </div>
         </div>
       )}
 
       {/* USB */}
-      {mode === "usb" && (
-        <UsbScannerMode onScan={handleScan} disabled={busy} />
-      )}
+      {mode === "usb" && <UsbScannerMode onScan={handleScan} disabled={busy} />}
     </div>
   );
 }
