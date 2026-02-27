@@ -13,6 +13,11 @@ function isUuid(v: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
 }
 
+// Estrae solo cifre (utile per microchip incollati "sporchi")
+function digitsOnly(v: string) {
+  return (v || "").replace(/\D+/g, "");
+}
+
 function tryParseUrl(raw: string) {
   try {
     const withProto =
@@ -23,29 +28,65 @@ function tryParseUrl(raw: string) {
   }
 }
 
-function extractAnimalIdFromScan(raw: string): { animalId?: string; error?: string } {
+type Extract =
+  | { kind: "animalId"; animalId: string }
+  | { kind: "publicToken"; token: string }
+  | { kind: "chip"; chip: string }
+  | { kind: "error"; error: string };
+
+function extractFromScan(raw: string): Extract {
   const code = normalizeScanResult(raw);
-  if (!code) return { error: "Codice vuoto" };
+  if (!code) return { kind: "error", error: "Codice vuoto" };
 
-  if (isUuid(code)) return { animalId: code };
+  // 1) UUID diretto
+  if (isUuid(code)) return { kind: "animalId", animalId: code };
 
+  // 2) Microchip: tolleriamo input sporchi e lunghezze 10-20 (tipico 15)
+  const d = digitsOnly(code);
+  if (d.length >= 10 && d.length <= 20) {
+    return { kind: "chip", chip: d };
+  }
+
+  // 3) URL: riconosci più formati (anche query)
   const url = tryParseUrl(code);
   if (url) {
     const path = url.pathname || "";
 
-    const m1 = path.match(/^\/scansiona\/animali\/([^/]+)$/);
-    if (m1?.[1]) return { animalId: m1[1] };
+    // query param utili
+    const qAnimalId = url.searchParams.get("animalId") || url.searchParams.get("id");
+    if (qAnimalId && isUuid(qAnimalId)) return { kind: "animalId", animalId: qAnimalId };
 
-    const m2 = path.match(/^\/identita\/([^/]+)$/);
-    if (m2?.[1]) return { animalId: m2[1] };
+    // /professionisti/animali/<id>/verifica
+    const mProVerify = path.match(/^\/professionisti\/animali\/([^/]+)\/verifica\/?$/);
+    if (mProVerify?.[1]) return { kind: "animalId", animalId: mProVerify[1] };
 
-    const m3 = path.match(/^\/professionisti\/animali\/([^/]+)$/);
-    if (m3?.[1]) return { animalId: m3[1] };
+    // /professionisti/animali/<id>
+    const mPro = path.match(/^\/professionisti\/animali\/([^/]+)\/?$/);
+    if (mPro?.[1]) return { kind: "animalId", animalId: mPro[1] };
 
-    return { error: `Link non riconosciuto: ${path}` };
+    // /identita/<id>
+    const mId = path.match(/^\/identita\/([^/]+)\/?$/);
+    if (mId?.[1]) return { kind: "animalId", animalId: mId[1] };
+
+    // /scansiona/animali/<id>
+    const mScan = path.match(/^\/scansiona\/animali\/([^/]+)\/?$/);
+    if (mScan?.[1]) return { kind: "animalId", animalId: mScan[1] };
+
+    // /a/<token>  (link pubblico UNIMALIA)
+    const mA = path.match(/^\/a\/([^/]+)\/?$/);
+    if (mA?.[1]) return { kind: "publicToken", token: mA[1] };
+
+    // se è un URL che contiene un microchip in query (?chip=)
+    const qChip = url.searchParams.get("chip");
+    if (qChip) {
+      const dc = digitsOnly(qChip);
+      if (dc.length >= 10 && dc.length <= 20) return { kind: "chip", chip: dc };
+    }
+
+    return { kind: "error", error: `Link non riconosciuto: ${path}` };
   }
 
-  return { error: "Formato non riconosciuto" };
+  return { kind: "error", error: "Formato non riconosciuto" };
 }
 
 function Spinner({ className = "" }: { className?: string }) {
@@ -138,9 +179,11 @@ export default function ScannerPage() {
     showBanner({ kind: "info", text: "Elaborazione in corso…" }, 0);
 
     try {
-      // ✅ MICROCHIP 15 CIFRE -> lookup su animals.chip_number
-      if (/^\d{15}$/.test(normalized)) {
-        const res = await fetch(`/api/animals/find?chip=${encodeURIComponent(normalized)}`, {
+      const ex = extractFromScan(normalized);
+
+      // ✅ microchip -> lookup su animals.chip_number
+      if (ex.kind === "chip") {
+        const res = await fetch(`/api/animals/find?chip=${encodeURIComponent(ex.chip)}`, {
           cache: "no-store",
         });
         const json = await res.json().catch(() => ({}));
@@ -170,31 +213,45 @@ export default function ScannerPage() {
         return;
       }
 
-      // ✅ QR / UUID
-      const { animalId, error } = extractAnimalIdFromScan(normalized);
-
-      if (!animalId) {
-        showBanner({ kind: "error", text: error ?? "Codice non valido." });
+      // ✅ uuid/id -> scheda pro
+      if (ex.kind === "animalId") {
+        showBanner({ kind: "success", text: "Codice riconosciuto. Apertura scheda…" }, 1500);
         void logScan({
           raw,
           normalized,
-          outcome: "invalid",
-          animalId: null,
-          note: error ?? "unrecognized",
+          outcome: "success",
+          animalId: ex.animalId,
+          note: "uuid/url id ok",
         });
+
+        router.push(`/professionisti/animali/${encodeURIComponent(ex.animalId)}`);
         return;
       }
 
-      showBanner({ kind: "success", text: "Codice riconosciuto. Apertura scheda…" }, 1500);
+      // ✅ link pubblico /a/<token> -> fallback sicuro (non placeholder)
+      if (ex.kind === "publicToken") {
+        showBanner({ kind: "success", text: "Link UNIMALIA riconosciuto. Apertura…" }, 1500);
+        void logScan({
+          raw,
+          normalized,
+          outcome: "success",
+          animalId: null,
+          note: `public token: ${ex.token}`,
+        });
+
+        router.push(`/a/${encodeURIComponent(ex.token)}`);
+        return;
+      }
+
+      // errore
+      showBanner({ kind: "error", text: ex.error ?? "Codice non valido." });
       void logScan({
         raw,
         normalized,
-        outcome: "success",
-        animalId,
-        note: "url/uuid ok",
+        outcome: "invalid",
+        animalId: null,
+        note: ex.error ?? "unrecognized",
       });
-
-      router.push(`/professionisti/animali/${encodeURIComponent(animalId)}`);
     } finally {
       setBusy(false);
     }
@@ -252,12 +309,10 @@ export default function ScannerPage() {
         <div className="rounded-2xl border p-4">
           <div className="text-sm font-medium mb-2">📷 Modalità fotocamera</div>
 
-          {mode === "camera" && (
-            <CameraScanner onScan={(value) => handleScan(value)} disabled={busy} />
-          )}
+          <CameraScanner onScan={(value) => handleScan(value)} disabled={busy} />
 
           <div className="text-xs opacity-70">
-            Supporta QR UNIMALIA (link), UUID diretto o microchip 15 cifre.
+            Supporta QR UNIMALIA (link), UUID diretto o microchip (anche incollato “sporco”).
           </div>
         </div>
       )}
@@ -269,7 +324,7 @@ export default function ScannerPage() {
 
           <input
             className="w-full rounded-xl border px-3 py-2"
-            placeholder="Incolla link QR, UUID o microchip (15 cifre)"
+            placeholder="Incolla link QR, UUID o microchip (anche con spazi/prefissi)"
             value={manualValue}
             onChange={(e) => setManualValue(e.target.value)}
             disabled={busy}
@@ -290,6 +345,10 @@ export default function ScannerPage() {
             {busy ? <Spinner /> : null}
             <span>Apri scheda</span>
           </button>
+
+          <div className="text-xs opacity-70">
+            Suggerimento: puoi incollare anche “microchip: 380260123456789” o con spazi: verrà normalizzato.
+          </div>
         </div>
       )}
 

@@ -19,7 +19,6 @@ export default function CameraScanner({ onScan, disabled = false }: Props) {
   useEffect(() => {
     readerRef.current = new BrowserMultiFormatReader();
     return () => {
-      // stop se ancora attivo
       try {
         controlsRef.current?.stop();
       } catch {}
@@ -39,7 +38,6 @@ export default function CameraScanner({ onScan, disabled = false }: Props) {
       const reader = readerRef.current;
       if (!video || !reader) return;
 
-      // se era già attivo, fermo prima
       try {
         controlsRef.current?.stop();
       } catch {}
@@ -74,14 +72,13 @@ export default function CameraScanner({ onScan, disabled = false }: Props) {
     setStatus("idle");
   }
 
-  // Se disabilitato mentre gira, fermiamo
   useEffect(() => {
     if (disabled && status === "running") stop();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [disabled]);
 
   return (
-    <div className="rounded-2xl border p-4 space-y-3">
+    <div className="space-y-3">
       <div className="flex items-center justify-between gap-3">
         <div className="text-sm font-medium">📷 Fotocamera</div>
         <div className="text-xs opacity-70">
