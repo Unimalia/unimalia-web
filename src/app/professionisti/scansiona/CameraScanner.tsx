@@ -8,6 +8,33 @@ type Props = {
   disabled?: boolean;
 };
 
+function normalizeScanText(input: string): string {
+  return (input ?? "").trim();
+}
+
+/**
+ * Evita falsi positivi tipo "-" "." ":" ecc.
+ * Regola pratica:
+ * - minimo 3 caratteri
+ * - deve contenere almeno una lettera o un numero
+ * - non deve essere composto solo da punteggiatura/segni
+ */
+function isMeaningfulScan(text: string): boolean {
+  const t = normalizeScanText(text);
+  if (!t) return false;
+
+  // troppo corto (tipico falso positivo da schermo / riflessi)
+  if (t.length < 3) return false;
+
+  // se non contiene alcun carattere alfanumerico -> è rumore
+  if (!/[a-zA-Z0-9]/.test(t)) return false;
+
+  // casi estremi tipo "---" "..." "__" ecc.
+  if (/^[-_.:;|/\\]+$/.test(t)) return false;
+
+  return true;
+}
+
 export default function CameraScanner({ onScan, disabled = false }: Props) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const readerRef = useRef<BrowserMultiFormatReader | null>(null);
@@ -16,6 +43,10 @@ export default function CameraScanner({ onScan, disabled = false }: Props) {
   const [status, setStatus] = useState<"idle" | "starting" | "running" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [lastText, setLastText] = useState<string>("");
+
+  // messaggio UX (es: codice non leggibile)
+  const [hintMsg, setHintMsg] = useState<string | null>(null);
+  const hintTimerRef = useRef<number | null>(null);
 
   // throttle scans: evita doppie letture identiche in pochi ms
   const lastHitRef = useRef<{ text: string; ts: number } | null>(null);
@@ -28,8 +59,22 @@ export default function CameraScanner({ onScan, disabled = false }: Props) {
       } catch {}
       controlsRef.current = null;
       readerRef.current = null;
+
+      if (hintTimerRef.current) {
+        window.clearTimeout(hintTimerRef.current);
+        hintTimerRef.current = null;
+      }
     };
   }, []);
+
+  function showHint(message: string) {
+    setHintMsg(message);
+    if (hintTimerRef.current) window.clearTimeout(hintTimerRef.current);
+    hintTimerRef.current = window.setTimeout(() => {
+      setHintMsg(null);
+      hintTimerRef.current = null;
+    }, 2200);
+  }
 
   async function start() {
     if (disabled) return;
@@ -57,12 +102,19 @@ export default function CameraScanner({ onScan, disabled = false }: Props) {
         if (disabled) return;
         if (!result) return;
 
-        const text = result.getText?.() ?? String(result);
+        const raw = result.getText?.() ?? String(result);
+        const text = normalizeScanText(raw);
 
         // debug: capire se legge davvero
         setLastText(text);
         // eslint-disable-next-line no-console
         console.log("SCAN:", text);
+
+        // se ZXing sta “agganciando” rumore (es: "-"), NON avviare flussi
+        if (!isMeaningfulScan(text)) {
+          showHint("Codice non leggibile. Prova ad aumentare dimensione/contrasto del QR.");
+          return;
+        }
 
         // throttle: stesso testo entro 900ms -> ignora
         const now = Date.now();
@@ -110,6 +162,13 @@ export default function CameraScanner({ onScan, disabled = false }: Props) {
         </div>
       ) : null}
 
+      {hintMsg ? (
+        <div className="rounded-xl border bg-amber-50 p-3 text-sm">
+          <div className="font-medium">Suggerimento</div>
+          <div className="opacity-80">{hintMsg}</div>
+        </div>
+      ) : null}
+
       <video ref={videoRef} className="w-full rounded-xl border" muted playsInline autoPlay />
 
       <div className="flex gap-2 flex-wrap">
@@ -133,12 +192,20 @@ export default function CameraScanner({ onScan, disabled = false }: Props) {
         Inquadra QR/Barcode: quando viene letto, viene aperta automaticamente la scheda.
       </div>
 
+      <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-700">
+        <div className="font-semibold">Consigli per QR da schermo</div>
+        <ul className="mt-2 list-disc space-y-1 pl-4 opacity-80">
+          <li>Aumenta la dimensione del QR (zoom).</li>
+          <li>Alza la luminosità dello schermo.</li>
+          <li>Distanza consigliata 20–30 cm.</li>
+          <li>Inclina leggermente il telefono per ridurre moiré/riflessi.</li>
+        </ul>
+      </div>
+
       {/* Debug visivo: così capisci se ZXing sta leggendo o no */}
       <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-700">
         <div className="font-semibold">Debug</div>
-        <div className="mt-1 break-all opacity-80">
-          Ultimo scan: {lastText ? lastText : "—"}
-        </div>
+        <div className="mt-1 break-all opacity-80">Ultimo scan: {lastText ? lastText : "—"}</div>
       </div>
     </div>
   );
