@@ -46,26 +46,43 @@ const nextConfig: NextConfig = {
       upgrade-insecure-requests;
     `);
 
+    const commonSecurityHeaders = [
+      {
+        key: "Strict-Transport-Security",
+        value: "max-age=63072000; includeSubDomains; preload",
+      },
+      { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
+      { key: "X-Frame-Options", value: "DENY" },
+
+      { key: "X-Content-Type-Options", value: "nosniff" },
+      { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+      { key: "Cross-Origin-Resource-Policy", value: "same-site" },
+      { key: "Content-Security-Policy", value: CSP },
+    ];
+
     return [
+      // ✅ PUBBLICO: super restrittivo (camera/usb OFF)
       {
         source: "/(.*)",
         headers: [
-          {
-            key: "Strict-Transport-Security",
-            value: "max-age=63072000; includeSubDomains; preload",
-          },
-          { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
-          { key: "X-Frame-Options", value: "DENY" },
-
-          { key: "X-Content-Type-Options", value: "nosniff" },
-          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-          { key: "Cross-Origin-Resource-Policy", value: "same-site" },
+          ...commonSecurityHeaders,
           {
             key: "Permissions-Policy",
-            value: "geolocation=(), microphone=(), camera=(), payment=(), usb=()",
+            value: "geolocation=(), microphone=(), camera=(), usb=(), payment=()",
           },
+        ],
+      },
 
-          { key: "Content-Security-Policy", value: CSP },
+      // ✅ PROFESSIONISTI: abilita camera + usb SOLO nel portale
+      // NB: la regola più specifica vince.
+      {
+        source: "/professionisti/:path*",
+        headers: [
+          ...commonSecurityHeaders,
+          {
+            key: "Permissions-Policy",
+            value: "geolocation=(), microphone=(), camera=(self), usb=(self), payment=()",
+          },
         ],
       },
     ];
