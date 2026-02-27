@@ -4,6 +4,7 @@ import React, { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import UsbScannerMode from "./UsbScannerMode";
 import { normalizeScanResult } from "@/lib/normalizeScanResult";
+import CameraScanner from "./CameraScanner";
 
 type Mode = "camera" | "manuale" | "usb";
 type Banner = { kind: "success" | "error" | "info"; text: string } | null;
@@ -251,10 +252,9 @@ export default function ScannerPage() {
         <div className="rounded-2xl border p-4">
           <div className="text-sm font-medium mb-2">📷 Modalità fotocamera</div>
 
-          {/* ✅ ULTIMO STEP: qui collegheremo il componente fotocamera già esistente */}
-          {/* Esempio:
-              <CameraScanner onScan={(value) => handleScan(value)} />
-          */}
+          {mode === "camera" && (
+            <CameraScanner onScan={(value) => handleScan(value)} disabled={busy} />
+          )}
 
           <div className="text-xs opacity-70">
             Supporta QR UNIMALIA (link), UUID diretto o microchip 15 cifre.
