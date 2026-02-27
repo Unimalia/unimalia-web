@@ -18,8 +18,11 @@ export function AnimalCodes({ qrValue, barcodeValue, caption }: Props) {
   useEffect(() => {
     if (!svgRef.current) return;
 
-    // reset
-    svgRef.current.innerHTML = "";
+    // reset (pulito su SVG)
+    while (svgRef.current.firstChild) {
+      svgRef.current.removeChild(svgRef.current.firstChild);
+    }
+
     if (!safeBarcode) return;
 
     try {
@@ -31,7 +34,9 @@ export function AnimalCodes({ qrValue, barcodeValue, caption }: Props) {
         fontSize: 12,
       });
     } catch {
-      svgRef.current.innerHTML = "";
+      while (svgRef.current.firstChild) {
+        svgRef.current.removeChild(svgRef.current.firstChild);
+      }
     }
   }, [safeBarcode]);
 
