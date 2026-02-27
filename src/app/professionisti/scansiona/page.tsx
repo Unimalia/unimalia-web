@@ -133,9 +133,6 @@ export default function ScannerPage() {
   const [busy, setBusy] = useState(false);
   const [banner, setBanner] = useState<Banner>(null);
 
-  // blocco doppio scan (stesso codice entro 1200ms)
-  const lastScanRef = useRef<{ code: string; ts: number } | null>(null);
-
   const bannerTimer = useRef<number | null>(null);
   function showBanner(next: Banner, autoMs = 4000) {
     setBanner(next);
@@ -144,6 +141,21 @@ export default function ScannerPage() {
       bannerTimer.current = window.setTimeout(() => setBanner(null), autoMs);
     }
   }
+
+  function safePush(path: string) {
+    // Blocco assoluto del placeholder (mai più)
+    if (path === "/professionisti/animali" || path === "/professionisti/animali/") {
+      showBanner({
+        kind: "error",
+        text: "Bloccato: navigazione alla lista Animali (placeholder). Lo scanner deve aprire solo una scheda o la gestione manuale.",
+      });
+      return;
+    }
+    router.push(path);
+  }
+
+  // blocco doppio scan (stesso codice entro 1200ms)
+  const lastScanRef = useRef<{ code: string; ts: number } | null>(null);
 
   const ModeButton = useMemo(
     () =>
@@ -227,7 +239,7 @@ export default function ScannerPage() {
             note: "chip lookup not found -> manual",
           });
 
-          router.push(`/professionisti/scansiona/manuale?value=${encodeURIComponent(ex.chip)}`);
+          safePush(`/professionisti/scansiona/manuale?value=${encodeURIComponent(ex.chip)}`);
           return;
         }
 
@@ -240,7 +252,7 @@ export default function ScannerPage() {
           note: "chip lookup ok",
         });
 
-        router.push(`/professionisti/animali/${encodeURIComponent(json.animalId)}`);
+        safePush(`/professionisti/animali/${encodeURIComponent(json.animalId)}`);
         return;
       }
 
@@ -255,7 +267,7 @@ export default function ScannerPage() {
           note: "uuid/url id ok",
         });
 
-        router.push(`/professionisti/animali/${encodeURIComponent(ex.animalId)}`);
+        safePush(`/professionisti/animali/${encodeURIComponent(ex.animalId)}`);
         return;
       }
 
@@ -270,7 +282,7 @@ export default function ScannerPage() {
           note: `public token: ${ex.token}`,
         });
 
-        router.push(`/a/${encodeURIComponent(ex.token)}`);
+        safePush(`/a/${encodeURIComponent(ex.token)}`);
         return;
       }
 
