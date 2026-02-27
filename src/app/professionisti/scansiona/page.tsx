@@ -52,6 +52,14 @@ function extractFromScan(raw: string): Extract {
   if (url) {
     const path = url.pathname || "";
 
+    // evita redirect alla lista placeholder
+    if (path === "/professionisti/animali" || path === "/professionisti/animali/") {
+      return {
+        kind: "error",
+        error: "Questo codice apre la lista animali (non è un animale). Usa QR UNIMALIA o microchip.",
+      };
+    }
+
     // query param utili
     const qAnimalId = url.searchParams.get("animalId") || url.searchParams.get("id");
     if (qAnimalId && isUuid(qAnimalId)) return { kind: "animalId", animalId: qAnimalId };
@@ -72,11 +80,11 @@ function extractFromScan(raw: string): Extract {
     const mScan = path.match(/^\/scansiona\/animali\/([^/]+)\/?$/);
     if (mScan?.[1]) return { kind: "animalId", animalId: mScan[1] };
 
-    // /a/<token>  (link pubblico UNIMALIA)
+    // /a/<token> (link pubblico UNIMALIA)
     const mA = path.match(/^\/a\/([^/]+)\/?$/);
     if (mA?.[1]) return { kind: "publicToken", token: mA[1] };
 
-    // se è un URL che contiene un microchip in query (?chip=)
+    // chip in query (?chip=)
     const qChip = url.searchParams.get("chip");
     if (qChip) {
       const dc = digitsOnly(qChip);
@@ -188,15 +196,21 @@ export default function ScannerPage() {
         });
         const json = await res.json().catch(() => ({}));
 
+        // se non trovato -> vai a gestione manuale (flusso utile)
         if (!res.ok || !json?.animalId) {
-          showBanner({ kind: "error", text: "Microchip non trovato." });
+          showBanner({ kind: "info", text: "Microchip non trovato. Apro gestione manuale…" }, 1500);
+
           void logScan({
             raw,
             normalized,
             outcome: "not_found",
             animalId: null,
-            note: "chip lookup not found",
+            note: "chip lookup not found -> manual",
           });
+
+          router.push(
+            `/professionisti/scansiona/manuale?value=${encodeURIComponent(ex.chip)}`
+          );
           return;
         }
 
@@ -347,7 +361,7 @@ export default function ScannerPage() {
           </button>
 
           <div className="text-xs opacity-70">
-            Suggerimento: puoi incollare anche “microchip: 380260123456789” o con spazi: verrà normalizzato.
+            Se il microchip non esiste, si apre la gestione manuale per creare/associare.
           </div>
         </div>
       )}
