@@ -41,9 +41,20 @@ function extractFromScan(raw: string): Extract {
   // 1) UUID diretto
   if (isUuid(code)) return { kind: "animalId", animalId: code };
 
-  // 2) Microchip: tolleriamo input sporchi e lunghezze 10-20 (tipico 15)
+  // 2) Microchip: SOLO lunghezze realistiche (evita EAN-13)
+  //    Standard comune: 15 cifre. Opzionale: 10 cifre (vecchi impianti).
   const d = digitsOnly(code);
-  if (d.length >= 10 && d.length <= 20) {
+
+  // EAN-13 tipico: non è un microchip (riduce falsi positivi)
+  if (d.length === 13) {
+    return {
+      kind: "error",
+      error: "Questo sembra un barcode (13 cifre), non un microchip UNIMALIA.",
+    };
+  }
+
+  // Accetta 15 (standard) e 10 (vecchi impianti). Se vuoi essere più permissivo: aggiungi 14/16.
+  if (d.length === 15 || d.length === 10) {
     return { kind: "chip", chip: d };
   }
 
@@ -88,7 +99,15 @@ function extractFromScan(raw: string): Extract {
     const qChip = url.searchParams.get("chip");
     if (qChip) {
       const dc = digitsOnly(qChip);
-      if (dc.length >= 10 && dc.length <= 20) return { kind: "chip", chip: dc };
+
+      if (dc.length === 13) {
+        return {
+          kind: "error",
+          error: "Questo sembra un barcode (13 cifre), non un microchip UNIMALIA.",
+        };
+      }
+
+      if (dc.length === 15 || dc.length === 10) return { kind: "chip", chip: dc };
     }
 
     return { kind: "error", error: `Link non riconosciuto: ${path}` };
@@ -208,9 +227,7 @@ export default function ScannerPage() {
             note: "chip lookup not found -> manual",
           });
 
-          router.push(
-            `/professionisti/scansiona/manuale?value=${encodeURIComponent(ex.chip)}`
-          );
+          router.push(`/professionisti/scansiona/manuale?value=${encodeURIComponent(ex.chip)}`);
           return;
         }
 
@@ -326,7 +343,7 @@ export default function ScannerPage() {
           <CameraScanner onScan={(value) => handleScan(value)} disabled={busy} />
 
           <div className="text-xs opacity-70">
-            Supporta QR UNIMALIA (link), UUID diretto o microchip (anche incollato “sporco”).
+            Supporta QR UNIMALIA (link), UUID diretto o microchip (15 cifre; opzionale 10 cifre).
           </div>
         </div>
       )}
@@ -338,7 +355,7 @@ export default function ScannerPage() {
 
           <input
             className="w-full rounded-xl border px-3 py-2"
-            placeholder="Incolla link QR, UUID o microchip (anche con spazi/prefissi)"
+            placeholder="Incolla link QR, UUID o microchip (15 cifre; opzionale 10 cifre)"
             value={manualValue}
             onChange={(e) => setManualValue(e.target.value)}
             disabled={busy}
