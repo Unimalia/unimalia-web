@@ -171,9 +171,14 @@ export default function ProAnimalPage() {
     setEventsErr(null);
 
     try {
+      // ✅ ini-fix: prendi sessione supabase e inoltra access token all’API
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+
       // ✅ usa l’API già esistente (gate: sessione valida + vet)
       const res = await fetch(`/api/clinic-events/list?animalId=${encodeURIComponent(id)}`, {
         cache: "no-store",
+        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
       });
 
       if (!res.ok) {
@@ -424,7 +429,6 @@ export default function ProAnimalPage() {
             {events.map((ev) => {
               const isVerified = ev.source === "professional" || ev.source === "veterinarian" || !!ev.verified_at;
 
-              // ✅ per ora: se non abbiamo label nuova, fallback “Veterinario”
               const verifierLabel =
                 (ev.verified_by_label && ev.verified_by_label.trim()) ||
                 (isVerified ? "Veterinario" : null);
