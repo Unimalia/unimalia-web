@@ -23,6 +23,9 @@ type Animal = {
   status: string;
   unimalia_code?: string | null;
   photo_url?: string | null;
+
+  // ✅ opzionale futuro: quando agganciamo organizations
+  microchip_verified_by_label?: string | null;
 };
 
 type ClinicEventType =
@@ -42,7 +45,7 @@ type ClinicEventRow = {
   title: string;
   description: string | null;
   visibility: "owner" | "professionals" | "emergency";
-  source: "owner" | "professional" | "veterinarian"; // oggi: in DB può esserci "professional"
+  source: "owner" | "professional" | "veterinarian";
   verified_at: string | null;
   verified_by: string | null;
 
@@ -122,7 +125,6 @@ export default function ProAnimalPage() {
   const qrValue = useMemo(() => {
     const origin = typeof window !== "undefined" ? window.location.origin : "";
     if (!id) return "";
-    // QR “pubblico” di emergenza: pagina scansione pubblica (non identità)
     return origin ? `${origin}/scansiona/animali/${id}` : `UNIMALIA:${id}`;
   }, [id]);
 
@@ -145,7 +147,9 @@ export default function ProAnimalPage() {
     const user = authData.user;
 
     if (!user) {
-      router.replace("/professionisti/login?next=" + encodeURIComponent(`/professionisti/animali/${id}`));
+      router.replace(
+        "/professionisti/login?next=" + encodeURIComponent(`/professionisti/animali/${id}`)
+      );
       return;
     }
 
@@ -171,18 +175,11 @@ export default function ProAnimalPage() {
     setEventsErr(null);
 
     try {
-      // ✅ ini-fix: prendi sessione supabase e inoltra access token all’API
-      const { data: sessionData } = await supabase.auth.getSession();
-      const accessToken = sessionData?.session?.access_token;
-
-      // ✅ usa l’API già esistente (gate: sessione valida + vet)
       const res = await fetch(`/api/clinic-events/list?animalId=${encodeURIComponent(id)}`, {
         cache: "no-store",
-        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
       });
 
       if (!res.ok) {
-        // se non vet, ci aspettiamo 401/403 → messaggio pulito
         if (res.status === 401 || res.status === 403) {
           setEvents([]);
           setEventsErr("Cartella clinica: accesso riservato ai veterinari autorizzati.");
@@ -211,11 +208,18 @@ export default function ProAnimalPage() {
   }, [id]);
 
   useEffect(() => {
-    // carico eventi solo dopo animale
     if (!animal?.id) return;
     void loadClinicEvents();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [animal?.id]);
+
+  // ✅ label “Clinica X” (per ora fallback, poi la agganciamo davvero)
+  const microchipVerifierLabel = useMemo(() => {
+    if (!animal?.microchip_verified) return null;
+    const fromDb = (animal.microchip_verified_by_label || "").trim();
+    if (fromDb) return fromDb;
+    return "Veterinario";
+  }, [animal?.microchip_verified, animal?.microchip_verified_by_label]);
 
   if (loading) {
     return (
@@ -229,7 +233,10 @@ export default function ProAnimalPage() {
     return (
       <div className="space-y-4">
         <div className="text-sm">
-          <Link href="/professionisti/scansiona" className="font-semibold text-zinc-700 hover:text-zinc-900">
+          <Link
+            href="/professionisti/scansiona"
+            className="font-semibold text-zinc-700 hover:text-zinc-900"
+          >
             ← Scanner
           </Link>
         </div>
@@ -350,21 +357,26 @@ export default function ProAnimalPage() {
                 <span className="font-semibold text-amber-700">Da verificare ⏳</span>
               )}
             </div>
+
+            {/* ✅ nuovo: chi ha verificato (quando verified) */}
+            {animal.microchip_verified ? (
+              <div className="mt-2 text-xs text-zinc-600">
+                Verificato da:{" "}
+                <span className="font-semibold text-zinc-900">{microchipVerifierLabel}</span>
+              </div>
+            ) : null}
           </div>
 
           <div className="mt-4 flex flex-wrap gap-2">
-            {isVet ? (
+            {/* ✅ UX richiesta: se già verificato, NON mostrare “Vai alla verifica” */}
+            {!animal.microchip_verified && isVet ? (
               <Link
                 href={`/professionisti/animali/${animal.id}/verifica`}
                 className="rounded-2xl bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-900"
               >
                 Vai alla verifica
               </Link>
-            ) : (
-              <span className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-700">
-                Verifica riservata al vet
-              </span>
-            )}
+            ) : null}
 
             <button
               type="button"
@@ -388,14 +400,12 @@ export default function ProAnimalPage() {
         caption="Da usare in emergenza o per verifica rapida."
       />
 
-      {/* CARTELLA CLINICA (timeline + validazione) */}
+      {/* CARTELLA CLINICA */}
       <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm space-y-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h2 className="text-base font-semibold text-zinc-900">Cartella clinica</h2>
-            <p className="mt-1 text-sm text-zinc-600">
-              Timeline eventi (owner) + validazione veterinaria.
-            </p>
+            <p className="mt-1 text-sm text-zinc-600">Timeline eventi (owner) + validazione veterinaria.</p>
           </div>
 
           {isVet ? (
@@ -427,20 +437,19 @@ export default function ProAnimalPage() {
         ) : (
           <div className="flex flex-col gap-3">
             {events.map((ev) => {
-              const isVerified = ev.source === "professional" || ev.source === "veterinarian" || !!ev.verified_at;
+              const isVerified =
+                ev.source === "professional" || ev.source === "veterinarian" || !!ev.verified_at;
 
               const verifierLabel =
-                (ev.verified_by_label && ev.verified_by_label.trim()) ||
-                (isVerified ? "Veterinario" : null);
+                (ev.verified_by_label && ev.verified_by_label.trim()) || (isVerified ? "Veterinario" : null);
 
               return (
                 <div key={ev.id} className="rounded-2xl border border-zinc-200 p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="text-xs text-zinc-500">{formatDateIT(ev.event_date)}</div>
-                      <div className="mt-1 truncate text-sm font-semibold text-zinc-900">
-                        {typeLabel(ev.type)}
-                      </div>
+                      <div className="mt-1 truncate text-sm font-semibold text-zinc-900">{typeLabel(ev.type)}</div>
+
                       {ev.description ? (
                         <p className="mt-2 whitespace-pre-wrap text-sm text-zinc-700">{ev.description}</p>
                       ) : null}
