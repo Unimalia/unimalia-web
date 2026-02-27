@@ -15,6 +15,10 @@ export default function CameraScanner({ onScan, disabled = false }: Props) {
 
   const [status, setStatus] = useState<"idle" | "starting" | "running" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [lastText, setLastText] = useState<string>("");
+
+  // throttle scans: evita doppie letture identiche in pochi ms
+  const lastHitRef = useRef<{ text: string; ts: number } | null>(null);
 
   useEffect(() => {
     readerRef.current = new BrowserMultiFormatReader();
@@ -38,6 +42,7 @@ export default function CameraScanner({ onScan, disabled = false }: Props) {
       const reader = readerRef.current;
       if (!video || !reader) return;
 
+      // stop eventuale sessione precedente
       try {
         controlsRef.current?.stop();
       } catch {}
@@ -50,10 +55,22 @@ export default function CameraScanner({ onScan, disabled = false }: Props) {
 
       const controls = await reader.decodeFromConstraints(constraints, video, (result) => {
         if (disabled) return;
-        if (result) {
-          const text = result.getText?.() ?? String(result);
-          void onScan(text);
-        }
+        if (!result) return;
+
+        const text = result.getText?.() ?? String(result);
+
+        // debug: capire se legge davvero
+        setLastText(text);
+        // eslint-disable-next-line no-console
+        console.log("SCAN:", text);
+
+        // throttle: stesso testo entro 900ms -> ignora
+        const now = Date.now();
+        const last = lastHitRef.current;
+        if (last && last.text === text && now - last.ts < 900) return;
+        lastHitRef.current = { text, ts: now };
+
+        void onScan(text);
       });
 
       controlsRef.current = controls;
@@ -114,6 +131,14 @@ export default function CameraScanner({ onScan, disabled = false }: Props) {
 
       <div className="text-xs opacity-70">
         Inquadra QR/Barcode: quando viene letto, viene aperta automaticamente la scheda.
+      </div>
+
+      {/* Debug visivo: così capisci se ZXing sta leggendo o no */}
+      <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-700">
+        <div className="font-semibold">Debug</div>
+        <div className="mt-1 break-all opacity-80">
+          Ultimo scan: {lastText ? lastText : "—"}
+        </div>
       </div>
     </div>
   );
