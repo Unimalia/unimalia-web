@@ -1,62 +1,84 @@
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { createClient } from "@supabase/supabase-js";
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+function getSupabaseAdmin() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+  const key =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.SUPABASE_SERVICE_KEY ||
+    process.env.SUPABASE_SERVICE_ROLE;
 
-async function requireVet(req: Request) {
-  const auth = req.headers.get("authorization") || "";
-  const m = auth.match(/^Bearer\s+(.+)$/i);
-  const token = m?.[1];
+  if (!url || !key) throw new Error("Missing Supabase env (URL or SERVICE_ROLE_KEY).");
 
-  if (!token) return { ok: false as const, status: 401, error: "Missing bearer token" };
+  return createClient(url, key, {
+    auth: { persistSession: false },
+  });
+}
 
-  const { data: userData, error: userErr } = await supabaseAdmin.auth.getUser(token);
-  const user = userData?.user;
+function isVetEmail(email?: string | null) {
+  const e = String(email || "").toLowerCase();
+  const allow = new Set([
+    "valentinotwister@hotmail.it",
+    // aggiungi qui altre email vet abilitate:
+  ]);
+  return allow.has(e);
+}
 
-  if (userErr || !user) return { ok: false as const, status: 401, error: "Invalid session" };
-
-  const { data: pro, error: proErr } = await supabaseAdmin
-    .from("professionals")
-    .select("id,is_vet,approved,owner_id")
-    .eq("owner_id", user.id)
-    .maybeSingle();
-
-  if (proErr) return { ok: false as const, status: 500, error: proErr.message };
-  if (!pro || pro.is_vet !== true) return { ok: false as const, status: 403, error: "Not a vet" };
-  if (pro.approved === false) return { ok: false as const, status: 403, error: "Vet not approved" };
-
-  return { ok: true as const, professionalId: pro.id };
+function readBearer(req: Request) {
+  const h = req.headers.get("authorization") || req.headers.get("Authorization");
+  if (!h) return null;
+  const m = h.match(/^Bearer\s+(.+)$/i);
+  return m?.[1] || null;
 }
 
 export async function POST(req: Request) {
-  const vet = await requireVet(req);
-  if (!vet.ok) return NextResponse.json({ error: vet.error }, { status: vet.status });
-
-  let body: any = null;
   try {
-    body = await req.json();
-  } catch {
-    body = null;
+    const token = readBearer(req);
+    if (!token) {
+      return NextResponse.json({ error: "Missing Authorization Bearer token" }, { status: 401 });
+    }
+
+    const body = await req.json().catch(() => ({}));
+    const eventId = String(body?.eventId || "").trim();
+
+    if (!eventId) {
+      return NextResponse.json({ error: "eventId required" }, { status: 400 });
+    }
+
+    const supabase = getSupabaseAdmin();
+
+    const { data: userData, error: userErr } = await supabase.auth.getUser(token);
+    if (userErr || !userData?.user) {
+      return NextResponse.json({ error: "Invalid session" }, { status: 401 });
+    }
+
+    const user = userData.user;
+    if (!isVetEmail(user.email)) {
+      return NextResponse.json({ error: "Not authorized (vet only)" }, { status: 403 });
+    }
+
+    const now = new Date().toISOString();
+
+    // ✅ aggiorna evento: mark “professional/verified”
+    const { error: upErr } = await supabase
+      .from("animal_clinic_events")
+      .update({
+        source: "professional",
+        verified_at: now,
+        verified_by: user.id,
+        verified_by_label: "Veterinario",
+      })
+      .eq("id", eventId);
+
+    if (upErr) {
+      return NextResponse.json({ error: upErr.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ ok: true }, { status: 200 });
+  } catch (e: any) {
+    return NextResponse.json(
+      { error: e?.message || "Server error" },
+      { status: 500 }
+    );
   }
-
-  const eventId = String(body?.eventId || "").trim();
-  if (!eventId) return NextResponse.json({ error: "Missing eventId" }, { status: 400 });
-
-  const patch = {
-    source: "professional",
-    verified_at: new Date().toISOString(),
-    verified_by: vet.professionalId,
-  };
-
-  const { data, error } = await supabaseAdmin
-    .from("animal_clinic_events")
-    .update(patch)
-    .eq("id", eventId)
-    .select("id,source,verified_at,verified_by")
-    .single();
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  return NextResponse.json({ ok: true, event: data }, { status: 200 });
 }
