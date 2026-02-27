@@ -14,17 +14,38 @@ function isProfessionalEmail(email?: string | null) {
   return allow.has(e);
 }
 
+// ✅ Sanifica il redirect post-login
+function safeNextPath(next: string | null | undefined) {
+  const n = String(next || "").trim();
+
+  // fallback
+  if (!n) return "/professionisti/scansiona";
+
+  // deve restare nel portale
+  if (!n.startsWith("/professionisti")) return "/professionisti/scansiona";
+
+  // evita loop sulla login
+  if (n.startsWith("/professionisti/login")) return "/professionisti/scansiona";
+
+  return n;
+}
+
 export default function LoginClient() {
   const router = useRouter();
   const sp = useSearchParams();
-  const next = sp.get("next") || "/professionisti";
+
+  // ✅ Se non c’è next, mandiamo allo scanner (è il flusso più utile per i pro)
+  const next = safeNextPath(sp.get("next"));
 
   const [email, setEmail] = useState("valentinotwister@hotmail.it");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  const canSubmit = useMemo(() => email.trim().length > 3 && password.length >= 6, [email, password]);
+  const canSubmit = useMemo(
+    () => email.trim().length > 3 && password.length >= 6,
+    [email, password]
+  );
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -54,6 +75,8 @@ export default function LoginClient() {
     }
 
     setLoading(false);
+
+    // ✅ Redirect corretto (rispetta next)
     router.replace(next);
   }
 
@@ -107,6 +130,10 @@ export default function LoginClient() {
             >
               {loading ? "Accesso…" : "Accedi"}
             </button>
+
+            <div className="text-xs opacity-70">
+              Dopo l’accesso verrai reindirizzato a: <span className="font-semibold">{next}</span>
+            </div>
           </form>
         </div>
       </div>
