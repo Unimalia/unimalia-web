@@ -55,12 +55,6 @@ export default function AnimalProfilePage() {
   const [animal, setAnimal] = useState<Animal | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const qrValue = useMemo(() => {
-    const origin = typeof window !== "undefined" ? window.location.origin : "";
-    if (!id) return "";
-    return origin ? `${origin}/scansiona/animali/${id}` : `UNIMALIA:${id}`;
-  }, [id]);
-
   useEffect(() => {
     let alive = true;
 
@@ -78,11 +72,7 @@ export default function AnimalProfilePage() {
         return;
       }
 
-      const { data, error } = await supabase
-        .from("animals")
-        .select("*")
-        .eq("id", id)
-        .single();
+      const { data, error } = await supabase.from("animals").select("*").eq("id", id).single();
 
       if (!alive) return;
 
@@ -115,12 +105,22 @@ export default function AnimalProfilePage() {
     return new Date(animal.premium_expires_at).getTime() > Date.now();
   }, [animal]);
 
+  // ✅ QR PRIVACY-SAFE: niente URL, solo codice UNIMALIA
+  const qrValue = useMemo(() => {
+    if (!animal) return "";
+    const code = (animal.unimalia_code || "").trim();
+    if (code) return `UNIMALIA:${code}`;
+    return `UNIMALIA:${animal.id}`;
+  }, [animal]);
+
   const barcodeValue = useMemo(() => {
     if (!animal) return "";
     const chip = normalizeChip(animal.chip_number);
     if (chip) return chip;
+
     const code = (animal.unimalia_code || "").trim();
     if (code) return `UNIMALIA:${code}`;
+
     return `UNIMALIA:${animal.id}`;
   }, [animal]);
 
@@ -150,9 +150,7 @@ export default function AnimalProfilePage() {
   return (
     <PageShell
       title={animal.name}
-      subtitle={`${animal.species}${animal.breed ? ` • ${animal.breed}` : ""} • ${statusLabel(
-        animal.status
-      )}`}
+      subtitle={`${animal.species}${animal.breed ? ` • ${animal.breed}` : ""} • ${statusLabel(animal.status)}`}
       backFallbackHref="/identita"
       actions={
         <>
@@ -219,13 +217,9 @@ export default function AnimalProfilePage() {
             <div className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4">
               {animal.chip_number ? (
                 <>
-                  <p className="text-sm font-semibold text-zinc-900">
-                    {normalizeChip(animal.chip_number)}
-                  </p>
+                  <p className="text-sm font-semibold text-zinc-900">{normalizeChip(animal.chip_number)}</p>
                   <p className="mt-2 text-xs text-zinc-600">
-                    {animal.microchip_verified
-                      ? "Verificato da professionista ✅"
-                      : "Non ancora verificato"}
+                    {animal.microchip_verified ? "Verificato da professionista ✅" : "Non ancora verificato"}
                   </p>
                 </>
               ) : (
@@ -240,11 +234,13 @@ export default function AnimalProfilePage() {
               >
                 Aggiorna dati
               </Link>
+
+              {/* ✅ NON più "Pagina scansione" pubblica: i codici vanno allo scanner pro */}
               <Link
-                href={`/scansiona/animali/${animal.id}`}
+                href={`/professionisti/scansiona`}
                 className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
               >
-                Pagina scansione
+                Vai allo scanner professionisti
               </Link>
             </div>
           </section>
@@ -261,9 +257,7 @@ export default function AnimalProfilePage() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-base font-semibold text-zinc-900">Cartella clinica</h2>
-              <p className="mt-1 text-sm text-zinc-600">
-                Referti, vaccinazioni, terapie e note. (Da creare)
-              </p>
+              <p className="mt-1 text-sm text-zinc-600">Referti, vaccinazioni, terapie e note. (Da creare)</p>
             </div>
 
             <Link
