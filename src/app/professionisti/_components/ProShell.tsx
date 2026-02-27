@@ -16,6 +16,41 @@ function isActive(pathname: string, href: string) {
 
 type Item = { href: string; label: string };
 
+// ✅ SINGLE SOURCE OF TRUTH (email allowlists)
+const PROFESSIONAL_EMAILS = new Set<string>([
+  "valentinotwister@hotmail.it",
+  // aggiungi qui altre email professionisti:
+]);
+
+const VET_EMAILS = new Set<string>([
+  "valentinotwister@hotmail.it",
+  // aggiungi qui altre email veterinari autorizzati:
+]);
+
+function getEmail(u: any) {
+  return String(u?.email || "").toLowerCase().trim();
+}
+
+export function isProfessionalUser(u: any) {
+  if (!u) return false;
+
+  const email = getEmail(u);
+  if (PROFESSIONAL_EMAILS.has(email)) return true;
+
+  // fallback (futuro): metadata/ruoli veri
+  return Boolean(u?.app_metadata?.is_professional || u?.user_metadata?.is_professional);
+}
+
+export function isVetUser(u: any) {
+  if (!u) return false;
+
+  const email = getEmail(u);
+  if (VET_EMAILS.has(email)) return true;
+
+  // fallback (futuro): metadata/ruoli veri
+  return Boolean(u?.app_metadata?.is_vet || u?.user_metadata?.is_vet);
+}
+
 function SideLink({
   href,
   label,
@@ -40,22 +75,6 @@ function SideLink({
       {label}
     </Link>
   );
-}
-
-function isProfessionalUser(u: any) {
-  if (!u) return false;
-
-  // ✅ PASSAPARTOUT: allowlist email (subito funzionante senza Supabase meta)
-  const email = String(u.email || "").toLowerCase();
-  const allow = new Set([
-    "valentinotwister@hotmail.it",
-    // aggiungi altre email professionisti qui:
-    // "clinica@example.com",
-  ]);
-  if (allow.has(email)) return true;
-
-  // ✅ In futuro: ruolo vero su metadata
-  return Boolean(u?.app_metadata?.is_professional || u?.user_metadata?.is_professional);
 }
 
 export default function ProShell({ children }: { children: React.ReactNode }) {
