@@ -189,8 +189,15 @@ export default function ProVerifyPage() {
     setErr(null);
 
     try {
+      // ✅ FIX: prendi email e passala in header
+      const { data: authData } = await supabase.auth.getUser();
+      const email = authData.user?.email || "";
+
       const res = await fetch(`/api/clinic-events/list?animalId=${encodeURIComponent(animalId)}`, {
         cache: "no-store",
+        headers: {
+          "x-user-email": email,
+        },
       });
 
       if (!res.ok) {
@@ -549,7 +556,9 @@ export default function ProVerifyPage() {
                     </div>
 
                     {ev.description ? (
-                      <p className="mt-2 text-sm text-zinc-700 whitespace-pre-wrap">{ev.description}</p>
+                      <p className="mt-2 text-sm text-zinc-700 whitespace-pre-wrap">
+                        {ev.description}
+                      </p>
                     ) : null}
                   </div>
                 </label>
