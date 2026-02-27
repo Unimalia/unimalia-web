@@ -26,6 +26,9 @@ type ClinicEventRow = {
   title: string;
   description: string | null;
   visibility: "owner" | "professionals" | "emergency";
+  source: "owner" | "professional";
+  verified_at: string | null;
+  verified_by: string | null;
   created_at: string;
 };
 
@@ -50,7 +53,7 @@ function typeLabel(t: ClinicEventType) {
   }
 }
 
-function formatDate(iso: string) {
+function formatDateIT(iso: string) {
   try {
     return new Date(iso).toLocaleString("it-IT", {
       year: "numeric",
@@ -64,6 +67,23 @@ function formatDate(iso: string) {
   }
 }
 
+// datetime-local helpers
+function toDateTimeLocalValue(date: Date) {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const yyyy = date.getFullYear();
+  const mm = pad(date.getMonth() + 1);
+  const dd = pad(date.getDate());
+  const hh = pad(date.getHours());
+  const mi = pad(date.getMinutes());
+  return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
+}
+
+function fromDateTimeLocalValue(v: string) {
+  // v: "YYYY-MM-DDTHH:mm"
+  const d = new Date(v);
+  return isNaN(d.getTime()) ? new Date() : d;
+}
+
 export default function AnimalClinicalPage() {
   const params = useParams<{ id: string }>();
   const animalId = params?.id;
@@ -73,9 +93,9 @@ export default function AnimalClinicalPage() {
   const [error, setError] = useState<string | null>(null);
 
   // form state
-  const [title, setTitle] = useState("");
   const [type, setType] = useState<ClinicEventType>("note");
   const [description, setDescription] = useState("");
+  const [dateLocal, setDateLocal] = useState(() => toDateTimeLocalValue(new Date()));
   const [saving, setSaving] = useState(false);
 
   const backHref = useMemo(() => (animalId ? `/identita/${animalId}` : "/identita"), [animalId]);
@@ -88,7 +108,9 @@ export default function AnimalClinicalPage() {
 
     const { data, error } = await supabase
       .from("animal_clinic_events")
-      .select("id, animal_id, event_date, type, title, description, visibility, created_at")
+      .select(
+        "id, animal_id, event_date, type, title, description, visibility, source, verified_at, verified_by, created_at"
+      )
       .eq("animal_id", animalId)
       .order("event_date", { ascending: false });
 
@@ -110,18 +132,11 @@ export default function AnimalClinicalPage() {
   async function onAddEvent() {
     if (!animalId) return;
 
-    const cleanTitle = title.trim();
     const cleanDescription = description.trim();
-
-    if (!cleanTitle) {
-      setError("Inserisci un titolo per l’evento.");
-      return;
-    }
 
     setSaving(true);
     setError(null);
 
-    // Assicuriamoci di avere sessione (se RLS richiede auth)
     const { data: sessionData } = await supabase.auth.getSession();
     if (!sessionData?.session) {
       setSaving(false);
@@ -129,14 +144,22 @@ export default function AnimalClinicalPage() {
       return;
     }
 
+    const eventDate = fromDateTimeLocalValue(dateLocal).toISOString();
+
+    // ✅ categoria unica: il titolo coincide con la label del tipo
+    const title = typeLabel(type);
+
     const payload = {
       animal_id: animalId,
-      event_date: new Date().toISOString(),
+      event_date: eventDate,
       type,
-      title: cleanTitle,
+      title,
       description: cleanDescription || null,
       visibility: "owner" as const,
       created_by: sessionData.session.user.id,
+      source: "owner" as const, // per ora owner; professionista lo metteremo via API
+      verified_at: null,
+      verified_by: null,
     };
 
     const { error: insErr } = await supabase.from("animal_clinic_events").insert(payload);
@@ -147,9 +170,9 @@ export default function AnimalClinicalPage() {
       return;
     }
 
-    setTitle("");
     setDescription("");
     setType("note");
+    setDateLocal(toDateTimeLocalValue(new Date()));
 
     await loadEvents();
     setSaving(false);
@@ -174,7 +197,7 @@ export default function AnimalClinicalPage() {
             <div>
               <h2 className="text-base font-semibold text-zinc-900">Nuovo evento</h2>
               <p className="mt-1 text-sm text-zinc-600">
-                Aggiungi un evento alla timeline (visita, vaccinazione, esame, terapia o nota).
+                Inserisci un evento (anche storico). La descrizione è facoltativa.
               </p>
             </div>
 
@@ -184,18 +207,8 @@ export default function AnimalClinicalPage() {
           </div>
 
           <div className="mt-4 grid gap-3 md:grid-cols-3">
-            <div className="md:col-span-2">
-              <label className="block text-xs font-semibold text-zinc-700">Titolo</label>
-              <input
-                className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-zinc-200"
-                placeholder="Es. Visita di controllo"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-              />
-            </div>
-
             <div>
-              <label className="block text-xs font-semibold text-zinc-700">Tipo</label>
+              <label className="block text-xs font-semibold text-zinc-700">Categoria</label>
               <select
                 className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-zinc-200"
                 value={type}
@@ -211,11 +224,24 @@ export default function AnimalClinicalPage() {
               </select>
             </div>
 
+            <div className="md:col-span-2">
+              <label className="block text-xs font-semibold text-zinc-700">Data e ora</label>
+              <input
+                type="datetime-local"
+                className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-zinc-200"
+                value={dateLocal}
+                onChange={(e) => setDateLocal(e.target.value)}
+              />
+              <p className="mt-1 text-xs text-zinc-500">
+                Precompilata con l’orario attuale. Modificabile per caricare storico.
+              </p>
+            </div>
+
             <div className="md:col-span-3">
               <label className="block text-xs font-semibold text-zinc-700">Descrizione (facoltativa)</label>
               <textarea
                 className="mt-1 min-h-[96px] w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-zinc-200"
-                placeholder="Dettagli utili (es. farmaco, dosaggio, note cliniche)…"
+                placeholder="Dettagli utili (farmaco, dosaggio, note cliniche)…"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
@@ -247,7 +273,7 @@ export default function AnimalClinicalPage() {
           </div>
 
           <p className="mt-3 text-xs text-zinc-500">
-            Prossimi step: visibilità “professionals”, allegati documenti, accesso emergenza.
+            Prossimi step: validazione professionista + allegati documenti + accesso emergenza.
           </p>
         </section>
 
@@ -264,25 +290,43 @@ export default function AnimalClinicalPage() {
             </div>
           ) : (
             <div className="mt-5 flex flex-col gap-3">
-              {events.map((ev) => (
-                <div key={ev.id} className="rounded-xl border border-zinc-200 p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="text-xs text-zinc-500">{formatDate(ev.event_date)}</div>
-                      <div className="mt-1 truncate text-sm font-semibold text-zinc-900">{ev.title}</div>
-                      <div className="mt-1 text-xs text-zinc-500">{typeLabel(ev.type)}</div>
+              {events.map((ev) => {
+                const isVerified = ev.source === "professional" || !!ev.verified_at;
+                return (
+                  <div key={ev.id} className="rounded-xl border border-zinc-200 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="text-xs text-zinc-500">{formatDateIT(ev.event_date)}</div>
+
+                        {/* Categoria unica (niente duplicazioni) */}
+                        <div className="mt-1 truncate text-sm font-semibold text-zinc-900">
+                          {typeLabel(ev.type)}
+                        </div>
+
+                        {ev.description ? (
+                          <p className="mt-2 text-sm text-zinc-700 whitespace-pre-wrap">{ev.description}</p>
+                        ) : null}
+                      </div>
+
+                      <div className="shrink-0 flex flex-col items-end gap-2">
+                        <span className="rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs text-zinc-600">
+                          {ev.visibility}
+                        </span>
+
+                        {isVerified ? (
+                          <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                            ✓ Verificato professionista
+                          </span>
+                        ) : (
+                          <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
+                            ⏳ Da validare
+                          </span>
+                        )}
+                      </div>
                     </div>
-
-                    <span className="shrink-0 rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs text-zinc-600">
-                      {ev.visibility}
-                    </span>
                   </div>
-
-                  {ev.description ? (
-                    <p className="mt-3 text-sm text-zinc-700 whitespace-pre-wrap">{ev.description}</p>
-                  ) : null}
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </section>
