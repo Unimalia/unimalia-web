@@ -175,8 +175,15 @@ export default function ProAnimalPage() {
     setEventsErr(null);
 
     try {
+      // ✅ FIX: prendi email e passala in header
+      const { data: authData } = await supabase.auth.getUser();
+      const email = authData.user?.email || "";
+
       const res = await fetch(`/api/clinic-events/list?animalId=${encodeURIComponent(id)}`, {
         cache: "no-store",
+        headers: {
+          "x-user-email": email,
+        },
       });
 
       if (!res.ok) {
@@ -358,7 +365,6 @@ export default function ProAnimalPage() {
               )}
             </div>
 
-            {/* ✅ nuovo: chi ha verificato (quando verified) */}
             {animal.microchip_verified ? (
               <div className="mt-2 text-xs text-zinc-600">
                 Verificato da:{" "}
@@ -368,15 +374,18 @@ export default function ProAnimalPage() {
           </div>
 
           <div className="mt-4 flex flex-wrap gap-2">
-            {/* ✅ UX richiesta: se già verificato, NON mostrare “Vai alla verifica” */}
-            {!animal.microchip_verified && isVet ? (
+            {isVet ? (
               <Link
                 href={`/professionisti/animali/${animal.id}/verifica`}
                 className="rounded-2xl bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-900"
               >
                 Vai alla verifica
               </Link>
-            ) : null}
+            ) : (
+              <span className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-700">
+                Verifica riservata al vet
+              </span>
+            )}
 
             <button
               type="button"
@@ -405,7 +414,9 @@ export default function ProAnimalPage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h2 className="text-base font-semibold text-zinc-900">Cartella clinica</h2>
-            <p className="mt-1 text-sm text-zinc-600">Timeline eventi (owner) + validazione veterinaria.</p>
+            <p className="mt-1 text-sm text-zinc-600">
+              Timeline eventi (owner) + validazione veterinaria.
+            </p>
           </div>
 
           {isVet ? (
@@ -441,17 +452,21 @@ export default function ProAnimalPage() {
                 ev.source === "professional" || ev.source === "veterinarian" || !!ev.verified_at;
 
               const verifierLabel =
-                (ev.verified_by_label && ev.verified_by_label.trim()) || (isVerified ? "Veterinario" : null);
+                (ev.verified_by_label && ev.verified_by_label.trim()) ||
+                (isVerified ? "Veterinario" : null);
 
               return (
                 <div key={ev.id} className="rounded-2xl border border-zinc-200 p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="text-xs text-zinc-500">{formatDateIT(ev.event_date)}</div>
-                      <div className="mt-1 truncate text-sm font-semibold text-zinc-900">{typeLabel(ev.type)}</div>
-
+                      <div className="mt-1 truncate text-sm font-semibold text-zinc-900">
+                        {typeLabel(ev.type)}
+                      </div>
                       {ev.description ? (
-                        <p className="mt-2 whitespace-pre-wrap text-sm text-zinc-700">{ev.description}</p>
+                        <p className="mt-2 whitespace-pre-wrap text-sm text-zinc-700">
+                          {ev.description}
+                        </p>
                       ) : null}
                     </div>
 
