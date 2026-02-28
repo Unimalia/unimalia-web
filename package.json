@@ -14,7 +14,8 @@
   "dependencies": {
     "@googlemaps/js-api-loader": "^2.0.2",
     "@react-google-maps/api": "^2.20.8",
-    "@supabase/supabase-js": "^2.97.0",
+    "@supabase/ssr": "^0.8.0",
+    "@supabase/supabase-js": "^2.98.0",
     "@zxing/browser": "^0.1.5",
     "jsbarcode": "^3.12.3",
     "next": "16.1.6",
