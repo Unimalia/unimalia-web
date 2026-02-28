@@ -283,23 +283,13 @@ export default function AnimalProfilePage() {
               </div>
             </div>
 
-            {/* QR sopra, Barcode sotto (separati) */}
-            <div className="mt-4 grid gap-4">
-              <div className="rounded-xl border border-zinc-200 bg-white p-4">
-                <div className="text-xs font-semibold text-zinc-700">QR Code</div>
-                <div className="mt-3">
-                  <AnimalCodes qrValue={qrValue || `UNIMALIA:${animal.id}`} barcodeValue={""} caption="" />
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-zinc-200 bg-white p-4">
-                <div className="text-xs font-semibold text-zinc-700">
-                  {animal.chip_number ? "Codice a barre (microchip)" : "Codice a barre (UNIMALIA)"}
-                </div>
-                <div className="mt-3">
-                  <AnimalCodes qrValue={""} barcodeValue={barcodeValue} caption="" />
-                </div>
-              </div>
+            <div className="mt-4">
+              <AnimalCodes
+                qrValue={qrValue || `UNIMALIA:${animal.id}`}
+                barcodeValue={barcodeValue}
+                caption=""
+                layout="stack"
+              />
             </div>
 
             <p className="mt-3 text-xs text-zinc-500">
