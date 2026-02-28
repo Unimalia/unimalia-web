@@ -1,9 +1,10 @@
-// src/app/api/clinic-events/list/route.ts
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { supabaseAdmin } from "@/lib/supabase/server";
+
+export const dynamic = "force-dynamic";
 
 function isVetEmail(email?: string | null) {
-  const e = String(email || "").toLowerCase();
+  const e = String(email || "").toLowerCase().trim();
   const allow = new Set([
     "valentinotwister@hotmail.it",
     // altre email vet
@@ -29,12 +30,12 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const admin = supabaseAdmin();
+    const admin = supabaseAdmin(); // ✅ sempre chiamare
 
     const { data, error } = await admin
       .from("animal_clinic_events")
       .select(
-        "id, animal_id, event_date, type, title, description, visibility, source, verified_at, verified_by, verified_by_label, created_at"
+        "id, animal_id, event_date, type, title, description, visibility, source, verified_at, verified_by, verified_org_id, created_at"
       )
       .eq("animal_id", animalId)
       .order("event_date", { ascending: false });
