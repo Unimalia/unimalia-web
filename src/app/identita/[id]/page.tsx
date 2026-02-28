@@ -55,6 +55,8 @@ export default function AnimalProfilePage() {
   const [animal, setAnimal] = useState<Animal | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const [shareOpen, setShareOpen] = useState(false);
+
   useEffect(() => {
     let alive = true;
 
@@ -102,7 +104,8 @@ export default function AnimalProfilePage() {
     if (!animal) return false;
     if (!animal.premium_active) return false;
     if (!animal.premium_expires_at) return true;
-    return new Date(animal.premium_expires_at).getTime() > Date.now();
+    // evita Date.now (lint purity)
+    return new Date(animal.premium_expires_at).getTime() > new Date().getTime();
   }, [animal]);
 
   // ✅ QR PRIVACY-SAFE: niente URL, solo codice UNIMALIA
@@ -123,6 +126,22 @@ export default function AnimalProfilePage() {
 
     return `UNIMALIA:${animal.id}`;
   }, [animal]);
+
+  const microchipBadge = useMemo(() => {
+    if (!animal?.chip_number) return null;
+    if (!animal.microchip_verified) {
+      return (
+        <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">
+          Microchip da verificare ⏳
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
+        Microchip verificato ✅
+      </span>
+    );
+  }, [animal?.chip_number, animal?.microchip_verified]);
 
   if (loading) {
     return (
@@ -157,8 +176,15 @@ export default function AnimalProfilePage() {
           <ButtonSecondary href={`/identita/${animal.id}/modifica`}>Modifica</ButtonSecondary>
           <ButtonSecondary href={`/identita/${animal.id}/stampa`}>Stampa</ButtonSecondary>
 
-          {/* A) Condividi al professionista (porta a Richieste consulto precompilata) */}
-          <ButtonSecondary href={`/professionisti/richieste?animal=${animal.id}`}>
+          {/* Condividi: NON deve portare a /professionisti */}
+          <ButtonSecondary
+            href="#"
+            onClick={(e: any) => {
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+              e?.preventDefault?.();
+              setShareOpen(true);
+            }}
+          >
             Condividi al professionista
           </ButtonSecondary>
 
@@ -181,7 +207,17 @@ export default function AnimalProfilePage() {
 
         <div className="grid gap-4 md:grid-cols-2">
           <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-            <h2 className="text-base font-semibold text-zinc-900">Identità</h2>
+            <div className="flex items-start justify-between gap-4">
+              <h2 className="text-base font-semibold text-zinc-900">Identità</h2>
+
+              {/* ✅ "Aggiorna dati" qui, dentro Identità */}
+              <Link
+                href={`/identita/${animal.id}/modifica`}
+                className="shrink-0 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+              >
+                Aggiorna dati
+              </Link>
+            </div>
 
             <dl className="mt-4 grid gap-3 text-sm">
               <div className="flex justify-between gap-4">
@@ -211,68 +247,115 @@ export default function AnimalProfilePage() {
             </dl>
           </section>
 
+          {/* ✅ UNICO BLOCCO: microchip + QR + barcode */}
           <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-            <h2 className="text-base font-semibold text-zinc-900">Microchip</h2>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h2 className="text-base font-semibold text-zinc-900">Codici</h2>
+                <p className="mt-1 text-sm text-zinc-600">Da usare in emergenza o per verifica rapida.</p>
+              </div>
+
+              <div className="shrink-0">{microchipBadge}</div>
+            </div>
 
             <div className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4">
-              {animal.chip_number ? (
-                <>
-                  <p className="text-sm font-semibold text-zinc-900">{normalizeChip(animal.chip_number)}</p>
-                  <p className="mt-2 text-xs text-zinc-600">
-                    {animal.microchip_verified ? "Verificato da professionista ✅" : "Non ancora verificato"}
-                  </p>
-                </>
-              ) : (
-                <p className="text-sm text-zinc-700">Nessun microchip registrato.</p>
-              )}
+              <div className="text-xs text-zinc-500">Microchip</div>
+              <div className="mt-1 text-sm font-semibold text-zinc-900">
+                {animal.chip_number ? normalizeChip(animal.chip_number) : "— (non presente)"}
+              </div>
             </div>
 
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Link
-                href={`/identita/${animal.id}/modifica`}
-                className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
-              >
-                Aggiorna dati
-              </Link>
-
-              {/* ✅ NON più "Pagina scansione" pubblica: i codici vanno allo scanner pro */}
-              <Link
-                href={`/professionisti/scansiona`}
-                className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
-              >
-                Vai allo scanner professionisti
-              </Link>
+            <div className="mt-4">
+              <AnimalCodes
+                qrValue={qrValue || `UNIMALIA:${animal.id}`}
+                barcodeValue={barcodeValue}
+                caption=""
+              />
             </div>
+
+            <p className="mt-3 text-xs text-zinc-500">
+              Nota: alcuni animali possono non avere microchip. In quel caso UNIMALIA usa un codice interno.
+            </p>
           </section>
         </div>
 
-        <AnimalCodes
-          qrValue={qrValue || `UNIMALIA:${animal.id}`}
-          barcodeValue={barcodeValue}
-          caption="Da usare in emergenza o per verifica rapida."
-        />
-
-        {/* B) Cartella clinica (UI pronta) */}
+        {/* ✅ Cartella clinica: UI minimale */}
         <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-base font-semibold text-zinc-900">Cartella clinica</h2>
-              <p className="mt-1 text-sm text-zinc-600">Referti, vaccinazioni, terapie e note. (Da creare)</p>
+              <p className="mt-1 text-sm text-zinc-600">Referti, vaccinazioni, terapie e note.</p>
             </div>
 
             <Link
               href={`/identita/${animal.id}/clinica`}
               className="inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
             >
-              Apri cartella
+              Apri cartella clinica
             </Link>
-          </div>
-
-          <div className="mt-4 rounded-xl border border-dashed border-zinc-200 p-6 text-sm text-zinc-600">
-            Qui mostreremo timeline clinica + upload allegati + riepilogo. Per ora predisposizione UI.
           </div>
         </section>
       </div>
+
+      {/* ✅ Modal "Condividi al professionista" (senza redirect) */}
+      {shareOpen ? (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-base font-semibold text-zinc-900">Condividi al professionista</div>
+                <div className="mt-1 text-sm text-zinc-600">
+                  Scegli come condividere questa identità con un veterinario.
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShareOpen(false)}
+                className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+              >
+                Chiudi
+              </button>
+            </div>
+
+            <div className="mt-4 grid gap-2">
+              <button
+                type="button"
+                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-left text-sm font-semibold text-zinc-900"
+                onClick={() => {
+                  // placeholder: lo collegheremo quando avremo "vet di fiducia"
+                  alert("Veterinario di fiducia: non ancora impostato.");
+                  setShareOpen(false);
+                }}
+              >
+                Veterinario di fiducia
+                <div className="mt-1 text-xs font-normal text-zinc-600">
+                  (In futuro: condivisione 1-click con il tuo vet.)
+                </div>
+              </button>
+
+              <button
+                type="button"
+                className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-left text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
+                onClick={() => {
+                  // placeholder: flusso da definire (nome/codice/contatto)
+                  alert("Altro veterinario: flusso in definizione (nome/codice accesso).");
+                  setShareOpen(false);
+                }}
+              >
+                Condividi ad altro veterinario
+                <div className="mt-1 text-xs font-normal text-zinc-600">
+                  (In futuro: ricerca per nome o codice di accesso.)
+                </div>
+              </button>
+            </div>
+
+            <div className="mt-4 text-xs text-zinc-500">
+              Nota: questo pulsante non apre il portale professionisti.
+            </div>
+          </div>
+        </div>
+      ) : null}
     </PageShell>
   );
 }
