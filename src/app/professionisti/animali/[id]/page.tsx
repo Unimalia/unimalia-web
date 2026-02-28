@@ -24,7 +24,10 @@ type Animal = {
   unimalia_code?: string | null;
   photo_url?: string | null;
 
-  // ✅ opzionale futuro: quando agganciamo organizations
+  microchip_verified_at?: string | null;
+  microchip_verified_org_id?: string | null;
+
+  // se vuoi (in futuro via join o api)
   microchip_verified_by_label?: string | null;
 };
 
@@ -220,13 +223,14 @@ export default function ProAnimalPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [animal?.id]);
 
-  // ✅ label “Clinica X” (per ora fallback, poi la agganciamo davvero)
   const microchipVerifierLabel = useMemo(() => {
     if (!animal?.microchip_verified) return null;
-    const fromDb = (animal.microchip_verified_by_label || "").trim();
-    if (fromDb) return fromDb;
-    return "Veterinario";
-  }, [animal?.microchip_verified, animal?.microchip_verified_by_label]);
+
+    const who = (animal.microchip_verified_by_label || "").trim() || "Veterinario";
+    const when = animal.microchip_verified_at ? formatDateIT(animal.microchip_verified_at) : null;
+
+    return when ? `${who} • ${when}` : who;
+  }, [animal?.microchip_verified, animal?.microchip_verified_by_label, animal?.microchip_verified_at]);
 
   if (loading) {
     return (
@@ -290,12 +294,18 @@ export default function ProAnimalPage() {
             </Link>
 
             {isVet ? (
-              <Link
-                href={`/professionisti/animali/${animal.id}/verifica`}
-                className="rounded-2xl bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-900"
-              >
-                Verifica microchip
-              </Link>
+              animal.microchip_verified ? (
+                <span className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">
+                  Microchip verificato ✅
+                </span>
+              ) : (
+                <Link
+                  href={`/professionisti/animali/${animal.id}/verifica`}
+                  className="rounded-2xl bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-900"
+                >
+                  Verifica microchip
+                </Link>
+              )
             ) : (
               <span className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-2 text-sm font-semibold text-zinc-600">
                 Solo vet può verificare
@@ -375,12 +385,18 @@ export default function ProAnimalPage() {
 
           <div className="mt-4 flex flex-wrap gap-2">
             {isVet ? (
-              <Link
-                href={`/professionisti/animali/${animal.id}/verifica`}
-                className="rounded-2xl bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-900"
-              >
-                Vai alla verifica
-              </Link>
+              animal.microchip_verified ? (
+                <span className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">
+                  Già verificato ✅
+                </span>
+              ) : (
+                <Link
+                  href={`/professionisti/animali/${animal.id}/verifica`}
+                  className="rounded-2xl bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-900"
+                >
+                  Vai alla verifica
+                </Link>
+              )
             ) : (
               <span className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-700">
                 Verifica riservata al vet
