@@ -1,5 +1,6 @@
+// src/app/api/clinic-events/verify/route.ts
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase/server";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 export const dynamic = "force-dynamic";
 
@@ -21,26 +22,24 @@ export async function POST(req: Request) {
 
     const body = await req.json().catch(() => null);
 
-    // ✅ supporta SOLO batch: { eventIds: string[] }
     const eventIds: string[] = Array.isArray(body?.eventIds) ? body.eventIds : [];
+    const verifiedByLabel = String(body?.verifiedByLabel || "Veterinario").trim();
 
-    // sanitizza ids
     const cleanIds = eventIds.map((x) => String(x).trim()).filter(Boolean);
-
     if (cleanIds.length === 0) {
       return NextResponse.json({ error: "bad_request" }, { status: 400 });
     }
 
-    const admin = supabaseAdmin(); // ✅ sempre chiamare
+    // ✅ nel tuo progetto è una FUNZIONE
+    const admin = supabaseAdmin();
 
     const now = new Date().toISOString();
 
-    // ✅ aggiorna in batch: verified_at
-    // (verified_by / verified_org_id li aggiungiamo quando colleghiamo professional_profiles)
     const { error } = await admin
       .from("animal_clinic_events")
       .update({
         verified_at: now,
+        verified_by_label: verifiedByLabel,
       })
       .in("id", cleanIds);
 
@@ -49,8 +48,7 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ ok: true }, { status: 200 });
-  } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : "server_error";
-    return NextResponse.json({ error: msg }, { status: 500 });
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message || "server_error" }, { status: 500 });
   }
 }
