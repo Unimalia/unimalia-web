@@ -296,19 +296,24 @@ export default function ProVerifyPage() {
     setErr(null);
 
     try {
-      // prima versione: chiamate in sequenza (robusta)
-      for (const id of ids) {
-        const res = await fetch("/api/clinic-events/verify", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ eventId: id }),
-        });
-        if (!res.ok) {
-          const j = await res.json().catch(() => ({}));
-          throw new Error(j?.error || "Errore validazione evento");
-        }
+      const { data: authData } = await supabase.auth.getUser();
+      const email = authData.user?.email || "";
+
+      const res = await fetch("/api/clinic-events/verify", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-user-email": email,
+        },
+        body: JSON.stringify({ eventIds: ids }), // ✅ array di string
+      });
+
+      if (!res.ok) {
+        throw new Error("Impossibile validare (non autorizzato o errore server).");
       }
 
+      // ✅ Modifica 2: dopo successo, ricarica eventi e svuota selezione
+      setSelected({});
       await loadEvents();
     } catch (e: any) {
       setErr(e?.message || "Errore durante la validazione.");
