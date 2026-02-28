@@ -179,9 +179,7 @@ export default function AnimalProfilePage() {
           {/* Condividi: NON deve portare a /professionisti */}
           <ButtonSecondary
             href="#"
-            onClick={(e: any) => {
-              // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-              e?.preventDefault?.();
+            onClick={() => {
               setShareOpen(true);
             }}
           >
