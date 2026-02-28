@@ -127,18 +127,22 @@ export default function AnimalProfilePage() {
     return `UNIMALIA:${animal.id}`;
   }, [animal]);
 
-  const microchipBadge = useMemo(() => {
-    if (!animal?.chip_number) return null;
-    if (!animal.microchip_verified) {
+  const codeStatusBadge = useMemo(() => {
+    const hasChip = !!animal?.chip_number;
+    const verified = !!animal?.microchip_verified;
+
+    const label = hasChip ? "Microchip" : "Codice";
+    if (!verified) {
       return (
         <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">
-          Microchip da verificare ⏳
+          {label} da verificare ⏳
         </span>
       );
     }
+
     return (
       <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
-        Microchip verificato ✅
+        {label} verificato ✅
       </span>
     );
   }, [animal?.chip_number, animal?.microchip_verified]);
@@ -203,72 +207,99 @@ export default function AnimalProfilePage() {
           ) : null}
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
-          <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-            <div className="flex items-start justify-between gap-4">
-              <h2 className="text-base font-semibold text-zinc-900">Identità</h2>
+        <div className="grid gap-4 md:grid-cols-3">
+          {/* COLONNA SINISTRA: Identità + Cartella clinica */}
+          <div className="flex flex-col gap-4 md:col-span-1">
+            <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+              <div className="flex items-start justify-between gap-4">
+                <h2 className="text-base font-semibold text-zinc-900">Identità</h2>
 
-              {/* ✅ "Aggiorna dati" qui, dentro Identità */}
+                <Link
+                  href={`/identita/${animal.id}/modifica`}
+                  className="shrink-0 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+                >
+                  Aggiorna dati
+                </Link>
+              </div>
+
+              <dl className="mt-4 grid gap-3 text-sm">
+                <div className="flex justify-between gap-4">
+                  <dt className="text-zinc-500">Nome</dt>
+                  <dd className="font-medium text-zinc-900">{animal.name}</dd>
+                </div>
+
+                <div className="flex justify-between gap-4">
+                  <dt className="text-zinc-500">Tipo</dt>
+                  <dd className="font-medium text-zinc-900">{animal.species}</dd>
+                </div>
+
+                <div className="flex justify-between gap-4">
+                  <dt className="text-zinc-500">Razza</dt>
+                  <dd className="font-medium text-zinc-900">{animal.breed || "—"}</dd>
+                </div>
+
+                <div className="flex justify-between gap-4">
+                  <dt className="text-zinc-500">Colore / segni</dt>
+                  <dd className="font-medium text-zinc-900">{animal.color || "—"}</dd>
+                </div>
+
+                <div className="flex justify-between gap-4">
+                  <dt className="text-zinc-500">Taglia</dt>
+                  <dd className="font-medium text-zinc-900">{animal.size || "—"}</dd>
+                </div>
+              </dl>
+            </section>
+
+            {/* Cartella clinica sotto Identità */}
+            <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+              <h2 className="text-base font-semibold text-zinc-900">Cartella clinica</h2>
+              <p className="mt-1 text-sm text-zinc-600">Referti, vaccinazioni, terapie e note.</p>
+
               <Link
-                href={`/identita/${animal.id}/modifica`}
-                className="shrink-0 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+                href={`/identita/${animal.id}/clinica`}
+                className="mt-4 inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
               >
-                Aggiorna dati
+                Apri cartella clinica
               </Link>
-            </div>
+            </section>
+          </div>
 
-            <dl className="mt-4 grid gap-3 text-sm">
-              <div className="flex justify-between gap-4">
-                <dt className="text-zinc-500">Nome</dt>
-                <dd className="font-medium text-zinc-900">{animal.name}</dd>
-              </div>
-
-              <div className="flex justify-between gap-4">
-                <dt className="text-zinc-500">Tipo</dt>
-                <dd className="font-medium text-zinc-900">{animal.species}</dd>
-              </div>
-
-              <div className="flex justify-between gap-4">
-                <dt className="text-zinc-500">Razza</dt>
-                <dd className="font-medium text-zinc-900">{animal.breed || "—"}</dd>
-              </div>
-
-              <div className="flex justify-between gap-4">
-                <dt className="text-zinc-500">Colore / segni</dt>
-                <dd className="font-medium text-zinc-900">{animal.color || "—"}</dd>
-              </div>
-
-              <div className="flex justify-between gap-4">
-                <dt className="text-zinc-500">Taglia</dt>
-                <dd className="font-medium text-zinc-900">{animal.size || "—"}</dd>
-              </div>
-            </dl>
-          </section>
-
-          {/* ✅ UNICO BLOCCO: microchip + QR + barcode */}
-          <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+          {/* COLONNA DESTRA: Codici (più larga) */}
+          <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm md:col-span-2">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <h2 className="text-base font-semibold text-zinc-900">Codici</h2>
                 <p className="mt-1 text-sm text-zinc-600">Da usare in emergenza o per verifica rapida.</p>
               </div>
 
-              <div className="shrink-0">{microchipBadge}</div>
+              <div className="shrink-0">{codeStatusBadge}</div>
             </div>
 
+            {/* Microchip / Codice (unificato) */}
             <div className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4">
-              <div className="text-xs text-zinc-500">Microchip</div>
+              <div className="text-xs text-zinc-500">Microchip / Codice</div>
               <div className="mt-1 text-sm font-semibold text-zinc-900">
-                {animal.chip_number ? normalizeChip(animal.chip_number) : "— (non presente)"}
+                {animal.chip_number ? normalizeChip(animal.chip_number) : qrValue || `UNIMALIA:${animal.id}`}
               </div>
             </div>
 
-            <div className="mt-4">
-              <AnimalCodes
-                qrValue={qrValue || `UNIMALIA:${animal.id}`}
-                barcodeValue={barcodeValue}
-                caption=""
-              />
+            {/* QR sopra, Barcode sotto (separati) */}
+            <div className="mt-4 grid gap-4">
+              <div className="rounded-xl border border-zinc-200 bg-white p-4">
+                <div className="text-xs font-semibold text-zinc-700">QR Code</div>
+                <div className="mt-3">
+                  <AnimalCodes qrValue={qrValue || `UNIMALIA:${animal.id}`} barcodeValue={""} caption="" />
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-zinc-200 bg-white p-4">
+                <div className="text-xs font-semibold text-zinc-700">
+                  {animal.chip_number ? "Codice a barre (microchip)" : "Codice a barre (UNIMALIA)"}
+                </div>
+                <div className="mt-3">
+                  <AnimalCodes qrValue={""} barcodeValue={barcodeValue} caption="" />
+                </div>
+              </div>
             </div>
 
             <p className="mt-3 text-xs text-zinc-500">
@@ -276,23 +307,6 @@ export default function AnimalProfilePage() {
             </p>
           </section>
         </div>
-
-        {/* ✅ Cartella clinica: UI minimale */}
-        <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="text-base font-semibold text-zinc-900">Cartella clinica</h2>
-              <p className="mt-1 text-sm text-zinc-600">Referti, vaccinazioni, terapie e note.</p>
-            </div>
-
-            <Link
-              href={`/identita/${animal.id}/clinica`}
-              className="inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
-            >
-              Apri cartella clinica
-            </Link>
-          </div>
-        </section>
       </div>
 
       {/* ✅ Modal "Condividi al professionista" (senza redirect) */}
@@ -348,9 +362,7 @@ export default function AnimalProfilePage() {
               </button>
             </div>
 
-            <div className="mt-4 text-xs text-zinc-500">
-              Nota: questo pulsante non apre il portale professionisti.
-            </div>
+            <div className="mt-4 text-xs text-zinc-500">Nota: questo pulsante non apre il portale professionisti.</div>
           </div>
         </div>
       ) : null}
