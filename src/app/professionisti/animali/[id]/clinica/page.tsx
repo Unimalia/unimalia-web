@@ -211,6 +211,12 @@ export default function ProAnimalClinicPage() {
       }
 
       setSaveOk("Evento salvato ✅");
+
+      // Inserimento immediato in UI (così lo vedi anche se la list ha delay/cache)
+      if (json?.event) {
+        setEvents((prev) => [json.event as ClinicEventRow, ...prev]);
+      }
+
       setNewTitle("");
       setNewDesc("");
 
@@ -219,6 +225,7 @@ export default function ProAnimalClinicPage() {
       setRemindAt("");
       setReminderPresetDays(null);
 
+      // Refresh reale dal server
       await loadClinicEvents();
     } catch {
       setSaveErr("Errore di rete durante il salvataggio.");
@@ -506,9 +513,13 @@ export default function ProAnimalClinicPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="text-xs text-zinc-500">{formatDateIT(ev.event_date)}</div>
+
                       <div className="mt-1 truncate text-sm font-semibold text-zinc-900">
-                        {typeLabel(ev.type)}
+                        {ev.title || typeLabel(ev.type)}
                       </div>
+
+                      <div className="mt-1 text-xs text-zinc-600">{typeLabel(ev.type)}</div>
+
                       {ev.description ? (
                         <p className="mt-2 whitespace-pre-wrap text-sm text-zinc-700">
                           {ev.description}
