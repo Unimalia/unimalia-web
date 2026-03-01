@@ -7,6 +7,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { isVetUser } from "@/app/professionisti/_components/ProShell";
+import { authHeaders } from "@/lib/client/authHeaders";
 
 type Animal = {
   id: string;
@@ -189,14 +190,10 @@ export default function ProVerifyPage() {
     setErr(null);
 
     try {
-      // ✅ FIX: prendi email e passala in header
-      const { data: authData } = await supabase.auth.getUser();
-      const email = authData.user?.email || "";
-
       const res = await fetch(`/api/clinic-events/list?animalId=${encodeURIComponent(animalId)}`, {
         cache: "no-store",
         headers: {
-          "x-user-email": email,
+          ...(await authHeaders()),
         },
       });
 
@@ -290,33 +287,40 @@ export default function ProVerifyPage() {
   }
 
   async function validateMany(ids: string[]) {
-    if (!ids.length) return;
+    if (!ids || ids.length === 0) return;
 
     setValidating(true);
     setErr(null);
 
     try {
-      const { data: authData } = await supabase.auth.getUser();
-      const email = authData.user?.email || "";
-
       const res = await fetch("/api/clinic-events/verify", {
         method: "POST",
         headers: {
-          "content-type": "application/json",
-          "x-user-email": email,
+          "Content-Type": "application/json",
+          ...(await authHeaders()),
         },
-        body: JSON.stringify({ eventIds: ids }), // ✅ array di string
+        body: JSON.stringify({
+          eventIds: ids,
+          verifiedByLabel: "Veterinario",
+        }),
       });
 
+      const json = await res.json().catch(() => ({} as any));
+
       if (!res.ok) {
-        throw new Error("Impossibile validare (non autorizzato o errore server).");
+        const msg = json?.error || `Errore validazione (${res.status})`;
+        setErr(msg);
+        alert(msg);
+        return;
       }
 
-      // ✅ Modifica 2: dopo successo, ricarica eventi e svuota selezione
-      setSelected({});
+      // ✅ refresh lista eventi e pulisci selezione
       await loadEvents();
+      setSelected({});
     } catch (e: any) {
-      setErr(e?.message || "Errore durante la validazione.");
+      const msg = e?.message || "Errore di rete";
+      setErr(msg);
+      alert(msg);
     } finally {
       setValidating(false);
     }
