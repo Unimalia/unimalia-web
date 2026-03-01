@@ -81,6 +81,21 @@ export default function ProAnimalClinicPage() {
   const [events, setEvents] = useState<ClinicEventRow[]>([]);
   const [eventsErr, setEventsErr] = useState<string | null>(null);
 
+  // Nuovo evento (UI only, per ora)
+  const [newType, setNewType] = useState<ClinicEventType>("visit");
+  const [newDate, setNewDate] = useState<string>(() => {
+    const d = new Date();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  });
+  const [newTitle, setNewTitle] = useState<string>("");
+  const [newDesc, setNewDesc] = useState<string>("");
+
+  // Promemoria owner
+  const [reminderEnabled, setReminderEnabled] = useState(false);
+  const [remindAt, setRemindAt] = useState<string>("");
+  const [remindEmail, setRemindEmail] = useState(true);
+
   useEffect(() => {
     (async () => {
       const { data: authData } = await supabase.auth.getUser();
@@ -141,6 +156,20 @@ export default function ProAnimalClinicPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  function addDaysISO(days: number) {
+    const base = new Date();
+    base.setDate(base.getDate() + days);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${base.getFullYear()}-${pad(base.getMonth() + 1)}-${pad(base.getDate())}`;
+  }
+
+  const showRecallQuickActions = newType === "vaccine" || newType === "visit";
+
+  function onSuggestRecall(days: number) {
+    setReminderEnabled(true);
+    setRemindAt(addDaysISO(days));
+  }
+
   return (
     <div className="space-y-6">
       <div className="text-sm">
@@ -156,7 +185,9 @@ export default function ProAnimalClinicPage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-base font-semibold text-zinc-900">Cartella clinica</h1>
-            <p className="mt-1 text-sm text-zinc-600">Timeline eventi (owner + pro) e stato validazione.</p>
+            <p className="mt-1 text-sm text-zinc-600">
+              Timeline eventi (owner + pro) e stato validazione.
+            </p>
           </div>
 
           {isVet ? (
@@ -171,6 +202,170 @@ export default function ProAnimalClinicPage() {
               Validazione riservata ai vet
             </span>
           )}
+        </div>
+
+        {/* NUOVO EVENTO (PRO) — UI only */}
+        <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h2 className="text-sm font-semibold text-zinc-900">Nuovo evento (PRO)</h2>
+              <p className="mt-1 text-xs text-zinc-600">
+                L’owner riceve il promemoria via email (push: in arrivo quando UNIMALIA sarà web app).
+              </p>
+            </div>
+
+            <button
+              type="button"
+              className="rounded-2xl bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-900 disabled:opacity-50"
+              disabled
+              title="Salvataggio in arrivo (UI pronta)"
+            >
+              Salva evento (in arrivo)
+            </button>
+          </div>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            <label className="block">
+              <div className="text-xs font-semibold text-zinc-700">Tipo evento</div>
+              <select
+                className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+                value={newType}
+                onChange={(e) => setNewType(e.target.value as ClinicEventType)}
+              >
+                <option value="visit">Visita</option>
+                <option value="vaccine">Vaccinazione</option>
+                <option value="exam">Esame</option>
+                <option value="therapy">Terapia</option>
+                <option value="note">Nota</option>
+                <option value="document">Documento</option>
+                <option value="emergency">Emergenza</option>
+              </select>
+            </label>
+
+            <label className="block">
+              <div className="text-xs font-semibold text-zinc-700">Data evento</div>
+              <input
+                type="date"
+                className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+                value={newDate}
+                onChange={(e) => setNewDate(e.target.value)}
+              />
+            </label>
+
+            <label className="block md:col-span-2">
+              <div className="text-xs font-semibold text-zinc-700">Titolo</div>
+              <input
+                type="text"
+                className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                placeholder="Es. Vaccino annuale / Visita controllo / Terapia…"
+              />
+            </label>
+
+            <label className="block md:col-span-2">
+              <div className="text-xs font-semibold text-zinc-700">Descrizione (opzionale)</div>
+              <textarea
+                className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+                rows={3}
+                value={newDesc}
+                onChange={(e) => setNewDesc(e.target.value)}
+                placeholder="Dettagli clinici, note, dosaggi, ecc."
+              />
+            </label>
+          </div>
+
+          {/* PROMEMORIA */}
+          <div className="mt-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+            <div className="flex items-start justify-between gap-3">
+              <label className="flex items-center gap-2 text-sm font-semibold text-zinc-900">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4"
+                  checked={reminderEnabled}
+                  onChange={(e) => {
+                    const v = e.target.checked;
+                    setReminderEnabled(v);
+                    if (!v) setRemindAt("");
+                    if (v && !remindAt) setRemindAt(addDaysISO(30));
+                  }}
+                />
+                Imposta promemoria per l’owner
+              </label>
+
+              <span className="text-xs text-zinc-600">Email ✅ • Push ⏳</span>
+            </div>
+
+            {reminderEnabled ? (
+              <div className="mt-3 grid gap-3 md:grid-cols-2">
+                <label className="block">
+                  <div className="text-xs font-semibold text-zinc-700">Data promemoria</div>
+                  <input
+                    type="date"
+                    className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+                    value={remindAt}
+                    onChange={(e) => setRemindAt(e.target.value)}
+                  />
+                </label>
+
+                <div className="block">
+                  <div className="text-xs font-semibold text-zinc-700">Canali</div>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <label className="flex items-center gap-2 rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4"
+                        checked={remindEmail}
+                        onChange={(e) => setRemindEmail(e.target.checked)}
+                      />
+                      Email
+                    </label>
+
+                    <span
+                      className="flex items-center gap-2 rounded-2xl border border-zinc-200 bg-zinc-100 px-3 py-2 text-sm text-zinc-500"
+                      title="Disponibile quando UNIMALIA diventa web app (PWA)"
+                    >
+                      Push (in arrivo)
+                    </span>
+                  </div>
+                </div>
+
+                {showRecallQuickActions ? (
+                  <div className="md:col-span-2">
+                    <div className="text-xs font-semibold text-zinc-700">Suggerisci richiamo</div>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        className="rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+                        onClick={() => onSuggestRecall(30)}
+                      >
+                        +30 giorni
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+                        onClick={() => onSuggestRecall(180)}
+                      >
+                        +6 mesi
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+                        onClick={() => onSuggestRecall(365)}
+                      >
+                        +12 mesi
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+
+                <p className="md:col-span-2 text-xs text-zinc-600">
+                  Nota: il promemoria verrà inviato{" "}
+                  <span className="font-semibold">solo al proprietario</span>.
+                </p>
+              </div>
+            ) : null}
+          </div>
         </div>
 
         {eventsErr ? (
