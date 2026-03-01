@@ -505,9 +505,7 @@ export default function ProAnimalPage() {
           </div>
         )}
 
-        <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-700">
-          Prossimo step: aggiungiamo la checklist eventi clinici con “Valida selezionati / Valida tutto”.
-        </div>
+        
       </section>
     </div>
   );
