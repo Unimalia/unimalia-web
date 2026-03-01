@@ -117,12 +117,25 @@ export default function ProVerifyPage() {
 
     async function check() {
       setChecking(true);
+
+      if (!animalId) {
+        setErr("ID animale mancante (params non pronti). Ricarica la pagina.");
+        setAuthorized(false);
+        setChecking(false);
+        return;
+      }
+
       const { data } = await supabase.auth.getUser();
       const user = data.user;
+
+      console.log("PRO VERIFY USER:", user?.email);
 
       if (!alive) return;
 
       if (!user) {
+        setErr("NON SEI LOGGATO (user null). Fai login nel portale professionisti.");
+        setAuthorized(false);
+        setChecking(false);
         router.replace(
           "/professionisti/login?next=" +
             encodeURIComponent(`/professionisti/animali/${animalId}/verifica`)
@@ -131,6 +144,7 @@ export default function ProVerifyPage() {
       }
 
       if (!isVetUser(user)) {
+        setErr(`Accesso riservato: ${user.email} non risulta veterinario autorizzato.`);
         setAuthorized(false);
         setChecking(false);
         return;
@@ -343,6 +357,13 @@ export default function ProVerifyPage() {
           <Link href="/professionisti" className="font-semibold text-zinc-700 hover:text-zinc-900">
             ← Portale
           </Link>
+        </div>
+
+        <div className="rounded-xl border bg-amber-50 p-3 text-sm">
+          <div className="font-medium">Accesso negato</div>
+          <div className="opacity-80">
+            {err ? err : "Cartella clinica: accesso riservato ai veterinari autorizzati."}
+          </div>
         </div>
 
         <div className="rounded-3xl border border-red-200 bg-white p-6 shadow-sm">
@@ -565,9 +586,7 @@ export default function ProVerifyPage() {
                     </div>
 
                     {ev.description ? (
-                      <p className="mt-2 text-sm text-zinc-700 whitespace-pre-wrap">
-                        {ev.description}
-                      </p>
+                      <p className="mt-2 text-sm text-zinc-700 whitespace-pre-wrap">{ev.description}</p>
                     ) : null}
                   </div>
                 </label>

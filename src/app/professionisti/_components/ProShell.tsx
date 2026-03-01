@@ -24,6 +24,7 @@ const PROFESSIONAL_EMAILS = new Set<string>([
 
 const VET_EMAILS = new Set<string>([
   "valentinotwister@hotmail.it",
+  "EMAIL_CHE_HAI_VISTO_IN_CONSOLE",
   // aggiungi qui altre email veterinari autorizzati:
 ]);
 
