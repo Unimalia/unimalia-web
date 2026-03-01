@@ -88,7 +88,7 @@ export async function POST(req: Request) {
 
     // Insert evento
     const { data: inserted, error: insErr } = await supabase
-      .from("clinic_events")
+      .from("animal_clinic_events")
       .insert([
         {
           animal_id: animalId,
