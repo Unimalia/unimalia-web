@@ -102,6 +102,9 @@ export default function ProAnimalClinicPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkVerifying, setBulkVerifying] = useState(false);
 
+  // ✅ Evento selezionato (modal dettagli)
+  const [detailEvent, setDetailEvent] = useState<ClinicEventRow | null>(null);
+
   // Promemoria owner
   const [reminderEnabled, setReminderEnabled] = useState(false);
   const [remindAt, setRemindAt] = useState<string>("");
@@ -711,7 +714,11 @@ export default function ProAnimalClinicPage() {
                 (isVerified ? "Veterinario" : null);
 
               return (
-                <div key={ev.id} className="rounded-2xl border border-zinc-200 p-4">
+                <div
+                  key={ev.id}
+                  className="rounded-2xl border border-zinc-200 p-4 cursor-pointer hover:border-zinc-400 transition"
+                  onClick={() => setDetailEvent(ev)}
+                >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex items-start gap-2">
@@ -779,6 +786,82 @@ export default function ProAnimalClinicPage() {
           </div>
         )}
       </section>
+
+      {detailEvent ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-2xl rounded-3xl bg-white p-6 shadow-xl">
+            <div className="flex items-start justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-zinc-900">
+                  {detailEvent.title || typeLabel(detailEvent.type)}
+                </h2>
+                <div className="mt-1 text-xs text-zinc-600">
+                  {typeLabel(detailEvent.type)} • {formatDateIT(detailEvent.event_date)}
+                </div>
+              </div>
+
+              <button
+                type="button"
+                className="text-sm font-semibold text-zinc-600 hover:text-zinc-900"
+                onClick={() => setDetailEvent(null)}
+              >
+                Chiudi ✕
+              </button>
+            </div>
+
+            <div className="mt-6 space-y-4 text-sm">
+              {detailEvent.description ? (
+                <div>
+                  <div className="text-xs font-semibold text-zinc-700">Descrizione</div>
+                  <p className="mt-1 whitespace-pre-wrap text-zinc-800">
+                    {detailEvent.description}
+                  </p>
+                </div>
+              ) : null}
+
+              <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+                <div className="text-xs font-semibold text-zinc-700">Stato validazione</div>
+
+                {detailEvent.source === "professional" ||
+                detailEvent.source === "veterinarian" ||
+                detailEvent.verified_at ? (
+                  <div className="mt-2 text-emerald-700 font-semibold">
+                    ✓ Validato{" "}
+                    {detailEvent.verified_by_label ? `da ${detailEvent.verified_by_label}` : ""}
+                  </div>
+                ) : (
+                  <div className="mt-2 text-amber-700 font-semibold">⏳ In attesa di validazione</div>
+                )}
+              </div>
+
+              <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+                <div className="text-xs font-semibold text-zinc-700">Meta informazioni</div>
+
+                <div className="mt-2 text-xs text-zinc-600 space-y-1">
+                  <div>
+                    ID evento: <span className="font-mono">{detailEvent.id}</span>
+                  </div>
+                  <div>Visibilità: {detailEvent.visibility}</div>
+                  <div>Fonte: {detailEvent.source}</div>
+                  {detailEvent.verified_at ? (
+                    <div>Validato il: {formatDateIT(detailEvent.verified_at)}</div>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                type="button"
+                className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+                onClick={() => setDetailEvent(null)}
+              >
+                Chiudi
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
