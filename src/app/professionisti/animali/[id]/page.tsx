@@ -8,6 +8,7 @@ import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { isVetUser } from "@/app/professionisti/_components/ProShell";
 import { AnimalCodes } from "@/_components/animal/animal-codes";
+import { authHeaders } from "@/lib/client/authHeaders";
 
 type Animal = {
   id: string;
@@ -178,14 +179,10 @@ export default function ProAnimalPage() {
     setEventsErr(null);
 
     try {
-      // ✅ FIX: prendi email e passala in header
-      const { data: authData } = await supabase.auth.getUser();
-      const email = authData.user?.email || "";
-
       const res = await fetch(`/api/clinic-events/list?animalId=${encodeURIComponent(id)}`, {
         cache: "no-store",
         headers: {
-          "x-user-email": email,
+          ...(await authHeaders()),
         },
       });
 
