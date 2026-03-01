@@ -96,6 +96,8 @@ export default function ProAnimalClinicPage() {
   const [remindAt, setRemindAt] = useState<string>("");
   const [remindEmail, setRemindEmail] = useState(true);
 
+  const [reminderPresetDays, setReminderPresetDays] = useState<number | null>(null);
+
   useEffect(() => {
     (async () => {
       const { data: authData } = await supabase.auth.getUser();
@@ -156,8 +158,8 @@ export default function ProAnimalClinicPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  function addDaysISO(days: number) {
-    const base = new Date();
+  function addDaysISO(fromISO: string, days: number) {
+    const base = new Date(fromISO || new Date().toISOString());
     base.setDate(base.getDate() + days);
     const pad = (n: number) => String(n).padStart(2, "0");
     return `${base.getFullYear()}-${pad(base.getMonth() + 1)}-${pad(base.getDate())}`;
@@ -167,7 +169,8 @@ export default function ProAnimalClinicPage() {
 
   function onSuggestRecall(days: number) {
     setReminderEnabled(true);
-    setRemindAt(addDaysISO(days));
+    setReminderPresetDays(days);
+    setRemindAt(addDaysISO(newDate, days));
   }
 
   return (
@@ -286,8 +289,14 @@ export default function ProAnimalClinicPage() {
                   onChange={(e) => {
                     const v = e.target.checked;
                     setReminderEnabled(v);
-                    if (!v) setRemindAt("");
-                    if (v && !remindAt) setRemindAt(addDaysISO(30));
+                    if (!v) {
+                      setRemindAt("");
+                      setReminderPresetDays(null);
+                    }
+                    if (v && !remindAt) {
+                      setReminderPresetDays(30);
+                      setRemindAt(addDaysISO(newDate, 30));
+                    }
                   }}
                 />
                 Imposta promemoria per l’owner
@@ -304,7 +313,10 @@ export default function ProAnimalClinicPage() {
                     type="date"
                     className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm"
                     value={remindAt}
-                    onChange={(e) => setRemindAt(e.target.value)}
+                    onChange={(e) => {
+                      setRemindAt(e.target.value);
+                      setReminderPresetDays(null);
+                    }}
                   />
                 </label>
 
@@ -336,27 +348,60 @@ export default function ProAnimalClinicPage() {
                     <div className="mt-2 flex flex-wrap gap-2">
                       <button
                         type="button"
-                        className="rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+                        className={
+                          reminderPresetDays === 15
+                            ? "rounded-2xl border border-black bg-black px-3 py-2 text-sm font-semibold text-white"
+                            : "rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+                        }
+                        onClick={() => onSuggestRecall(15)}
+                      >
+                        +15 giorni
+                      </button>
+
+                      <button
+                        type="button"
+                        className={
+                          reminderPresetDays === 30
+                            ? "rounded-2xl border border-black bg-black px-3 py-2 text-sm font-semibold text-white"
+                            : "rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+                        }
                         onClick={() => onSuggestRecall(30)}
                       >
                         +30 giorni
                       </button>
+
                       <button
                         type="button"
-                        className="rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+                        className={
+                          reminderPresetDays === 180
+                            ? "rounded-2xl border border-black bg-black px-3 py-2 text-sm font-semibold text-white"
+                            : "rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+                        }
                         onClick={() => onSuggestRecall(180)}
                       >
                         +6 mesi
                       </button>
+
                       <button
                         type="button"
-                        className="rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+                        className={
+                          reminderPresetDays === 365
+                            ? "rounded-2xl border border-black bg-black px-3 py-2 text-sm font-semibold text-white"
+                            : "rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+                        }
                         onClick={() => onSuggestRecall(365)}
                       >
                         +12 mesi
                       </button>
                     </div>
                   </div>
+                ) : null}
+
+                {newType === "vaccine" && remindAt ? (
+                  <p className="md:col-span-2 text-xs text-zinc-600">
+                    Nota vaccino: oltre al promemoria alla data impostata, l’owner verrà avvisato anche{" "}
+                    <span className="font-semibold">15 giorni prima</span>.
+                  </p>
                 ) : null}
 
                 <p className="md:col-span-2 text-xs text-zinc-600">
