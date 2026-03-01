@@ -91,6 +91,10 @@ export default function ProAnimalClinicPage() {
   const [newTitle, setNewTitle] = useState<string>("");
   const [newDesc, setNewDesc] = useState<string>("");
 
+  const [saving, setSaving] = useState(false);
+  const [saveErr, setSaveErr] = useState<string | null>(null);
+  const [saveOk, setSaveOk] = useState<string | null>(null);
+
   // Promemoria owner
   const [reminderEnabled, setReminderEnabled] = useState(false);
   const [remindAt, setRemindAt] = useState<string>("");
@@ -173,6 +177,56 @@ export default function ProAnimalClinicPage() {
     setRemindAt(addDaysISO(newDate, days));
   }
 
+  async function saveClinicEvent() {
+    if (!id) return;
+
+    setSaving(true);
+    setSaveErr(null);
+    setSaveOk(null);
+
+    try {
+      const payload = {
+        animalId: id,
+        eventDate: newDate,
+        type: newType,
+        title: newTitle.trim(),
+        description: newDesc.trim() || null,
+        visibility: "owner" as const,
+      };
+
+      const res = await fetch("/api/clinic-events/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(await authHeaders()),
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const json = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setSaveErr(json?.error || "Errore salvataggio evento.");
+        return;
+      }
+
+      setSaveOk("Evento salvato ✅");
+      setNewTitle("");
+      setNewDesc("");
+
+      // Reset promemoria UI (per ora non salviamo reminders)
+      setReminderEnabled(false);
+      setRemindAt("");
+      setReminderPresetDays(null);
+
+      await loadClinicEvents();
+    } catch {
+      setSaveErr("Errore di rete durante il salvataggio.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="text-sm">
@@ -207,7 +261,7 @@ export default function ProAnimalClinicPage() {
           )}
         </div>
 
-        {/* NUOVO EVENTO (PRO) — UI only */}
+        {/* NUOVO EVENTO (PRO) */}
         <div className="rounded-2xl border border-zinc-200 bg-white p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
@@ -220,12 +274,24 @@ export default function ProAnimalClinicPage() {
             <button
               type="button"
               className="rounded-2xl bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-900 disabled:opacity-50"
-              disabled
-              title="Salvataggio in arrivo (UI pronta)"
+              disabled={saving || !newTitle.trim() || !newDate}
+              onClick={() => void saveClinicEvent()}
             >
-              Salva evento (in arrivo)
+              {saving ? "Salvataggio…" : "Salva evento"}
             </button>
           </div>
+
+          {saveErr ? (
+            <div className="mt-3 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+              {saveErr}
+            </div>
+          ) : null}
+
+          {saveOk ? (
+            <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
+              {saveOk}
+            </div>
+          ) : null}
 
           <div className="mt-4 grid gap-3 md:grid-cols-2">
             <label className="block">
