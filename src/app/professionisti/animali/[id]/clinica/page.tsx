@@ -2,7 +2,7 @@
 
 export const dynamic = "force-dynamic";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
@@ -98,6 +98,9 @@ export default function ProAnimalClinicPage() {
   // ✅ Validazione
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
   const [verifyErr, setVerifyErr] = useState<string | null>(null);
+
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkVerifying, setBulkVerifying] = useState(false);
 
   // Promemoria owner
   const [reminderEnabled, setReminderEnabled] = useState(false);
@@ -287,6 +290,82 @@ export default function ProAnimalClinicPage() {
     }
   }
 
+  function isEventVerified(ev: ClinicEventRow) {
+    return ev.source === "professional" || ev.source === "veterinarian" || !!ev.verified_at;
+  }
+
+  const pendingIds = useMemo(() => {
+    return events.filter((e) => !isEventVerified(e)).map((e) => e.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [events]);
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function clearSelection() {
+    setSelectedIds(new Set());
+  }
+
+  function selectAllPending() {
+    setSelectedIds(new Set(pendingIds));
+  }
+
+  async function verifyMany(idsToVerify: string[]) {
+    if (!id) return;
+    if (idsToVerify.length === 0) return;
+
+    setBulkVerifying(true);
+    setVerifyErr(null);
+
+    try {
+      const res = await fetch("/api/clinic-events/verify", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(await authHeaders()),
+        },
+        body: JSON.stringify({
+          eventIds: idsToVerify,
+          ids: idsToVerify,
+        }),
+      });
+
+      const json = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setVerifyErr(json?.error || "Errore durante la validazione.");
+        return;
+      }
+
+      // Update ottimistico: segna validati in UI
+      const nowIso = new Date().toISOString();
+      setEvents((prev) =>
+        prev.map((e) =>
+          idsToVerify.includes(e.id)
+            ? {
+                ...e,
+                verified_at: nowIso,
+                verified_by_label: e.verified_by_label || "Veterinario",
+              }
+            : e
+        )
+      );
+
+      clearSelection();
+      await loadClinicEvents();
+    } catch {
+      setVerifyErr("Errore di rete durante la validazione.");
+    } finally {
+      setBulkVerifying(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="text-sm">
@@ -320,6 +399,68 @@ export default function ProAnimalClinicPage() {
             </span>
           )}
         </div>
+
+        {isVet && pendingIds.length > 0 ? (
+          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="text-sm text-zinc-700">
+                Eventi in attesa: <span className="font-semibold">{pendingIds.length}</span>
+                {selectedIds.size > 0 ? (
+                  <>
+                    {" "}
+                    • Selezionati: <span className="font-semibold">{selectedIds.size}</span>
+                  </>
+                ) : null}
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50 disabled:opacity-50"
+                  disabled={bulkVerifying}
+                  onClick={() => selectAllPending()}
+                >
+                  Seleziona tutti
+                </button>
+
+                <button
+                  type="button"
+                  className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50 disabled:opacity-50"
+                  disabled={bulkVerifying || selectedIds.size === 0}
+                  onClick={() => void verifyMany(Array.from(selectedIds))}
+                >
+                  {bulkVerifying ? "Validazione…" : "Valida selezionati"}
+                </button>
+
+                <button
+                  type="button"
+                  className="rounded-2xl bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-900 disabled:opacity-50"
+                  disabled={bulkVerifying}
+                  onClick={() => void verifyMany(pendingIds)}
+                  title="Valida tutti gli eventi in attesa"
+                >
+                  {bulkVerifying ? "Validazione…" : "Valida tutto"}
+                </button>
+
+                {selectedIds.size > 0 ? (
+                  <button
+                    type="button"
+                    className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50 disabled:opacity-50"
+                    disabled={bulkVerifying}
+                    onClick={() => clearSelection()}
+                  >
+                    Azzera
+                  </button>
+                ) : null}
+              </div>
+            </div>
+
+            <p className="mt-2 text-xs text-zinc-600">
+              Suggerimento: puoi selezionare i singoli eventi “⏳ da validare” direttamente dalla
+              timeline.
+            </p>
+          </div>
+        ) : null}
 
         {/* NUOVO EVENTO (PRO) */}
         <div className="rounded-2xl border border-zinc-200 bg-white p-4">
@@ -563,6 +704,8 @@ export default function ProAnimalClinicPage() {
               const isVerified =
                 ev.source === "professional" || ev.source === "veterinarian" || !!ev.verified_at;
 
+              const isSelected = selectedIds.has(ev.id);
+
               const verifierLabel =
                 (ev.verified_by_label && ev.verified_by_label.trim()) ||
                 (isVerified ? "Veterinario" : null);
@@ -571,19 +714,33 @@ export default function ProAnimalClinicPage() {
                 <div key={ev.id} className="rounded-2xl border border-zinc-200 p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <div className="text-xs text-zinc-500">{formatDateIT(ev.event_date)}</div>
+                      <div className="flex items-start gap-2">
+                        {!isVerified && isVet ? (
+                          <input
+                            type="checkbox"
+                            className="mt-0.5 h-4 w-4"
+                            checked={isSelected}
+                            onChange={() => toggleSelect(ev.id)}
+                            title="Seleziona per validazione"
+                          />
+                        ) : null}
 
-                      <div className="mt-1 truncate text-sm font-semibold text-zinc-900">
-                        {ev.title || typeLabel(ev.type)}
+                        <div className="min-w-0">
+                          <div className="text-xs text-zinc-500">{formatDateIT(ev.event_date)}</div>
+
+                          <div className="mt-1 truncate text-sm font-semibold text-zinc-900">
+                            {ev.title || typeLabel(ev.type)}
+                          </div>
+
+                          <div className="mt-1 text-xs text-zinc-600">{typeLabel(ev.type)}</div>
+
+                          {ev.description ? (
+                            <p className="mt-2 whitespace-pre-wrap text-sm text-zinc-700">
+                              {ev.description}
+                            </p>
+                          ) : null}
+                        </div>
                       </div>
-
-                      <div className="mt-1 text-xs text-zinc-600">{typeLabel(ev.type)}</div>
-
-                      {ev.description ? (
-                        <p className="mt-2 whitespace-pre-wrap text-sm text-zinc-700">
-                          {ev.description}
-                        </p>
-                      ) : null}
                     </div>
 
                     <div className="shrink-0 flex flex-col items-end gap-2">
