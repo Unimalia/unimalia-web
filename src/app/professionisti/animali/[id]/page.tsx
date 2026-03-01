@@ -432,18 +432,27 @@ export default function ProAnimalPage() {
             </p>
           </div>
 
-          {isVet ? (
+          <div className="flex flex-wrap gap-2">
             <Link
-              href={`/professionisti/animali/${animal.id}/verifica`}
-              className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+              href={`/professionisti/animali/${animal.id}/clinica`}
+              className="rounded-2xl bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-900"
             >
-              Validazione (vet)
+              Apri cartella clinica
             </Link>
-          ) : (
-            <span className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-2 text-sm font-semibold text-zinc-600">
-              Validazione riservata ai vet
-            </span>
-          )}
+
+            {isVet ? (
+              <Link
+                href={`/professionisti/animali/${animal.id}/verifica`}
+                className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+              >
+                Validazione (vet)
+              </Link>
+            ) : (
+              <span className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-2 text-sm font-semibold text-zinc-600">
+                Validazione riservata ai vet
+              </span>
+            )}
+          </div>
         </div>
 
         {eventsErr ? (
@@ -505,7 +514,9 @@ export default function ProAnimalPage() {
           </div>
         )}
 
-        
+        <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-700">
+          Prossimo step: aggiungiamo la checklist eventi clinici con “Valida selezionati / Valida tutto”.
+        </div>
       </section>
     </div>
   );
