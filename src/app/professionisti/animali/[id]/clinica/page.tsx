@@ -95,6 +95,10 @@ export default function ProAnimalClinicPage() {
   const [saveErr, setSaveErr] = useState<string | null>(null);
   const [saveOk, setSaveOk] = useState<string | null>(null);
 
+  // ✅ Validazione
+  const [verifyingId, setVerifyingId] = useState<string | null>(null);
+  const [verifyErr, setVerifyErr] = useState<string | null>(null);
+
   // Promemoria owner
   const [reminderEnabled, setReminderEnabled] = useState(false);
   const [remindAt, setRemindAt] = useState<string>("");
@@ -231,6 +235,55 @@ export default function ProAnimalClinicPage() {
       setSaveErr("Errore di rete durante il salvataggio.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function verifyEvent(eventId: string) {
+    if (!id) return;
+
+    setVerifyingId(eventId);
+    setVerifyErr(null);
+
+    try {
+      const res = await fetch("/api/clinic-events/verify", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(await authHeaders()),
+        },
+        // mando più chiavi per essere compatibile con implementazioni diverse
+        body: JSON.stringify({
+          eventIds: [eventId],
+          ids: [eventId],
+        }),
+      });
+
+      const json = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setVerifyErr(json?.error || "Errore durante la validazione.");
+        return;
+      }
+
+      // Update ottimistico: segna validato subito in UI
+      setEvents((prev) =>
+        prev.map((e) =>
+          e.id === eventId
+            ? {
+                ...e,
+                verified_at: new Date().toISOString(),
+                verified_by_label: e.verified_by_label || "Veterinario",
+              }
+            : e
+        )
+      );
+
+      // Refresh reale
+      await loadClinicEvents();
+    } catch {
+      setVerifyErr("Errore di rete durante la validazione.");
+    } finally {
+      setVerifyingId(null);
     }
   }
 
@@ -492,6 +545,12 @@ export default function ProAnimalClinicPage() {
           </div>
         ) : null}
 
+        {verifyErr ? (
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+            {verifyErr}
+          </div>
+        ) : null}
+
         {eventsLoading ? (
           <div className="text-sm text-zinc-600">Caricamento eventi…</div>
         ) : events.length === 0 ? (
@@ -537,9 +596,23 @@ export default function ProAnimalClinicPage() {
                           ✓ Validato {verifierLabel ? `da ${verifierLabel}` : ""}
                         </span>
                       ) : (
-                        <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
-                          ⏳ Da validare
-                        </span>
+                        <div className="flex flex-col items-end gap-2">
+                          <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
+                            ⏳ Da validare
+                          </span>
+
+                          {isVet ? (
+                            <button
+                              type="button"
+                              className="rounded-2xl bg-black px-3 py-2 text-xs font-semibold text-white hover:bg-zinc-900 disabled:opacity-50"
+                              disabled={verifyingId === ev.id}
+                              onClick={() => void verifyEvent(ev.id)}
+                              title="Valida questo evento"
+                            >
+                              {verifyingId === ev.id ? "Validazione…" : "Valida"}
+                            </button>
+                          ) : null}
+                        </div>
                       )}
                     </div>
                   </div>
