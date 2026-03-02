@@ -113,6 +113,8 @@ export default function ProAnimalClinicPage() {
   const [detailFiles, setDetailFiles] = useState<any[]>([]);
   const [detailFilesLoading, setDetailFilesLoading] = useState(false);
 
+  const [filesCountByEventId, setFilesCountByEventId] = useState<Record<string, number>>({});
+
   const [isEditing, setIsEditing] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
 
@@ -210,13 +212,15 @@ export default function ProAnimalClinicPage() {
   useEffect(() => {
     if (!detailEvent?.id) return;
 
+    const eventId = detailEvent.id;
+
     setDetailFiles([]);
     setDetailFilesLoading(true);
 
     (async () => {
       try {
         const res = await fetch(
-          `/api/clinic-events/files/list?eventId=${encodeURIComponent(detailEvent.id)}`,
+          `/api/clinic-events/files/list?eventId=${encodeURIComponent(eventId)}`,
           {
             cache: "no-store",
             headers: {
@@ -227,6 +231,8 @@ export default function ProAnimalClinicPage() {
 
         const j = await res.json().catch(() => ({}));
         setDetailFiles((j?.files as any[]) ?? []);
+
+        setFilesCountByEventId((prev) => ({ ...prev, [eventId]: (j?.files?.length ?? 0) }));
       } catch {
         setDetailFiles([]);
       } finally {
@@ -940,6 +946,14 @@ export default function ProAnimalClinicPage() {
 
                           <div className="mt-1 truncate text-sm font-semibold text-zinc-900">
                             {ev.title || typeLabel(ev.type)}
+                            {(filesCountByEventId[ev.id] ?? 0) > 0 ? (
+                              <span
+                                className="ml-2 inline-flex items-center text-xs text-zinc-500"
+                                title="Allegato presente"
+                              >
+                                📎
+                              </span>
+                            ) : null}
                           </div>
 
                           <div className="mt-1 text-xs text-zinc-600">{typeLabel(ev.type)}</div>
@@ -1082,11 +1096,38 @@ export default function ProAnimalClinicPage() {
                             ) : (
                               <ul className="mt-2 space-y-2">
                                 {detailFiles.map((f) => (
-                                  <li key={f.id} className="text-sm text-zinc-800">
-                                    <span className="font-semibold">{f.filename}</span>
-                                    <span className="ml-2 text-xs text-zinc-600">
-                                      ({f.mime || "file"})
-                                    </span>
+                                  <li
+                                    key={f.id}
+                                    className="flex items-center justify-between gap-3 text-sm text-zinc-800"
+                                  >
+                                    <div className="min-w-0">
+                                      <span className="font-semibold">{f.filename}</span>
+                                      <span className="ml-2 text-xs text-zinc-600">
+                                        ({f.mime || "file"})
+                                      </span>
+                                    </div>
+
+                                    <button
+                                      type="button"
+                                      className="text-xs font-semibold text-zinc-700 underline hover:text-zinc-900"
+                                      onClick={async () => {
+                                        try {
+                                          const res = await fetch(
+                                            `/api/clinic-events/files/download?fileId=${encodeURIComponent(
+                                              f.id
+                                            )}`,
+                                            { headers: { ...(await authHeaders()) } }
+                                          );
+                                          const j = await res.json().catch(() => ({}));
+                                          if (!res.ok || !j?.url) return;
+                                          window.open(j.url, "_blank", "noopener,noreferrer");
+                                        } catch {
+                                          // no-op
+                                        }
+                                      }}
+                                    >
+                                      Apri
+                                    </button>
                                   </li>
                                 ))}
                               </ul>

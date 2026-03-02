@@ -41,7 +41,6 @@ export async function GET(req: Request) {
 
   const animalId = (fileRow as any).animal_id as string;
 
-  // ✅ GRANT CHECK (READ)
   const grant = await requireOwnerOrGrant(supabase, user.id, animalId, "read");
   if (!grant.ok) {
     await writeAudit(supabase, {
