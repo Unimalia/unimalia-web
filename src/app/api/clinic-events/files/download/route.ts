@@ -28,8 +28,18 @@ export async function GET(req: Request) {
   if (userErr || !user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const url = new URL(req.url);
-  const animalId = (url.searchParams.get("animalId") || "").trim();
-  if (!animalId) return NextResponse.json({ error: "animalId required" }, { status: 400 });
+  const fileId = (url.searchParams.get("fileId") || "").trim();
+  if (!fileId) return NextResponse.json({ error: "fileId required" }, { status: 400 });
+
+  const { data: fileRow, error: fErr } = await supabase
+    .from("animal_clinic_event_files")
+    .select("id, animal_id, path, filename")
+    .eq("id", fileId)
+    .single();
+
+  if (fErr || !fileRow) return NextResponse.json({ error: "File not found" }, { status: 404 });
+
+  const animalId = (fileRow as any).animal_id as string;
 
   // ✅ GRANT CHECK (READ)
   const grant = await requireOwnerOrGrant(supabase, user.id, animalId, "read");
@@ -37,10 +47,9 @@ export async function GET(req: Request) {
     await writeAudit(supabase, {
       req,
       actor_user_id: user.id,
-      actor_org_id: null,
-      action: "animal.clinic.read",
-      target_type: "animal",
-      target_id: animalId,
+      action: "file.download",
+      target_type: "file",
+      target_id: fileId,
       animal_id: animalId,
       result: "denied",
       reason: grant.reason,
@@ -48,55 +57,36 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: grant.reason }, { status: 403 });
   }
 
-  try {
-    const { data, error } = await supabase
-      .from("animal_clinic_events")
-      .select(
-        "id, animal_id, event_date, type, title, description, visibility, source, verified_at, verified_by, verified_by_org_id, verified_by_member_id, verified_by_label, created_by, created_at, updated_at, status"
-      )
-      .eq("animal_id", animalId)
-      .neq("status", "void")
-      .order("event_date", { ascending: false });
+  const bucket = "clinic-event-files";
+  const path = (fileRow as any).path as string;
 
-    if (error) {
-      await writeAudit(supabase, {
-        req,
-        actor_user_id: user.id,
-        actor_org_id: grant.actor_org_id,
-        action: "animal.clinic.read",
-        target_type: "animal",
-        target_id: animalId,
-        animal_id: animalId,
-        result: "error",
-        reason: error.message,
-      });
-      return NextResponse.json({ error: "Impossibile caricare eventi." }, { status: 500 });
-    }
+  const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, 60);
 
+  if (error || !data?.signedUrl) {
     await writeAudit(supabase, {
       req,
       actor_user_id: user.id,
       actor_org_id: grant.actor_org_id,
-      action: "animal.clinic.read",
-      target_type: "animal",
-      target_id: animalId,
-      animal_id: animalId,
-      result: "success",
-    });
-
-    return NextResponse.json({ ok: true, events: data ?? [] }, { status: 200 });
-  } catch {
-    await writeAudit(supabase, {
-      req,
-      actor_user_id: user.id,
-      actor_org_id: grant.actor_org_id,
-      action: "animal.clinic.read",
-      target_type: "animal",
-      target_id: animalId,
+      action: "file.download",
+      target_type: "file",
+      target_id: fileId,
       animal_id: animalId,
       result: "error",
-      reason: "Unhandled server error",
+      reason: error?.message || "signed url failed",
     });
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+    return NextResponse.json({ error: "Impossibile generare link download." }, { status: 500 });
   }
+
+  await writeAudit(supabase, {
+    req,
+    actor_user_id: user.id,
+    actor_org_id: grant.actor_org_id,
+    action: "file.download",
+    target_type: "file",
+    target_id: fileId,
+    animal_id: animalId,
+    result: "success",
+  });
+
+  return NextResponse.json({ ok: true, url: data.signedUrl, filename: (fileRow as any).filename }, { status: 200 });
 }
