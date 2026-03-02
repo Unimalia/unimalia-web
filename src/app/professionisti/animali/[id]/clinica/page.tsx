@@ -30,6 +30,9 @@ type ClinicEventRow = {
   verified_at: string | null;
   verified_by: string | null;
 
+  created_by?: string | null;
+  created_by_label?: string | null;
+
   verified_by_label?: string | null;
   verified_by_org_id?: string | null;
   verified_by_member_id?: string | null;
@@ -76,6 +79,7 @@ export default function ProAnimalClinicPage() {
   const id = params?.id;
 
   const [isVet, setIsVet] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   const [eventsLoading, setEventsLoading] = useState(false);
   const [events, setEvents] = useState<ClinicEventRow[]>([]);
@@ -114,6 +118,10 @@ export default function ProAnimalClinicPage() {
   const [editDate, setEditDate] = useState("");
   const [editDesc, setEditDesc] = useState("");
 
+  const [modalErr, setModalErr] = useState<string | null>(null);
+  const [updating, setUpdating] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
   // Promemoria owner
   const [reminderEnabled, setReminderEnabled] = useState(false);
   const [remindAt, setRemindAt] = useState<string>("");
@@ -135,6 +143,7 @@ export default function ProAnimalClinicPage() {
       }
 
       setIsVet(isVetUser(user));
+      setCurrentUserId(user.id);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
@@ -375,6 +384,96 @@ export default function ProAnimalClinicPage() {
       setVerifyErr("Errore di rete durante la validazione.");
     } finally {
       setBulkVerifying(false);
+    }
+  }
+
+  function canEditOrDelete(ev: ClinicEventRow) {
+    // PRO/VET possono sempre modificare eventi owner
+    if (ev.source === "owner") return true;
+
+    // Per eventi pro/vet: serve creator id.
+    // Se non abbiamo created_by, per sicurezza NON permettiamo edit/delete (evita che pro X tocchi pro Y).
+    const createdBy = (ev as any).created_by as string | null | undefined;
+    if (!createdBy || !currentUserId) return false;
+
+    return createdBy === currentUserId;
+  }
+
+  async function updateDetailEvent() {
+    if (!detailEvent) return;
+
+    setUpdating(true);
+    setModalErr(null);
+
+    try {
+      const res = await fetch("/api/clinic-events/update", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(await authHeaders()),
+        },
+        body: JSON.stringify({
+          id: detailEvent.id,
+          title: editTitle.trim(),
+          type: editType,
+          eventDate: editDate,
+          description: editDesc.trim() || null,
+        }),
+      });
+
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setModalErr(json?.error || "Errore durante la modifica.");
+        return;
+      }
+
+      const updated = json?.event as ClinicEventRow | undefined;
+      if (updated) {
+        setEvents((prev) => prev.map((e) => (e.id === updated.id ? updated : e)));
+        setDetailEvent(updated);
+      }
+
+      setIsEditing(false);
+      setDeleteConfirm(false);
+      await loadClinicEvents();
+    } catch {
+      setModalErr("Errore di rete durante la modifica.");
+    } finally {
+      setUpdating(false);
+    }
+  }
+
+  async function deleteDetailEvent() {
+    if (!detailEvent) return;
+
+    setDeleting(true);
+    setModalErr(null);
+
+    try {
+      const res = await fetch("/api/clinic-events/delete", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(await authHeaders()),
+        },
+        body: JSON.stringify({ id: detailEvent.id }),
+      });
+
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setModalErr(json?.error || "Errore durante l’eliminazione.");
+        return;
+      }
+
+      setEvents((prev) => prev.filter((e) => e.id !== detailEvent.id));
+      setDetailEvent(null);
+      setIsEditing(false);
+      setDeleteConfirm(false);
+      await loadClinicEvents();
+    } catch {
+      setModalErr("Errore di rete durante l’eliminazione.");
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -730,6 +829,7 @@ export default function ProAnimalClinicPage() {
                     setDetailEvent(ev);
                     setIsEditing(false);
                     setDeleteConfirm(false);
+                    setModalErr(null);
 
                     setEditTitle(ev.title || "");
                     setEditType(ev.type);
@@ -808,239 +908,265 @@ export default function ProAnimalClinicPage() {
       {detailEvent ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-2xl rounded-3xl bg-white p-6 shadow-xl">
-            <div className="flex items-start justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-zinc-900">
-                  {detailEvent.title || typeLabel(detailEvent.type)}
-                </h2>
-                <div className="mt-1 text-xs text-zinc-600">
-                  {typeLabel(detailEvent.type)} • {formatDateIT(detailEvent.event_date)}
-                </div>
-              </div>
+            {(() => {
+              const allowed = detailEvent ? canEditOrDelete(detailEvent) : false;
 
-              <div className="flex items-center gap-2">
-                {!isEditing ? (
-                  <>
-                    <button
-                      type="button"
-                      className="rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-800 hover:bg-zinc-50"
-                      onClick={() => {
-                        setIsEditing(true);
-                        setDeleteConfirm(false);
-                      }}
-                    >
-                      Modifica
-                    </button>
-
-                    <button
-                      type="button"
-                      className="rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-100"
-                      onClick={() => setDeleteConfirm(true)}
-                    >
-                      Elimina
-                    </button>
-                  </>
-                ) : (
-                  <span className="rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-semibold text-zinc-700">
-                    Modalità modifica
-                  </span>
-                )}
-
-                <button
-                  type="button"
-                  className="text-sm font-semibold text-zinc-600 hover:text-zinc-900"
-                  onClick={() => {
-                    setDetailEvent(null);
-                    setIsEditing(false);
-                    setDeleteConfirm(false);
-                  }}
-                >
-                  Chiudi ✕
-                </button>
-              </div>
-            </div>
-
-            <div className="mt-6 space-y-4 text-sm">
-              {!isEditing ? (
+              return (
                 <>
-                  {detailEvent.description ? (
+                  <div className="flex items-start justify-between">
                     <div>
-                      <div className="text-xs font-semibold text-zinc-700">Descrizione</div>
-                      <p className="mt-1 whitespace-pre-wrap text-zinc-800">
-                        {detailEvent.description}
-                      </p>
+                      <h2 className="text-lg font-semibold text-zinc-900">
+                        {detailEvent.title || typeLabel(detailEvent.type)}
+                      </h2>
+                      <div className="mt-1 text-xs text-zinc-600">
+                        {typeLabel(detailEvent.type)} • {formatDateIT(detailEvent.event_date)}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {!isEditing ? (
+                        <>
+                          <button
+                            type="button"
+                            className="rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-800 hover:bg-zinc-50 disabled:opacity-50"
+                            disabled={!allowed}
+                            onClick={() => {
+                              setIsEditing(true);
+                              setDeleteConfirm(false);
+                            }}
+                            title={!allowed ? "Non autorizzato a modificare questo evento" : ""}
+                          >
+                            Modifica
+                          </button>
+
+                          <button
+                            type="button"
+                            className="rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-100 disabled:opacity-50"
+                            disabled={!allowed}
+                            onClick={() => setDeleteConfirm(true)}
+                            title={!allowed ? "Non autorizzato a eliminare questo evento" : ""}
+                          >
+                            Elimina
+                          </button>
+                        </>
+                      ) : (
+                        <span className="rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-semibold text-zinc-700">
+                          Modalità modifica
+                        </span>
+                      )}
+
+                      <button
+                        type="button"
+                        className="text-sm font-semibold text-zinc-600 hover:text-zinc-900"
+                        onClick={() => {
+                          setDetailEvent(null);
+                          setIsEditing(false);
+                          setDeleteConfirm(false);
+                          setModalErr(null);
+                        }}
+                      >
+                        Chiudi ✕
+                      </button>
+                    </div>
+                  </div>
+
+                  {modalErr ? (
+                    <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+                      {modalErr}
                     </div>
                   ) : null}
 
-                  <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-                    <div className="text-xs font-semibold text-zinc-700">Stato validazione</div>
+                  <div className="mt-6 space-y-4 text-sm">
+                    {!isEditing ? (
+                      <>
+                        {detailEvent.description ? (
+                          <div>
+                            <div className="text-xs font-semibold text-zinc-700">Descrizione</div>
+                            <p className="mt-1 whitespace-pre-wrap text-zinc-800">
+                              {detailEvent.description}
+                            </p>
+                          </div>
+                        ) : null}
 
-                    {detailEvent.source === "professional" ||
-                    detailEvent.source === "veterinarian" ||
-                    detailEvent.verified_at ? (
-                      <div className="mt-2 font-semibold text-emerald-700">
-                        ✓ Validato{" "}
-                        {detailEvent.verified_by_label
-                          ? `da ${detailEvent.verified_by_label}`
-                          : ""}
-                      </div>
+                        <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+                          <div className="text-xs font-semibold text-zinc-700">Stato validazione</div>
+
+                          {detailEvent.source === "professional" ||
+                          detailEvent.source === "veterinarian" ||
+                          detailEvent.verified_at ? (
+                            <div className="mt-2 font-semibold text-emerald-700">
+                              ✓ Validato{" "}
+                              {detailEvent.verified_by_label
+                                ? `da ${detailEvent.verified_by_label}`
+                                : ""}
+                            </div>
+                          ) : (
+                            <div className="mt-2 font-semibold text-amber-700">
+                              ⏳ In attesa di validazione
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+                          <div className="text-xs font-semibold text-zinc-700">Meta informazioni</div>
+
+                          <div className="mt-2 space-y-1 text-xs text-zinc-600">
+                            <div>
+                              ID evento: <span className="font-mono">{detailEvent.id}</span>
+                            </div>
+                            <div>Visibilità: {detailEvent.visibility}</div>
+                            <div>Fonte: {detailEvent.source}</div>
+                            {detailEvent.created_by_label ? (
+                              <div>Creato da: {detailEvent.created_by_label}</div>
+                            ) : null}
+                            {detailEvent.verified_at ? (
+                              <div>Validato il: {formatDateIT(detailEvent.verified_at)}</div>
+                            ) : null}
+                          </div>
+                        </div>
+                      </>
                     ) : (
-                      <div className="mt-2 font-semibold text-amber-700">
-                        ⏳ In attesa di validazione
+                      <>
+                        <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+                          <div className="text-xs font-semibold text-zinc-700">Modifica evento</div>
+
+                          <div className="mt-3 grid gap-3 md:grid-cols-2">
+                            <label className="block md:col-span-2">
+                              <div className="text-xs font-semibold text-zinc-700">Titolo</div>
+                              <input
+                                type="text"
+                                className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+                                value={editTitle}
+                                onChange={(e) => setEditTitle(e.target.value)}
+                              />
+                            </label>
+
+                            <label className="block">
+                              <div className="text-xs font-semibold text-zinc-700">Tipo</div>
+                              <select
+                                className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+                                value={editType}
+                                onChange={(e) => setEditType(e.target.value as ClinicEventType)}
+                              >
+                                <option value="visit">Visita</option>
+                                <option value="vaccine">Vaccinazione</option>
+                                <option value="exam">Esame</option>
+                                <option value="therapy">Terapia</option>
+                                <option value="note">Nota</option>
+                                <option value="document">Documento</option>
+                                <option value="emergency">Emergenza</option>
+                              </select>
+                            </label>
+
+                            <label className="block">
+                              <div className="text-xs font-semibold text-zinc-700">Data</div>
+                              <input
+                                type="date"
+                                className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+                                value={editDate}
+                                onChange={(e) => setEditDate(e.target.value)}
+                              />
+                            </label>
+
+                            <label className="block md:col-span-2">
+                              <div className="text-xs font-semibold text-zinc-700">Descrizione</div>
+                              <textarea
+                                className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+                                rows={4}
+                                value={editDesc}
+                                onChange={(e) => setEditDesc(e.target.value)}
+                              />
+                            </label>
+                          </div>
+
+                          <p className="mt-3 text-xs text-zinc-600">
+                            Nota: quando abilitiamo l’audit log, ogni modifica verrà registrata e, se
+                            l’owner modifica un evento validato, potrà tornare “⏳ da validare”.
+                          </p>
+                        </div>
+                      </>
+                    )}
+
+                    {/* Conferma eliminazione */}
+                    {deleteConfirm ? (
+                      <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
+                        <div className="text-sm font-semibold text-red-800">Conferma eliminazione</div>
+                        <p className="mt-1 text-sm text-red-800">
+                          Vuoi eliminare questo evento? L’azione sarà tracciata nello storico (quando
+                          attiviamo l’audit log).
+                        </p>
+
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+                            onClick={() => setDeleteConfirm(false)}
+                            disabled={deleting}
+                          >
+                            Annulla
+                          </button>
+
+                          <button
+                            type="button"
+                            className="rounded-2xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+                            disabled={!allowed || deleting}
+                            onClick={() => void deleteDetailEvent()}
+                          >
+                            {deleting ? "Eliminazione…" : "Conferma eliminazione"}
+                          </button>
+                        </div>
                       </div>
+                    ) : null}
+                  </div>
+
+                  <div className="mt-6 flex justify-end gap-2">
+                    {isEditing ? (
+                      <>
+                        <button
+                          type="button"
+                          className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+                          onClick={() => {
+                            // ripristina valori originali
+                            setEditTitle(detailEvent?.title || "");
+                            setEditType(detailEvent?.type || "visit");
+                            setEditDate((detailEvent?.event_date || "").slice(0, 10));
+                            setEditDesc(detailEvent?.description || "");
+                            setIsEditing(false);
+                            setDeleteConfirm(false);
+                            setModalErr(null);
+                          }}
+                          disabled={updating}
+                        >
+                          Annulla
+                        </button>
+
+                        <button
+                          type="button"
+                          className="rounded-2xl bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-900 disabled:opacity-50"
+                          disabled={!allowed || updating || !editTitle.trim() || !editDate}
+                          onClick={() => void updateDetailEvent()}
+                        >
+                          {updating ? "Salvataggio…" : "Conferma modifica"}
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+                        onClick={() => {
+                          setDetailEvent(null);
+                          setIsEditing(false);
+                          setDeleteConfirm(false);
+                          setModalErr(null);
+                        }}
+                      >
+                        Chiudi
+                      </button>
                     )}
                   </div>
-
-                  <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-                    <div className="text-xs font-semibold text-zinc-700">Meta informazioni</div>
-
-                    <div className="mt-2 space-y-1 text-xs text-zinc-600">
-                      <div>
-                        ID evento: <span className="font-mono">{detailEvent.id}</span>
-                      </div>
-                      <div>Visibilità: {detailEvent.visibility}</div>
-                      <div>Fonte: {detailEvent.source}</div>
-                      {detailEvent.verified_at ? (
-                        <div>Validato il: {formatDateIT(detailEvent.verified_at)}</div>
-                      ) : null}
-                    </div>
-                  </div>
                 </>
-              ) : (
-                <>
-                  <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-                    <div className="text-xs font-semibold text-zinc-700">Modifica evento</div>
-
-                    <div className="mt-3 grid gap-3 md:grid-cols-2">
-                      <label className="block md:col-span-2">
-                        <div className="text-xs font-semibold text-zinc-700">Titolo</div>
-                        <input
-                          type="text"
-                          className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm"
-                          value={editTitle}
-                          onChange={(e) => setEditTitle(e.target.value)}
-                        />
-                      </label>
-
-                      <label className="block">
-                        <div className="text-xs font-semibold text-zinc-700">Tipo</div>
-                        <select
-                          className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm"
-                          value={editType}
-                          onChange={(e) => setEditType(e.target.value as ClinicEventType)}
-                        >
-                          <option value="visit">Visita</option>
-                          <option value="vaccine">Vaccinazione</option>
-                          <option value="exam">Esame</option>
-                          <option value="therapy">Terapia</option>
-                          <option value="note">Nota</option>
-                          <option value="document">Documento</option>
-                          <option value="emergency">Emergenza</option>
-                        </select>
-                      </label>
-
-                      <label className="block">
-                        <div className="text-xs font-semibold text-zinc-700">Data</div>
-                        <input
-                          type="date"
-                          className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm"
-                          value={editDate}
-                          onChange={(e) => setEditDate(e.target.value)}
-                        />
-                      </label>
-
-                      <label className="block md:col-span-2">
-                        <div className="text-xs font-semibold text-zinc-700">Descrizione</div>
-                        <textarea
-                          className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm"
-                          rows={4}
-                          value={editDesc}
-                          onChange={(e) => setEditDesc(e.target.value)}
-                        />
-                      </label>
-                    </div>
-
-                    <p className="mt-3 text-xs text-zinc-600">
-                      Nota: quando abilitiamo l’audit log, ogni modifica verrà registrata e, se
-                      l’owner modifica un evento validato, potrà tornare “⏳ da validare”.
-                    </p>
-                  </div>
-                </>
-              )}
-
-              {/* Conferma eliminazione (UI only) */}
-              {deleteConfirm ? (
-                <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
-                  <div className="text-sm font-semibold text-red-800">Conferma eliminazione</div>
-                  <p className="mt-1 text-sm text-red-800">
-                    Vuoi eliminare questo evento? L’azione sarà tracciata nello storico (quando
-                    attiviamo l’audit log).
-                  </p>
-
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
-                      onClick={() => setDeleteConfirm(false)}
-                    >
-                      Annulla
-                    </button>
-
-                    <button
-                      type="button"
-                      className="rounded-2xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
-                      disabled
-                      title="API delete in arrivo"
-                    >
-                      Conferma eliminazione (in arrivo)
-                    </button>
-                  </div>
-                </div>
-              ) : null}
-            </div>
-
-            <div className="mt-6 flex justify-end gap-2">
-              {isEditing ? (
-                <>
-                  <button
-                    type="button"
-                    className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
-                    onClick={() => {
-                      // ripristina valori originali
-                      setEditTitle(detailEvent?.title || "");
-                      setEditType(detailEvent?.type || "visit");
-                      setEditDate((detailEvent?.event_date || "").slice(0, 10));
-                      setEditDesc(detailEvent?.description || "");
-                      setIsEditing(false);
-                      setDeleteConfirm(false);
-                    }}
-                  >
-                    Annulla
-                  </button>
-
-                  <button
-                    type="button"
-                    className="rounded-2xl bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-900 disabled:opacity-50"
-                    disabled
-                    title="API update in arrivo"
-                  >
-                    Conferma modifica (in arrivo)
-                  </button>
-                </>
-              ) : (
-                <button
-                  type="button"
-                  className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
-                  onClick={() => {
-                    setDetailEvent(null);
-                    setIsEditing(false);
-                    setDeleteConfirm(false);
-                  }}
-                >
-                  Chiudi
-                </button>
-              )}
-            </div>
+              );
+            })()}
           </div>
         </div>
       ) : null}
