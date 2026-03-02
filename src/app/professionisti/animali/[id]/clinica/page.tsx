@@ -191,8 +191,34 @@ export default function ProAnimalClinicPage() {
     }
   }
 
+  async function loadFilesCount() {
+    if (!id) return;
+
+    try {
+      const res = await fetch(
+        `/api/clinic-events/files/count?animalId=${encodeURIComponent(id)}`,
+        {
+          cache: "no-store",
+          headers: { ...(await authHeaders()) },
+        }
+      );
+
+      if (!res.ok) return;
+
+      const json = await res.json().catch(() => ({}));
+      const counts = (json?.counts as Record<string, number>) ?? {};
+      setFilesCountByEventId(counts);
+    } catch {
+      // no-op
+    }
+  }
+
   useEffect(() => {
-    void loadClinicEvents();
+    if (!id) return;
+    void (async () => {
+      await loadClinicEvents();
+      await loadFilesCount();
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
@@ -328,6 +354,7 @@ export default function ProAnimalClinicPage() {
 
       // Refresh reale dal server
       await loadClinicEvents();
+      await loadFilesCount();
     } catch {
       setSaveErr("Errore di rete durante il salvataggio.");
     } finally {
@@ -377,6 +404,7 @@ export default function ProAnimalClinicPage() {
 
       // Refresh reale
       await loadClinicEvents();
+      await loadFilesCount();
     } catch {
       setVerifyErr("Errore di rete durante la validazione.");
     } finally {
@@ -453,6 +481,7 @@ export default function ProAnimalClinicPage() {
 
       clearSelection();
       await loadClinicEvents();
+      await loadFilesCount();
     } catch {
       setVerifyErr("Errore di rete durante la validazione.");
     } finally {
@@ -509,6 +538,7 @@ export default function ProAnimalClinicPage() {
       setIsEditing(false);
       setDeleteConfirm(false);
       await loadClinicEvents();
+      await loadFilesCount();
     } catch {
       setModalErr("Errore di rete durante la modifica.");
     } finally {
@@ -543,6 +573,7 @@ export default function ProAnimalClinicPage() {
       setIsEditing(false);
       setDeleteConfirm(false);
       await loadClinicEvents();
+      await loadFilesCount();
     } catch {
       setModalErr("Errore di rete durante l’eliminazione.");
     } finally {
@@ -948,10 +979,10 @@ export default function ProAnimalClinicPage() {
                             {ev.title || typeLabel(ev.type)}
                             {(filesCountByEventId[ev.id] ?? 0) > 0 ? (
                               <span
-                                className="ml-2 inline-flex items-center text-xs text-zinc-500"
-                                title="Allegato presente"
+                                className="ml-2 inline-flex items-center rounded-full border border-zinc-200 bg-white px-2 py-0.5 text-xs font-semibold text-zinc-700"
+                                title={`Allegati: ${filesCountByEventId[ev.id]}`}
                               >
-                                📎
+                                📎 {filesCountByEventId[ev.id]}
                               </span>
                             ) : null}
                           </div>
