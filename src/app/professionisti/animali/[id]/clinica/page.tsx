@@ -94,6 +94,7 @@ export default function ProAnimalClinicPage() {
   });
   const [newTitle, setNewTitle] = useState<string>("");
   const [newDesc, setNewDesc] = useState<string>("");
+  const [newFiles, setNewFiles] = useState<File[]>([]);
 
   const [saving, setSaving] = useState(false);
   const [saveErr, setSaveErr] = useState<string | null>(null);
@@ -108,6 +109,9 @@ export default function ProAnimalClinicPage() {
 
   // ✅ Evento selezionato (modal dettagli)
   const [detailEvent, setDetailEvent] = useState<ClinicEventRow | null>(null);
+
+  const [detailFiles, setDetailFiles] = useState<any[]>([]);
+  const [detailFilesLoading, setDetailFilesLoading] = useState(false);
 
   const [isEditing, setIsEditing] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
@@ -202,6 +206,35 @@ export default function ProAnimalClinicPage() {
     };
   }, [detailEvent]);
 
+  // ✅ Carica allegati quando cambia l’evento in dettaglio
+  useEffect(() => {
+    if (!detailEvent?.id) return;
+
+    setDetailFiles([]);
+    setDetailFilesLoading(true);
+
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/clinic-events/files/list?eventId=${encodeURIComponent(detailEvent.id)}`,
+          {
+            cache: "no-store",
+            headers: {
+              ...(await authHeaders()),
+            },
+          }
+        );
+
+        const j = await res.json().catch(() => ({}));
+        setDetailFiles((j?.files as any[]) ?? []);
+      } catch {
+        setDetailFiles([]);
+      } finally {
+        setDetailFilesLoading(false);
+      }
+    })();
+  }, [detailEvent?.id]);
+
   function addDaysISO(fromISO: string, days: number) {
     const base = new Date(fromISO || new Date().toISOString());
     base.setDate(base.getDate() + days);
@@ -257,8 +290,30 @@ export default function ProAnimalClinicPage() {
         setEvents((prev) => [json.event as ClinicEventRow, ...prev]);
       }
 
+      // Upload allegati (se presenti)
+      if (json?.event?.id && newFiles.length > 0) {
+        const fd = new FormData();
+        fd.append("eventId", String(json.event.id));
+        fd.append("animalId", String(id));
+        for (const f of newFiles) fd.append("files", f);
+
+        const upRes = await fetch("/api/clinic-events/files/upload", {
+          method: "POST",
+          headers: {
+            ...(await authHeaders()),
+          },
+          body: fd,
+        });
+
+        if (!upRes.ok) {
+          // non blocchiamo il salvataggio evento: mostriamo solo un warning
+          setSaveErr("Evento salvato, ma caricamento allegati non riuscito.");
+        }
+      }
+
       setNewTitle("");
       setNewDesc("");
+      setNewFiles([]);
 
       // Reset promemoria UI (per ora non salviamo reminders)
       setReminderEnabled(false);
@@ -666,6 +721,24 @@ export default function ProAnimalClinicPage() {
                 placeholder="Dettagli clinici, note, dosaggi, ecc."
               />
             </label>
+
+            <label className="block md:col-span-2">
+              <div className="text-xs font-semibold text-zinc-700">Allegati (opzionale)</div>
+              <input
+                type="file"
+                multiple
+                className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+                onChange={(e) => {
+                  const list = Array.from(e.target.files || []);
+                  setNewFiles(list);
+                }}
+              />
+              {newFiles.length > 0 ? (
+                <div className="mt-2 text-xs text-zinc-600">
+                  Selezionati: <span className="font-semibold">{newFiles.length}</span>
+                </div>
+              ) : null}
+            </label>
           </div>
 
           {/* PROMEMORIA */}
@@ -789,8 +862,8 @@ export default function ProAnimalClinicPage() {
 
                 {newType === "vaccine" && remindAt ? (
                   <p className="md:col-span-2 text-xs text-zinc-600">
-                    Nota vaccino: oltre al promemoria alla data impostata, l’owner verrà avvisato anche{" "}
-                    <span className="font-semibold">15 giorni prima</span>.
+                    Nota vaccino: oltre al promemoria alla data impostata, l’owner verrà avvisato
+                    anche <span className="font-semibold">15 giorni prima</span>.
                   </p>
                 ) : null}
 
@@ -999,10 +1072,29 @@ export default function ProAnimalClinicPage() {
                             </div>
                           ) : null}
 
+                          <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+                            <div className="text-xs font-semibold text-zinc-700">Allegati</div>
+
+                            {detailFilesLoading ? (
+                              <div className="mt-2 text-xs text-zinc-600">Caricamento…</div>
+                            ) : detailFiles.length === 0 ? (
+                              <div className="mt-2 text-xs text-zinc-600">Nessun allegato.</div>
+                            ) : (
+                              <ul className="mt-2 space-y-2">
+                                {detailFiles.map((f) => (
+                                  <li key={f.id} className="text-sm text-zinc-800">
+                                    <span className="font-semibold">{f.filename}</span>
+                                    <span className="ml-2 text-xs text-zinc-600">
+                                      ({f.mime || "file"})
+                                    </span>
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+
                           <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-                            <div className="text-xs font-semibold text-zinc-700">
-                              Stato validazione
-                            </div>
+                            <div className="text-xs font-semibold text-zinc-700">Stato validazione</div>
 
                             {detailEvent.source === "professional" ||
                             detailEvent.source === "veterinarian" ||
@@ -1021,9 +1113,7 @@ export default function ProAnimalClinicPage() {
                           </div>
 
                           <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-                            <div className="text-xs font-semibold text-zinc-700">
-                              Meta informazioni
-                            </div>
+                            <div className="text-xs font-semibold text-zinc-700">Meta informazioni</div>
 
                             <div className="mt-2 space-y-1 text-xs text-zinc-600">
                               <div>
@@ -1043,9 +1133,7 @@ export default function ProAnimalClinicPage() {
                       ) : (
                         <>
                           <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-                            <div className="text-xs font-semibold text-zinc-700">
-                              Modifica evento
-                            </div>
+                            <div className="text-xs font-semibold text-zinc-700">Modifica evento</div>
 
                             <div className="mt-3 grid gap-3 md:grid-cols-2">
                               <label className="block md:col-span-2">
@@ -1086,9 +1174,7 @@ export default function ProAnimalClinicPage() {
                               </label>
 
                               <label className="block md:col-span-2">
-                                <div className="text-xs font-semibold text-zinc-700">
-                                  Descrizione
-                                </div>
+                                <div className="text-xs font-semibold text-zinc-700">Descrizione</div>
                                 <textarea
                                   className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm"
                                   rows={4}
@@ -1099,8 +1185,8 @@ export default function ProAnimalClinicPage() {
                             </div>
 
                             <p className="mt-3 text-xs text-zinc-600">
-                              Nota: quando abilitiamo l’audit log, ogni modifica verrà registrata e,
-                              se l’owner modifica un evento validato, potrà tornare “⏳ da validare”.
+                              Nota: quando abilitiamo l’audit log, ogni modifica verrà registrata e, se
+                              l’owner modifica un evento validato, potrà tornare “⏳ da validare”.
                             </p>
                           </div>
                         </>
@@ -1109,12 +1195,10 @@ export default function ProAnimalClinicPage() {
                       {/* Conferma eliminazione */}
                       {deleteConfirm ? (
                         <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
-                          <div className="text-sm font-semibold text-red-800">
-                            Conferma eliminazione
-                          </div>
+                          <div className="text-sm font-semibold text-red-800">Conferma eliminazione</div>
                           <p className="mt-1 text-sm text-red-800">
-                            Vuoi eliminare questo evento? L’azione sarà tracciata nello storico
-                            (quando attiviamo l’audit log).
+                            Vuoi eliminare questo evento? L’azione sarà tracciata nello storico (quando
+                            attiviamo l’audit log).
                           </p>
 
                           <div className="mt-3 flex flex-wrap gap-2">

@@ -98,6 +98,10 @@ export default function AnimalClinicalPage() {
   const [dateLocal, setDateLocal] = useState(() => toDateTimeLocalValue(new Date()));
   const [saving, setSaving] = useState(false);
 
+  // ✅ allegati multipli (owner)
+  const [files, setFiles] = useState<File[]>([]);
+  const [filesErr, setFilesErr] = useState<string | null>(null);
+
   const backHref = useMemo(() => (animalId ? `/identita/${animalId}` : "/identita"), [animalId]);
 
   async function loadEvents() {
@@ -129,6 +133,44 @@ export default function AnimalClinicalPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [animalId]);
 
+  async function uploadFilesForEvent(eventId: string) {
+    if (!animalId) return;
+    if (files.length === 0) return;
+
+    setFilesErr(null);
+
+    const bucket = "clinic-event-files"; // deve esistere in Supabase Storage
+
+    for (const f of files) {
+      const safeName = (f.name || "documento").replace(/[^\w.\-() ]+/g, "_").slice(0, 120);
+      const path = `${animalId}/${eventId}/${Date.now()}_${safeName}`;
+
+      const { error: upErr } = await supabase.storage.from(bucket).upload(path, f, {
+        contentType: f.type || undefined,
+        upsert: false,
+      });
+
+      if (upErr) {
+        setFilesErr("Evento salvato, ma caricamento allegati non riuscito.");
+        return;
+      }
+
+      const { error: insErr } = await supabase.from("animal_clinic_event_files").insert({
+        event_id: eventId,
+        animal_id: animalId,
+        path,
+        filename: f.name || safeName,
+        mime: f.type || null,
+        size: f.size || null,
+      });
+
+      if (insErr) {
+        setFilesErr("Evento salvato, ma collegamento allegati non riuscito.");
+        return;
+      }
+    }
+  }
+
   async function onAddEvent() {
     if (!animalId) return;
 
@@ -136,6 +178,7 @@ export default function AnimalClinicalPage() {
 
     setSaving(true);
     setError(null);
+    setFilesErr(null);
 
     const { data: sessionData } = await supabase.auth.getSession();
     if (!sessionData?.session) {
@@ -157,22 +200,33 @@ export default function AnimalClinicalPage() {
       description: cleanDescription || null,
       visibility: "owner" as const,
       created_by: sessionData.session.user.id,
-      source: "owner" as const, // per ora owner; professionista lo metteremo via API
+      source: "owner" as const,
       verified_at: null,
       verified_by: null,
     };
 
-    const { error: insErr } = await supabase.from("animal_clinic_events").insert(payload);
+    // ✅ serve l'id dell'evento per allegare file
+    const { data: inserted, error: insErr } = await supabase
+      .from("animal_clinic_events")
+      .insert(payload)
+      .select("id")
+      .single();
 
-    if (insErr) {
+    if (insErr || !inserted?.id) {
       setSaving(false);
-      setError(insErr.message);
+      setError(insErr?.message || "Errore inserimento evento.");
       return;
+    }
+
+    // ✅ upload allegati (se presenti)
+    if (files.length > 0) {
+      await uploadFilesForEvent(inserted.id);
     }
 
     setDescription("");
     setType("note");
     setDateLocal(toDateTimeLocalValue(new Date()));
+    setFiles([]);
 
     await loadEvents();
     setSaving(false);
@@ -246,11 +300,38 @@ export default function AnimalClinicalPage() {
                 onChange={(e) => setDescription(e.target.value)}
               />
             </div>
+
+            {/* ✅ Allegati multipli */}
+            <div className="md:col-span-3">
+              <label className="block text-xs font-semibold text-zinc-700">Allegati (opzionale)</label>
+              <input
+                type="file"
+                multiple
+                className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-zinc-200"
+                onChange={(e) => {
+                  const list = Array.from(e.target.files || []);
+                  setFiles(list);
+                }}
+              />
+              {files.length > 0 ? (
+                <p className="mt-1 text-xs text-zinc-500">
+                  Selezionati: <span className="font-semibold">{files.length}</span>
+                </p>
+              ) : (
+                <p className="mt-1 text-xs text-zinc-500">Puoi allegare uno o più documenti (referti, esami, PDF, immagini).</p>
+              )}
+            </div>
           </div>
 
           {error && (
             <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
               {error}
+            </div>
+          )}
+
+          {filesErr && (
+            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              {filesErr}
             </div>
           )}
 
@@ -273,7 +354,7 @@ export default function AnimalClinicalPage() {
           </div>
 
           <p className="mt-3 text-xs text-zinc-500">
-            Prossimi step: validazione professionista + allegati documenti + accesso emergenza.
+            Nota: gli allegati vengono associati all’evento. (Download/link in arrivo nel dettaglio evento.)
           </p>
         </section>
 
@@ -298,13 +379,14 @@ export default function AnimalClinicalPage() {
                       <div className="min-w-0">
                         <div className="text-xs text-zinc-500">{formatDateIT(ev.event_date)}</div>
 
-                        {/* Categoria unica (niente duplicazioni) */}
+                        {/* Categoria unica */}
                         <div className="mt-1 truncate text-sm font-semibold text-zinc-900">
                           {typeLabel(ev.type)}
                         </div>
 
+                        {/* ✅ preview: 2 righe + "..." */}
                         {ev.description ? (
-                          <p className="mt-2 text-sm text-zinc-700 whitespace-pre-wrap">{ev.description}</p>
+                          <p className="mt-2 text-sm text-zinc-700 line-clamp-2">{ev.description}</p>
                         ) : null}
                       </div>
 
