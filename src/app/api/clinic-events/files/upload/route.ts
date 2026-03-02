@@ -28,13 +28,23 @@ export async function POST(req: Request) {
   if (userErr || !user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const form = await req.formData();
+
   const eventId = String(form.get("eventId") || "").trim();
-  const animalId = String(form.get("animalId") || "").trim();
   const files = form.getAll("files");
 
   if (!eventId) return NextResponse.json({ error: "eventId required" }, { status: 400 });
-  if (!animalId) return NextResponse.json({ error: "animalId required" }, { status: 400 });
   if (!files.length) return NextResponse.json({ error: "files required" }, { status: 400 });
+
+  // ✅ ricava animalId dall'evento (robusto, non dipende dal client)
+  const { data: ev, error: evErr } = await supabase
+    .from("animal_clinic_events")
+    .select("id, animal_id")
+    .eq("id", eventId)
+    .single();
+
+  if (evErr || !ev) return NextResponse.json({ error: "Event not found" }, { status: 404 });
+
+  const animalId = (ev as any).animal_id as string;
 
   // ✅ GRANT CHECK (UPLOAD)
   const grant = await requireOwnerOrGrant(supabase, user.id, animalId, "upload");
