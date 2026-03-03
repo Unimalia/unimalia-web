@@ -12,25 +12,20 @@ type Row = {
   requested_scope?: string[] | null;
   expires_at?: string | null;
 
-  // arricchiti dalla GET
   animal_name?: string | null;
   org_name?: string | null;
 };
 
-type OwnerRequestsClientProps = {
-  initialRows: any[];
-};
-
-export default function OwnerRequestsClient({ initialRows }: OwnerRequestsClientProps) {
+export default function OwnerRequestsClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const [isPending, startTransition] = useTransition();
   const [loading, setLoading] = useState(true);
-  const [rows, setRows] = useState<any[]>(initialRows ?? []);
+  const [rows, setRows] = useState<Row[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  const animalId = searchParams.get("animalId"); // se un giorno vuoi filtrare
+  const animalId = searchParams.get("animalId");
 
   async function load() {
     setLoading(true);
@@ -57,8 +52,8 @@ export default function OwnerRequestsClient({ initialRows }: OwnerRequestsClient
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [animalId]);
 
-  const pending = useMemo(() => rows.filter((r: Row) => r.status === "pending"), [rows]);
-  const history = useMemo(() => rows.filter((r: Row) => r.status !== "pending"), [rows]);
+  const pending = useMemo(() => rows.filter((r) => r.status === "pending"), [rows]);
+  const history = useMemo(() => rows.filter((r) => r.status !== "pending"), [rows]);
 
   async function act(id: string, action: "approve" | "reject" | "revoke") {
     startTransition(async () => {
@@ -68,7 +63,7 @@ export default function OwnerRequestsClient({ initialRows }: OwnerRequestsClient
         body: JSON.stringify({
           id,
           action,
-          duration: "forever", // cambia dopo se vuoi selettore
+          duration: "forever",
         }),
       });
 
@@ -99,7 +94,6 @@ export default function OwnerRequestsClient({ initialRows }: OwnerRequestsClient
       {error ? <div className="text-sm text-red-600">{error}</div> : null}
       {loading ? <div className="text-sm opacity-70">Caricamento…</div> : null}
 
-      {/* PENDING */}
       <section className="rounded-2xl border p-4 space-y-3">
         <div className="font-medium">In attesa</div>
 
@@ -107,11 +101,8 @@ export default function OwnerRequestsClient({ initialRows }: OwnerRequestsClient
           <div className="text-sm opacity-70">Nessuna richiesta pending.</div>
         ) : (
           <div className="space-y-2">
-            {pending.map((r: Row) => (
-              <div
-                key={r.id}
-                className="rounded-xl border p-3 flex items-center justify-between gap-3"
-              >
+            {pending.map((r) => (
+              <div key={r.id} className="rounded-xl border p-3 flex items-center justify-between gap-3">
                 <div className="text-sm">
                   <div className="font-medium">
                     {r.animal_name ?? r.animal_id} • {r.org_name ?? r.org_id}
@@ -144,7 +135,6 @@ export default function OwnerRequestsClient({ initialRows }: OwnerRequestsClient
         )}
       </section>
 
-      {/* STORICO */}
       <section className="rounded-2xl border p-4 space-y-3">
         <div className="font-medium">Storico</div>
 
@@ -152,11 +142,8 @@ export default function OwnerRequestsClient({ initialRows }: OwnerRequestsClient
           <div className="text-sm opacity-70">Nessuno storico.</div>
         ) : (
           <div className="space-y-2">
-            {history.map((r: Row) => (
-              <div
-                key={r.id}
-                className="rounded-xl border p-3 flex items-center justify-between gap-3"
-              >
+            {history.map((r) => (
+              <div key={r.id} className="rounded-xl border p-3 flex items-center justify-between gap-3">
                 <div className="text-sm">
                   <div className="font-medium">
                     {r.animal_name ?? r.animal_id} • {r.org_name ?? r.org_id}

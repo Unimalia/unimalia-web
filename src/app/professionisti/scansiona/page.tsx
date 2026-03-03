@@ -13,7 +13,6 @@ function isUuid(v: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
 }
 
-// Estrae solo cifre (utile per microchip incollati "sporchi")
 function digitsOnly(v: string) {
   return (v || "").replace(/\D+/g, "");
 }
@@ -38,14 +37,10 @@ function extractFromScan(raw: string): Extract {
   const code = normalizeScanResult(raw);
   if (!code) return { kind: "error", error: "Codice vuoto" };
 
-  // 1) UUID diretto
   if (isUuid(code)) return { kind: "animalId", animalId: code };
 
-  // 2) Microchip: SOLO lunghezze realistiche (evita EAN-13)
-  //    Standard comune: 15 cifre. Opzionale: 10 cifre (vecchi impianti).
   const d = digitsOnly(code);
 
-  // EAN-13 tipico: non è un microchip (riduce falsi positivi)
   if (d.length === 13) {
     return {
       kind: "error",
@@ -53,17 +48,14 @@ function extractFromScan(raw: string): Extract {
     };
   }
 
-  // Accetta 15 (standard) e 10 (vecchi impianti). Se vuoi essere più permissivo: aggiungi 14/16.
   if (d.length === 15 || d.length === 10) {
     return { kind: "chip", chip: d };
   }
 
-  // 3) URL: riconosci più formati (anche query)
   const url = tryParseUrl(code);
   if (url) {
     const path = url.pathname || "";
 
-    // evita redirect alla lista placeholder
     if (path === "/professionisti/animali" || path === "/professionisti/animali/") {
       return {
         kind: "error",
@@ -71,31 +63,24 @@ function extractFromScan(raw: string): Extract {
       };
     }
 
-    // query param utili
     const qAnimalId = url.searchParams.get("animalId") || url.searchParams.get("id");
     if (qAnimalId && isUuid(qAnimalId)) return { kind: "animalId", animalId: qAnimalId };
 
-    // /professionisti/animali/<id>/verifica
     const mProVerify = path.match(/^\/professionisti\/animali\/([^/]+)\/verifica\/?$/);
     if (mProVerify?.[1]) return { kind: "animalId", animalId: mProVerify[1] };
 
-    // /professionisti/animali/<id>
     const mPro = path.match(/^\/professionisti\/animali\/([^/]+)\/?$/);
     if (mPro?.[1]) return { kind: "animalId", animalId: mPro[1] };
 
-    // /identita/<id>
     const mId = path.match(/^\/identita\/([^/]+)\/?$/);
     if (mId?.[1]) return { kind: "animalId", animalId: mId[1] };
 
-    // /scansiona/animali/<id>
     const mScan = path.match(/^\/scansiona\/animali\/([^/]+)\/?$/);
     if (mScan?.[1]) return { kind: "animalId", animalId: mScan[1] };
 
-    // /a/<token> (link pubblico UNIMALIA)
     const mA = path.match(/^\/a\/([^/]+)\/?$/);
     if (mA?.[1]) return { kind: "publicToken", token: mA[1] };
 
-    // chip in query (?chip=)
     const qChip = url.searchParams.get("chip");
     if (qChip) {
       const dc = digitsOnly(qChip);
@@ -143,7 +128,6 @@ export default function ScannerPage() {
   }
 
   function safePush(path: string) {
-    // Blocco assoluto del placeholder (mai più)
     if (path === "/professionisti/animali" || path === "/professionisti/animali/") {
       showBanner({
         kind: "error",
@@ -154,7 +138,6 @@ export default function ScannerPage() {
     router.push(path);
   }
 
-  // blocco doppio scan (stesso codice entro 1200ms)
   const lastScanRef = useRef<{ code: string; ts: number } | null>(null);
 
   const ModeButton = useMemo(
@@ -204,7 +187,6 @@ export default function ScannerPage() {
       return;
     }
 
-    // blocco doppio scan
     const now = Date.now();
     const last = lastScanRef.current;
     if (last && last.code === normalized && now - last.ts < 1200) {
@@ -220,14 +202,12 @@ export default function ScannerPage() {
     try {
       const ex = extractFromScan(normalized);
 
-      // ✅ microchip -> lookup su animals.chip_number
       if (ex.kind === "chip") {
         const res = await fetch(`/api/animals/find?chip=${encodeURIComponent(ex.chip)}`, {
           cache: "no-store",
         });
         const json = await res.json().catch(() => ({}));
 
-        // se non trovato -> vai a gestione manuale (flusso utile)
         if (!res.ok || !json?.animalId) {
           showBanner({ kind: "info", text: "Microchip non trovato. Apro gestione manuale…" }, 1500);
 
@@ -256,12 +236,7 @@ export default function ScannerPage() {
           return;
         }
 
-        const hasGrant =
-          grantJson?.hasGrant === true ||
-          grantJson?.allowed === true ||
-          grantJson?.active === true ||
-          grantJson?.grantActive === true ||
-          grantJson?.grant?.status === "active";
+        const hasGrant = grantJson?.hasGrant === true || grantJson?.ok === true;
 
         if (!hasGrant) {
           showBanner(
@@ -281,7 +256,6 @@ export default function ScannerPage() {
         return;
       }
 
-      // ✅ uuid/id -> scheda pro
       if (ex.kind === "animalId") {
         showBanner({ kind: "success", text: "Codice riconosciuto. Verifico accesso…" }, 1200);
 
@@ -296,12 +270,7 @@ export default function ScannerPage() {
           return;
         }
 
-        const hasGrant =
-          grantJson?.hasGrant === true ||
-          grantJson?.allowed === true ||
-          grantJson?.active === true ||
-          grantJson?.grantActive === true ||
-          grantJson?.grant?.status === "active";
+        const hasGrant = grantJson?.hasGrant === true || grantJson?.ok === true;
 
         if (!hasGrant) {
           showBanner(
@@ -317,7 +286,6 @@ export default function ScannerPage() {
         return;
       }
 
-      // ✅ link pubblico /a/<token> -> fallback sicuro (non placeholder)
       if (ex.kind === "publicToken") {
         showBanner({ kind: "success", text: "Link UNIMALIA riconosciuto. Apertura…" }, 1500);
         void logScan({
@@ -332,7 +300,6 @@ export default function ScannerPage() {
         return;
       }
 
-      // errore
       showBanner({ kind: "error", text: ex.error ?? "Codice non valido." });
       void logScan({
         raw,
@@ -393,7 +360,6 @@ export default function ScannerPage() {
         <ModeButton id="usb" label="🔫 Lettore USB" />
       </div>
 
-      {/* CAMERA */}
       {mode === "camera" && (
         <div className="rounded-2xl border p-4">
           <div className="text-sm font-medium mb-2">📷 Modalità fotocamera</div>
@@ -406,7 +372,6 @@ export default function ScannerPage() {
         </div>
       )}
 
-      {/* MANUALE */}
       {mode === "manuale" && (
         <div className="rounded-2xl border p-4 space-y-3">
           <div className="text-sm font-medium">⌨️ Inserimento manuale</div>
@@ -441,7 +406,6 @@ export default function ScannerPage() {
         </div>
       )}
 
-      {/* USB */}
       {mode === "usb" && <UsbScannerMode onScan={handleScan} disabled={busy} />}
     </div>
   );

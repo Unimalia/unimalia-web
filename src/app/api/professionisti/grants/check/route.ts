@@ -21,7 +21,8 @@ export async function GET(req: Request) {
 
   const orgId = await getProfessionalOrgId();
   if (!orgId) {
-    return NextResponse.json({ ok: true, hasGrant: false, reason: "missing_org" });
+    // richiesta riuscita ma nessuna org -> nessun grant
+    return NextResponse.json({ ok: false, hasGrant: false, reason: "missing_org" });
   }
 
   const { data, error } = await supabase.rpc("is_grant_active", {
@@ -33,10 +34,13 @@ export async function GET(req: Request) {
 
   const hasGrant = Boolean(data);
 
+  // ✅ compatibilità:
+  // - ok = grant attivo (come prima, così lo scanner “vecchio” funziona)
+  // - hasGrant = esplicito (così lo scanner “nuovo” funziona)
   return NextResponse.json({
-    ok: true,       // richiesta riuscita
-    hasGrant,       // autorizzazione vera
-    orgId,          // utile debug
-    animalId,       // utile debug
+    ok: hasGrant,
+    hasGrant,
+    orgId,
+    animalId,
   });
 }

@@ -193,7 +193,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
                 <div className="mt-4 border-t border-zinc-200 px-2 pt-4">
                   <div className="mt-3">
-                    <AuthButtons />
+                    <AuthButtons onNavigate={() => setOpen(false)} />
                   </div>
                 </div>
               </div>
