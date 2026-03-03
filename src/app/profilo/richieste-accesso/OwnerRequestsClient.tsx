@@ -17,13 +17,17 @@ type Row = {
   org_name?: string | null;
 };
 
-export default function OwnerRequestsClient() {
+type OwnerRequestsClientProps = {
+  initialRows: any[];
+};
+
+export default function OwnerRequestsClient({ initialRows }: OwnerRequestsClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const [isPending, startTransition] = useTransition();
   const [loading, setLoading] = useState(true);
-  const [rows, setRows] = useState<Row[]>([]);
+  const [rows, setRows] = useState<any[]>(initialRows ?? []);
   const [error, setError] = useState<string | null>(null);
 
   const animalId = searchParams.get("animalId"); // se un giorno vuoi filtrare
@@ -53,8 +57,8 @@ export default function OwnerRequestsClient() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [animalId]);
 
-  const pending = useMemo(() => rows.filter((r) => r.status === "pending"), [rows]);
-  const history = useMemo(() => rows.filter((r) => r.status !== "pending"), [rows]);
+  const pending = useMemo(() => rows.filter((r: Row) => r.status === "pending"), [rows]);
+  const history = useMemo(() => rows.filter((r: Row) => r.status !== "pending"), [rows]);
 
   async function act(id: string, action: "approve" | "reject" | "revoke") {
     startTransition(async () => {
@@ -103,7 +107,7 @@ export default function OwnerRequestsClient() {
           <div className="text-sm opacity-70">Nessuna richiesta pending.</div>
         ) : (
           <div className="space-y-2">
-            {pending.map((r) => (
+            {pending.map((r: Row) => (
               <div
                 key={r.id}
                 className="rounded-xl border p-3 flex items-center justify-between gap-3"
@@ -148,7 +152,7 @@ export default function OwnerRequestsClient() {
           <div className="text-sm opacity-70">Nessuno storico.</div>
         ) : (
           <div className="space-y-2">
-            {history.map((r) => (
+            {history.map((r: Row) => (
               <div
                 key={r.id}
                 className="rounded-xl border p-3 flex items-center justify-between gap-3"
