@@ -1,13 +1,14 @@
 "use client";
 
-export const dynamic = "force-dynamic";
-
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { isVetUser } from "@/app/professionisti/_components/ProShell";
 import { authHeaders } from "@/lib/client/authHeaders";
+
+// NOTA: il blocco grant-first è nel layout server:
+// src/app/professionisti/animali/[id]/clinica/layout.tsx
 
 type ClinicEventType =
   | "visit"
@@ -73,7 +74,7 @@ function formatDateIT(iso: string) {
   }
 }
 
-export default function ProAnimalClinicPage() {
+export default function ClinicaPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const id = params?.id;
@@ -142,8 +143,7 @@ export default function ProAnimalClinicPage() {
 
       if (!user) {
         router.replace(
-          "/professionisti/login?next=" +
-            encodeURIComponent(`/professionisti/animali/${id}/clinica`)
+          "/professionisti/login?next=" + encodeURIComponent(`/professionisti/animali/${id}/clinica`)
         );
         return;
       }
@@ -195,13 +195,10 @@ export default function ProAnimalClinicPage() {
     if (!id) return;
 
     try {
-      const res = await fetch(
-        `/api/clinic-events/files/count?animalId=${encodeURIComponent(id)}`,
-        {
-          cache: "no-store",
-          headers: { ...(await authHeaders()) },
-        }
-      );
+      const res = await fetch(`/api/clinic-events/files/count?animalId=${encodeURIComponent(id)}`, {
+        cache: "no-store",
+        headers: { ...(await authHeaders()) },
+      });
 
       if (!res.ok) return;
 
@@ -258,7 +255,7 @@ export default function ProAnimalClinicPage() {
         const j = await res.json().catch(() => ({}));
         setDetailFiles((j?.files as any[]) ?? []);
 
-        setFilesCountByEventId((prev) => ({ ...prev, [eventId]: (j?.files?.length ?? 0) }));
+        setFilesCountByEventId((prev) => ({ ...prev, [eventId]: j?.files?.length ?? 0 }));
       } catch {
         setDetailFiles([]);
       } finally {
