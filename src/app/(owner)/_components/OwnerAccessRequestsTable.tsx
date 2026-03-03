@@ -1,36 +1,32 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 type Row = {
   id: string;
   created_at: string;
   animal_id: string;
   org_id: string;
-  status: "pending" | "approved" | "rejected" | "blocked" | "revoked" | string;
+  status: string;
   requested_scope?: string[] | null;
   expires_at?: string | null;
 
-  // arricchiti dalla GET
+  // se li aggiungi via API (consigliato)
   animal_name?: string | null;
   org_name?: string | null;
 };
 
-export default function OwnerRequestsClient() {
+export default function OwnerAccessRequestsTable({ animalId }: { animalId?: string }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
-
   const [isPending, startTransition] = useTransition();
-  const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<Row[]>([]);
-  const [error, setError] = useState<string | null>(null);
-
-  const animalId = searchParams.get("animalId"); // se un giorno vuoi filtrare
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
-    setError(null);
+    setErr(null);
     try {
       const url = animalId
         ? `/api/owner/access-requests?animalId=${encodeURIComponent(animalId)}`
@@ -39,10 +35,10 @@ export default function OwnerRequestsClient() {
       const res = await fetch(url, { cache: "no-store" });
       const json = await res.json().catch(() => ({}));
 
-      if (!res.ok) throw new Error(json?.error || "Errore caricamento richieste");
+      if (!res.ok) throw new Error(json?.error || "Errore caricamento");
       setRows(json.rows ?? []);
     } catch (e: any) {
-      setError(e?.message || "Errore");
+      setErr(e?.message || "Errore");
     } finally {
       setLoading(false);
     }
@@ -64,13 +60,13 @@ export default function OwnerRequestsClient() {
         body: JSON.stringify({
           id,
           action,
-          duration: "forever", // cambia dopo se vuoi selettore
+          duration: "forever", // puoi cambiarlo dopo in UI
         }),
       });
 
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        alert(json?.error || "Operazione non riuscita");
+        alert(json?.error || "Operazione fallita");
         return;
       }
 
@@ -80,40 +76,32 @@ export default function OwnerRequestsClient() {
   }
 
   return (
-    <div className="p-4 space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold">Richieste accesso</h1>
-        <button
-          className="rounded-xl border px-3 py-2 text-sm disabled:opacity-60"
-          onClick={() => void load()}
-          disabled={loading || isPending}
-        >
+    <section className="rounded-2xl border p-4 space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="text-base font-semibold">Richieste accesso</div>
+        <button className="rounded-xl border px-3 py-2 text-sm" onClick={() => void load()} disabled={loading || isPending}>
           Aggiorna
         </button>
       </div>
 
-      {error ? <div className="text-sm text-red-600">{error}</div> : null}
+      {err ? <div className="text-sm text-red-600">{err}</div> : null}
       {loading ? <div className="text-sm opacity-70">Caricamento…</div> : null}
 
-      {/* PENDING */}
-      <section className="rounded-2xl border p-4 space-y-3">
-        <div className="font-medium">In attesa</div>
-
+      {/* Pending */}
+      <div className="space-y-2">
+        <div className="text-sm font-medium">In attesa</div>
         {pending.length === 0 ? (
           <div className="text-sm opacity-70">Nessuna richiesta pending.</div>
         ) : (
           <div className="space-y-2">
             {pending.map((r) => (
-              <div
-                key={r.id}
-                className="rounded-xl border p-3 flex items-center justify-between gap-3"
-              >
+              <div key={r.id} className="rounded-xl border p-3 flex items-center justify-between gap-3">
                 <div className="text-sm">
                   <div className="font-medium">
                     {r.animal_name ?? r.animal_id} • {r.org_name ?? r.org_id}
                   </div>
                   <div className="opacity-70">
-                    Scope: {r.requested_scope?.length ? r.requested_scope.join(", ") : "—"} •{" "}
+                    Scope: {(r.requested_scope?.length ? r.requested_scope.join(", ") : "—")} •{" "}
                     {new Date(r.created_at).toLocaleString("it-IT")}
                   </div>
                 </div>
@@ -138,21 +126,17 @@ export default function OwnerRequestsClient() {
             ))}
           </div>
         )}
-      </section>
+      </div>
 
-      {/* STORICO */}
-      <section className="rounded-2xl border p-4 space-y-3">
-        <div className="font-medium">Storico</div>
-
+      {/* Storico */}
+      <div className="space-y-2">
+        <div className="text-sm font-medium">Storico</div>
         {history.length === 0 ? (
-          <div className="text-sm opacity-70">Nessuno storico.</div>
+          <div className="text-sm opacity-70">Nessun elemento.</div>
         ) : (
           <div className="space-y-2">
             {history.map((r) => (
-              <div
-                key={r.id}
-                className="rounded-xl border p-3 flex items-center justify-between gap-3"
-              >
+              <div key={r.id} className="rounded-xl border p-3 flex items-center justify-between gap-3">
                 <div className="text-sm">
                   <div className="font-medium">
                     {r.animal_name ?? r.animal_id} • {r.org_name ?? r.org_id}
@@ -175,7 +159,7 @@ export default function OwnerRequestsClient() {
             ))}
           </div>
         )}
-      </section>
-    </div>
+      </div>
+    </section>
   );
 }
