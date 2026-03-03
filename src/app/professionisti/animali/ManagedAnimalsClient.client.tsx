@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 type ManagedAnimalRow = {
   animal_id: string;
@@ -38,23 +39,20 @@ function renderStatus(s: string) {
 
 export default function ManagedAnimalsClient({
   initialRows,
+  initialQuery,
 }: {
   initialRows: ManagedAnimalRow[];
+  initialQuery: string;
 }) {
-  const [q, setQ] = React.useState("");
+  const router = useRouter();
+  const [q, setQ] = React.useState(initialQuery || "");
 
   const filtered = React.useMemo(() => {
     const nq = normalizeForSearch(q);
     if (!nq) return initialRows;
 
     return initialRows.filter((r) => {
-      const hay = [
-        r.animal_name,
-        r.microchip,
-        r.owner_name,
-      ]
-        .map(normalizeForSearch)
-        .join(" | ");
+      const hay = [r.animal_name, r.microchip, r.owner_name].map(normalizeForSearch).join(" | ");
 
       return hay.includes(nq);
     });
@@ -69,6 +67,14 @@ export default function ManagedAnimalsClient({
           placeholder="Cerca per nome animale, microchip o proprietario…"
           className="w-full rounded-md border px-3 py-2 text-sm outline-none"
         />
+
+        <button
+          onClick={() => router.push(`/professionisti/animali?q=${encodeURIComponent(q)}`)}
+          className="rounded-md border px-3 py-2 text-sm font-semibold hover:bg-neutral-50"
+        >
+          Cerca
+        </button>
+
         <div className="text-sm text-neutral-600 whitespace-nowrap">
           {filtered.length} / {initialRows.length}
         </div>

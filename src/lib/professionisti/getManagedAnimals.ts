@@ -21,32 +21,26 @@ export function normalizeForSearch(v: unknown) {
     .trim();
 }
 
-export async function getManagedAnimals(): Promise<ManagedAnimalRow[]> {
+// aggiungi parametro q (facoltativo)
+export async function getManagedAnimals(q?: string): Promise<ManagedAnimalRow[]> {
   const supabase = await createServerSupabaseClient();
 
-  // 1) Utente loggato (server)
   const {
     data: { user },
-    error: userErr,
   } = await supabase.auth.getUser();
+  if (!user) return [];
 
-  // ✅ Non facciamo crashare la pagina se manca sessione server
-  // (capita prima che middleware/cookie siano ok o se non sei loggato)
-  if (userErr || !user) return [];
-
-  // 2) Recupera org_id del professionista (TODO: tabella/campo reale)
+  // TODO_RENAME: tabella profili pro
   const { data: proProfile, error: proErr } = await supabase
-    .from("professional_profiles") // TODO: nome tabella reale
+    .from("professional_profiles")
     .select("org_id")
     .eq("user_id", user.id)
     .maybeSingle();
 
   if (proErr) throw proErr;
-
   const orgId = (proProfile as any)?.org_id as string | undefined;
   if (!orgId) return [];
 
-  // 3) Grants attivi
   const nowIso = new Date().toISOString();
 
   const { data: grants, error: grantsErr } = await supabase
@@ -58,14 +52,11 @@ export async function getManagedAnimals(): Promise<ManagedAnimalRow[]> {
 
   if (grantsErr) throw grantsErr;
 
-  const animalIds = (grants ?? [])
-    .map((g: any) => g.animal_id as string)
-    .filter(Boolean);
-
+  const animalIds = (grants ?? []).map((g: any) => g.animal_id).filter(Boolean);
   if (animalIds.length === 0) return [];
 
-  // 4) Animali + owner (TODO: join reale se il vincolo non è animals_owner_id_fkey)
-  const { data: animals, error: animalsErr } = await supabase
+  // animals + owner (TODO_RENAME join if needed)
+  let animalsQuery = supabase
     .from("animals")
     .select(
       `
@@ -80,9 +71,18 @@ export async function getManagedAnimals(): Promise<ManagedAnimalRow[]> {
     )
     .in("id", animalIds);
 
+  // Search server-side SOLO sul subset autorizzato
+  if (q && q.trim().length >= 2) {
+    const qq = q.trim();
+    animalsQuery = animalsQuery.or(`name.ilike.%${qq}%,microchip.ilike.%${qq}%`);
+    // owner name search: se vuoi davvero, va fatto con join reale o view
+    // per ora lo facciamo lato client su owner_name (già autorizzato)
+  }
+
+  const { data: animals, error: animalsErr } = await animalsQuery;
   if (animalsErr) throw animalsErr;
 
-  // 5) last_visit / next_reminder (starter semplice)
+  // events aggregate (starter)
   const { data: events, error: eventsErr } = await supabase
     .from("animal_clinic_events")
     .select("animal_id, occurred_at, reminder_at, deleted_at, is_validated")
@@ -92,7 +92,6 @@ export async function getManagedAnimals(): Promise<ManagedAnimalRow[]> {
   if (eventsErr) throw eventsErr;
 
   const byAnimal = new Map<string, { last: string | null; next: string | null }>();
-
   for (const ev of events ?? []) {
     const aid = (ev as any).animal_id as string;
     const occurredAt = (ev as any).occurred_at as string | null;
@@ -101,22 +100,18 @@ export async function getManagedAnimals(): Promise<ManagedAnimalRow[]> {
 
     if (isValidated && occurredAt) {
       const cur = byAnimal.get(aid)?.last;
-      if (!cur || occurredAt > cur) {
+      if (!cur || occurredAt > cur)
         byAnimal.set(aid, { last: occurredAt, next: byAnimal.get(aid)?.next ?? null });
-      }
     }
-
     if (reminderAt && reminderAt > nowIso) {
       const curNext = byAnimal.get(aid)?.next;
-      if (!curNext || reminderAt < curNext) {
+      if (!curNext || reminderAt < curNext)
         byAnimal.set(aid, { last: byAnimal.get(aid)?.last ?? null, next: reminderAt });
-      }
     }
   }
 
   return (animals ?? []).map((a: any) => {
     const agg = byAnimal.get(a.id) ?? { last: null, next: null };
-
     return {
       animal_id: a.id,
       animal_name: a.name ?? "",
