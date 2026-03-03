@@ -1,78 +1,33 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
-function bad(error: string, status = 400) {
-  return NextResponse.json({ error }, { status });
-}
+export async function GET(req: Request) {
+  const url = new URL(req.url);
+  const animalId = url.searchParams.get("animalId");
 
-export async function POST(req: Request) {
   const supabase = await createServerSupabaseClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return bad("Not authenticated", 401);
+  const {
+    data: { user },
+    error: userErr,
+  } = await supabase.auth.getUser();
 
-  const body = await req.json().catch(() => null);
-  const id = String(body?.id || "");
-  const action = String(body?.action || "");
-  const duration = body?.duration ? String(body.duration) : null;
+  if (userErr) return NextResponse.json({ error: userErr.message }, { status: 401 });
+  if (!user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
-  if (!id) return bad("Missing id");
+  let q = supabase
+    .from("animal_access_requests")
+    .select("id, created_at, animal_id, owner_id, org_id, status, requested_scope, expires_at")
+    .eq("owner_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(50);
 
-  if (action === "reject") {
-    const { error } = await supabase
-      .from("animal_access_requests")
-      .update({ status: "rejected", decided_at: new Date().toISOString(), decided_by: user.id })
-      .eq("id", id);
+  if (animalId) q = q.eq("animal_id", animalId);
 
-    if (error) return bad(error.message, 500);
-    return NextResponse.json({ status: "rejected" });
+  const { data, error } = await q;
+  if (error) {
+    // IMPORTANT: se qui vedi "permission denied", è RLS.
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  if (action === "block") {
-    const { data: r, error: rErr } = await supabase
-      .from("animal_access_requests")
-      .select("org_id")
-      .eq("id", id)
-      .maybeSingle();
-
-    if (rErr) return bad(rErr.message, 500);
-    if (!r?.org_id) return bad("Request not found", 404);
-
-    const { error: bErr } = await supabase
-      .from("owner_org_blocks")
-      .insert({ owner_id: user.id, org_id: r.org_id, blocked_by: user.id });
-
-    if (bErr) return bad(bErr.message, 500);
-
-    const { error: uErr } = await supabase
-      .from("animal_access_requests")
-      .update({ status: "blocked", decided_at: new Date().toISOString(), decided_by: user.id })
-      .eq("id", id);
-
-    if (uErr) return bad(uErr.message, 500);
-    return NextResponse.json({ status: "blocked" });
-  }
-
-  if (action === "approve") {
-    if (!duration) return bad("Missing duration");
-
-    const { data: r, error: rErr } = await supabase
-      .from("animal_access_requests")
-      .select("requested_scope")
-      .eq("id", id)
-      .maybeSingle();
-
-    if (rErr) return bad(rErr.message, 500);
-    const scopes = (r?.requested_scope ?? ["read"]) as string[];
-
-    const { error } = await supabase.rpc("approve_access_request", {
-      p_request_id: id,
-      p_duration: duration,
-      p_scopes: scopes,
-    });
-
-    if (error) return bad(error.message, 500);
-    return NextResponse.json({ status: "approved" });
-  }
-
-  return bad("Invalid action");
+  return NextResponse.json({ rows: data ?? [] });
 }

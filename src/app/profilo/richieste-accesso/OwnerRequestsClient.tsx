@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import * as React from "react";
+import { useSearchParams } from "next/navigation";
 
 type Row = {
   id: string;
@@ -12,9 +13,39 @@ type Row = {
 };
 
 export default function OwnerRequestsClient({ initialRows }: { initialRows: Row[] }) {
+  const sp = useSearchParams();
+  const animalId = sp.get("animalId") || "";
+
   const [rows, setRows] = React.useState<Row[]>(initialRows);
   const [busyId, setBusyId] = React.useState<string | null>(null);
   const [msg, setMsg] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    let alive = true;
+
+    async function load() {
+      try {
+        const url = animalId
+          ? `/api/owner/access-requests?animalId=${encodeURIComponent(animalId)}`
+          : "/api/owner/access-requests";
+
+        const res = await fetch(url, { cache: "no-store" });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(json?.error || "Errore caricamento richieste");
+
+        if (!alive) return;
+        setRows((json?.rows as Row[]) ?? []);
+      } catch (e: any) {
+        if (!alive) return;
+        setMsg(e?.message || "Errore");
+      }
+    }
+
+    void load();
+    return () => {
+      alive = false;
+    };
+  }, [animalId]);
 
   async function act(id: string, action: "approve" | "reject" | "block", duration?: string) {
     setMsg(null);
@@ -69,28 +100,46 @@ export default function OwnerRequestsClient({ initialRows }: { initialRows: Row[
                 <td className="p-3">
                   {r.status === "pending" ? (
                     <div className="flex flex-wrap gap-2">
-                      <button className="rounded-md border px-3 py-1.5 hover:bg-neutral-50" disabled={busyId === r.id}
-                        onClick={() => act(r.id, "approve", "24h")}>
+                      <button
+                        className="rounded-md border px-3 py-1.5 hover:bg-neutral-50"
+                        disabled={busyId === r.id}
+                        onClick={() => act(r.id, "approve", "24h")}
+                      >
                         Approva 24h
                       </button>
-                      <button className="rounded-md border px-3 py-1.5 hover:bg-neutral-50" disabled={busyId === r.id}
-                        onClick={() => act(r.id, "approve", "7d")}>
+                      <button
+                        className="rounded-md border px-3 py-1.5 hover:bg-neutral-50"
+                        disabled={busyId === r.id}
+                        onClick={() => act(r.id, "approve", "7d")}
+                      >
                         7gg
                       </button>
-                      <button className="rounded-md border px-3 py-1.5 hover:bg-neutral-50" disabled={busyId === r.id}
-                        onClick={() => act(r.id, "approve", "6m")}>
+                      <button
+                        className="rounded-md border px-3 py-1.5 hover:bg-neutral-50"
+                        disabled={busyId === r.id}
+                        onClick={() => act(r.id, "approve", "6m")}
+                      >
                         6 mesi
                       </button>
-                      <button className="rounded-md border px-3 py-1.5 hover:bg-neutral-50" disabled={busyId === r.id}
-                        onClick={() => act(r.id, "approve", "forever")}>
+                      <button
+                        className="rounded-md border px-3 py-1.5 hover:bg-neutral-50"
+                        disabled={busyId === r.id}
+                        onClick={() => act(r.id, "approve", "forever")}
+                      >
                         Sempre
                       </button>
-                      <button className="rounded-md border px-3 py-1.5 hover:bg-neutral-50" disabled={busyId === r.id}
-                        onClick={() => act(r.id, "reject")}>
+                      <button
+                        className="rounded-md border px-3 py-1.5 hover:bg-neutral-50"
+                        disabled={busyId === r.id}
+                        onClick={() => act(r.id, "reject")}
+                      >
                         Rifiuta
                       </button>
-                      <button className="rounded-md border px-3 py-1.5 hover:bg-neutral-50" disabled={busyId === r.id}
-                        onClick={() => act(r.id, "block")}>
+                      <button
+                        className="rounded-md border px-3 py-1.5 hover:bg-neutral-50"
+                        disabled={busyId === r.id}
+                        onClick={() => act(r.id, "block")}
+                      >
                         Blocca org
                       </button>
                     </div>
