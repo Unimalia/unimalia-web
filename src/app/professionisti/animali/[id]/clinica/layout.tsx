@@ -9,9 +9,11 @@ export default async function ClinicaLayout({
   params,
 }: {
   children: ReactNode;
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const ok = await hasActiveGrantForAnimal(params.id);
+  const { id } = await params;
+
+  const ok = await hasActiveGrantForAnimal(id);
 
   if (!ok) {
     return (
