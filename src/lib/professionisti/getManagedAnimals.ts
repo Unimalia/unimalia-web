@@ -1,10 +1,5 @@
 // src/lib/professionisti/getManagedAnimals.ts
 import "server-only";
-
-// TODO: sostituisci questo import con QUELLO REALE del tuo progetto
-// Esempi comuni:
-// import { createClient } from "@/lib/supabase/server";
-// import { createServerClient } from "@/lib/supabase/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 export type ManagedAnimalRow = {
@@ -18,7 +13,6 @@ export type ManagedAnimalRow = {
   status: "active" | "inactive" | string;
 };
 
-// Helper: normalizza per ricerca locale
 export function normalizeForSearch(v: unknown) {
   return String(v ?? "")
     .toLowerCase()
@@ -27,27 +21,20 @@ export function normalizeForSearch(v: unknown) {
     .trim();
 }
 
-/**
- * Grant-first:
- * 1) recupera org_id del professionista loggato
- * 2) prende i grant attivi (org -> animal)
- * 3) prende animali + owner
- * 4) calcola last_visit / next_reminder (qui in modo semplice, poi lo rendiamo perfetto)
- */
 export async function getManagedAnimals(): Promise<ManagedAnimalRow[]> {
   const supabase = await createServerSupabaseClient();
 
-  // 1) Utente loggato
+  // 1) Utente loggato (server)
   const {
     data: { user },
     error: userErr,
   } = await supabase.auth.getUser();
 
-  if (userErr) throw userErr;
-  if (!user) return [];
+  // ✅ Non facciamo crashare la pagina se manca sessione server
+  // (capita prima che middleware/cookie siano ok o se non sei loggato)
+  if (userErr || !user) return [];
 
-  // 2) Recupera org_id del professionista (TODO: adatta tabella/campo)
-  // Cerca nel tuo progetto dove tieni profilo pro: "profiles", "professional_profiles", "org_members", ecc.
+  // 2) Recupera org_id del professionista (TODO: tabella/campo reale)
   const { data: proProfile, error: proErr } = await supabase
     .from("professional_profiles") // TODO: nome tabella reale
     .select("org_id")
@@ -55,11 +42,11 @@ export async function getManagedAnimals(): Promise<ManagedAnimalRow[]> {
     .maybeSingle();
 
   if (proErr) throw proErr;
-  const orgId = proProfile?.org_id as string | undefined;
+
+  const orgId = (proProfile as any)?.org_id as string | undefined;
   if (!orgId) return [];
 
-  // 3) Grants attivi (TODO: adatta campi reali)
-  // ipotesi campi: org_id, animal_id, revoked_at, expires_at, is_active
+  // 3) Grants attivi
   const nowIso = new Date().toISOString();
 
   const { data: grants, error: grantsErr } = await supabase
@@ -77,9 +64,7 @@ export async function getManagedAnimals(): Promise<ManagedAnimalRow[]> {
 
   if (animalIds.length === 0) return [];
 
-  // 4) Animali + owner (TODO: adatta join/nomi)
-  // ipotesi: animals { id, name, species, microchip, owner_id, status }
-  // e owners su profiles { id=user_id, full_name }
+  // 4) Animali + owner (TODO: join reale se il vincolo non è animals_owner_id_fkey)
   const { data: animals, error: animalsErr } = await supabase
     .from("animals")
     .select(
@@ -97,9 +82,7 @@ export async function getManagedAnimals(): Promise<ManagedAnimalRow[]> {
 
   if (animalsErr) throw animalsErr;
 
-  // 5) last_visit / next_reminder: starter “semplice”
-  // (poi lo ottimizziamo con view/RPC o query aggregate)
-  // ipotesi: animal_clinic_events { animal_id, occurred_at, type, reminder_at, deleted_at, is_validated }
+  // 5) last_visit / next_reminder (starter semplice)
   const { data: events, error: eventsErr } = await supabase
     .from("animal_clinic_events")
     .select("animal_id, occurred_at, reminder_at, deleted_at, is_validated")
@@ -116,7 +99,6 @@ export async function getManagedAnimals(): Promise<ManagedAnimalRow[]> {
     const reminderAt = (ev as any).reminder_at as string | null;
     const isValidated = Boolean((ev as any).is_validated);
 
-    // Se vuoi: considera solo validati per last_visit
     if (isValidated && occurredAt) {
       const cur = byAnimal.get(aid)?.last;
       if (!cur || occurredAt > cur) {
@@ -124,7 +106,6 @@ export async function getManagedAnimals(): Promise<ManagedAnimalRow[]> {
       }
     }
 
-    // Next reminder: minimo reminder_at nel futuro
     if (reminderAt && reminderAt > nowIso) {
       const curNext = byAnimal.get(aid)?.next;
       if (!curNext || reminderAt < curNext) {
@@ -133,7 +114,6 @@ export async function getManagedAnimals(): Promise<ManagedAnimalRow[]> {
     }
   }
 
-  // 6) Output normalizzato
   return (animals ?? []).map((a: any) => {
     const agg = byAnimal.get(a.id) ?? { last: null, next: null };
 

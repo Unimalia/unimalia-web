@@ -11,7 +11,7 @@ let _admin: SupabaseClient | null = null;
  * const supabase = await createServerSupabaseClient();
  */
 export async function createServerSupabaseClient() {
-  const cookieStore = await cookies(); // ✅ QUI SERVE await
+  const cookieStore = await cookies();
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -37,6 +37,7 @@ export async function createServerSupabaseClient() {
 
 /**
  * Admin Supabase client (SERVICE ROLE) - server only.
+ * ⚠️ Bypassa RLS: usalo solo per job/admin controllati.
  */
 export function supabaseAdmin() {
   if (_admin) return _admin;
