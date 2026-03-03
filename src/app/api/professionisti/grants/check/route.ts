@@ -7,22 +7,36 @@ export async function GET(req: Request) {
   const animalId = url.searchParams.get("animal_id");
 
   if (!animalId) {
-    return NextResponse.json({ error: "Missing animal_id" }, { status: 400 });
+    return NextResponse.json({ ok: false, error: "Missing animal_id" }, { status: 400 });
   }
 
   const supabase = await createServerSupabaseClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  const {
+    data: { user },
+    error: authErr,
+  } = await supabase.auth.getUser();
+
+  if (authErr) return NextResponse.json({ ok: false, error: authErr.message }, { status: 401 });
+  if (!user) return NextResponse.json({ ok: false, error: "Not authenticated" }, { status: 401 });
 
   const orgId = await getProfessionalOrgId();
-  if (!orgId) return NextResponse.json({ ok: false, reason: "missing_org" });
+  if (!orgId) {
+    return NextResponse.json({ ok: true, hasGrant: false, reason: "missing_org" });
+  }
 
   const { data, error } = await supabase.rpc("is_grant_active", {
     p_animal: animalId,
     p_org: orgId,
   });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
 
-  return NextResponse.json({ ok: Boolean(data) });
+  const hasGrant = Boolean(data);
+
+  return NextResponse.json({
+    ok: true,       // richiesta riuscita
+    hasGrant,       // autorizzazione vera
+    orgId,          // utile debug
+    animalId,       // utile debug
+  });
 }

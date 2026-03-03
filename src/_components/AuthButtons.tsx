@@ -9,7 +9,7 @@ function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
 
-export default function AuthButtons() {
+export default function AuthButtons({ onNavigate }: { onNavigate?: () => void } = {}) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -49,12 +49,24 @@ export default function AuthButtons() {
       <div className="flex items-center gap-2">
         <Link
           href="/login"
+          onClick={onNavigate}
           className={cx(
             "inline-flex items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold transition",
             "border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50"
           )}
         >
           Accedi
+        </Link>
+
+        <Link
+          href="/login?mode=signup"
+          onClick={onNavigate}
+          className={cx(
+            "inline-flex items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold transition",
+            "bg-zinc-900 text-white hover:bg-black"
+          )}
+        >
+          Iscriviti
         </Link>
       </div>
     );
@@ -64,6 +76,7 @@ export default function AuthButtons() {
     <div className="flex items-center gap-2">
       <Link
         href="/profilo"
+        onClick={onNavigate}
         className={cx(
           "inline-flex items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold transition",
           "border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50"
