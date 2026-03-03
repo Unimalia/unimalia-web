@@ -52,7 +52,10 @@ export async function GET(req: Request) {
       ? admin.from("animals").select("id, name").in("id", animalIds)
       : Promise.resolve({ data: [] as any[] }),
     orgIds.length
-      ? admin.from("organizations").select("id, name").in("id", orgIds)
+      ? admin
+          .from("organizations")
+          .select("id, name, display_name, ragione_sociale")
+          .in("id", orgIds)
       : Promise.resolve({ data: [] as any[] }),
   ]);
 
@@ -60,7 +63,9 @@ export async function GET(req: Request) {
   for (const a of animals ?? []) animalNameById.set(a.id, a.name ?? a.id);
 
   const orgNameById = new Map<string, string>();
-  for (const o of orgs ?? []) orgNameById.set(o.id, o.name ?? o.id);
+  for (const o of orgs ?? []) {
+    orgNameById.set(o.id, o.name ?? o.display_name ?? o.ragione_sociale ?? o.id);
+  }
 
   const enriched = rows.map((r: any) => ({
     ...r,
@@ -103,12 +108,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  // 2) Approvazione: crea/aggiorna grant + marca request approved
+  // 2) Approvazione: crea grant + marca request approved
   if (action === "approve") {
     const admin = supabaseAdmin();
     const validTo = computeValidTo(duration);
 
-    // create grant (grantee_type=org)
     const { error: grantErr } = await admin.from("animal_access_grants").insert({
       animal_id: reqRow.animal_id,
       granted_by_user_id: user.id,
@@ -138,7 +142,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, status: "approved" });
   }
 
-  // 3) Rifiuta: marca request rejected
+  // 3) Rifiuta
   if (action === "reject") {
     const { error: updErr } = await supabase
       .from("animal_access_requests")
@@ -150,8 +154,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, status: "rejected" });
   }
 
-  // 4) Blocca org: per ora (MVP) marca request blocked
-  // (poi aggiungiamo una tabella di blocklist org-centrica)
+  // 4) Blocca (MVP)
   if (action === "block") {
     const { error: updErr } = await supabase
       .from("animal_access_requests")
@@ -163,7 +166,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, status: "blocked" });
   }
 
-  // 5) Revoca grant (da request già approvata): revoca tutti i grant attivi per (animal_id, org_id)
+  // 5) Revoca grant
   if (action === "revoke") {
     const admin = supabaseAdmin();
 
@@ -181,7 +184,6 @@ export async function POST(req: Request) {
 
     if (revErr) return NextResponse.json({ error: revErr.message }, { status: 500 });
 
-    // opzionale: marca request revoked (se vuoi una traccia “UI”)
     const { error: updErr } = await supabase
       .from("animal_access_requests")
       .update({ status: "revoked" })
