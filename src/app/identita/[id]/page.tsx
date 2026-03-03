@@ -173,7 +173,9 @@ export default function AnimalProfilePage() {
   return (
     <PageShell
       title={animal.name}
-      subtitle={`${animal.species}${animal.breed ? ` • ${animal.breed}` : ""} • ${statusLabel(animal.status)}`}
+      subtitle={`${animal.species}${animal.breed ? ` • ${animal.breed}` : ""} • ${statusLabel(
+        animal.status
+      )}`}
       backFallbackHref="/identita"
       actions={
         <>
@@ -189,6 +191,13 @@ export default function AnimalProfilePage() {
           >
             Condividi al professionista
           </ButtonSecondary>
+
+          <Link
+            href={`/profilo/richieste-accesso?animalId=${encodeURIComponent(id)}`}
+            className="rounded-md border px-3 py-2 text-sm font-semibold hover:bg-neutral-50"
+          >
+            Gestisci accessi professionisti
+          </Link>
 
           <ButtonPrimary href="/identita">Tutte le identità</ButtonPrimary>
         </>
@@ -269,7 +278,9 @@ export default function AnimalProfilePage() {
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <h2 className="text-base font-semibold text-zinc-900">Codici</h2>
-                <p className="mt-1 text-sm text-zinc-600">Da usare in emergenza o per verifica rapida.</p>
+                <p className="mt-1 text-sm text-zinc-600">
+                  Da usare in emergenza o per verifica rapida.
+                </p>
               </div>
 
               <div className="shrink-0">{codeStatusBadge}</div>
@@ -279,7 +290,9 @@ export default function AnimalProfilePage() {
             <div className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4">
               <div className="text-xs text-zinc-500">Microchip / Codice</div>
               <div className="mt-1 text-sm font-semibold text-zinc-900">
-                {animal.chip_number ? normalizeChip(animal.chip_number) : qrValue || `UNIMALIA:${animal.id}`}
+                {animal.chip_number
+                  ? normalizeChip(animal.chip_number)
+                  : qrValue || `UNIMALIA:${animal.id}`}
               </div>
             </div>
 
@@ -293,7 +306,8 @@ export default function AnimalProfilePage() {
             </div>
 
             <p className="mt-3 text-xs text-zinc-500">
-              Nota: alcuni animali possono non avere microchip. In quel caso UNIMALIA usa un codice interno.
+              Nota: alcuni animali possono non avere microchip. In quel caso UNIMALIA usa un codice
+              interno.
             </p>
           </section>
         </div>
@@ -352,7 +366,9 @@ export default function AnimalProfilePage() {
               </button>
             </div>
 
-            <div className="mt-4 text-xs text-zinc-500">Nota: questo pulsante non apre il portale professionisti.</div>
+            <div className="mt-4 text-xs text-zinc-500">
+              Nota: questo pulsante non apre il portale professionisti.
+            </div>
           </div>
         </div>
       ) : null}
