@@ -242,7 +242,7 @@ export default function ProAnimalPage() {
       <div className="space-y-4">
         <div className="text-sm">
           <Link
-            href="/professionisti/scansiona"
+            href="/professionisti/animali"
             className="font-semibold text-zinc-700 hover:text-zinc-900"
           >
             ← Scanner
@@ -277,7 +277,7 @@ export default function ProAnimalPage() {
 
           <div className="flex flex-wrap gap-2">
             <Link
-              href="/professionisti/scansiona"
+              href="/professionisti/animali"
               className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
             >
               Torna allo scanner

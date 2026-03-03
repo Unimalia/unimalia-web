@@ -2,7 +2,6 @@
 import { redirect } from "next/navigation";
 
 export default function ProfessionistiHome() {
-  // La home del portale NON è una landing.
-  // È un ingresso operativo.
+  // Redirect SOLO quando sei sulla root /professionisti
   redirect("/professionisti/scansiona");
 }
