@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useSearchParams } from "next/navigation";
 
 type Row = {
   id: string;
@@ -14,11 +15,21 @@ type Row = {
 };
 
 export default function RequestAccessClient({ initialRows }: { initialRows: Row[] }) {
+  const sp = useSearchParams();
+  const chipFromUrl = sp.get("chip") || "";
+  const animalIdFromUrl = sp.get("animalId") || "";
+
   const [rows, setRows] = React.useState<Row[]>(initialRows);
-  const [microchipOrCode, setMicrochipOrCode] = React.useState("");
+  const [microchipOrCode, setMicrochipOrCode] = React.useState(chipFromUrl || animalIdFromUrl);
   const [scope, setScope] = React.useState<string[]>(["read"]);
   const [busy, setBusy] = React.useState(false);
   const [msg, setMsg] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    const v = chipFromUrl || animalIdFromUrl;
+    if (v) setMicrochipOrCode(v);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chipFromUrl, animalIdFromUrl]);
 
   function toggleScope(s: string) {
     setScope((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
@@ -74,15 +85,27 @@ export default function RequestAccessClient({ initialRows }: { initialRows: Row[
 
         <div className="mt-3 flex flex-wrap gap-3 text-sm">
           <label className="flex items-center gap-2">
-            <input type="checkbox" checked={scope.includes("read")} onChange={() => toggleScope("read")} />
+            <input
+              type="checkbox"
+              checked={scope.includes("read")}
+              onChange={() => toggleScope("read")}
+            />
             read
           </label>
           <label className="flex items-center gap-2">
-            <input type="checkbox" checked={scope.includes("write")} onChange={() => toggleScope("write")} />
+            <input
+              type="checkbox"
+              checked={scope.includes("write")}
+              onChange={() => toggleScope("write")}
+            />
             write
           </label>
           <label className="flex items-center gap-2">
-            <input type="checkbox" checked={scope.includes("upload")} onChange={() => toggleScope("upload")} />
+            <input
+              type="checkbox"
+              checked={scope.includes("upload")}
+              onChange={() => toggleScope("upload")}
+            />
             upload
           </label>
         </div>
@@ -108,7 +131,9 @@ export default function RequestAccessClient({ initialRows }: { initialRows: Row[
                 <td className="p-3 font-mono">{r.animal_id}</td>
                 <td className="p-3">{r.status}</td>
                 <td className="p-3">{(r.requested_scope ?? []).join(", ")}</td>
-                <td className="p-3">{r.expires_at ? new Date(r.expires_at).toLocaleString("it-IT") : "—"}</td>
+                <td className="p-3">
+                  {r.expires_at ? new Date(r.expires_at).toLocaleString("it-IT") : "—"}
+                </td>
               </tr>
             ))}
             {rows.length === 0 && (

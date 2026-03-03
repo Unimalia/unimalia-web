@@ -141,8 +141,8 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
     () => [
       { href: "/professionisti/dashboard", label: "Dashboard" },
       { href: "/professionisti/scansiona", label: "Scansiona" },
-      { href: "/professionisti/richieste-accesso", label: "Richieste accesso" },
       { href: "/professionisti/animali", label: "Animali" },
+      { href: "/professionisti/richieste-accesso", label: "Richieste accesso" },
       { href: "/professionisti/richieste", label: "Richieste" },
       { href: "/professionisti/impostazioni", label: "Impostazioni" },
     ],
@@ -203,7 +203,7 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
             <div className="px-3 py-2 text-xs font-semibold text-zinc-500">Menu</div>
             <div className="flex flex-col gap-1">
               {items.map((it) => (
-                <SideLink key={it.href} href={it.href} label={it.label} />
+                <SideLink key={`${it.href}:${it.label}`} href={it.href} label={it.label} />
               ))}
             </div>
           </div>
@@ -242,7 +242,7 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
               <div className="flex flex-col gap-1">
                 {items.map((it) => (
                   <SideLink
-                    key={it.href}
+                    key={`${it.href}:${it.label}`}
                     href={it.href}
                     label={it.label}
                     onClick={() => setOpen(false)}

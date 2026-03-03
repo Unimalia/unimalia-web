@@ -243,30 +243,62 @@ export default function ScannerPage() {
           return;
         }
 
-        showBanner({ kind: "success", text: "Animale trovato. Apertura scheda…" }, 1500);
-        void logScan({
-          raw,
-          normalized,
-          outcome: "success",
-          animalId: json.animalId,
-          note: "chip lookup ok",
-        });
+        showBanner({ kind: "success", text: "Animale trovato. Verifico accesso…" }, 1200);
 
+        const grantRes = await fetch(
+          `/api/professionisti/grants/check?animal_id=${encodeURIComponent(json.animalId)}`,
+          { cache: "no-store" }
+        );
+        const grantJson = await grantRes.json().catch(() => ({}));
+
+        if (!grantRes.ok) {
+          showBanner({ kind: "error", text: grantJson?.error || "Errore verifica accesso" }, 2500);
+          return;
+        }
+
+        if (!grantJson?.ok) {
+          showBanner(
+            { kind: "info", text: "Serve autorizzazione dell’owner. Apro richiesta accesso…" },
+            2000
+          );
+          safePush(
+            `/professionisti/richieste-accesso?chip=${encodeURIComponent(
+              ex.chip
+            )}&animalId=${encodeURIComponent(json.animalId)}`
+          );
+          return;
+        }
+
+        showBanner({ kind: "success", text: "Accesso ok. Apertura scheda…" }, 1200);
         safePush(`/professionisti/animali/${encodeURIComponent(json.animalId)}`);
         return;
       }
 
       // ✅ uuid/id -> scheda pro
       if (ex.kind === "animalId") {
-        showBanner({ kind: "success", text: "Codice riconosciuto. Apertura scheda…" }, 1500);
-        void logScan({
-          raw,
-          normalized,
-          outcome: "success",
-          animalId: ex.animalId,
-          note: "uuid/url id ok",
-        });
+        showBanner({ kind: "success", text: "Codice riconosciuto. Verifico accesso…" }, 1200);
 
+        const grantRes = await fetch(
+          `/api/professionisti/grants/check?animal_id=${encodeURIComponent(ex.animalId)}`,
+          { cache: "no-store" }
+        );
+        const grantJson = await grantRes.json().catch(() => ({}));
+
+        if (!grantRes.ok) {
+          showBanner({ kind: "error", text: grantJson?.error || "Errore verifica accesso" }, 2500);
+          return;
+        }
+
+        if (!grantJson?.ok) {
+          showBanner(
+            { kind: "info", text: "Serve autorizzazione dell’owner. Apro richiesta accesso…" },
+            2000
+          );
+          safePush(`/professionisti/richieste-accesso?animalId=${encodeURIComponent(ex.animalId)}`);
+          return;
+        }
+
+        showBanner({ kind: "success", text: "Accesso ok. Apertura scheda…" }, 1200);
         safePush(`/professionisti/animali/${encodeURIComponent(ex.animalId)}`);
         return;
       }

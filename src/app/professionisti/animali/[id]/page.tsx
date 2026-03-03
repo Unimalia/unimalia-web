@@ -290,6 +290,13 @@ export default function ProAnimalPage() {
               Vai alle richieste
             </Link>
 
+            <Link
+              href={`/professionisti/richieste-accesso?animalId=${encodeURIComponent(id)}`}
+              className="rounded-md border px-3 py-2 text-sm font-semibold hover:bg-neutral-50"
+            >
+              Richiedi accesso (se non autorizzato)
+            </Link>
+
             {isVet ? (
               animal.microchip_verified ? (
                 <span className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">
