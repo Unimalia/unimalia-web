@@ -47,19 +47,24 @@ function NavLink({
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
+  const pathname = usePathname();
+  const proActive =
+    pathname === "/professionisti" ||
+    pathname.startsWith("/professionisti/");
 
+  // voci "normali" (non evidenziate)
   const nav: NavItem[] = useMemo(
     () => [
       { href: "/smarrimenti", label: "Smarrimenti" },
       { href: "/ritrovati", label: "Ritrovati" },
       { href: "/adotta", label: "Adozioni" },
       { href: "/servizi", label: "Servizi" },
-      { href: "/professionisti", label: "Professionisti" },
+      { href: "/identita", label: "Identità Animale" },
+      { href: "/smarrimenti/nuovo", label: "Pubblica smarrimento" },
     ],
     []
   );
 
-  // chiude menu su ESC
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") setOpen(false);
@@ -68,7 +73,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  // blocca scroll quando drawer aperto
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
@@ -80,11 +84,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900">
-      {/* HEADER */}
       <header className="sticky top-0 z-50 border-b border-zinc-200 bg-white/80 backdrop-blur">
         <div className="container-page flex items-center justify-between gap-3 py-4 sm:py-5 pl-2 sm:pl-4">
-          {/* LOGO */}
-          <Link href="/" className="flex items-center gap-3" aria-label="Vai alla home UNIMALIA">
+          <Link
+            href="/"
+            className="flex items-center gap-3"
+            aria-label="Vai alla home UNIMALIA"
+          >
             <Image
               src="/logo-main.png"
               alt="UNIMALIA"
@@ -95,7 +101,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             />
           </Link>
 
-          {/* DESKTOP: NAV + CTA + AUTH */}
+          {/* DESKTOP */}
           <div className="hidden min-w-0 flex-1 items-center justify-end gap-3 md:flex">
             <nav className="flex min-w-0 flex-1 items-center justify-end gap-1 overflow-x-auto whitespace-nowrap">
               {nav.map((item) => (
@@ -103,23 +109,30 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               ))}
             </nav>
 
+            {/* Professionisti evidenziato (ex Pubblica) */}
             <Link
-              href="/smarrimenti/nuovo"
-              className="inline-flex items-center justify-center rounded-xl bg-black px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-900"
+              href="/professionisti/dashboard"
+              className={cx(
+                "inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold transition",
+                proActive
+                  ? "bg-black text-white"
+                  : "bg-black text-white hover:bg-zinc-900"
+              )}
             >
-              Pubblica
+              Professionisti
             </Link>
 
             <AuthButtons />
           </div>
 
-          {/* MOBILE: hamburger */}
+          {/* MOBILE */}
           <div className="flex items-center gap-2 md:hidden">
+            {/* Professionisti evidenziato anche in mobile */}
             <Link
-              href="/smarrimenti/nuovo"
+              href="/professionisti/dashboard"
               className="inline-flex items-center justify-center rounded-xl bg-black px-3 py-2 text-sm font-semibold text-white transition hover:bg-zinc-900"
             >
-              Pubblica
+              Professionisti
             </Link>
 
             <button
@@ -136,14 +149,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         {/* MOBILE DRAWER */}
         {open && (
           <div className="md:hidden">
-            {/* overlay */}
             <button
               type="button"
               className="fixed inset-0 z-40 cursor-default bg-black/30"
               aria-label="Chiudi menu"
               onClick={() => setOpen(false)}
             />
-            {/* panel */}
             <div className="fixed right-0 top-0 z-50 h-full w-[86%] max-w-sm border-l border-zinc-200 bg-white shadow-2xl">
               <div className="flex h-16 items-center justify-between px-4">
                 <span className="text-sm font-semibold">Menu</span>
@@ -158,7 +169,18 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               </div>
 
               <div className="px-2 pb-6">
-                <div className="flex flex-col gap-1">
+                {/* Professionisti evidenziato nel drawer */}
+                <div className="px-2">
+                  <Link
+                    href="/professionisti/dashboard"
+                    onClick={() => setOpen(false)}
+                    className="inline-flex w-full items-center justify-center rounded-xl bg-black px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-900"
+                  >
+                    Professionisti
+                  </Link>
+                </div>
+
+                <div className="mt-3 flex flex-col gap-1">
                   {nav.map((item) => (
                     <NavLink
                       key={item.href}
@@ -167,24 +189,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                       onClick={() => setOpen(false)}
                     />
                   ))}
-
-                  {/* se vuoi tenere “Pubblica (rapido)” come route separata */}
-                  <NavLink
-                    href="/smarrimento"
-                    label="Pubblica (rapido)"
-                    onClick={() => setOpen(false)}
-                  />
                 </div>
 
                 <div className="mt-4 border-t border-zinc-200 px-2 pt-4">
-                  <Link
-                    href="/smarrimenti/nuovo"
-                    onClick={() => setOpen(false)}
-                    className="inline-flex w-full items-center justify-center rounded-xl bg-black px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-900"
-                  >
-                    Pubblica
-                  </Link>
-
                   <div className="mt-3">
                     <AuthButtons />
                   </div>
@@ -195,15 +202,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         )}
       </header>
 
-      {/* MAIN */}
       <main className="container-page py-8 sm:py-10">{children}</main>
 
-      {/* FOOTER */}
       <footer className="mt-14 border-t border-zinc-200 bg-white">
         <div className="container-page py-8 text-sm text-zinc-600">
           <p>
-            UNIMALIA nasce come impresa responsabile: una parte dei ricavi verrà reinvestita nel progetto e una parte
-            devolverà valore al mondo animale.
+            UNIMALIA nasce come impresa responsabile: una parte dei ricavi verrà
+            reinvestita nel progetto e una parte devolverà valore al mondo
+            animale.
           </p>
 
           <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-sm">
@@ -218,7 +224,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </Link>
           </div>
 
-          <p className="mt-4 text-xs text-zinc-500">© {new Date().getFullYear()} UNIMALIA</p>
+          <p className="mt-4 text-xs text-zinc-500">
+            © {new Date().getFullYear()} UNIMALIA
+          </p>
         </div>
       </footer>
     </div>
