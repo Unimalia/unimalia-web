@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
 type Row = {
@@ -71,6 +72,18 @@ export default function OwnerRequestsClient({ initialRows }: { initialRows: Row[
   return (
     <div className="mx-auto max-w-3xl p-6">
       <h1 className="text-2xl font-semibold">Richieste accesso</h1>
+
+      {animalId && (
+        <div className="mt-3">
+          <Link
+            className="inline-flex items-center rounded-md border px-3 py-1.5 text-sm font-semibold hover:bg-neutral-50"
+            href={`/identita/${encodeURIComponent(animalId)}`}
+          >
+            ← Torna alla scheda animale
+          </Link>
+        </div>
+      )}
+
       <p className="mt-2 text-sm text-neutral-600">
         Approva con durata. Tutto è revocabile e tracciato.
       </p>
