@@ -1,6 +1,6 @@
 // src/app/professionisti/animali/page.tsx
 import { getManagedAnimals } from "@/lib/professionisti/getManagedAnimals";
-import ManagedAnimalsClient from "./ManagedAnimalsClient";
+import ManagedAnimalsClient from "./ManagedAnimalsClient.client";
 
 export const dynamic = "force-dynamic"; // evita cache lato server in questa fase
 

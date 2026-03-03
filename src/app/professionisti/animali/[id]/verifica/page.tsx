@@ -403,7 +403,7 @@ export default function ProVerifyPage() {
             Torna
           </Link>
           <Link
-            href="/professionisti/scansiona"
+            href="/professionisti/animali"
             className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
           >
             Scanner

@@ -19,14 +19,13 @@ function safeNextPath(next: string | null | undefined) {
   const n = String(next || "").trim();
 
   // fallback
-  if (!n) return "/professionisti/scansiona";
+  if (!n) return "/professionisti/animali";
 
   // deve restare nel portale
-  if (!n.startsWith("/professionisti")) return "/professionisti/scansiona";
+  if (!n.startsWith("/professionisti")) return "/professionisti/animali";
 
   // evita loop sulla login
-  if (n.startsWith("/professionisti/login")) return "/professionisti/scansiona";
-
+  if (n.startsWith("/professionisti/login")) return "/professionisti/animali";
   return n;
 }
 
