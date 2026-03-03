@@ -141,6 +141,7 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
     () => [
       { href: "/professionisti/dashboard", label: "Dashboard" },
       { href: "/professionisti/scansiona", label: "Scansiona" },
+      { href: "/professionisti/richieste-accesso", label: "Richieste accesso" },
       { href: "/professionisti/animali", label: "Animali" },
       { href: "/professionisti/richieste", label: "Richieste" },
       { href: "/professionisti/impostazioni", label: "Impostazioni" },
