@@ -136,7 +136,6 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
     };
   }, [open]);
 
-  // ✅ Menu: voci UNICHE (niente duplicati)
   const items: Item[] = useMemo(
     () => [
       { href: "/professionisti/dashboard", label: "Dashboard" },
