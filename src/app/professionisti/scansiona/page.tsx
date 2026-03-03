@@ -256,7 +256,14 @@ export default function ScannerPage() {
           return;
         }
 
-        if (!grantJson?.ok) {
+        const hasGrant =
+          grantJson?.hasGrant === true ||
+          grantJson?.allowed === true ||
+          grantJson?.active === true ||
+          grantJson?.grantActive === true ||
+          grantJson?.grant?.status === "active";
+
+        if (!hasGrant) {
           showBanner(
             { kind: "info", text: "Serve autorizzazione dell’owner. Apro richiesta accesso…" },
             2000
@@ -289,7 +296,14 @@ export default function ScannerPage() {
           return;
         }
 
-        if (!grantJson?.ok) {
+        const hasGrant =
+          grantJson?.hasGrant === true ||
+          grantJson?.allowed === true ||
+          grantJson?.active === true ||
+          grantJson?.grantActive === true ||
+          grantJson?.grant?.status === "active";
+
+        if (!hasGrant) {
           showBanner(
             { kind: "info", text: "Serve autorizzazione dell’owner. Apro richiesta accesso…" },
             2000
