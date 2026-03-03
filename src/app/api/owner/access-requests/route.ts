@@ -40,7 +40,35 @@ export async function GET(req: Request) {
   const { data, error } = await q;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  return NextResponse.json({ rows: data ?? [] });
+  const rows = data ?? [];
+
+  const animalIds = Array.from(new Set(rows.map((r: any) => r.animal_id).filter(Boolean)));
+  const orgIds = Array.from(new Set(rows.map((r: any) => r.org_id).filter(Boolean)));
+
+  const admin = supabaseAdmin();
+
+  const [{ data: animals }, { data: orgs }] = await Promise.all([
+    animalIds.length
+      ? admin.from("animals").select("id, name").in("id", animalIds)
+      : Promise.resolve({ data: [] as any[] }),
+    orgIds.length
+      ? admin.from("organizations").select("id, name").in("id", orgIds)
+      : Promise.resolve({ data: [] as any[] }),
+  ]);
+
+  const animalNameById = new Map<string, string>();
+  for (const a of animals ?? []) animalNameById.set(a.id, a.name ?? a.id);
+
+  const orgNameById = new Map<string, string>();
+  for (const o of orgs ?? []) orgNameById.set(o.id, o.name ?? o.id);
+
+  const enriched = rows.map((r: any) => ({
+    ...r,
+    animal_name: animalNameById.get(r.animal_id) ?? r.animal_id,
+    org_name: orgNameById.get(r.org_id) ?? r.org_id,
+  }));
+
+  return NextResponse.json({ rows: enriched });
 }
 
 export async function POST(req: Request) {
