@@ -2,6 +2,6 @@
 import { redirect } from "next/navigation";
 
 export default function ProfessionistiHome() {
-  // Redirect SOLO quando sei sulla root /professionisti
-  redirect("/professionisti/scansiona");
+  // Root del portale professionisti → Dashboard vera
+  redirect("/professionisti/dashboard");
 }
