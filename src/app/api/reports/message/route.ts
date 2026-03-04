@@ -2,7 +2,7 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { resend, getBaseUrl } from "@/lib/email/resend";
+import { resend, EMAIL_FROM_MESSAGES, getBaseUrl } from "@/lib/email/resend";
 import { newMessageRelayEmail } from "@/lib/email/templates";
 
 export const dynamic = "force-dynamic";
@@ -74,7 +74,7 @@ export async function POST(req: Request) {
     });
 
     await resend.emails.send({
-      from: process.env.EMAIL_FROM_MESSAGES!,
+      from: EMAIL_FROM_MESSAGES,
       to: report.contact_email,
       subject: email.subject,
       html: email.html,

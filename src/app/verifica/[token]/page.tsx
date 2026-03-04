@@ -1,7 +1,7 @@
 // src/app/verifica/[token]/page.tsx
 import { redirect } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { resend, getBaseUrl } from "@/lib/email/resend";
+import { resend, EMAIL_FROM_NO_REPLY, getBaseUrl } from "@/lib/email/resend";
 import { reportPublishedEmail } from "@/lib/email/templates";
 
 export const dynamic = "force-dynamic";
@@ -32,7 +32,7 @@ export default async function VerifyPage({ params }: { params: { token: string }
       const email = reportPublishedEmail({ reportUrl, reportTitle: report.title });
 
       await resend.emails.send({
-        from: process.env.EMAIL_FROM_NO_REPLY!,
+        from: EMAIL_FROM_NO_REPLY,
         to: report.contact_email,
         subject: email.subject,
         html: email.html,
