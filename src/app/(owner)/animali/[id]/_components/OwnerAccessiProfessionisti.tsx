@@ -18,7 +18,7 @@ type AccessGrant = {
   id: string;
   animal_id: string;
   grantee_type: string; // "org"
-  grantee_id: string;   // org_id
+  grantee_id: string; // org_id
   status: "active" | "revoked" | string;
   valid_to: string | null;
   revoked_at: string | null;
@@ -29,12 +29,21 @@ type AccessGrant = {
   scope_upload?: boolean;
 };
 
+type Duration = "24h" | "7d" | "6m" | "forever";
+
 function formatScopeFromGrant(g: AccessGrant) {
   const parts: string[] = [];
   if (g.scope_read) parts.push("read");
   if (g.scope_write) parts.push("write");
   if (g.scope_upload) parts.push("upload");
   return parts.length ? parts.join(", ") : "—";
+}
+
+function labelDuration(d: Duration) {
+  if (d === "24h") return "24 ore";
+  if (d === "7d") return "7 giorni";
+  if (d === "6m") return "6 mesi";
+  return "Senza scadenza";
 }
 
 export default function OwnerAccessiProfessionisti({ animalId }: { animalId: string }) {
@@ -46,6 +55,9 @@ export default function OwnerAccessiProfessionisti({ animalId }: { animalId: str
   const [grants, setGrants] = useState<AccessGrant[]>([]);
   const [error, setError] = useState<string | null>(null);
 
+  // durata selezionata per richiesta
+  const [durationByRequestId, setDurationByRequestId] = useState<Record<string, Duration>>({});
+
   async function load() {
     setLoading(true);
     setError(null);
@@ -54,8 +66,18 @@ export default function OwnerAccessiProfessionisti({ animalId }: { animalId: str
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || "Errore caricamento accessi");
 
-      setRequests(json.requests || []);
+      const nextReqs: AccessRequest[] = json.requests || [];
+      setRequests(nextReqs);
       setGrants(json.grants || []);
+
+      // inizializza default 7d per pending non ancora presenti nello state
+      setDurationByRequestId((prev) => {
+        const next = { ...prev };
+        for (const r of nextReqs) {
+          if (r.status === "pending" && !next[r.id]) next[r.id] = "7d";
+        }
+        return next;
+      });
     } catch (e: any) {
       setError(e?.message || "Errore");
     } finally {
@@ -68,10 +90,7 @@ export default function OwnerAccessiProfessionisti({ animalId }: { animalId: str
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [animalId]);
 
-  const pendingRequests = useMemo(
-    () => requests.filter((r) => r.status === "pending"),
-    [requests]
-  );
+  const pendingRequests = useMemo(() => requests.filter((r) => r.status === "pending"), [requests]);
 
   const historyRequests = useMemo(
     () => requests.filter((r) => r.status !== "pending"),
@@ -84,6 +103,8 @@ export default function OwnerAccessiProfessionisti({ animalId }: { animalId: str
   );
 
   async function approveRequest(requestId: string) {
+    const duration = durationByRequestId[requestId] ?? "7d";
+
     startTransition(async () => {
       const res = await fetch(`/api/owner/access-requests`, {
         method: "POST",
@@ -91,7 +112,7 @@ export default function OwnerAccessiProfessionisti({ animalId }: { animalId: str
         body: JSON.stringify({
           id: requestId,
           action: "approve",
-          duration: "forever", // "24h" | "7d" | "6m" | "forever"
+          duration, // "24h" | "7d" | "6m" | "forever"
         }),
       });
 
@@ -202,38 +223,64 @@ export default function OwnerAccessiProfessionisti({ animalId }: { animalId: str
           <p className="text-sm opacity-70">Nessuna richiesta in attesa.</p>
         ) : (
           <ul className="space-y-2">
-            {pendingRequests.map((r) => (
-              <li
-                key={r.id}
-                className="rounded-xl border p-3 flex items-center justify-between gap-3"
-              >
-                <div className="text-sm">
-                  <div className="font-medium">
-                    Org {r.org_id} • {(r.requested_scope?.length ? r.requested_scope.join(", ") : "—")}
-                  </div>
-                  <div className="opacity-70">
-                    Stato: {r.status} • {new Date(r.created_at).toLocaleString("it-IT")}
-                  </div>
-                </div>
+            {pendingRequests.map((r) => {
+              const duration = durationByRequestId[r.id] ?? "7d";
 
-                <div className="flex gap-2">
-                  <button
-                    className="rounded-xl border px-3 py-2 text-sm disabled:opacity-60"
-                    onClick={() => rejectRequest(r.id)}
-                    disabled={isPending}
-                  >
-                    Rifiuta
-                  </button>
-                  <button
-                    className="rounded-xl bg-black text-white px-3 py-2 text-sm disabled:opacity-60"
-                    onClick={() => approveRequest(r.id)}
-                    disabled={isPending}
-                  >
-                    Approva
-                  </button>
-                </div>
-              </li>
-            ))}
+              return (
+                <li
+                  key={r.id}
+                  className="rounded-xl border p-3 flex items-center justify-between gap-3"
+                >
+                  <div className="text-sm">
+                    <div className="font-medium">
+                      Org {r.org_id} •{" "}
+                      {r.requested_scope?.length ? r.requested_scope.join(", ") : "—"}
+                    </div>
+                    <div className="opacity-70">
+                      Stato: {r.status} • {new Date(r.created_at).toLocaleString("it-IT")}
+                    </div>
+
+                    <div className="mt-2 flex items-center gap-2 flex-wrap">
+                      <span className="text-xs opacity-70">Durata accesso:</span>
+                      <select
+                        className="rounded-xl border px-2 py-1 text-sm"
+                        value={duration}
+                        onChange={(e) =>
+                          setDurationByRequestId((prev) => ({
+                            ...prev,
+                            [r.id]: e.target.value as Duration,
+                          }))
+                        }
+                        disabled={isPending}
+                      >
+                        <option value="24h">{labelDuration("24h")}</option>
+                        <option value="7d">{labelDuration("7d")}</option>
+                        <option value="6m">{labelDuration("6m")}</option>
+                        <option value="forever">{labelDuration("forever")}</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      className="rounded-xl border px-3 py-2 text-sm disabled:opacity-60"
+                      onClick={() => rejectRequest(r.id)}
+                      disabled={isPending}
+                    >
+                      Rifiuta
+                    </button>
+                    <button
+                      className="rounded-xl bg-black text-white px-3 py-2 text-sm disabled:opacity-60"
+                      onClick={() => approveRequest(r.id)}
+                      disabled={isPending}
+                      title={`Approva (${labelDuration(duration)})`}
+                    >
+                      Approva
+                    </button>
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         )}
 
@@ -246,7 +293,8 @@ export default function OwnerAccessiProfessionisti({ animalId }: { animalId: str
               {historyRequests.map((r) => (
                 <li key={r.id} className="rounded-xl border p-3">
                   <div className="text-sm font-medium">
-                    Org {r.org_id} • {(r.requested_scope?.length ? r.requested_scope.join(", ") : "—")}
+                    Org {r.org_id} •{" "}
+                    {r.requested_scope?.length ? r.requested_scope.join(", ") : "—"}
                   </div>
                   <div className="text-sm opacity-70">
                     Stato: {r.status} • {new Date(r.created_at).toLocaleString("it-IT")}

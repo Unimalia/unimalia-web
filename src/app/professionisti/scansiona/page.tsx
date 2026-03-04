@@ -178,20 +178,6 @@ export default function ScannerPage() {
     }
   }
 
-  function hasGrantFromResponse(grantJson: any) {
-    // ✅ compat totale: il tuo endpoint attuale ritorna { ok: boolean }
-    if (grantJson?.ok === true) return true;
-
-    // fallback se in futuro cambi payload
-    return (
-      grantJson?.hasGrant === true ||
-      grantJson?.allowed === true ||
-      grantJson?.active === true ||
-      grantJson?.grantActive === true ||
-      grantJson?.grant?.status === "active"
-    );
-  }
-
   async function handleScan(raw: string) {
     const normalized = normalizeScanResult(raw);
 
@@ -250,22 +236,15 @@ export default function ScannerPage() {
           return;
         }
 
-        const hasGrant = hasGrantFromResponse(grantJson);
+        const hasGrant = Boolean(grantJson?.ok);
 
         if (!hasGrant) {
-          showBanner(
-            { kind: "info", text: "Serve autorizzazione dell’owner. Apro richiesta accesso…" },
-            2000
-          );
           safePush(
-            `/professionisti/richieste-accesso?chip=${encodeURIComponent(
-              ex.chip
-            )}&animalId=${encodeURIComponent(json.animalId)}`
+            `/professionisti/richieste-accesso?animalId=${encodeURIComponent(json.animalId)}`
           );
           return;
         }
 
-        showBanner({ kind: "success", text: "Accesso ok. Apertura scheda…" }, 1200);
         safePush(`/professionisti/animali/${encodeURIComponent(json.animalId)}`);
         return;
       }
@@ -284,18 +263,13 @@ export default function ScannerPage() {
           return;
         }
 
-        const hasGrant = hasGrantFromResponse(grantJson);
+        const hasGrant = Boolean(grantJson?.ok);
 
         if (!hasGrant) {
-          showBanner(
-            { kind: "info", text: "Serve autorizzazione dell’owner. Apro richiesta accesso…" },
-            2000
-          );
           safePush(`/professionisti/richieste-accesso?animalId=${encodeURIComponent(ex.animalId)}`);
           return;
         }
 
-        showBanner({ kind: "success", text: "Accesso ok. Apertura scheda…" }, 1200);
         safePush(`/professionisti/animali/${encodeURIComponent(ex.animalId)}`);
         return;
       }

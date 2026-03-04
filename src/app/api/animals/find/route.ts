@@ -1,48 +1,57 @@
-// src/app/api/animals/find/route.ts
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 
-function digitsOnly(v: string) {
-  return (v || "").replace(/\D+/g, "");
+export const dynamic = "force-dynamic";
+
+function isUuid(v: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
 }
 
 export async function GET(req: Request) {
-  try {
-    const url = new URL(req.url);
-    const rawChip = url.searchParams.get("chip") || "";
-    const chip = digitsOnly(rawChip);
+  const url = new URL(req.url);
+  const rawChip = url.searchParams.get("chip");
+  const rawId = url.searchParams.get("id");
 
-    if (!chip || chip.length < 10 || chip.length > 20) {
-      return NextResponse.json({ error: "Invalid chip" }, { status: 400 });
-    }
+  const chip = (rawChip || "").trim();
+  const id = (rawId || "").trim();
 
-    const admin = supabaseAdmin();
-
-    // 1) match esatto (DB pulito)
-    const exact = await admin
-      .from("animals")
-      .select("id, chip_number")
-      .eq("chip_number", chip)
-      .maybeSingle();
-
-    if (exact.data?.id) {
-      return NextResponse.json({ animalId: exact.data.id }, { status: 200 });
-    }
-
-    // 2) fallback: DB sporco (chip con spazi/prefissi) → ilike
-    const fuzzy = await admin
-      .from("animals")
-      .select("id, chip_number")
-      .ilike("chip_number", `%${chip}%`)
-      .limit(1)
-      .maybeSingle();
-
-    if (fuzzy.data?.id) {
-      return NextResponse.json({ animalId: fuzzy.data.id }, { status: 200 });
-    }
-
-    return NextResponse.json({ animalId: null }, { status: 404 });
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message || "Server error" }, { status: 500 });
+  if (!chip && !id) {
+    return NextResponse.json({ error: "Missing chip or id" }, { status: 400 });
   }
+
+  const supabase = await createServerSupabaseClient();
+
+  // opzionale: serve solo per contesto (non blocchiamo se non loggato)
+  await supabase.auth.getUser().catch(() => null);
+
+  let q = supabase
+    .from("animals")
+    .select("id, name, species, chip_number, owner_id, status")
+    .limit(1);
+
+  if (id) {
+    if (!isUuid(id)) return NextResponse.json({ error: "Invalid id" }, { status: 400 });
+    q = q.eq("id", id);
+  } else {
+    // chip_number nel tuo db (non microchip)
+    q = q.eq("chip_number", chip);
+  }
+
+  const { data: animal, error } = await q.maybeSingle();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (!animal) return NextResponse.json({ found: false }, { status: 200 });
+
+  // NB: qui NON diciamo "hasAccess" perché l'accesso lo decide grants/check.
+  return NextResponse.json({
+    found: true,
+    animal: {
+      id: animal.id,
+      name: animal.name ?? "",
+      species: animal.species ?? null,
+      chip_number: animal.chip_number ?? null,
+      owner_id: animal.owner_id,
+      status: animal.status ?? null,
+    },
+  });
 }
