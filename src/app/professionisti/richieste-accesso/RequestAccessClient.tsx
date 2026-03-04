@@ -14,10 +14,10 @@ export default function RequestAccessClient() {
   const router = useRouter();
   const sp = useSearchParams();
 
-  // supporta: ?animalId=... oppure ?id=... (fallback)
+  // supporta: ?animalId=... oppure ?id=...
   const animalId = (sp.get("animalId") || sp.get("id") || "").trim();
 
-  // supporta: ?chip=... oppure ?microchip=... (fallback)
+  // supporta: ?chip=... oppure ?microchip=...
   const chip = (sp.get("chip") || sp.get("microchip") || "").trim();
 
   const [loading, setLoading] = React.useState(true);
@@ -36,14 +36,14 @@ export default function RequestAccessClient() {
 
       try {
         if (!animalId && !chip) {
-          setErr("Manca animalId o microchip in URL.");
+          setErr("Manca id/animalId o microchip in URL.");
           return;
         }
 
-        // ✅ usa parametri compatibili con più versioni dell’API
-        // preferiamo animalId=..., altrimenti chip=...
+        // ✅ QUESTA È LA COSA IMPORTANTE:
+        // /api/animals/find vuole id=... oppure chip=...
         const qs = animalId
-          ? `animalId=${encodeURIComponent(animalId)}`
+          ? `id=${encodeURIComponent(animalId)}`
           : `chip=${encodeURIComponent(chip)}`;
 
         const res = await fetch(`/api/animals/find?${qs}`, { cache: "no-store" });
@@ -56,7 +56,6 @@ export default function RequestAccessClient() {
           return;
         }
 
-        // ✅ supporta risposte in forma { found, animal } oppure { animalId } ecc.
         const a = j?.animal ?? null;
         const id = a?.id || j?.animalId || null;
 
@@ -69,7 +68,7 @@ export default function RequestAccessClient() {
           id: String(id),
           name: String(a?.name ?? ""),
           species: (a?.species ?? null) as any,
-          chip_number: (a?.chip_number ?? a?.microchip ?? null) as any,
+          chip_number: (a?.chip_number ?? a?.chip_number ?? null) as any,
         });
       } finally {
         if (alive) setLoading(false);
@@ -87,15 +86,15 @@ export default function RequestAccessClient() {
     const resolvedChip = chip || animal?.chip_number || null;
 
     if (!resolvedAnimalId && !resolvedChip) {
-      setErr("missing animalId or microchip");
+      setErr("missing chip or id");
       return;
     }
 
     setBusy(true);
     setErr(null);
     try {
-      // ✅ body “compatibile”: manda sia camelCase che snake_case, e sia chip che microchip
       const body = {
+        // mandiamo tutte le varianti per compatibilità
         animalId: resolvedAnimalId,
         animal_id: resolvedAnimalId,
 
