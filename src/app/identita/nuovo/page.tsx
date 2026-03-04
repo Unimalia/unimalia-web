@@ -36,10 +36,7 @@ function isLikelyFullName(s: string) {
   return parts.length >= 2;
 }
 
-/**
- * FUTURO (SMS):
- * quando attivi verifica telefono, metti REQUIRE_PHONE_VERIFIED = true
- */
+// FUTURO SMS: metti true quando attivi verifica
 const REQUIRE_PHONE_VERIFIED = false;
 
 function isProfileComplete(p: any) {
@@ -50,15 +47,32 @@ function isProfileComplete(p: any) {
   const cityOk = (p.city ?? "").trim().length >= 2;
 
   const cf = normalizeCF(p.fiscal_code ?? "");
-  const cfOk = !cf || cf.length === 16; // facoltativo
+  const cfOk = !cf || cf.length === 16;
 
   if (!fullNameOk || !phoneOk || !cityOk || !cfOk) return false;
 
-  // OGGI non blocchiamo se non verificato
   if (!REQUIRE_PHONE_VERIFIED) return true;
-
-  // DOMANI (SMS): blocca se phone_verified non true
   return p.phone_verified === true;
+}
+
+function extFromFile(file: File) {
+  const name = (file.name || "").toLowerCase();
+  const m = name.match(/\.([a-z0-9]+)$/);
+  const fromName = m?.[1] || "";
+
+  const type = (file.type || "").toLowerCase();
+  const map: Record<string, string> = {
+    "image/jpeg": "jpg",
+    "image/jpg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+    "image/gif": "gif",
+    "image/heic": "heic",
+    "image/heif": "heif",
+    "image/avif": "avif",
+  };
+
+  return map[type] || fromName || "jpg";
 }
 
 export default function NuovoProfiloAnimalePage() {
@@ -83,6 +97,7 @@ export default function NuovoProfiloAnimalePage() {
 
   const cleanedChip = useMemo(() => normalizeChip(chipNumber), [chipNumber]);
 
+  // 🔹 CONTROLLO PROFILO COMPLETO
   useEffect(() => {
     let alive = true;
 
@@ -144,16 +159,38 @@ export default function NuovoProfiloAnimalePage() {
         return;
       }
 
-      const fileName = `animal_${Date.now()}.jpg`;
+      const ext = extFromFile(file);
+      const fileName = `animal_${Date.now()}.${ext}`;
       const path = `${PROFILE_FOLDER}/${authData.user.id}/${fileName}`;
 
-      const { error } = await supabase.storage.from(BUCKET).upload(path, file);
-      if (error) throw error;
+      const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file, {
+        upsert: true,
+        contentType: file.type || undefined,
+        cacheControl: "3600",
+      });
 
-      const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
-      setPhotoUrl(data.publicUrl);
-    } catch {
-      setError("Errore nel caricamento della foto. Riprova.");
+      if (upErr) {
+        console.error("STORAGE UPLOAD ERROR:", upErr);
+        setError(`Errore upload foto: ${upErr.message}`);
+        return;
+      }
+
+      const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(path);
+      const publicUrl = pub?.publicUrl ? `${pub.publicUrl}?t=${Date.now()}` : "";
+
+      if (!publicUrl) {
+        setError("Foto caricata ma URL non disponibile. Controlla impostazioni bucket.");
+        return;
+      }
+
+      setPhotoUrl(publicUrl);
+    } catch (e: any) {
+      console.error("UPLOAD PHOTO EXCEPTION:", e);
+      const msg =
+        e?.message ||
+        (typeof e === "string" ? e : "") ||
+        (navigator.onLine ? "Errore di rete durante l’upload." : "Sei offline.");
+      setError(msg);
     } finally {
       setUploading(false);
     }
@@ -168,7 +205,8 @@ export default function NuovoProfiloAnimalePage() {
 
     if (hasChip === "yes") {
       if (!cleanedChip) return setError("Inserisci il microchip.");
-      if (cleanedChip.length < 10) return setError("Numero microchip non valido.");
+      if (cleanedChip.length < 10)
+        return setError("Numero microchip non valido.");
     }
 
     setSaving(true);
@@ -194,8 +232,9 @@ export default function NuovoProfiloAnimalePage() {
       if (error) throw error;
 
       router.push("/identita");
-    } catch {
-      setError("Errore nel salvataggio. Riprova.");
+    } catch (e: any) {
+      console.error("ANIMAL INSERT ERROR:", e);
+      setError(e?.message || "Errore nel salvataggio. Riprova.");
     } finally {
       setSaving(false);
     }
@@ -204,7 +243,9 @@ export default function NuovoProfiloAnimalePage() {
   return (
     <main className="max-w-2xl">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">Crea profilo animale</h1>
+        <h1 className="text-3xl font-bold tracking-tight">
+          Crea profilo animale
+        </h1>
         <Link href="/identita" className="text-sm text-zinc-600 hover:underline">
           ← Torna
         </Link>
@@ -263,9 +304,9 @@ export default function NuovoProfiloAnimalePage() {
           )}
         </div>
 
-        <div className="mt-6">
+        <div className="mt-6 flex items-center gap-3">
           <label className="cursor-pointer rounded-lg bg-black px-4 py-2 text-white">
-            {uploading ? "Caricamento…" : "Carica foto"}
+            {uploading ? "Caricamento…" : photoUrl ? "Foto caricata ✅ (cambia)" : "Carica foto"}
             <input
               type="file"
               accept="image/*"
@@ -273,6 +314,10 @@ export default function NuovoProfiloAnimalePage() {
               onChange={(e) => uploadPhoto(e.target.files?.[0] ?? null)}
             />
           </label>
+
+          {photoUrl ? (
+            <span className="text-xs text-zinc-600 break-all">OK</span>
+          ) : null}
         </div>
 
         {error && (
