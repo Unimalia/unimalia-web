@@ -23,17 +23,34 @@ function normalizeCF(s: string) {
   return (s || "").replace(/\s+/g, "").trim().toUpperCase();
 }
 
+function normalizePhone(input: string) {
+  const raw = (input || "").replace(/\s+/g, "").trim();
+  if (!raw) return "";
+  return raw.startsWith("+") ? raw : `+39${raw}`;
+}
+
+function isLikelyFullName(s: string) {
+  const v = (s || "").trim();
+  if (v.length < 5) return false;
+  const parts = v.split(/\s+/).filter(Boolean);
+  return parts.length >= 2;
+}
+
 function isProfileComplete(p: any) {
   if (!p) return false;
 
-  return (
-    p.full_name?.trim()?.length >= 3 &&
-    normalizeCF(p.fiscal_code)?.length === 16 &&
-    p.address?.trim()?.length >= 5 &&
-    p.city?.trim()?.length >= 2 &&
-    p.province?.trim()?.length === 2 &&
-    p.cap?.trim()?.length === 5
-  );
+  const fullNameOk = isLikelyFullName(p.full_name ?? "");
+  const phoneOk = normalizePhone(p.phone ?? "").length >= 8;
+  const cityOk = (p.city ?? "").trim().length >= 2;
+
+  const cf = normalizeCF(p.fiscal_code ?? "");
+  const cfOk = !cf || cf.length === 16; // facoltativo
+
+  // Se la colonna non esiste (o non la selezioni), non blocchiamo.
+  const phoneVerified =
+    p.phone_verified === undefined ? true : p.phone_verified === true;
+
+  return fullNameOk && phoneOk && cityOk && cfOk && phoneVerified;
 }
 
 export default function NuovoProfiloAnimalePage() {
@@ -67,20 +84,20 @@ export default function NuovoProfiloAnimalePage() {
       const user = authData.user;
 
       if (!user) {
-        router.replace("/login");
+        router.replace("/login?next=/identita/nuovo");
         return;
       }
 
       const { data } = await supabase
         .from("profiles")
-        .select("full_name,fiscal_code,address,city,province,cap")
+        .select("full_name,fiscal_code,phone,phone_verified,city")
         .eq("id", user.id)
         .single();
 
       if (!alive) return;
 
       if (!isProfileComplete(data)) {
-        router.replace("/profilo");
+        router.replace("/profilo?returnTo=/identita/nuovo");
         return;
       }
 
@@ -116,16 +133,14 @@ export default function NuovoProfiloAnimalePage() {
     try {
       const { data: authData } = await supabase.auth.getUser();
       if (!authData.user) {
-        router.push("/login");
+        router.push("/login?next=/identita/nuovo");
         return;
       }
 
       const fileName = `animal_${Date.now()}.jpg`;
       const path = `${PROFILE_FOLDER}/${authData.user.id}/${fileName}`;
 
-      const { error } = await supabase.storage
-        .from(BUCKET)
-        .upload(path, file);
+      const { error } = await supabase.storage.from(BUCKET).upload(path, file);
 
       if (error) throw error;
 
@@ -184,9 +199,7 @@ export default function NuovoProfiloAnimalePage() {
   return (
     <main className="max-w-2xl">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">
-          Crea profilo animale
-        </h1>
+        <h1 className="text-3xl font-bold tracking-tight">Crea profilo animale</h1>
         <Link href="/identita" className="text-sm text-zinc-600 hover:underline">
           ← Torna
         </Link>
