@@ -47,14 +47,14 @@ export async function getManagedAnimals(q?: string): Promise<ManagedAnimalRow[]>
 
     const nowIso = new Date().toISOString();
 
-    // ✅ FIX: i grant in tabella sono (grantee_type, grantee_id) NON org_id
+    // ✅ grant: (grantee_type, grantee_id) + valid_to
     const { data: grants, error: grantsErr } = await supabase
       .from("animal_access_grants")
-      .select("animal_id, status, valid_to, revoked_at, grantee_type, grantee_id")
+      .select("animal_id")
       .eq("grantee_type", "org")
       .eq("grantee_id", orgId)
-      .is("revoked_at", null)
       .eq("status", "active")
+      .is("revoked_at", null)
       .or(`valid_to.is.null,valid_to.gt.${nowIso}`);
 
     if (grantsErr) {
@@ -94,16 +94,14 @@ export async function getManagedAnimals(q?: string): Promise<ManagedAnimalRow[]>
       return [];
     }
 
-    // events aggregate (non blocca la lista se fallisce)
+    // events aggregate (non blocca lista)
     const { data: events, error: eventsErr } = await supabase
       .from("animal_clinic_events")
       .select("animal_id, occurred_at, reminder_at, deleted_at, is_validated")
       .in("animal_id", animalIds)
       .is("deleted_at", null);
 
-    if (eventsErr) {
-      console.error("[getManagedAnimals] eventsErr:", eventsErr);
-    }
+    if (eventsErr) console.error("[getManagedAnimals] eventsErr:", eventsErr);
 
     const byAnimal = new Map<string, { last: string | null; next: string | null }>();
     for (const ev of events ?? []) {
@@ -118,7 +116,6 @@ export async function getManagedAnimals(q?: string): Promise<ManagedAnimalRow[]>
           byAnimal.set(aid, { last: occurredAt, next: byAnimal.get(aid)?.next ?? null });
         }
       }
-
       if (reminderAt && reminderAt > nowIso) {
         const curNext = byAnimal.get(aid)?.next;
         if (!curNext || reminderAt < curNext) {
