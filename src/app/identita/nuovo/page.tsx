@@ -259,8 +259,14 @@ export default function NuovoProfiloAnimalePage() {
       const { data: authData } = await supabase.auth.getUser();
       const user = authData.user;
 
-      const payload: any = {
-        owner_id: user?.id,
+      if (!user) {
+        setError("Sessione scaduta. Effettua di nuovo il login.");
+        setSaving(false);
+        return;
+      }
+
+      const payload = {
+        owner_id: user.id,
         name: name.trim(),
         species: species.trim(),
         breed: breed.trim() || null,
@@ -277,7 +283,8 @@ export default function NuovoProfiloAnimalePage() {
 
       router.push("/identita");
     } catch (e: any) {
-      setError(e?.message || "Errore nel salvataggio. Riprova.");
+      console.error(e);
+      setError(e?.message || "Errore nel salvataggio.");
     } finally {
       setSaving(false);
     }
