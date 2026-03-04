@@ -10,7 +10,15 @@ export default async function ProfessionistiAnimaliPage({
   searchParams: { q?: string };
 }) {
   const q = (searchParams?.q || "").trim();
-  const rows = await getManagedAnimals(q);
+
+  let rows: Awaited<ReturnType<typeof getManagedAnimals>> = [];
+  try {
+    rows = await getManagedAnimals(q);
+  } catch (e) {
+    // Log server-side (visibile nei log del deploy)
+    console.error("[professionisti/animali] getManagedAnimals failed", e);
+    rows = [];
+  }
 
   return (
     <div className="mx-auto max-w-6xl p-6">
@@ -23,8 +31,8 @@ export default async function ProfessionistiAnimaliPage({
 
       {rows.length === 0 ? (
         <div className="rounded-2xl border p-4 text-sm text-neutral-700">
-          Nessun animale autorizzato al momento. Se hai appena ottenuto un accesso, ricarica la
-          pagina.
+          Nessun animale autorizzato al momento (oppure si è verificato un errore nel caricamento).
+          Se hai appena ottenuto un accesso, ricarica la pagina.
         </div>
       ) : null}
 

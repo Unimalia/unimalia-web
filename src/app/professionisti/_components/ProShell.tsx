@@ -34,21 +34,15 @@ function getEmail(u: any) {
 
 export function isProfessionalUser(u: any) {
   if (!u) return false;
-
   const email = getEmail(u);
   if (PROFESSIONAL_EMAILS.has(email)) return true;
-
-  // fallback (futuro): metadata/ruoli veri
   return Boolean(u?.app_metadata?.is_professional || u?.user_metadata?.is_professional);
 }
 
 export function isVetUser(u: any) {
   if (!u) return false;
-
   const email = getEmail(u);
   if (VET_EMAILS.has(email)) return true;
-
-  // fallback (futuro): metadata/ruoli veri
   return Boolean(u?.app_metadata?.is_vet || u?.user_metadata?.is_vet);
 }
 
@@ -89,6 +83,16 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let alive = true;
 
+    async function hardRedirectToLogin() {
+      try {
+        await supabase.auth.signOut();
+      } catch {
+        // ignore
+      }
+      if (!alive) return;
+      router.replace("/professionisti/login?next=" + encodeURIComponent(pathname || "/professionisti"));
+    }
+
     async function check() {
       // lascia passare la pagina di login professionisti
       if (pathname?.startsWith("/professionisti/login")) {
@@ -96,8 +100,17 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      const { data } = await supabase.auth.getUser();
-      const user = data.user;
+      const { data, error } = await supabase.auth.getUser();
+
+      // ✅ FIX: refresh token rotto → ripulisci sessione e rimanda al login
+      const msg = String((error as any)?.message || "");
+      if (error && msg.toLowerCase().includes("refresh token")) {
+        console.error("[ProShell] Invalid refresh token -> forcing re-login", error);
+        await hardRedirectToLogin();
+        return;
+      }
+
+      const user = data?.user;
 
       if (!alive) return;
 
@@ -202,12 +215,7 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
             <div className="px-3 py-2 text-xs font-semibold text-zinc-500">Menu</div>
             <div className="flex flex-col gap-1">
               {items.map((it) => (
-                <SideLink
-                  key={`${it.href}:${it.label}`}
-                  href={it.href}
-                  label={it.label}
-                  onClick={() => setOpen(false)}
-                />
+                <SideLink key={`${it.href}:${it.label}`} href={it.href} label={it.label} />
               ))}
             </div>
           </div>
@@ -217,39 +225,37 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
         <main className="min-w-0">{children}</main>
       </div>
 
-      {/* ✅ MOBILE DRAWER (fix: overlay non blocca i link, link cliccabili e chiude menu) */}
+      {/* MOBILE DRAWER */}
       {open && (
         <div className="lg:hidden">
-          {/* overlay */}
           <button
             type="button"
-            className="fixed inset-0 z-40 bg-black/30"
-            onClick={() => setOpen(false)}
+            className="fixed inset-0 z-40 cursor-default bg-black/30"
             aria-label="Chiudi menu"
+            onClick={() => setOpen(false)}
           />
-
-          {/* panel */}
-          <div className="fixed inset-y-0 right-0 z-50 w-[86%] max-w-sm bg-white shadow-xl border-l border-zinc-200">
-            <div className="p-3 flex items-center justify-between">
+          <div className="fixed right-0 top-0 z-50 h-full w-[86%] max-w-sm bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b p-4">
               <div className="text-sm font-semibold">Menu</div>
               <button
                 type="button"
-                className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold"
+                className="rounded-xl border px-3 py-2 text-sm"
                 onClick={() => setOpen(false)}
               >
                 Chiudi
               </button>
             </div>
-
-            <div className="p-2 flex flex-col gap-1">
-              {items.map((it) => (
-                <SideLink
-                  key={`${it.href}:${it.label}`}
-                  href={it.href}
-                  label={it.label}
-                  onClick={() => setOpen(false)}
-                />
-              ))}
+            <div className="p-2">
+              <div className="flex flex-col gap-1">
+                {items.map((it) => (
+                  <SideLink
+                    key={`${it.href}:${it.label}:mobile`}
+                    href={it.href}
+                    label={it.label}
+                    onClick={() => setOpen(false)}
+                  />
+                ))}
+              </div>
             </div>
           </div>
         </div>
