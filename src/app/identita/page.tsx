@@ -57,18 +57,8 @@ function isLikelyFullName(s: string) {
   return parts.length >= 2;
 }
 
-function statusBadge(status: string) {
-  switch (status) {
-    case "lost":
-      return { label: "Smarrito", cls: "bg-red-50 text-red-700 border-red-200" };
-    case "found":
-      return { label: "Ritrovato", cls: "bg-sky-50 text-sky-700 border-sky-200" };
-    case "home":
-    case "safe":
-    default:
-      return { label: "A casa", cls: "bg-emerald-50 text-emerald-700 border-emerald-200" };
-  }
-}
+// OGGI non blocchiamo per phone_verified
+const REQUIRE_PHONE_VERIFIED = false;
 
 function isProfileComplete(p: OwnerProfile | null) {
   if (!p) return false;
@@ -80,11 +70,24 @@ function isProfileComplete(p: OwnerProfile | null) {
   const cf = normalizeCF(p.fiscal_code ?? "");
   const cfOk = !cf || cf.length === 16; // facoltativo
 
-  // Se la colonna non esiste (o non la selezioni), non blocchiamo.
-  const phoneVerified =
-    (p as any).phone_verified === undefined ? true : (p as any).phone_verified === true;
+  if (!fullNameOk || !phoneOk || !cityOk || !cfOk) return false;
 
-  return fullNameOk && phoneOk && cityOk && cfOk && phoneVerified;
+  if (!REQUIRE_PHONE_VERIFIED) return true;
+
+  return (p as any).phone_verified === true;
+}
+
+function statusBadge(status: string) {
+  switch (status) {
+    case "lost":
+      return { label: "Smarrito", cls: "bg-red-50 text-red-700 border-red-200" };
+    case "found":
+      return { label: "Ritrovato", cls: "bg-sky-50 text-sky-700 border-sky-200" };
+    case "home":
+    case "safe":
+    default:
+      return { label: "A casa", cls: "bg-emerald-50 text-emerald-700 border-emerald-200" };
+  }
 }
 
 function digitalBarcode(a: Animal) {
@@ -103,6 +106,7 @@ export default function IdentitaPage() {
   const [err, setErr] = useState<string | null>(null);
 
   const [profileOk, setProfileOk] = useState(true);
+  const [phoneVerified, setPhoneVerified] = useState<boolean | null>(null);
 
   // modal codice
   const [open, setOpen] = useState(false);
@@ -137,7 +141,13 @@ export default function IdentitaPage() {
         .maybeSingle();
 
       if (!alive) return;
-      setProfileOk(isProfileComplete((pData as OwnerProfile) || null));
+
+      const profile = (pData as OwnerProfile) || null;
+      setProfileOk(isProfileComplete(profile));
+
+      // per banner “consigliato verificare”
+      const pv = (profile as any)?.phone_verified;
+      setPhoneVerified(pv === undefined || pv === null ? null : pv === true);
 
       const { data, error } = await supabase
         .from("animals")
@@ -197,7 +207,6 @@ export default function IdentitaPage() {
       boxed={false}
       actions={<ButtonPrimary href="/identita/nuovo">+ Crea profilo</ButtonPrimary>}
     >
-      {/* banner profilo */}
       {!profileOk ? (
         <div className="mb-6">
           <Card>
@@ -206,7 +215,7 @@ export default function IdentitaPage() {
                 <div>
                   <p className="font-semibold">Completa il profilo proprietario</p>
                   <p className="mt-1 text-amber-900/80">
-                    Serve per creare identità e mostrare correttamente i tuoi dati ai professionisti.
+                    Inserisci nome e cognome, telefono e città per creare un’identità animale.
                   </p>
                 </div>
                 <ButtonSecondary href="/profilo?returnTo=/identita">Vai al profilo →</ButtonSecondary>
@@ -216,7 +225,25 @@ export default function IdentitaPage() {
         </div>
       ) : null}
 
-      {/* error */}
+      {/* banner “verifica telefono” (non blocca) */}
+      {profileOk && phoneVerified === false ? (
+        <div className="mb-6">
+          <Card>
+            <div className="rounded-2xl border border-zinc-200 bg-white p-5 text-sm text-zinc-900">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="font-semibold">Verifica telefono (consigliato)</p>
+                  <p className="mt-1 text-zinc-700">
+                    La verifica aumenta fiducia e può essere richiesta in futuro per alcune funzioni.
+                  </p>
+                </div>
+                <ButtonSecondary href="/profilo?returnTo=/identita">Gestisci →</ButtonSecondary>
+              </div>
+            </div>
+          </Card>
+        </div>
+      ) : null}
+
       {err ? (
         <Card>
           <div className="rounded-2xl border border-red-200 bg-white p-5 text-sm text-red-700 shadow-sm">
@@ -225,14 +252,11 @@ export default function IdentitaPage() {
         </Card>
       ) : null}
 
-      {/* empty */}
       {!err && animals.length === 0 ? (
         <Card>
           <div className="p-2">
             <h2 className="text-base font-semibold text-zinc-900">Nessun profilo animale</h2>
-            <p className="mt-2 text-sm text-zinc-700">
-              Crea la prima identità digitale del tuo animale.
-            </p>
+            <p className="mt-2 text-sm text-zinc-700">Crea la prima identità digitale del tuo animale.</p>
             <div className="mt-5">
               <ButtonPrimary href="/identita/nuovo">+ Crea profilo</ButtonPrimary>
             </div>
@@ -240,7 +264,6 @@ export default function IdentitaPage() {
         </Card>
       ) : null}
 
-      {/* grid */}
       {animals.length > 0 ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {animals.map((a) => {
@@ -303,7 +326,10 @@ export default function IdentitaPage() {
                     <ButtonSecondary href={`/identita/${a.id}/modifica`}>Modifica</ButtonSecondary>
                     <button
                       type="button"
-                      onClick={() => openCode(a)}
+                      onClick={() => {
+                        setSelected(a);
+                        setOpen(true);
+                      }}
                       className="inline-flex items-center justify-center rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
                     >
                       Codice
@@ -316,7 +342,6 @@ export default function IdentitaPage() {
         </div>
       ) : null}
 
-      {/* modal codici */}
       {open && selected ? (
         <div
           className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4"
@@ -354,12 +379,8 @@ export default function IdentitaPage() {
             </div>
 
             <div className="mt-6 flex flex-wrap gap-2">
-              <ButtonSecondary href={`/scansiona/animali/${selected.id}`}>
-                Pagina scansione →
-              </ButtonSecondary>
-              <ButtonPrimary href={`/identita/${selected.id}`}>
-                Apri scheda →
-              </ButtonPrimary>
+              <ButtonSecondary href={`/scansiona/animali/${selected.id}`}>Pagina scansione →</ButtonSecondary>
+              <ButtonPrimary href={`/identita/${selected.id}`}>Apri scheda →</ButtonPrimary>
             </div>
           </div>
         </div>
