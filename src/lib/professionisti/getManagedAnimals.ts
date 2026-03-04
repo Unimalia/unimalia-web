@@ -1,6 +1,7 @@
 // src/lib/professionisti/getManagedAnimals.ts
 import "server-only";
 import { createServerSupabaseClient, supabaseAdmin } from "@/lib/supabase/server";
+import { getProfessionalOrgId } from "@/lib/professionisti/org";
 
 export type ManagedAnimalRow = {
   animal_id: string;
@@ -19,27 +20,18 @@ export async function getManagedAnimals(q?: string): Promise<ManagedAnimalRow[]>
 
   const {
     data: { user },
+    error: authErr,
   } = await supabase.auth.getUser();
-  if (!user) return [];
 
-  // org_id del professionista (questa query resta con supabase "normale" perché dipende dall'utente)
-  const { data: proProfile, error: proErr } = await supabase
-    .from("professional_profiles")
-    .select("org_id")
-    .eq("user_id", user.id)
-    .maybeSingle();
+  if (authErr || !user) return [];
 
-  if (proErr) {
-    console.error("[getManagedAnimals] proErr:", proErr);
-    return [];
-  }
-
-  const orgId = (proProfile as any)?.org_id as string | undefined;
+  // ✅ UNICA fonte di verità (stessa della grants/check)
+  const orgId = await getProfessionalOrgId();
   if (!orgId) return [];
 
   const nowIso = new Date().toISOString();
 
-  // ✅ grants letti con ADMIN (bypass RLS) usando schema corretto grantee_type/grantee_id + valid_to
+  // ✅ schema grants corretto
   const { data: grants, error: grantsErr } = await admin
     .from("animal_access_grants")
     .select("animal_id")
@@ -59,7 +51,7 @@ export async function getManagedAnimals(q?: string): Promise<ManagedAnimalRow[]>
   );
   if (animalIds.length === 0) return [];
 
-  // ✅ animals letti con ADMIN (bypass RLS)
+  // animals + owner
   let animalsQuery = admin
     .from("animals")
     .select(
@@ -86,7 +78,7 @@ export async function getManagedAnimals(q?: string): Promise<ManagedAnimalRow[]>
     return [];
   }
 
-  // events aggregate (se fallisce non blocca la lista)
+  // events aggregate (non blocca)
   const { data: events, error: eventsErr } = await admin
     .from("animal_clinic_events")
     .select("animal_id, occurred_at, reminder_at, deleted_at, is_validated")
