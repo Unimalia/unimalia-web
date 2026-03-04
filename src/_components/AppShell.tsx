@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import { createPortal } from "react-dom";
 import AuthButtons from "./AuthButtons";
 
 type NavItem = { href: string; label: string };
@@ -38,7 +39,7 @@ function NavLink({
       className={cx(
         "relative inline-flex items-center rounded-xl px-3 py-2 text-sm font-medium transition",
         fullWidth && "w-full justify-start",
-        active ? "bg-black text-white" : "text-zinc-700 hover:bg-zinc-100 hover:text-black"
+        active ? "bg-zinc-900 text-white" : "text-zinc-700 hover:bg-zinc-100 hover:text-black"
       )}
     >
       {label}
@@ -48,18 +49,11 @@ function NavLink({
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  const nav: NavItem[] = useMemo(
-    () => [
-      { href: "/smarrimenti", label: "Smarrimenti" },
-      { href: "/ritrovati", label: "Ritrovati" },
-      { href: "/adotta", label: "Adozioni" },
-      { href: "/servizi", label: "Servizi" },
-      { href: "/professionisti", label: "Professionisti" },
-    ],
-    []
-  );
+  useEffect(() => setMounted(true), []);
 
+  // chiude menu su ESC
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") setOpen(false);
@@ -68,6 +62,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
+  // blocca scroll quando drawer aperto
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
@@ -77,59 +72,24 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     };
   }, [open]);
 
-  return (
-    <div className="min-h-screen bg-zinc-50 text-zinc-900">
-      <header className="sticky top-0 z-50 border-b border-zinc-200 bg-white/80 backdrop-blur">
-        <div className="container-page flex items-center justify-between gap-3 py-4 sm:py-5 pl-2 sm:pl-4">
-          <Link href="/" className="flex items-center gap-3" aria-label="Vai alla home UNIMALIA">
-            <Image
-              src="/logo-main.png"
-              alt="UNIMALIA"
-              width={120}
-              height={110}
-              priority
-              className="h-11 w-auto sm:h-12"
-            />
-          </Link>
+  const nav: NavItem[] = useMemo(
+    () => [
+      { href: "/smarrimenti", label: "Smarrimenti" },
+      { href: "/ritrovati", label: "Ritrovati" },
+      { href: "/adotta", label: "Adozioni" },
+      { href: "/servizi", label: "Servizi" },
+      { href: "/identita", label: "Identità animale" },
+      { href: "/smarrimenti/nuovo", label: "Pubblica smarrimento" },
+    ],
+    []
+  );
 
-          <div className="hidden min-w-0 flex-1 items-center justify-end gap-3 md:flex">
-            <nav className="flex min-w-0 flex-1 items-center justify-end gap-1 overflow-x-auto whitespace-nowrap">
-              {nav.map((item) => (
-                <NavLink key={item.href} href={item.href} label={item.label} />
-              ))}
-            </nav>
+  const proHref = "/professionisti/dashboard";
 
-            <Link
-              href="/smarrimenti/nuovo"
-              className="inline-flex items-center justify-center rounded-xl bg-black px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-900"
-            >
-              Pubblica
-            </Link>
-
-            <AuthButtons />
-          </div>
-
-          <div className="flex items-center gap-2 md:hidden">
-            <Link
-              href="/smarrimenti/nuovo"
-              className="inline-flex items-center justify-center rounded-xl bg-black px-3 py-2 text-sm font-semibold text-white transition hover:bg-zinc-900"
-            >
-              Pubblica
-            </Link>
-
-            <button
-              type="button"
-              className="inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-900 shadow-sm transition hover:bg-zinc-50"
-              onClick={() => setOpen(true)}
-              aria-label="Apri menu"
-            >
-              ☰
-            </button>
-          </div>
-        </div>
-
-        {open && (
-          <div className="fixed inset-0 z-[100] md:hidden">
+  const mobileDrawer =
+    open && mounted
+      ? createPortal(
+          <div className="fixed inset-0 z-[1000] md:hidden">
             <button
               type="button"
               className="absolute inset-0 cursor-default bg-black/30"
@@ -165,11 +125,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
                 <div className="mt-4 border-t border-zinc-200 px-4 pt-4">
                   <Link
-                    href="/smarrimenti/nuovo"
+                    href={proHref}
                     onClick={() => setOpen(false)}
                     className="inline-flex w-full items-center justify-center rounded-xl bg-black px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-900"
                   >
-                    Pubblica
+                    Professionisti
                   </Link>
 
                   <div className="mt-3">
@@ -178,9 +138,67 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 </div>
               </div>
             </div>
+          </div>,
+          document.body
+        )
+      : null;
+
+  return (
+    <div className="min-h-screen bg-zinc-50 text-zinc-900">
+      <header className="sticky top-0 z-50 border-b border-zinc-200 bg-white/80 backdrop-blur">
+        <div className="container-page flex items-center justify-between gap-3 py-4 sm:py-5 pl-2 sm:pl-4">
+          <Link href="/" className="flex items-center gap-3" aria-label="Vai alla home UNIMALIA">
+            <Image
+              src="/logo-main.png"
+              alt="UNIMALIA"
+              width={120}
+              height={110}
+              priority
+              className="h-11 w-auto sm:h-12"
+            />
+          </Link>
+
+          {/* DESKTOP */}
+          <div className="hidden min-w-0 flex-1 items-center justify-end gap-3 md:flex">
+            <nav className="flex min-w-0 flex-1 items-center justify-end gap-1 overflow-x-auto whitespace-nowrap">
+              {nav.map((item) => (
+                <NavLink key={item.href} href={item.href} label={item.label} />
+              ))}
+            </nav>
+
+            {/* CTA evidenziata */}
+            <Link
+              href={proHref}
+              className="inline-flex items-center justify-center rounded-xl bg-black px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-900"
+            >
+              Professionisti
+            </Link>
+
+            <AuthButtons />
           </div>
-        )}
+
+          {/* MOBILE */}
+          <div className="flex items-center gap-2 md:hidden">
+            <Link
+              href={proHref}
+              className="inline-flex items-center justify-center rounded-xl bg-black px-3 py-2 text-sm font-semibold text-white transition hover:bg-zinc-900"
+            >
+              Professionisti
+            </Link>
+
+            <button
+              type="button"
+              className="inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-900 shadow-sm transition hover:bg-zinc-50"
+              onClick={() => setOpen(true)}
+              aria-label="Apri menu"
+            >
+              ☰
+            </button>
+          </div>
+        </div>
       </header>
+
+      {mobileDrawer}
 
       <main className="container-page py-8 sm:py-10">{children}</main>
 

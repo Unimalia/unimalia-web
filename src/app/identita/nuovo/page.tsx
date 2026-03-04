@@ -36,7 +36,6 @@ function isLikelyFullName(s: string) {
   return parts.length >= 2;
 }
 
-// FUTURO SMS: metti true quando attivi verifica
 const REQUIRE_PHONE_VERIFIED = false;
 
 function isProfileComplete(p: any) {
@@ -55,14 +54,6 @@ function isProfileComplete(p: any) {
   return p.phone_verified === true;
 }
 
-function extFromType(type: string) {
-  const t = (type || "").toLowerCase();
-  if (t.includes("png")) return "png";
-  if (t.includes("webp")) return "webp";
-  if (t.includes("gif")) return "gif";
-  return "jpg";
-}
-
 function withTimeout<T>(p: Promise<T>, ms: number, msg: string) {
   let t: any;
   const timeout = new Promise<T>((_resolve, reject) => {
@@ -71,15 +62,8 @@ function withTimeout<T>(p: Promise<T>, ms: number, msg: string) {
   return Promise.race([p, timeout]).finally(() => clearTimeout(t));
 }
 
-/**
- * Compressione lato client:
- * - ridimensiona max 1600px
- * - esporta JPEG quality 0.85
- * Così su Android eviti upload “appeso”.
- */
 async function compressImageToJpeg(file: File, maxSide = 1600, quality = 0.85): Promise<File> {
   const blobUrl = URL.createObjectURL(file);
-
   try {
     const img = await new Promise<HTMLImageElement>((resolve, reject) => {
       const el = new Image();
@@ -90,7 +74,6 @@ async function compressImageToJpeg(file: File, maxSide = 1600, quality = 0.85): 
 
     const w = img.naturalWidth || img.width;
     const h = img.naturalHeight || img.height;
-
     if (!w || !h) throw new Error("Dimensioni immagine non valide.");
 
     const scale = Math.min(1, maxSide / Math.max(w, h));
@@ -114,8 +97,7 @@ async function compressImageToJpeg(file: File, maxSide = 1600, quality = 0.85): 
       );
     });
 
-    const outName = `photo_${Date.now()}.jpg`;
-    return new File([outBlob], outName, { type: "image/jpeg" });
+    return new File([outBlob], `photo_${Date.now()}.jpg`, { type: "image/jpeg" });
   } finally {
     URL.revokeObjectURL(blobUrl);
   }
@@ -123,6 +105,7 @@ async function compressImageToJpeg(file: File, maxSide = 1600, quality = 0.85): 
 
 export default function NuovoProfiloAnimalePage() {
   const router = useRouter();
+
   const fileRef = useRef<HTMLInputElement | null>(null);
 
   const [checkingProfile, setCheckingProfile] = useState(true);
@@ -141,7 +124,9 @@ export default function NuovoProfiloAnimalePage() {
 
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const cleanedChip = useMemo(() => normalizeChip(chipNumber), [chipNumber]);
 
@@ -190,14 +175,16 @@ export default function NuovoProfiloAnimalePage() {
 
   async function uploadPhoto(file: File | null) {
     setError(null);
-    setPhotoUrl("");
+    setNotice(null);
 
     if (!file) return setError("Nessun file selezionato.");
     setSelectedFileName(file.name || "foto");
+
     if (!file.type.startsWith("image/")) return setError("Seleziona un file immagine valido.");
     if (file.size > 20 * 1024 * 1024) return setError("Immagine troppo grande (max 20MB).");
 
     setUploading(true);
+    setNotice("Caricamento foto in corso…");
 
     try {
       const { data: authData } = await supabase.auth.getUser();
@@ -207,22 +194,21 @@ export default function NuovoProfiloAnimalePage() {
         return;
       }
 
-      // 1) Comprimi (fondamentale su Android)
+      const wasAlreadySet = !!photoUrl;
+
       const compressed = await withTimeout(
         compressImageToJpeg(file, 1600, 0.85),
         15000,
         "Compressione immagine bloccata (timeout 15s)."
       );
 
-      // 2) Upload su storage (file molto più piccolo)
-      const ext = extFromType(compressed.type);
-      const fileName = `animal_${Date.now()}.${ext}`;
+      const fileName = `animal_${Date.now()}.jpg`;
       const path = `${PROFILE_FOLDER}/${user.id}/${fileName}`;
 
       const up = await withTimeout(
         supabase.storage.from(BUCKET).upload(path, compressed, {
           upsert: true,
-          contentType: compressed.type || "image/jpeg",
+          contentType: "image/jpeg",
           cacheControl: "3600",
         }),
         45000,
@@ -230,8 +216,8 @@ export default function NuovoProfiloAnimalePage() {
       );
 
       if (up.error) {
-        console.error("STORAGE UPLOAD ERROR:", up.error);
         setError(`Errore upload foto: ${up.error.message}`);
+        setNotice(null);
         return;
       }
 
@@ -240,13 +226,15 @@ export default function NuovoProfiloAnimalePage() {
 
       if (!publicUrl) {
         setError("Foto caricata ma URL non disponibile. Controlla bucket public.");
+        setNotice(null);
         return;
       }
 
       setPhotoUrl(publicUrl);
+      setNotice(wasAlreadySet ? "Foto aggiornata correttamente ✅" : "Foto caricata correttamente ✅");
     } catch (e: any) {
-      console.error("UPLOAD PHOTO EXCEPTION:", e);
       setError(e?.message || "Errore durante l’upload foto.");
+      setNotice(null);
     } finally {
       setUploading(false);
     }
@@ -254,6 +242,7 @@ export default function NuovoProfiloAnimalePage() {
 
   async function submit() {
     setError(null);
+    setNotice(null);
 
     if (!name.trim()) return setError("Inserisci il nome.");
     if (!species.trim()) return setError("Seleziona il tipo animale.");
@@ -288,11 +277,14 @@ export default function NuovoProfiloAnimalePage() {
 
       router.push("/identita");
     } catch (e: any) {
-      console.error("ANIMAL INSERT ERROR:", e);
       setError(e?.message || "Errore nel salvataggio. Riprova.");
     } finally {
       setSaving(false);
     }
+  }
+
+  function openFilePicker() {
+    fileRef.current?.click();
   }
 
   return (
@@ -327,6 +319,7 @@ export default function NuovoProfiloAnimalePage() {
 
         <div className="mt-6">
           <p className="text-sm font-semibold">Microchip</p>
+
           <div className="mt-2 flex gap-4 text-sm">
             <label>
               <input type="radio" checked={hasChip === "yes"} onChange={() => setHasChip("yes")} /> Sì
@@ -337,38 +330,59 @@ export default function NuovoProfiloAnimalePage() {
           </div>
 
           {hasChip === "yes" && (
-            <input
-              placeholder="Numero microchip *"
-              value={chipNumber}
-              onChange={(e) => setChipNumber(e.target.value)}
-              className="mt-3 w-full rounded-lg border border-zinc-300 px-3 py-2"
-            />
+            <div className="mt-3 space-y-2">
+              <input
+                placeholder="Numero microchip *"
+                value={chipNumber}
+                onChange={(e) => setChipNumber(e.target.value)}
+                className="w-full rounded-lg border border-zinc-300 px-3 py-2"
+              />
+
+              {/* UI pronta per il futuro: bottone scansione (lo colleghiamo dopo) */}
+              <button
+                type="button"
+                onClick={() => router.push("/professionisti/scansiona")}
+                className="rounded-lg border border-zinc-300 px-3 py-2 text-sm hover:bg-zinc-50"
+              >
+                📷 Scansiona microchip
+              </button>
+
+              <p className="text-xs text-zinc-500">
+                Puoi scansionare il codice a barre del microchip con la fotocamera.
+              </p>
+            </div>
           )}
         </div>
 
         <div className="mt-6 flex flex-col gap-2">
           <input
             ref={fileRef}
-            id="animal-photo"
             type="file"
             accept="image/*"
             className="hidden"
             onChange={(e) => {
               const f = e.target.files?.[0] ?? null;
               uploadPhoto(f);
+              // reset: permette di riselezionare lo stesso file e far scattare l’evento sempre
               e.currentTarget.value = "";
             }}
           />
 
           <div className="flex items-center gap-3">
-            <label htmlFor="animal-photo" className="cursor-pointer rounded-lg bg-black px-4 py-2 text-white">
-              {uploading ? "Caricamento…" : photoUrl ? "Foto caricata ✅ (cambia)" : "Carica foto"}
-            </label>
+            <button
+              type="button"
+              onClick={openFilePicker}
+              className="rounded-lg bg-black px-4 py-2 text-white hover:bg-zinc-900"
+            >
+              {uploading ? "Caricamento…" : photoUrl ? "Modifica foto" : "Carica foto"}
+            </button>
 
-            {selectedFileName ? <span className="text-xs text-zinc-600 truncate">{selectedFileName}</span> : null}
+            {selectedFileName ? (
+              <span className="text-xs text-zinc-600 truncate">{selectedFileName}</span>
+            ) : null}
           </div>
 
-          {photoUrl ? <p className="text-xs text-emerald-700">Foto caricata correttamente ✅</p> : null}
+          {notice ? <p className="text-xs text-emerald-700">{notice}</p> : null}
         </div>
 
         {error ? (
