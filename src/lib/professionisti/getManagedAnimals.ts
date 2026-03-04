@@ -30,33 +30,41 @@ export async function getManagedAnimals(q?: string): Promise<ManagedAnimalRow[]>
     } = await supabase.auth.getUser();
     if (!user) return [];
 
-    // tabella profili pro -> org_id
-    const { data: proProfile } = await supabase
+    // org_id del professionista
+    const { data: proProfile, error: proErr } = await supabase
       .from("professional_profiles")
       .select("org_id")
       .eq("user_id", user.id)
       .maybeSingle();
+
+    if (proErr) {
+      console.error("[getManagedAnimals] proErr:", proErr);
+      return [];
+    }
 
     const orgId = (proProfile as any)?.org_id as string | undefined;
     if (!orgId) return [];
 
     const nowIso = new Date().toISOString();
 
-    // ✅ FIX: valid_to (non expires_at)
+    // ✅ FIX: i grant in tabella sono (grantee_type, grantee_id) NON org_id
     const { data: grants, error: grantsErr } = await supabase
       .from("animal_access_grants")
-      .select("animal_id")
-      .eq("org_id", orgId)
+      .select("animal_id, status, valid_to, revoked_at, grantee_type, grantee_id")
+      .eq("grantee_type", "org")
+      .eq("grantee_id", orgId)
       .is("revoked_at", null)
+      .eq("status", "active")
       .or(`valid_to.is.null,valid_to.gt.${nowIso}`);
 
     if (grantsErr) {
-      // non buttare giù la pagina
       console.error("[getManagedAnimals] grantsErr:", grantsErr);
       return [];
     }
 
-    const animalIds = (grants ?? []).map((g: any) => g.animal_id).filter(Boolean);
+    const animalIds = Array.from(
+      new Set((grants ?? []).map((g: any) => g.animal_id).filter(Boolean))
+    );
     if (animalIds.length === 0) return [];
 
     // animals + owner
@@ -86,7 +94,7 @@ export async function getManagedAnimals(q?: string): Promise<ManagedAnimalRow[]>
       return [];
     }
 
-    // events aggregate
+    // events aggregate (non blocca la lista se fallisce)
     const { data: events, error: eventsErr } = await supabase
       .from("animal_clinic_events")
       .select("animal_id, occurred_at, reminder_at, deleted_at, is_validated")
@@ -95,7 +103,6 @@ export async function getManagedAnimals(q?: string): Promise<ManagedAnimalRow[]>
 
     if (eventsErr) {
       console.error("[getManagedAnimals] eventsErr:", eventsErr);
-      // anche se eventi falliscono, posso comunque mostrare lista animali
     }
 
     const byAnimal = new Map<string, { last: string | null; next: string | null }>();
