@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { Resend } from "resend";
+import { resend, EMAIL_FROM_NO_REPLY } from "@/lib/email/resend";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -61,10 +61,6 @@ export async function GET(req: Request) {
 
     const supabase = getSupabaseAdmin();
 
-    const resendKey = process.env.RESEND_API_KEY;
-    if (!resendKey) throw new Error("Missing RESEND_API_KEY");
-    const resend = new Resend(resendKey);
-
     const todayISO = utcTodayISODate();
 
     // Prendiamo tutti i reminders schedulati
@@ -97,7 +93,7 @@ export async function GET(req: Request) {
 
         // Invia email
         await resend.emails.send({
-          from: "UNIMALIA <no-reply@unimalia.it>",
+          from: EMAIL_FROM_NO_REPLY,
           to: r.recipient_email,
           subject: `Promemoria: ${r.title}`,
           html: `

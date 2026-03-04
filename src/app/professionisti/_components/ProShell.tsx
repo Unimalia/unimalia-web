@@ -202,7 +202,12 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
             <div className="px-3 py-2 text-xs font-semibold text-zinc-500">Menu</div>
             <div className="flex flex-col gap-1">
               {items.map((it) => (
-                <SideLink key={`${it.href}:${it.label}`} href={it.href} label={it.label} />
+                <SideLink
+                  key={`${it.href}:${it.label}`}
+                  href={it.href}
+                  label={it.label}
+                  onClick={() => setOpen(false)}
+                />
               ))}
             </div>
           </div>
@@ -212,42 +217,39 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
         <main className="min-w-0">{children}</main>
       </div>
 
-      {/* MOBILE DRAWER */}
+      {/* ✅ MOBILE DRAWER (fix: overlay non blocca i link, link cliccabili e chiude menu) */}
       {open && (
         <div className="lg:hidden">
+          {/* overlay */}
           <button
             type="button"
-            className="fixed inset-0 z-40 cursor-default bg-black/30"
-            aria-label="Chiudi menu"
+            className="fixed inset-0 z-40 bg-black/30"
             onClick={() => setOpen(false)}
+            aria-label="Chiudi menu"
           />
-          <div className="fixed right-0 top-0 z-50 h-full w-[86%] max-w-sm border-l border-zinc-200 bg-white shadow-2xl">
-            <div className="flex items-center justify-between px-4 py-4">
-              <div className="select-none">
-                <ProfessionistiBrand />
-                <div className="mt-2 text-xs text-zinc-600">Portale Professionisti</div>
-              </div>
+
+          {/* panel */}
+          <div className="fixed inset-y-0 right-0 z-50 w-[86%] max-w-sm bg-white shadow-xl border-l border-zinc-200">
+            <div className="p-3 flex items-center justify-between">
+              <div className="text-sm font-semibold">Menu</div>
               <button
                 type="button"
                 className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold"
                 onClick={() => setOpen(false)}
-                aria-label="Chiudi menu"
               >
-                ✕
+                Chiudi
               </button>
             </div>
 
-            <div className="px-2 pb-6">
-              <div className="flex flex-col gap-1">
-                {items.map((it) => (
-                  <SideLink
-                    key={`${it.href}:${it.label}`}
-                    href={it.href}
-                    label={it.label}
-                    onClick={() => setOpen(false)}
-                  />
-                ))}
-              </div>
+            <div className="p-2 flex flex-col gap-1">
+              {items.map((it) => (
+                <SideLink
+                  key={`${it.href}:${it.label}`}
+                  href={it.href}
+                  label={it.label}
+                  onClick={() => setOpen(false)}
+                />
+              ))}
             </div>
           </div>
         </div>

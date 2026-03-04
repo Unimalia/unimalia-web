@@ -16,6 +16,8 @@ type Row = {
   org_name?: string | null;
 };
 
+type Duration = "24h" | "7d" | "6m" | "forever";
+
 export default function OwnerRequestsClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -24,6 +26,8 @@ export default function OwnerRequestsClient() {
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<Row[]>([]);
   const [error, setError] = useState<string | null>(null);
+
+  const [duration, setDuration] = useState<Duration>("forever");
 
   const animalId = searchParams.get("animalId");
 
@@ -63,7 +67,7 @@ export default function OwnerRequestsClient() {
         body: JSON.stringify({
           id,
           action,
-          duration: "forever",
+          duration: action === "approve" ? duration : undefined,
         }),
       });
 
@@ -95,14 +99,34 @@ export default function OwnerRequestsClient() {
       {loading ? <div className="text-sm opacity-70">Caricamento…</div> : null}
 
       <section className="rounded-2xl border p-4 space-y-3">
-        <div className="font-medium">In attesa</div>
+        <div className="flex items-center justify-between gap-3">
+          <div className="font-medium">In attesa</div>
+
+          <div className="flex items-center gap-2 text-sm">
+            <span className="opacity-70">Durata approvazione:</span>
+            <select
+              className="rounded-xl border px-3 py-2"
+              value={duration}
+              onChange={(e) => setDuration(e.target.value as Duration)}
+              disabled={isPending}
+            >
+              <option value="24h">24 ore</option>
+              <option value="7d">7 giorni</option>
+              <option value="6m">6 mesi</option>
+              <option value="forever">Senza scadenza</option>
+            </select>
+          </div>
+        </div>
 
         {pending.length === 0 ? (
           <div className="text-sm opacity-70">Nessuna richiesta pending.</div>
         ) : (
           <div className="space-y-2">
             {pending.map((r) => (
-              <div key={r.id} className="rounded-xl border p-3 flex items-center justify-between gap-3">
+              <div
+                key={r.id}
+                className="rounded-xl border p-3 flex items-center justify-between gap-3"
+              >
                 <div className="text-sm">
                   <div className="font-medium">
                     {r.animal_name ?? r.animal_id} • {r.org_name ?? r.org_id}
@@ -143,13 +167,17 @@ export default function OwnerRequestsClient() {
         ) : (
           <div className="space-y-2">
             {history.map((r) => (
-              <div key={r.id} className="rounded-xl border p-3 flex items-center justify-between gap-3">
+              <div
+                key={r.id}
+                className="rounded-xl border p-3 flex items-center justify-between gap-3"
+              >
                 <div className="text-sm">
                   <div className="font-medium">
                     {r.animal_name ?? r.animal_id} • {r.org_name ?? r.org_id}
                   </div>
                   <div className="opacity-70">
                     Stato: {r.status} • {new Date(r.created_at).toLocaleString("it-IT")}
+                    {r.expires_at ? ` • Scade: ${new Date(r.expires_at).toLocaleDateString("it-IT")}` : ""}
                   </div>
                 </div>
 

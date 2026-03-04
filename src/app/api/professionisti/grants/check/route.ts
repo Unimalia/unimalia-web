@@ -21,7 +21,6 @@ export async function GET(req: Request) {
 
   const orgId = await getProfessionalOrgId();
   if (!orgId) {
-    // richiesta riuscita ma nessuna org -> nessun grant
     return NextResponse.json({ ok: false, hasGrant: false, reason: "missing_org" });
   }
 
@@ -33,14 +32,5 @@ export async function GET(req: Request) {
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
 
   const hasGrant = Boolean(data);
-
-  // ✅ compatibilità:
-  // - ok = grant attivo (come prima, così lo scanner “vecchio” funziona)
-  // - hasGrant = esplicito (così lo scanner “nuovo” funziona)
-  return NextResponse.json({
-    ok: hasGrant,
-    hasGrant,
-    orgId,
-    animalId,
-  });
+  return NextResponse.json({ ok: hasGrant, hasGrant, orgId, animalId });
 }

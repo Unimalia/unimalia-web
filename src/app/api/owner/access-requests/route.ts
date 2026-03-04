@@ -95,7 +95,6 @@ export async function POST(req: Request) {
   const action = String(body.action) as Action;
   const duration = (body.duration ? String(body.duration) : "24h") as Duration;
 
-  // 1) Carica request e verifica owner
   const { data: reqRow, error: reqErr } = await supabase
     .from("animal_access_requests")
     .select("id, animal_id, owner_id, org_id, status, requested_scope")
@@ -104,11 +103,8 @@ export async function POST(req: Request) {
 
   if (reqErr) return NextResponse.json({ error: reqErr.message }, { status: 500 });
   if (!reqRow) return NextResponse.json({ error: "Request not found" }, { status: 404 });
-  if (reqRow.owner_id !== user.id) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  if (reqRow.owner_id !== user.id) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  // 2) Approvazione: crea grant + marca request approved
   if (action === "approve") {
     const admin = supabaseAdmin();
     const validTo = computeValidTo(duration);
@@ -131,10 +127,7 @@ export async function POST(req: Request) {
 
     const { error: updErr } = await supabase
       .from("animal_access_requests")
-      .update({
-        status: "approved",
-        expires_at: validTo,
-      })
+      .update({ status: "approved", expires_at: validTo })
       .eq("id", id);
 
     if (updErr) return NextResponse.json({ error: updErr.message }, { status: 500 });
@@ -142,7 +135,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, status: "approved" });
   }
 
-  // 3) Rifiuta
   if (action === "reject") {
     const { error: updErr } = await supabase
       .from("animal_access_requests")
@@ -154,7 +146,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, status: "rejected" });
   }
 
-  // 4) Blocca (MVP)
   if (action === "block") {
     const { error: updErr } = await supabase
       .from("animal_access_requests")
@@ -166,7 +157,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, status: "blocked" });
   }
 
-  // 5) Revoca grant
   if (action === "revoke") {
     const admin = supabaseAdmin();
 

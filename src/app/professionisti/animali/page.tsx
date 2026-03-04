@@ -23,7 +23,8 @@ export default async function ProfessionistiAnimaliPage({
 
       {rows.length === 0 ? (
         <div className="rounded-2xl border p-4 text-sm text-neutral-700">
-          Nessun animale autorizzato al momento. Se hai appena ottenuto un accesso, ricarica la pagina.
+          Nessun animale autorizzato al momento. Se hai appena ottenuto un accesso, ricarica la
+          pagina.
         </div>
       ) : null}
 
