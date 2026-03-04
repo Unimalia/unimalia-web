@@ -34,7 +34,10 @@ function isProfileComplete(p: any) {
   const cf = normalizeCF(p.fiscal_code ?? "");
   const cfOk = !cf || cf.length === 16; // facoltativo
 
-  const phoneVerified = p.phone_verified === true; // richiede colonna boolean in profiles
+  // Se la colonna non esiste (o non la selezioni), non blocchiamo.
+  const phoneVerified =
+    p.phone_verified === undefined ? true : p.phone_verified === true;
+
   return fullNameOk && phoneOk && cityOk && cfOk && phoneVerified;
 }
 
@@ -56,7 +59,7 @@ async function decideRedirect(router: ReturnType<typeof useRouter>, fallback: st
     .single();
 
   if (!isProfileComplete(profile)) {
-    router.replace("/profilo");
+    router.replace(`/profilo?returnTo=${encodeURIComponent(fallback)}`);
   } else {
     router.replace(fallback);
   }
@@ -67,7 +70,9 @@ export default function LoginClient() {
   const searchParams = useSearchParams();
   const next = searchParams.get("next") || "/identita";
 
-  const [mode, setMode] = useState<"login" | "signup">("login");
+  const initialMode = searchParams.get("mode") === "signup" ? "signup" : "login";
+  const [mode, setMode] = useState<"login" | "signup">(initialMode);
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -170,10 +175,7 @@ export default function LoginClient() {
       if (user) {
         await supabase
           .from("profiles")
-          .upsert(
-            { id: user.id, phone: phoneE164, phone_verified: true },
-            { onConflict: "id" }
-          );
+          .upsert({ id: user.id, phone: phoneE164, phone_verified: true }, { onConflict: "id" });
       }
 
       setMsg("Telefono verificato ✅");
@@ -199,8 +201,7 @@ export default function LoginClient() {
       return setMsg("Inserisci una password (min 6 caratteri).");
 
     if (mode === "signup") {
-      if (!isLikelyFullName(fullName))
-        return setMsg("Inserisci nome e cognome (reali).");
+      if (!isLikelyFullName(fullName)) return setMsg("Inserisci nome e cognome (reali).");
       if (!phoneE164) return setMsg("Inserisci un numero di telefono valido.");
       if ((city || "").trim().length < 2) return setMsg("Inserisci la città.");
 
@@ -240,6 +241,7 @@ export default function LoginClient() {
           setMsg(
             "Registrazione completata ✅ Controlla l’email per confermare l’account. Dopo la conferma, accedi e completa la verifica del telefono."
           );
+          setMode("login");
           return;
         }
 
@@ -268,6 +270,11 @@ export default function LoginClient() {
         });
 
         if (error) {
+          const m = (error.message || "").toLowerCase();
+          if (m.includes("confirm") || m.includes("confirmed") || m.includes("not confirmed")) {
+            setMsg("Email non confermata. Controlla la tua casella di posta e clicca il link di conferma.");
+            return;
+          }
           setMsg("Credenziali non valide. Controlla email e password.");
           return;
         }
@@ -394,9 +401,7 @@ export default function LoginClient() {
                   placeholder="Es. +393331112222 (o 3331112222)"
                   required
                 />
-                <p className="mt-1 text-xs text-zinc-600">
-                  Se non inserisci il prefisso, assumiamo +39.
-                </p>
+                <p className="mt-1 text-xs text-zinc-600">Se non inserisci il prefisso, assumiamo +39.</p>
               </div>
 
               <div>

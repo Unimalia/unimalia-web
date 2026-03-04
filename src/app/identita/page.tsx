@@ -31,14 +31,30 @@ type Animal = {
 type OwnerProfile = {
   full_name: string | null;
   fiscal_code: string | null;
-  address: string | null;
+  phone: string | null;
+  phone_verified?: boolean | null;
   city: string | null;
-  province: string | null;
-  cap: string | null;
 };
 
 function normalizeChip(raw: string) {
   return (raw || "").replace(/\s+/g, "").trim();
+}
+
+function normalizeCF(s: string) {
+  return (s || "").replace(/\s+/g, "").trim().toUpperCase();
+}
+
+function normalizePhone(input: string) {
+  const raw = (input || "").replace(/\s+/g, "").trim();
+  if (!raw) return "";
+  return raw.startsWith("+") ? raw : `+39${raw}`;
+}
+
+function isLikelyFullName(s: string) {
+  const v = (s || "").trim();
+  if (v.length < 5) return false;
+  const parts = v.split(/\s+/).filter(Boolean);
+  return parts.length >= 2;
 }
 
 function statusBadge(status: string) {
@@ -56,13 +72,19 @@ function statusBadge(status: string) {
 
 function isProfileComplete(p: OwnerProfile | null) {
   if (!p) return false;
-  const full = (p.full_name ?? "").trim().length >= 3;
-  const cf = (p.fiscal_code ?? "").replace(/\s+/g, "").trim().toUpperCase().length === 16;
-  const addr = (p.address ?? "").trim().length >= 5;
-  const city = (p.city ?? "").trim().length >= 2;
-  const prov = (p.province ?? "").trim().length === 2;
-  const cap = (p.cap ?? "").trim().length === 5;
-  return full && cf && addr && city && prov && cap;
+
+  const fullNameOk = isLikelyFullName(p.full_name ?? "");
+  const phoneOk = normalizePhone(p.phone ?? "").length >= 8;
+  const cityOk = (p.city ?? "").trim().length >= 2;
+
+  const cf = normalizeCF(p.fiscal_code ?? "");
+  const cfOk = !cf || cf.length === 16; // facoltativo
+
+  // Se la colonna non esiste (o non la selezioni), non blocchiamo.
+  const phoneVerified =
+    (p as any).phone_verified === undefined ? true : (p as any).phone_verified === true;
+
+  return fullNameOk && phoneOk && cityOk && cfOk && phoneVerified;
 }
 
 function digitalBarcode(a: Animal) {
@@ -110,7 +132,7 @@ export default function IdentitaPage() {
 
       const { data: pData } = await supabase
         .from("profiles")
-        .select("full_name,fiscal_code,address,city,province,cap")
+        .select("full_name,fiscal_code,phone,phone_verified,city")
         .eq("id", user.id)
         .maybeSingle();
 
@@ -184,10 +206,10 @@ export default function IdentitaPage() {
                 <div>
                   <p className="font-semibold">Completa il profilo proprietario</p>
                   <p className="mt-1 text-amber-900/80">
-                    Serve per mostrare correttamente i tuoi dati ai professionisti.
+                    Serve per creare identità e mostrare correttamente i tuoi dati ai professionisti.
                   </p>
                 </div>
-                <ButtonSecondary href="/profilo">Vai al profilo →</ButtonSecondary>
+                <ButtonSecondary href="/profilo?returnTo=/identita">Vai al profilo →</ButtonSecondary>
               </div>
             </div>
           </Card>
