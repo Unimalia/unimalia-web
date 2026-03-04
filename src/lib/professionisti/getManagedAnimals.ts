@@ -7,7 +7,7 @@ export type ManagedAnimalRow = {
   animal_id: string;
   animal_name: string;
   species: string | null;
-  microchip: string | null;
+  microchip: string | null; // in DB è chip_number
   owner_name: string | null;
   last_visit_at: string | null;
   next_reminder_at: string | null;
@@ -30,13 +30,13 @@ export async function getManagedAnimals(q?: string): Promise<ManagedAnimalRow[]>
   } = await supabase.auth.getUser();
   if (!user) return [];
 
-  // ✅ ORG ID come nel resto del portale (grants/check)
+  // ✅ orgId coerente col resto del portale
   const orgId = await getProfessionalOrgId();
   if (!orgId) return [];
 
   const nowIso = new Date().toISOString();
 
-  // ✅ schema corretto: grantee_type + grantee_id + valid_to
+  // ✅ grants schema corretto
   const { data: grants, error: grantsErr } = await supabase
     .from("animal_access_grants")
     .select("animal_id, valid_to, revoked_at, status")
@@ -50,29 +50,39 @@ export async function getManagedAnimals(q?: string): Promise<ManagedAnimalRow[]>
   const animalIds = (grants ?? []).map((g: any) => g.animal_id).filter(Boolean);
   if (animalIds.length === 0) return [];
 
-  // animals + owner
+  // ✅ animals: usa chip_number (come lo scanner)
   let animalsQuery = supabase
     .from("animals")
-    .select(
-      `
-      id,
-      name,
-      species,
-      microchip,
-      status,
-      owner_id,
-      owner:profiles!animals_owner_id_fkey(full_name)
-    `
-    )
+    .select("id, name, species, chip_number, status, owner_id")
     .in("id", animalIds);
 
+  // Search SOLO sul subset autorizzato
   if (q && q.trim().length >= 2) {
     const qq = q.trim();
-    animalsQuery = animalsQuery.or(`name.ilike.%${qq}%,microchip.ilike.%${qq}%`);
+    animalsQuery = animalsQuery.or(`name.ilike.%${qq}%,chip_number.ilike.%${qq}%`);
   }
 
   const { data: animals, error: animalsErr } = await animalsQuery;
   if (animalsErr) throw animalsErr;
+
+  const ownerIds = Array.from(
+    new Set((animals ?? []).map((a: any) => a.owner_id).filter(Boolean))
+  );
+
+  // ✅ owner name senza join fragile
+  const ownerNameById = new Map<string, string>();
+  if (ownerIds.length > 0) {
+    const { data: owners, error: ownersErr } = await supabase
+      .from("profiles")
+      .select("id, full_name")
+      .in("id", ownerIds);
+
+    if (ownersErr) throw ownersErr;
+
+    for (const p of owners ?? []) {
+      ownerNameById.set((p as any).id, (p as any).full_name ?? (p as any).id);
+    }
+  }
 
   // events aggregate (starter)
   const { data: events, error: eventsErr } = await supabase
@@ -92,14 +102,16 @@ export async function getManagedAnimals(q?: string): Promise<ManagedAnimalRow[]>
 
     if (isValidated && occurredAt) {
       const cur = byAnimal.get(aid)?.last;
-      if (!cur || occurredAt > cur)
+      if (!cur || occurredAt > cur) {
         byAnimal.set(aid, { last: occurredAt, next: byAnimal.get(aid)?.next ?? null });
+      }
     }
 
     if (reminderAt && reminderAt > nowIso) {
       const curNext = byAnimal.get(aid)?.next;
-      if (!curNext || reminderAt < curNext)
+      if (!curNext || reminderAt < curNext) {
         byAnimal.set(aid, { last: byAnimal.get(aid)?.last ?? null, next: reminderAt });
+      }
     }
   }
 
@@ -109,8 +121,8 @@ export async function getManagedAnimals(q?: string): Promise<ManagedAnimalRow[]>
       animal_id: a.id,
       animal_name: a.name ?? "",
       species: a.species ?? null,
-      microchip: a.microchip ?? null,
-      owner_name: a.owner?.full_name ?? null,
+      microchip: a.chip_number ?? null,
+      owner_name: ownerNameById.get(a.owner_id) ?? null,
       last_visit_at: agg.last,
       next_reminder_at: agg.next,
       status: a.status ?? "active",
