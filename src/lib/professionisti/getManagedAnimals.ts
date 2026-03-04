@@ -1,64 +1,72 @@
 // src/lib/professionisti/getManagedAnimals.ts
 import "server-only";
-import { createServerSupabaseClient, supabaseAdmin } from "@/lib/supabase/server";
-import { getProfessionalOrgId } from "@/lib/professionisti/org";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 export type ManagedAnimalRow = {
   animal_id: string;
   animal_name: string;
   species: string | null;
-  microchip: string | null;
+  microchip: string | null; // compat UI (mostriamo chip_number qui dentro)
   owner_name: string | null;
   last_visit_at: string | null;
   next_reminder_at: string | null;
   status: "active" | "inactive" | string;
 };
 
+export function normalizeForSearch(v: unknown) {
+  return String(v ?? "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .trim();
+}
+
 export async function getManagedAnimals(q?: string): Promise<ManagedAnimalRow[]> {
   const supabase = await createServerSupabaseClient();
-  const admin = supabaseAdmin();
 
   const {
     data: { user },
-    error: authErr,
   } = await supabase.auth.getUser();
+  if (!user) return [];
 
-  if (authErr || !user) return [];
+  // org del professionista (tabella già presente nel tuo progetto)
+  const { data: proProfile, error: proErr } = await supabase
+    .from("professional_profiles")
+    .select("org_id")
+    .eq("user_id", user.id)
+    .maybeSingle();
 
-  // ✅ UNICA fonte di verità (stessa della grants/check)
-  const orgId = await getProfessionalOrgId();
+  if (proErr) throw proErr;
+
+  const orgId = (proProfile as any)?.org_id as string | undefined;
   if (!orgId) return [];
 
   const nowIso = new Date().toISOString();
 
-  // ✅ schema grants corretto
-  const { data: grants, error: grantsErr } = await admin
+  // ✅ schema corretto grants: grantee_type/grantee_id + valid_to + revoked_at + status
+  const { data: grants, error: grantsErr } = await supabase
     .from("animal_access_grants")
-    .select("animal_id")
+    .select("animal_id, status, revoked_at, valid_to, grantee_type, grantee_id")
     .eq("grantee_type", "org")
     .eq("grantee_id", orgId)
     .eq("status", "active")
     .is("revoked_at", null)
     .or(`valid_to.is.null,valid_to.gt.${nowIso}`);
 
-  if (grantsErr) {
-    console.error("[getManagedAnimals] grantsErr:", grantsErr);
-    return [];
-  }
+  if (grantsErr) throw grantsErr;
 
-  const animalIds = Array.from(
-    new Set((grants ?? []).map((g: any) => g.animal_id).filter(Boolean))
-  );
+  const animalIds = (grants ?? []).map((g: any) => g.animal_id).filter(Boolean);
   if (animalIds.length === 0) return [];
 
-  // animals + owner
-  let animalsQuery = admin
+  // animals + owner name (join già presente)
+  let animalsQuery = supabase
     .from("animals")
     .select(
       `
       id,
       name,
       species,
+      chip_number,
       microchip,
       status,
       owner_id,
@@ -67,25 +75,25 @@ export async function getManagedAnimals(q?: string): Promise<ManagedAnimalRow[]>
     )
     .in("id", animalIds);
 
+  // Search server-side SOLO sul subset autorizzato
   if (q && q.trim().length >= 2) {
     const qq = q.trim();
-    animalsQuery = animalsQuery.or(`name.ilike.%${qq}%,microchip.ilike.%${qq}%`);
+    animalsQuery = animalsQuery.or(
+      `name.ilike.%${qq}%,chip_number.ilike.%${qq}%,microchip.ilike.%${qq}%`
+    );
   }
 
   const { data: animals, error: animalsErr } = await animalsQuery;
-  if (animalsErr) {
-    console.error("[getManagedAnimals] animalsErr:", animalsErr);
-    return [];
-  }
+  if (animalsErr) throw animalsErr;
 
-  // events aggregate (non blocca)
-  const { data: events, error: eventsErr } = await admin
+  // events aggregate (come avevi già)
+  const { data: events, error: eventsErr } = await supabase
     .from("animal_clinic_events")
     .select("animal_id, occurred_at, reminder_at, deleted_at, is_validated")
     .in("animal_id", animalIds)
     .is("deleted_at", null);
 
-  if (eventsErr) console.error("[getManagedAnimals] eventsErr:", eventsErr);
+  if (eventsErr) throw eventsErr;
 
   const byAnimal = new Map<string, { last: string | null; next: string | null }>();
   for (const ev of events ?? []) {
@@ -96,26 +104,25 @@ export async function getManagedAnimals(q?: string): Promise<ManagedAnimalRow[]>
 
     if (isValidated && occurredAt) {
       const cur = byAnimal.get(aid)?.last;
-      if (!cur || occurredAt > cur) {
+      if (!cur || occurredAt > cur)
         byAnimal.set(aid, { last: occurredAt, next: byAnimal.get(aid)?.next ?? null });
-      }
     }
-
     if (reminderAt && reminderAt > nowIso) {
       const curNext = byAnimal.get(aid)?.next;
-      if (!curNext || reminderAt < curNext) {
+      if (!curNext || reminderAt < curNext)
         byAnimal.set(aid, { last: byAnimal.get(aid)?.last ?? null, next: reminderAt });
-      }
     }
   }
 
   return (animals ?? []).map((a: any) => {
     const agg = byAnimal.get(a.id) ?? { last: null, next: null };
+    const chip = a.chip_number ?? a.microchip ?? null;
+
     return {
       animal_id: a.id,
       animal_name: a.name ?? "",
       species: a.species ?? null,
-      microchip: a.microchip ?? null,
+      microchip: chip,
       owner_name: a.owner?.full_name ?? null,
       last_visit_at: agg.last,
       next_reminder_at: agg.next,
