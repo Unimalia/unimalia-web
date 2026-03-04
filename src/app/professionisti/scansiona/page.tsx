@@ -178,6 +178,20 @@ export default function ScannerPage() {
     }
   }
 
+  function hasGrantFromResponse(grantJson: any) {
+    // ✅ compat totale: il tuo endpoint attuale ritorna { ok: boolean }
+    if (grantJson?.ok === true) return true;
+
+    // fallback se in futuro cambi payload
+    return (
+      grantJson?.hasGrant === true ||
+      grantJson?.allowed === true ||
+      grantJson?.active === true ||
+      grantJson?.grantActive === true ||
+      grantJson?.grant?.status === "active"
+    );
+  }
+
   async function handleScan(raw: string) {
     const normalized = normalizeScanResult(raw);
 
@@ -236,7 +250,7 @@ export default function ScannerPage() {
           return;
         }
 
-        const hasGrant = grantJson?.hasGrant === true || grantJson?.ok === true;
+        const hasGrant = hasGrantFromResponse(grantJson);
 
         if (!hasGrant) {
           showBanner(
@@ -270,7 +284,7 @@ export default function ScannerPage() {
           return;
         }
 
-        const hasGrant = grantJson?.hasGrant === true || grantJson?.ok === true;
+        const hasGrant = hasGrantFromResponse(grantJson);
 
         if (!hasGrant) {
           showBanner(
@@ -363,9 +377,7 @@ export default function ScannerPage() {
       {mode === "camera" && (
         <div className="rounded-2xl border p-4">
           <div className="text-sm font-medium mb-2">📷 Modalità fotocamera</div>
-
           <CameraScanner onScan={(value) => handleScan(value)} disabled={busy} />
-
           <div className="text-xs opacity-70">
             Supporta QR UNIMALIA (link), UUID diretto o microchip (15 cifre; opzionale 10 cifre).
           </div>
