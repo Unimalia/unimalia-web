@@ -1,12 +1,10 @@
 import { NextResponse } from "next/server";
-import { Resend } from "resend";
+import { resend, EMAIL_FROM_NO_REPLY } from "@/lib/email/resend";
 
 export async function GET() {
   try {
-    const resend = new Resend(process.env.RESEND_API_KEY!);
-
     const result = await resend.emails.send({
-      from: "UNIMALIA <no-reply@unimalia.it>",
+      from: EMAIL_FROM_NO_REPLY,
       to: "valentinotwister@hotmail.it",
       subject: "Test email UNIMALIA",
       html: "<b>Se leggi questa mail, Resend funziona.</b>",
