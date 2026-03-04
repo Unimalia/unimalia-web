@@ -7,6 +7,9 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 
+const BUCKET = "animal-photos";
+const PROFILE_FOLDER = "profiles";
+
 function normalizeChip(raw: string) {
   return (raw || "")
     .trim()
@@ -52,12 +55,70 @@ function isProfileComplete(p: any) {
   return p.phone_verified === true;
 }
 
+function extFromType(type: string) {
+  const t = (type || "").toLowerCase();
+  if (t.includes("png")) return "png";
+  if (t.includes("webp")) return "webp";
+  if (t.includes("gif")) return "gif";
+  return "jpg";
+}
+
 function withTimeout<T>(p: Promise<T>, ms: number, msg: string) {
   let t: any;
   const timeout = new Promise<T>((_resolve, reject) => {
     t = setTimeout(() => reject(new Error(msg)), ms);
   });
   return Promise.race([p, timeout]).finally(() => clearTimeout(t));
+}
+
+/**
+ * Compressione lato client:
+ * - ridimensiona max 1600px
+ * - esporta JPEG quality 0.85
+ * Così su Android eviti upload “appeso”.
+ */
+async function compressImageToJpeg(file: File, maxSide = 1600, quality = 0.85): Promise<File> {
+  const blobUrl = URL.createObjectURL(file);
+
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = () => reject(new Error("Impossibile leggere l’immagine selezionata."));
+      el.src = blobUrl;
+    });
+
+    const w = img.naturalWidth || img.width;
+    const h = img.naturalHeight || img.height;
+
+    if (!w || !h) throw new Error("Dimensioni immagine non valide.");
+
+    const scale = Math.min(1, maxSide / Math.max(w, h));
+    const tw = Math.max(1, Math.round(w * scale));
+    const th = Math.max(1, Math.round(h * scale));
+
+    const canvas = document.createElement("canvas");
+    canvas.width = tw;
+    canvas.height = th;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Canvas non disponibile.");
+
+    ctx.drawImage(img, 0, 0, tw, th);
+
+    const outBlob: Blob = await new Promise((resolve, reject) => {
+      canvas.toBlob(
+        (b) => (b ? resolve(b) : reject(new Error("Compressione immagine fallita."))),
+        "image/jpeg",
+        quality
+      );
+    });
+
+    const outName = `photo_${Date.now()}.jpg`;
+    return new File([outBlob], outName, { type: "image/jpeg" });
+  } finally {
+    URL.revokeObjectURL(blobUrl);
+  }
 }
 
 export default function NuovoProfiloAnimalePage() {
@@ -134,48 +195,58 @@ export default function NuovoProfiloAnimalePage() {
     if (!file) return setError("Nessun file selezionato.");
     setSelectedFileName(file.name || "foto");
     if (!file.type.startsWith("image/")) return setError("Seleziona un file immagine valido.");
-    if (file.size > 8 * 1024 * 1024) return setError("Immagine troppo grande (max 8MB).");
+    if (file.size > 20 * 1024 * 1024) return setError("Immagine troppo grande (max 20MB).");
 
     setUploading(true);
 
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData.session?.access_token || "";
-      if (!token) {
+      const { data: authData } = await supabase.auth.getUser();
+      const user = authData.user;
+      if (!user) {
         router.replace("/login?next=/identita/nuovo");
         return;
       }
 
-      const fd = new FormData();
-      fd.append("file", file);
-
-      const res = await withTimeout(
-        fetch("/api/upload/animal-photo", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-          body: fd,
-        }),
-        30000,
-        "Upload bloccato (timeout 30s)."
+      // 1) Comprimi (fondamentale su Android)
+      const compressed = await withTimeout(
+        compressImageToJpeg(file, 1600, 0.85),
+        15000,
+        "Compressione immagine bloccata (timeout 15s)."
       );
 
-      const json = await res.json().catch(() => ({} as any));
+      // 2) Upload su storage (file molto più piccolo)
+      const ext = extFromType(compressed.type);
+      const fileName = `animal_${Date.now()}.${ext}`;
+      const path = `${PROFILE_FOLDER}/${user.id}/${fileName}`;
 
-      if (!res.ok) {
-        setError(json?.error || "Errore upload foto.");
+      const up = await withTimeout(
+        supabase.storage.from(BUCKET).upload(path, compressed, {
+          upsert: true,
+          contentType: compressed.type || "image/jpeg",
+          cacheControl: "3600",
+        }),
+        45000,
+        "Upload bloccato (timeout 45s)."
+      );
+
+      if (up.error) {
+        console.error("STORAGE UPLOAD ERROR:", up.error);
+        setError(`Errore upload foto: ${up.error.message}`);
         return;
       }
 
-      const url = String(json?.publicUrl || "");
-      if (!url) {
-        setError("Foto caricata ma URL non disponibile.");
+      const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(path);
+      const publicUrl = pub?.publicUrl ? `${pub.publicUrl}?t=${Date.now()}` : "";
+
+      if (!publicUrl) {
+        setError("Foto caricata ma URL non disponibile. Controlla bucket public.");
         return;
       }
 
-      setPhotoUrl(url);
+      setPhotoUrl(publicUrl);
     } catch (e: any) {
-      console.error("UPLOAD VIA API ERROR:", e);
-      setError(e?.message || "Errore durante l’upload.");
+      console.error("UPLOAD PHOTO EXCEPTION:", e);
+      setError(e?.message || "Errore durante l’upload foto.");
     } finally {
       setUploading(false);
     }
@@ -256,15 +327,12 @@ export default function NuovoProfiloAnimalePage() {
 
         <div className="mt-6">
           <p className="text-sm font-semibold">Microchip</p>
-
           <div className="mt-2 flex gap-4 text-sm">
             <label>
-              <input type="radio" checked={hasChip === "yes"} onChange={() => setHasChip("yes")} />{" "}
-              Sì
+              <input type="radio" checked={hasChip === "yes"} onChange={() => setHasChip("yes")} /> Sì
             </label>
             <label>
-              <input type="radio" checked={hasChip === "no"} onChange={() => setHasChip("no")} />{" "}
-              No
+              <input type="radio" checked={hasChip === "no"} onChange={() => setHasChip("no")} /> No
             </label>
           </div>
 
@@ -297,18 +365,14 @@ export default function NuovoProfiloAnimalePage() {
               {uploading ? "Caricamento…" : photoUrl ? "Foto caricata ✅ (cambia)" : "Carica foto"}
             </label>
 
-            {selectedFileName ? (
-              <span className="text-xs text-zinc-600 truncate">{selectedFileName}</span>
-            ) : null}
+            {selectedFileName ? <span className="text-xs text-zinc-600 truncate">{selectedFileName}</span> : null}
           </div>
 
           {photoUrl ? <p className="text-xs text-emerald-700">Foto caricata correttamente ✅</p> : null}
         </div>
 
         {error ? (
-          <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-            {error}
-          </div>
+          <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>
         ) : null}
 
         <div className="mt-6 flex justify-end">
