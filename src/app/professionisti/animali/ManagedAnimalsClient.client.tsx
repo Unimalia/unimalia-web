@@ -23,6 +23,15 @@ function normalizeForSearch(v: unknown) {
     .trim();
 }
 
+function tokenize(q: string) {
+  // split per spazi + punteggiatura, rimuove token vuoti e token da 1 carattere (troppi falsi positivi)
+  return normalizeForSearch(q)
+    .split(/[\s,.;:_\-+/\\|(){}\[\]"'’]+/g)
+    .map((t) => t.trim())
+    .filter(Boolean)
+    .filter((t) => t.length >= 2);
+}
+
 function formatDate(iso: string | null) {
   if (!iso) return "—";
   const d = new Date(iso);
@@ -37,6 +46,20 @@ function renderStatus(s: string) {
   return s || "—";
 }
 
+function shortId(id: string) {
+  const v = String(id || "");
+  if (v.length <= 8) return v;
+  return `${v.slice(0, 4)}…${v.slice(-4)}`;
+}
+
+function renderMicrochip(m: string | null) {
+  const v = (m ?? "").trim();
+  if (!v) return "—";
+  // se è lungo, mostra finale (comodo per distinzione senza “rumore”)
+  if (v.length > 10) return `…${v.slice(-6)}`;
+  return v;
+}
+
 export default function ManagedAnimalsClient({
   initialRows,
   initialQuery,
@@ -48,13 +71,22 @@ export default function ManagedAnimalsClient({
   const [q, setQ] = React.useState(initialQuery || "");
 
   const filtered = React.useMemo(() => {
-    const nq = normalizeForSearch(q);
-    if (!nq) return initialRows;
+    const tokens = tokenize(q);
+    if (tokens.length === 0) return initialRows;
 
     return initialRows.filter((r) => {
-      const hay = [r.animal_name, r.microchip, r.owner_name].map(normalizeForSearch).join(" | ");
+      const hay = [
+        r.animal_name,
+        r.owner_name,
+        r.species,
+        r.microchip,
+        r.animal_id,
+      ]
+        .map(normalizeForSearch)
+        .join(" | ");
 
-      return hay.includes(nq);
+      // AND: tutte le parole devono comparire da qualche parte
+      return tokens.every((t) => hay.includes(t));
     });
   }, [q, initialRows]);
 
@@ -64,13 +96,14 @@ export default function ManagedAnimalsClient({
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Cerca per nome animale, microchip o proprietario…"
+          placeholder="Cerca: nome animale, proprietario, specie, microchip… (es. “zara panella cane”)"
           className="w-full rounded-md border px-3 py-2 text-sm outline-none"
         />
 
         <button
           onClick={() => router.push(`/professionisti/animali?q=${encodeURIComponent(q)}`)}
           className="rounded-md border px-3 py-2 text-sm font-semibold hover:bg-neutral-50"
+          title="Ricarica la pagina con query (utile se hai migliaia di righe)"
         >
           Cerca
         </button>
@@ -87,9 +120,11 @@ export default function ManagedAnimalsClient({
               <th className="p-3">Nome</th>
               <th className="p-3">Specie</th>
               <th className="p-3">Proprietario</th>
+              <th className="p-3">Microchip</th>
               <th className="p-3">Ultima visita</th>
               <th className="p-3">Prossimo richiamo</th>
               <th className="p-3">Stato</th>
+              <th className="p-3">ID</th>
               <th className="p-3"></th>
             </tr>
           </thead>
@@ -99,9 +134,11 @@ export default function ManagedAnimalsClient({
                 <td className="p-3 font-medium">{r.animal_name}</td>
                 <td className="p-3">{r.species ?? "—"}</td>
                 <td className="p-3">{r.owner_name ?? "—"}</td>
+                <td className="p-3">{renderMicrochip(r.microchip)}</td>
                 <td className="p-3">{formatDate(r.last_visit_at)}</td>
                 <td className="p-3">{formatDate(r.next_reminder_at)}</td>
                 <td className="p-3">{renderStatus(r.status)}</td>
+                <td className="p-3 font-mono text-xs opacity-80">{shortId(r.animal_id)}</td>
                 <td className="p-3 text-right">
                   <Link
                     href={`/professionisti/animali/${r.animal_id}`}
@@ -115,7 +152,7 @@ export default function ManagedAnimalsClient({
 
             {filtered.length === 0 && (
               <tr className="border-t">
-                <td className="p-6 text-neutral-600" colSpan={7}>
+                <td className="p-6 text-neutral-600" colSpan={9}>
                   Nessun animale trovato.
                 </td>
               </tr>
