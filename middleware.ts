@@ -1,34 +1,32 @@
-// middleware.ts
-import { NextResponse, type NextRequest } from "next/server";
-import { createServerClient } from "@supabase/ssr";
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
-export async function middleware(request: NextRequest) {
-  let response = NextResponse.next({ request });
+export function middleware(req: NextRequest) {
+  const { pathname } = req.nextUrl;
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  // ✅ IMPORTANTISSIMO: non toccare MAI le API route
+  if (pathname.startsWith("/api")) {
+    return NextResponse.next();
+  }
 
-  const supabase = createServerClient(url, anonKey, {
-    cookies: {
-      getAll() {
-        return request.cookies.getAll();
-      },
-      setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value, options }) => {
-          response.cookies.set(name, value, options);
-        });
-      },
-    },
-  });
+  // ✅ non toccare assets / next internals
+  if (
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/favicon.ico") ||
+    pathname.startsWith("/robots.txt") ||
+    pathname.startsWith("/sitemap.xml") ||
+    pathname.startsWith("/manifest.webmanifest")
+  ) {
+    return NextResponse.next();
+  }
 
-  // Importantissimo: sincronizza/refresh session cookie
-  await supabase.auth.getUser();
+  // Se avevi logiche di redirect/auth QUI, re-inseriscile sotto
+  // (ma sempre lasciando l'early return per /api sopra)
 
-  return response;
+  return NextResponse.next();
 }
 
+// ✅ matcher: evita di matchare /api già qui (doppia protezione)
 export const config = {
-  matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml).*)",
-  ],
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
 };
