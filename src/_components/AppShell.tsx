@@ -48,18 +48,14 @@ function NavLink({
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
-  const pathname = usePathname();
-  const proActive = pathname === "/professionisti" || pathname.startsWith("/professionisti/");
 
-  // voci "normali" (non evidenziate)
   const nav: NavItem[] = useMemo(
     () => [
       { href: "/smarrimenti", label: "Smarrimenti" },
       { href: "/ritrovati", label: "Ritrovati" },
       { href: "/adotta", label: "Adozioni" },
       { href: "/servizi", label: "Servizi" },
-      { href: "/identita", label: "Identità Animale" },
-      { href: "/smarrimenti/nuovo", label: "Pubblica smarrimento" },
+      { href: "/professionisti", label: "Professionisti" },
     ],
     []
   );
@@ -96,7 +92,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             />
           </Link>
 
-          {/* DESKTOP */}
           <div className="hidden min-w-0 flex-1 items-center justify-end gap-3 md:flex">
             <nav className="flex min-w-0 flex-1 items-center justify-end gap-1 overflow-x-auto whitespace-nowrap">
               {nav.map((item) => (
@@ -104,28 +99,22 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               ))}
             </nav>
 
-            {/* Professionisti evidenziato (ex Pubblica) */}
             <Link
-              href="/professionisti/dashboard"
-              className={cx(
-                "inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold transition",
-                proActive ? "bg-black text-white" : "bg-black text-white hover:bg-zinc-900"
-              )}
+              href="/smarrimenti/nuovo"
+              className="inline-flex items-center justify-center rounded-xl bg-black px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-900"
             >
-              Professionisti
+              Pubblica
             </Link>
 
             <AuthButtons />
           </div>
 
-          {/* MOBILE */}
           <div className="flex items-center gap-2 md:hidden">
-            {/* Professionisti evidenziato anche in mobile */}
             <Link
-              href="/professionisti/dashboard"
+              href="/smarrimenti/nuovo"
               className="inline-flex items-center justify-center rounded-xl bg-black px-3 py-2 text-sm font-semibold text-white transition hover:bg-zinc-900"
             >
-              Professionisti
+              Pubblica
             </Link>
 
             <button
@@ -139,10 +128,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
-        {/* MOBILE DRAWER */}
         {open && (
           <div className="fixed inset-0 z-[100] md:hidden">
-            {/* overlay */}
             <button
               type="button"
               className="absolute inset-0 cursor-default bg-black/30"
@@ -150,7 +137,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               onClick={() => setOpen(false)}
             />
 
-            {/* panel */}
             <div className="absolute right-0 top-0 h-full w-[86%] max-w-sm border-l border-zinc-200 bg-white shadow-2xl">
               <div className="flex h-16 items-center justify-between px-4">
                 <span className="text-sm font-semibold">Menu</span>
@@ -165,18 +151,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               </div>
 
               <div className="px-2 pb-6">
-                {/* Professionisti evidenziato nel drawer */}
-                <div className="px-2">
-                  <Link
-                    href="/professionisti/dashboard"
-                    onClick={() => setOpen(false)}
-                    className="inline-flex w-full items-center justify-center rounded-xl bg-black px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-900"
-                  >
-                    Professionisti
-                  </Link>
-                </div>
-
-                <div className="mt-3 flex flex-col gap-1">
+                <div className="flex flex-col gap-1 px-2">
                   {nav.map((item) => (
                     <NavLink
                       key={item.href}
@@ -188,7 +163,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   ))}
                 </div>
 
-                <div className="mt-4 border-t border-zinc-200 px-2 pt-4">
+                <div className="mt-4 border-t border-zinc-200 px-4 pt-4">
+                  <Link
+                    href="/smarrimenti/nuovo"
+                    onClick={() => setOpen(false)}
+                    className="inline-flex w-full items-center justify-center rounded-xl bg-black px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-900"
+                  >
+                    Pubblica
+                  </Link>
+
                   <div className="mt-3">
                     <AuthButtons onNavigate={() => setOpen(false)} />
                   </div>
@@ -204,8 +187,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <footer className="mt-14 border-t border-zinc-200 bg-white">
         <div className="container-page py-8 text-sm text-zinc-600">
           <p>
-            UNIMALIA nasce come impresa responsabile: una parte dei ricavi verrà reinvestita nel
-            progetto e una parte devolverà valore al mondo animale.
+            UNIMALIA nasce come impresa responsabile: una parte dei ricavi verrà reinvestita nel progetto e una parte
+            devolverà valore al mondo animale.
           </p>
 
           <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-sm">
