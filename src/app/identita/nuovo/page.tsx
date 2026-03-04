@@ -36,6 +36,12 @@ function isLikelyFullName(s: string) {
   return parts.length >= 2;
 }
 
+/**
+ * FUTURO (SMS):
+ * quando attivi verifica telefono, metti REQUIRE_PHONE_VERIFIED = true
+ */
+const REQUIRE_PHONE_VERIFIED = false;
+
 function isProfileComplete(p: any) {
   if (!p) return false;
 
@@ -46,11 +52,13 @@ function isProfileComplete(p: any) {
   const cf = normalizeCF(p.fiscal_code ?? "");
   const cfOk = !cf || cf.length === 16; // facoltativo
 
-  // Se la colonna non esiste (o non la selezioni), non blocchiamo.
-  const phoneVerified =
-    p.phone_verified === undefined ? true : p.phone_verified === true;
+  if (!fullNameOk || !phoneOk || !cityOk || !cfOk) return false;
 
-  return fullNameOk && phoneOk && cityOk && cfOk && phoneVerified;
+  // OGGI non blocchiamo se non verificato
+  if (!REQUIRE_PHONE_VERIFIED) return true;
+
+  // DOMANI (SMS): blocca se phone_verified non true
+  return p.phone_verified === true;
 }
 
 export default function NuovoProfiloAnimalePage() {
@@ -75,7 +83,6 @@ export default function NuovoProfiloAnimalePage() {
 
   const cleanedChip = useMemo(() => normalizeChip(chipNumber), [chipNumber]);
 
-  // 🔹 CONTROLLO PROFILO COMPLETO
   useEffect(() => {
     let alive = true;
 
@@ -141,7 +148,6 @@ export default function NuovoProfiloAnimalePage() {
       const path = `${PROFILE_FOLDER}/${authData.user.id}/${fileName}`;
 
       const { error } = await supabase.storage.from(BUCKET).upload(path, file);
-
       if (error) throw error;
 
       const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
@@ -162,8 +168,7 @@ export default function NuovoProfiloAnimalePage() {
 
     if (hasChip === "yes") {
       if (!cleanedChip) return setError("Inserisci il microchip.");
-      if (cleanedChip.length < 10)
-        return setError("Numero microchip non valido.");
+      if (cleanedChip.length < 10) return setError("Numero microchip non valido.");
     }
 
     setSaving(true);
