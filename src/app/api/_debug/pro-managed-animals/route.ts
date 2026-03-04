@@ -15,7 +15,7 @@ async function tryQuery<T>(fn: () => Promise<{ data: T | null; error: any }>) {
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
-  const animalId = url.searchParams.get("animal_id"); // opzionale
+  const animalId = url.searchParams.get("animal_id");
   const nowIso = new Date().toISOString();
 
   const supabase = await createServerSupabaseClient();
@@ -30,10 +30,8 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  // 1) orgId "vera" (stessa della grants/check)
   const orgId = await getProfessionalOrgId();
 
-  // 2) orgId dal profilo (così vediamo se sono diverse)
   const proProfileRes = await tryQuery(async () =>
     supabase
       .from("professional_profiles")
@@ -42,7 +40,6 @@ export async function GET(req: Request) {
       .maybeSingle()
   );
 
-  // 3) grants con schema A: grantee_type/grantee_id
   const grantsByGrantee = orgId
     ? await tryQuery(async () =>
         admin
@@ -51,25 +48,23 @@ export async function GET(req: Request) {
           .eq("grantee_type", "org")
           .eq("grantee_id", orgId)
           .order("created_at", { ascending: false })
-          .limit(20)
+          .limit(50)
       )
     : { ok: false, data: null, error: "orgId missing" };
 
-  // 4) grants con schema B: org_id (se esiste nel DB)
   const grantsByOrgId = orgId
     ? await tryQuery(async () =>
         admin
           .from("animal_access_grants")
-          // se org_id non esiste, qui avrai error chiaro "column org_id does not exist"
+          // se org_id non esiste, qui avrai error "column org_id does not exist"
           .select("id, animal_id, org_id, status, valid_to, revoked_at, created_at")
           // @ts-ignore
           .eq("org_id", orgId)
           .order("created_at", { ascending: false })
-          .limit(20)
+          .limit(50)
       )
     : { ok: false, data: null, error: "orgId missing" };
 
-  // 5) grants "attivi" come li filtriamo nella lista (schema A)
   const grantsActiveFiltered = orgId
     ? await tryQuery(async () =>
         admin
@@ -81,11 +76,10 @@ export async function GET(req: Request) {
           .is("revoked_at", null)
           .or(`valid_to.is.null,valid_to.gt.${nowIso}`)
           .order("created_at", { ascending: false })
-          .limit(50)
+          .limit(200)
       )
     : { ok: false, data: null, error: "orgId missing" };
 
-  // 6) opzionale: verifica rpc sul singolo animale
   const rpcCheck =
     orgId && animalId
       ? await tryQuery(async () =>
@@ -105,7 +99,5 @@ export async function GET(req: Request) {
     grants_by_orgid_schema: grantsByOrgId,
     grants_active_filtered: grantsActiveFiltered,
     rpc_is_grant_active: rpcCheck,
-    hint:
-      "Se grants_active_filtered è vuoto ma grants_by_grantee_schema ha righe, allora status/valid_to/revoked_at non combaciano. Se grants_by_grantee_schema è vuoto ma grants_by_orgid_schema ha righe, allora i grant usano org_id e non grantee_id. Se entrambi vuoti, i grant non sono per la tua orgId o non esistono.",
   });
 }
