@@ -1,96 +1,134 @@
 import { NextResponse } from "next/server";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createServerSupabaseClient, supabaseAdmin } from "@/lib/supabase/server";
 import { getProfessionalOrgId } from "@/lib/professionisti/org";
-
-export const dynamic = "force-dynamic";
 
 function isUuid(v: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
 }
 
+function digitsOnly(v: string) {
+  return (v || "").replace(/\D+/g, "");
+}
+
 export async function POST(req: Request) {
   const supabase = await createServerSupabaseClient();
+  const admin = supabaseAdmin();
 
   const {
     data: { user },
-    error: authErr,
+    error: userErr,
   } = await supabase.auth.getUser();
 
-  if (authErr || !user) {
-    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-  }
+  if (userErr) return NextResponse.json({ error: userErr.message }, { status: 401 });
+  if (!user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
   const orgId = await getProfessionalOrgId();
-  if (!orgId) {
-    return NextResponse.json({ error: "missing_org" }, { status: 400 });
-  }
+  if (!orgId) return NextResponse.json({ error: "Missing org" }, { status: 400 });
 
   const body = await req.json().catch(() => null);
-  const animalId = String(body?.animalId || "").trim();
-  const chip = String(body?.chip || body?.microchip || "").trim();
+  const animalIdRaw = String(body?.animalId ?? "").trim();
+  const microchipRaw = String(body?.microchip ?? "").trim();
+
+  const animalId = animalIdRaw && isUuid(animalIdRaw) ? animalIdRaw : "";
+  const chip = digitsOnly(microchipRaw);
 
   if (!animalId && !chip) {
-    return NextResponse.json({ error: "missing animalId or microchip" }, { status: 400 });
+    return NextResponse.json({ error: "Missing animalId or microchip" }, { status: 400 });
   }
 
-  // 1) risolvo animale
-  let animalQ = supabase
-    .from("animals")
-    .select("id, owner_id, name, species, chip_number")
-    .limit(1);
+  // 1) Risolvi animale (PRIORITÀ: animalId, poi microchip)
+  let animal: any = null;
 
   if (animalId) {
-    if (!isUuid(animalId)) return NextResponse.json({ error: "invalid animalId" }, { status: 400 });
-    animalQ = animalQ.eq("id", animalId);
+    const { data, error } = await admin
+      .from("animals")
+      .select("id, name, species, owner_id, chip_number")
+      .eq("id", animalId)
+      .maybeSingle();
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (!data) return NextResponse.json({ error: "Animale non trovato" }, { status: 404 });
+
+    animal = data;
   } else {
-    animalQ = animalQ.eq("chip_number", chip);
+    // fallback microchip: usa SEMPRE chip_number (non microchip)
+    const { data, error } = await admin
+      .from("animals")
+      .select("id, name, species, owner_id, chip_number")
+      .eq("chip_number", chip)
+      .maybeSingle();
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (!data) return NextResponse.json({ error: "Animale non trovato" }, { status: 404 });
+
+    animal = data;
   }
 
-  const { data: animal, error: animalErr } = await animalQ.maybeSingle();
-  if (animalErr) return NextResponse.json({ error: animalErr.message }, { status: 500 });
-  if (!animal) return NextResponse.json({ error: "animal_not_found" }, { status: 404 });
+  // 2) Se c'è già un grant attivo per questa org, non creare richiesta
+  const nowIso = new Date().toISOString();
+  const { data: activeGrants, error: grantErr } = await admin
+    .from("animal_access_grants")
+    .select("id, status, revoked_at, valid_to")
+    .eq("animal_id", animal.id)
+    .eq("grantee_type", "org")
+    .eq("grantee_id", orgId)
+    .eq("status", "active")
+    .is("revoked_at", null)
+    .or(`valid_to.is.null,valid_to.gt.${nowIso}`)
+    .limit(1);
 
-  // 2) idempotenza soft: se esiste già una request pending per (animal, org) non ne creo un'altra
-  const { data: existing, error: exErr } = await supabase
+  if (grantErr) return NextResponse.json({ error: grantErr.message }, { status: 500 });
+
+  if ((activeGrants ?? []).length > 0) {
+    return NextResponse.json({
+      ok: true,
+      alreadyGranted: true,
+      animal: { id: animal.id, name: animal.name, species: animal.species, owner_id: animal.owner_id },
+    });
+  }
+
+  // 3) Se esiste già una richiesta pending per (animal, org), non duplicare
+  const { data: existingReq, error: existingErr } = await admin
     .from("animal_access_requests")
-    .select("id, status")
+    .select("id, status, created_at")
     .eq("animal_id", animal.id)
     .eq("org_id", orgId)
-    .in("status", ["pending", "requested"])
+    .eq("status", "pending")
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 
-  if (exErr) return NextResponse.json({ error: exErr.message }, { status: 500 });
-  if (existing?.id) {
-    return NextResponse.json({ ok: true, requestId: existing.id, reused: true });
+  if (existingErr) return NextResponse.json({ error: existingErr.message }, { status: 500 });
+
+  if (existingReq?.id) {
+    return NextResponse.json({
+      ok: true,
+      alreadyRequested: true,
+      requestId: existingReq.id,
+      animal: { id: animal.id, name: animal.name, species: animal.species, owner_id: animal.owner_id },
+    });
   }
 
-  // 3) creo request
-  const { data: ins, error: insErr } = await supabase
+  // 4) Crea richiesta
+  const requested_scope = Array.isArray(body?.requested_scope) ? body.requested_scope : ["read"];
+
+  const { data: inserted, error: insErr } = await admin
     .from("animal_access_requests")
     .insert({
       animal_id: animal.id,
       owner_id: animal.owner_id,
       org_id: orgId,
       status: "pending",
-      requested_scope: ["read"], // MVP: read
-      // opzionale se hai colonne:
-      // requested_by_user_id: user.id,
+      requested_scope,
     })
-    .select("id")
+    .select("id, status, created_at")
     .single();
 
   if (insErr) return NextResponse.json({ error: insErr.message }, { status: 500 });
 
   return NextResponse.json({
     ok: true,
-    requestId: ins.id,
-    animal: {
-      id: animal.id,
-      name: animal.name ?? "",
-      species: animal.species ?? null,
-      chip_number: animal.chip_number ?? null,
-    },
+    request: inserted,
+    animal: { id: animal.id, name: animal.name, species: animal.species, owner_id: animal.owner_id },
   });
 }
