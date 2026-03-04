@@ -2,7 +2,7 @@
 
 export const dynamic = "force-dynamic";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
@@ -75,8 +75,18 @@ function extFromFile(file: File) {
   return map[type] || fromName || "jpg";
 }
 
+function withTimeout<T>(p: Promise<T>, ms: number, msg: string) {
+  let t: any;
+  const timeout = new Promise<T>((_resolve, reject) => {
+    t = setTimeout(() => reject(new Error(msg)), ms);
+  });
+  return Promise.race([p, timeout]).finally(() => clearTimeout(t));
+}
+
 export default function NuovoProfiloAnimalePage() {
   const router = useRouter();
+
+  const fileRef = useRef<HTMLInputElement | null>(null);
 
   const [checkingProfile, setCheckingProfile] = useState(true);
 
@@ -90,6 +100,7 @@ export default function NuovoProfiloAnimalePage() {
   const [chipNumber, setChipNumber] = useState("");
 
   const [photoUrl, setPhotoUrl] = useState<string>("");
+  const [selectedFileName, setSelectedFileName] = useState<string>("");
 
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -97,7 +108,6 @@ export default function NuovoProfiloAnimalePage() {
 
   const cleanedChip = useMemo(() => normalizeChip(chipNumber), [chipNumber]);
 
-  // 🔹 CONTROLLO PROFILO COMPLETO
   useEffect(() => {
     let alive = true;
 
@@ -143,35 +153,53 @@ export default function NuovoProfiloAnimalePage() {
 
   async function uploadPhoto(file: File | null) {
     setError(null);
+    setPhotoUrl("");
 
-    if (!file) return setError("Seleziona una foto prima di continuare.");
-    if (!file.type.startsWith("image/"))
-      return setError("Seleziona un file immagine valido.");
-    if (file.size > 8 * 1024 * 1024)
-      return setError("Immagine troppo grande (max 8MB).");
+    if (!file) return setError("Nessun file selezionato.");
+    setSelectedFileName(file.name || "foto");
+    if (!file.type.startsWith("image/")) return setError("Seleziona un file immagine valido.");
+    if (file.size > 8 * 1024 * 1024) return setError("Immagine troppo grande (max 8MB).");
 
     setUploading(true);
 
     try {
       const { data: authData } = await supabase.auth.getUser();
-      if (!authData.user) {
+      const user = authData.user;
+      if (!user) {
         router.push("/login?next=/identita/nuovo");
+        return;
+      }
+
+      // TEST accesso bucket (diagnostica). Se fallisce qui, è policy/permessi.
+      const testPath = `${PROFILE_FOLDER}/${user.id}`;
+      const test = await withTimeout(
+        supabase.storage.from(BUCKET).list(testPath, { limit: 1 }),
+        15000,
+        "Timeout test accesso Storage (15s)."
+      );
+      if (test.error) {
+        console.error("STORAGE LIST ERROR:", test.error);
+        setError(`Storage non accessibile: ${test.error.message}`);
         return;
       }
 
       const ext = extFromFile(file);
       const fileName = `animal_${Date.now()}.${ext}`;
-      const path = `${PROFILE_FOLDER}/${authData.user.id}/${fileName}`;
+      const path = `${PROFILE_FOLDER}/${user.id}/${fileName}`;
 
-      const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file, {
-        upsert: true,
-        contentType: file.type || undefined,
-        cacheControl: "3600",
-      });
+      const up = await withTimeout(
+        supabase.storage.from(BUCKET).upload(path, file, {
+          upsert: true,
+          contentType: file.type || undefined,
+          cacheControl: "3600",
+        }),
+        25000,
+        "Upload bloccato (timeout 25s). Su Android spesso è rete/AdBlock/permessi."
+      );
 
-      if (upErr) {
-        console.error("STORAGE UPLOAD ERROR:", upErr);
-        setError(`Errore upload foto: ${upErr.message}`);
+      if (up.error) {
+        console.error("STORAGE UPLOAD ERROR:", up.error);
+        setError(`Errore upload foto: ${up.error.message}`);
         return;
       }
 
@@ -179,7 +207,7 @@ export default function NuovoProfiloAnimalePage() {
       const publicUrl = pub?.publicUrl ? `${pub.publicUrl}?t=${Date.now()}` : "";
 
       if (!publicUrl) {
-        setError("Foto caricata ma URL non disponibile. Controlla impostazioni bucket.");
+        setError("Foto caricata ma URL non disponibile. Controlla bucket public.");
         return;
       }
 
@@ -205,8 +233,7 @@ export default function NuovoProfiloAnimalePage() {
 
     if (hasChip === "yes") {
       if (!cleanedChip) return setError("Inserisci il microchip.");
-      if (cleanedChip.length < 10)
-        return setError("Numero microchip non valido.");
+      if (cleanedChip.length < 10) return setError("Numero microchip non valido.");
     }
 
     setSaving(true);
@@ -243,9 +270,7 @@ export default function NuovoProfiloAnimalePage() {
   return (
     <main className="max-w-2xl">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">
-          Crea profilo animale
-        </h1>
+        <h1 className="text-3xl font-bold tracking-tight">Crea profilo animale</h1>
         <Link href="/identita" className="text-sm text-zinc-600 hover:underline">
           ← Torna
         </Link>
@@ -277,19 +302,11 @@ export default function NuovoProfiloAnimalePage() {
 
           <div className="mt-2 flex gap-4 text-sm">
             <label>
-              <input
-                type="radio"
-                checked={hasChip === "yes"}
-                onChange={() => setHasChip("yes")}
-              />{" "}
+              <input type="radio" checked={hasChip === "yes"} onChange={() => setHasChip("yes")} />{" "}
               Sì
             </label>
             <label>
-              <input
-                type="radio"
-                checked={hasChip === "no"}
-                onChange={() => setHasChip("no")}
-              />{" "}
+              <input type="radio" checked={hasChip === "no"} onChange={() => setHasChip("no")} />{" "}
               No
             </label>
           </div>
@@ -304,27 +321,45 @@ export default function NuovoProfiloAnimalePage() {
           )}
         </div>
 
-        <div className="mt-6 flex items-center gap-3">
-          <label className="cursor-pointer rounded-lg bg-black px-4 py-2 text-white">
-            {uploading ? "Caricamento…" : photoUrl ? "Foto caricata ✅ (cambia)" : "Carica foto"}
-            <input
-              type="file"
-              accept="image/*"
-              hidden
-              onChange={(e) => uploadPhoto(e.target.files?.[0] ?? null)}
-            />
-          </label>
+        {/* Upload robusto Android: label htmlFor + input non dentro label */}
+        <div className="mt-6 flex flex-col gap-2">
+          <input
+            ref={fileRef}
+            id="animal-photo"
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0] ?? null;
+              uploadPhoto(f);
+              // reset per permettere di riselezionare lo stesso file
+              e.currentTarget.value = "";
+            }}
+          />
+
+          <div className="flex items-center gap-3">
+            <label
+              htmlFor="animal-photo"
+              className="cursor-pointer rounded-lg bg-black px-4 py-2 text-white"
+            >
+              {uploading ? "Caricamento…" : photoUrl ? "Foto caricata ✅ (cambia)" : "Carica foto"}
+            </label>
+
+            {selectedFileName ? (
+              <span className="text-xs text-zinc-600 truncate">{selectedFileName}</span>
+            ) : null}
+          </div>
 
           {photoUrl ? (
-            <span className="text-xs text-zinc-600 break-all">OK</span>
+            <p className="text-xs text-emerald-700">Foto caricata correttamente ✅</p>
           ) : null}
         </div>
 
-        {error && (
+        {error ? (
           <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             {error}
           </div>
-        )}
+        ) : null}
 
         <div className="mt-6 flex justify-end">
           <button
