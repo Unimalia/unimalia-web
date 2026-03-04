@@ -2,7 +2,6 @@
 
 export const dynamic = "force-dynamic";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
@@ -79,6 +78,8 @@ function isProfileComplete(p: OwnerProfile | null) {
 
 function statusBadge(status: string) {
   switch (status) {
+    case "deleted":
+      return { label: "Archiviato", cls: "bg-zinc-100 text-zinc-700 border-zinc-200" };
     case "lost":
       return { label: "Smarrito", cls: "bg-red-50 text-red-700 border-red-200" };
     case "found":
@@ -108,9 +109,13 @@ export default function IdentitaPage() {
   const [profileOk, setProfileOk] = useState(true);
   const [phoneVerified, setPhoneVerified] = useState<boolean | null>(null);
 
-  // modal codice
+  // modal codici
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<Animal | null>(null);
+
+  // delete
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteErr, setDeleteErr] = useState<string | null>(null);
 
   const qrValue = useMemo(() => {
     if (!selected) return "";
@@ -145,7 +150,6 @@ export default function IdentitaPage() {
       const profile = (pData as OwnerProfile) || null;
       setProfileOk(isProfileComplete(profile));
 
-      // per banner “consigliato verificare”
       const pv = (profile as any)?.phone_verified;
       setPhoneVerified(pv === undefined || pv === null ? null : pv === true);
 
@@ -166,7 +170,10 @@ export default function IdentitaPage() {
         return;
       }
 
-      setAnimals((data as Animal[]) || []);
+      // nascondi archiviati
+      const list = ((data as Animal[]) || []).filter((a) => (a.status || "").toLowerCase() !== "deleted");
+
+      setAnimals(list);
       setLoading(false);
     }
 
@@ -179,6 +186,45 @@ export default function IdentitaPage() {
   function openCode(a: Animal) {
     setSelected(a);
     setOpen(true);
+  }
+
+  async function deleteAnimal(a: Animal) {
+    setDeleteErr(null);
+
+    const ok = window.confirm(`Vuoi archiviare "${a.name}"?\n\nPotrai ripristinarlo in futuro.`);
+    if (!ok) return;
+
+    setDeletingId(a.id);
+
+    try {
+      const { data: authData } = await supabase.auth.getUser();
+      const user = authData.user;
+      if (!user) {
+        router.replace("/login?next=/identita");
+        return;
+      }
+
+      // Soft delete: status = deleted
+      const { error } = await supabase
+        .from("animals")
+        .update({ status: "deleted" })
+        .eq("id", a.id)
+        .eq("owner_id", user.id);
+
+      if (error) {
+        console.error("DELETE ANIMAL ERROR:", error);
+        setDeleteErr(error.message);
+        return;
+      }
+
+      // aggiorna UI
+      setAnimals((prev) => prev.filter((x) => x.id !== a.id));
+    } catch (e: any) {
+      console.error("DELETE ANIMAL EXCEPTION:", e);
+      setDeleteErr(e?.message || "Errore durante l’eliminazione. Riprova.");
+    } finally {
+      setDeletingId(null);
+    }
   }
 
   if (loading) {
@@ -225,7 +271,6 @@ export default function IdentitaPage() {
         </div>
       ) : null}
 
-      {/* banner “verifica telefono” (non blocca) */}
       {profileOk && phoneVerified === false ? (
         <div className="mb-6">
           <Card>
@@ -246,8 +291,14 @@ export default function IdentitaPage() {
 
       {err ? (
         <Card>
+          <div className="rounded-2xl border border-red-200 bg-white p-5 text-sm text-red-700 shadow-sm">{err}</div>
+        </Card>
+      ) : null}
+
+      {deleteErr ? (
+        <Card>
           <div className="rounded-2xl border border-red-200 bg-white p-5 text-sm text-red-700 shadow-sm">
-            {err}
+            {deleteErr}
           </div>
         </Card>
       ) : null}
@@ -270,10 +321,7 @@ export default function IdentitaPage() {
             const st = statusBadge(a.status);
 
             return (
-              <div
-                key={a.id}
-                className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm"
-              >
+              <div key={a.id} className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
                 <div className="relative h-44 bg-zinc-100">
                   <img
                     src={a.photo_url || "/placeholder-animal.jpg"}
@@ -321,18 +369,23 @@ export default function IdentitaPage() {
                     </div>
                   </div>
 
-                  <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                  <div className="mt-4 grid gap-2 sm:grid-cols-4">
                     <ButtonPrimary href={`/identita/${a.id}`}>Apri</ButtonPrimary>
                     <ButtonSecondary href={`/identita/${a.id}/modifica`}>Modifica</ButtonSecondary>
                     <button
                       type="button"
-                      onClick={() => {
-                        setSelected(a);
-                        setOpen(true);
-                      }}
+                      onClick={() => openCode(a)}
                       className="inline-flex items-center justify-center rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
                     >
                       Codice
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => deleteAnimal(a)}
+                      disabled={deletingId === a.id}
+                      className="inline-flex items-center justify-center rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
+                    >
+                      {deletingId === a.id ? "Elimino…" : "Elimina"}
                     </button>
                   </div>
                 </div>
