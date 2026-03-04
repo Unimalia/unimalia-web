@@ -21,10 +21,12 @@ function NavLink({
   href,
   label,
   onClick,
+  fullWidth,
 }: {
   href: string;
   label: string;
   onClick?: () => void;
+  fullWidth?: boolean;
 }) {
   const pathname = usePathname();
   const active = isActivePath(pathname, href);
@@ -35,9 +37,8 @@ function NavLink({
       onClick={onClick}
       className={cx(
         "relative inline-flex items-center rounded-xl px-3 py-2 text-sm font-medium transition",
-        active
-          ? "bg-black text-white"
-          : "text-zinc-700 hover:bg-zinc-100 hover:text-black"
+        fullWidth && "w-full justify-start",
+        active ? "bg-black text-white" : "text-zinc-700 hover:bg-zinc-100 hover:text-black"
       )}
     >
       {label}
@@ -48,9 +49,7 @@ function NavLink({
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
-  const proActive =
-    pathname === "/professionisti" ||
-    pathname.startsWith("/professionisti/");
+  const proActive = pathname === "/professionisti" || pathname.startsWith("/professionisti/");
 
   // voci "normali" (non evidenziate)
   const nav: NavItem[] = useMemo(
@@ -86,11 +85,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-zinc-50 text-zinc-900">
       <header className="sticky top-0 z-50 border-b border-zinc-200 bg-white/80 backdrop-blur">
         <div className="container-page flex items-center justify-between gap-3 py-4 sm:py-5 pl-2 sm:pl-4">
-          <Link
-            href="/"
-            className="flex items-center gap-3"
-            aria-label="Vai alla home UNIMALIA"
-          >
+          <Link href="/" className="flex items-center gap-3" aria-label="Vai alla home UNIMALIA">
             <Image
               src="/logo-main.png"
               alt="UNIMALIA"
@@ -114,9 +109,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               href="/professionisti/dashboard"
               className={cx(
                 "inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold transition",
-                proActive
-                  ? "bg-black text-white"
-                  : "bg-black text-white hover:bg-zinc-900"
+                proActive ? "bg-black text-white" : "bg-black text-white hover:bg-zinc-900"
               )}
             >
               Professionisti
@@ -148,14 +141,17 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
         {/* MOBILE DRAWER */}
         {open && (
-          <div className="md:hidden">
+          <div className="fixed inset-0 z-[100] md:hidden">
+            {/* overlay */}
             <button
               type="button"
-              className="fixed inset-0 z-40 cursor-default bg-black/30"
+              className="absolute inset-0 cursor-default bg-black/30"
               aria-label="Chiudi menu"
               onClick={() => setOpen(false)}
             />
-            <div className="fixed right-0 top-0 z-50 h-full w-[86%] max-w-sm border-l border-zinc-200 bg-white shadow-2xl">
+
+            {/* panel */}
+            <div className="absolute right-0 top-0 h-full w-[86%] max-w-sm border-l border-zinc-200 bg-white shadow-2xl">
               <div className="flex h-16 items-center justify-between px-4">
                 <span className="text-sm font-semibold">Menu</span>
                 <button
@@ -187,6 +183,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                       href={item.href}
                       label={item.label}
                       onClick={() => setOpen(false)}
+                      fullWidth
                     />
                   ))}
                 </div>
@@ -207,9 +204,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <footer className="mt-14 border-t border-zinc-200 bg-white">
         <div className="container-page py-8 text-sm text-zinc-600">
           <p>
-            UNIMALIA nasce come impresa responsabile: una parte dei ricavi verrà
-            reinvestita nel progetto e una parte devolverà valore al mondo
-            animale.
+            UNIMALIA nasce come impresa responsabile: una parte dei ricavi verrà reinvestita nel
+            progetto e una parte devolverà valore al mondo animale.
           </p>
 
           <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-sm">
@@ -224,9 +220,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </Link>
           </div>
 
-          <p className="mt-4 text-xs text-zinc-500">
-            © {new Date().getFullYear()} UNIMALIA
-          </p>
+          <p className="mt-4 text-xs text-zinc-500">© {new Date().getFullYear()} UNIMALIA</p>
         </div>
       </footer>
     </div>

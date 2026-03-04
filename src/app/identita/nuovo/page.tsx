@@ -7,9 +7,6 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 
-const BUCKET = "animal-photos";
-const PROFILE_FOLDER = "profiles";
-
 function normalizeChip(raw: string) {
   return (raw || "")
     .trim()
@@ -55,26 +52,6 @@ function isProfileComplete(p: any) {
   return p.phone_verified === true;
 }
 
-function extFromFile(file: File) {
-  const name = (file.name || "").toLowerCase();
-  const m = name.match(/\.([a-z0-9]+)$/);
-  const fromName = m?.[1] || "";
-
-  const type = (file.type || "").toLowerCase();
-  const map: Record<string, string> = {
-    "image/jpeg": "jpg",
-    "image/jpg": "jpg",
-    "image/png": "png",
-    "image/webp": "webp",
-    "image/gif": "gif",
-    "image/heic": "heic",
-    "image/heif": "heif",
-    "image/avif": "avif",
-  };
-
-  return map[type] || fromName || "jpg";
-}
-
 function withTimeout<T>(p: Promise<T>, ms: number, msg: string) {
   let t: any;
   const timeout = new Promise<T>((_resolve, reject) => {
@@ -85,7 +62,6 @@ function withTimeout<T>(p: Promise<T>, ms: number, msg: string) {
 
 export default function NuovoProfiloAnimalePage() {
   const router = useRouter();
-
   const fileRef = useRef<HTMLInputElement | null>(null);
 
   const [checkingProfile, setCheckingProfile] = useState(true);
@@ -163,62 +139,43 @@ export default function NuovoProfiloAnimalePage() {
     setUploading(true);
 
     try {
-      const { data: authData } = await supabase.auth.getUser();
-      const user = authData.user;
-      if (!user) {
-        router.push("/login?next=/identita/nuovo");
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token || "";
+      if (!token) {
+        router.replace("/login?next=/identita/nuovo");
         return;
       }
 
-      // TEST accesso bucket (diagnostica). Se fallisce qui, è policy/permessi.
-      const testPath = `${PROFILE_FOLDER}/${user.id}`;
-      const test = await withTimeout(
-        supabase.storage.from(BUCKET).list(testPath, { limit: 1 }),
-        15000,
-        "Timeout test accesso Storage (15s)."
-      );
-      if (test.error) {
-        console.error("STORAGE LIST ERROR:", test.error);
-        setError(`Storage non accessibile: ${test.error.message}`);
-        return;
-      }
+      const fd = new FormData();
+      fd.append("file", file);
 
-      const ext = extFromFile(file);
-      const fileName = `animal_${Date.now()}.${ext}`;
-      const path = `${PROFILE_FOLDER}/${user.id}/${fileName}`;
-
-      const up = await withTimeout(
-        supabase.storage.from(BUCKET).upload(path, file, {
-          upsert: true,
-          contentType: file.type || undefined,
-          cacheControl: "3600",
+      const res = await withTimeout(
+        fetch("/api/upload/animal-photo", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          body: fd,
         }),
-        25000,
-        "Upload bloccato (timeout 25s). Su Android spesso è rete/AdBlock/permessi."
+        30000,
+        "Upload bloccato (timeout 30s)."
       );
 
-      if (up.error) {
-        console.error("STORAGE UPLOAD ERROR:", up.error);
-        setError(`Errore upload foto: ${up.error.message}`);
+      const json = await res.json().catch(() => ({} as any));
+
+      if (!res.ok) {
+        setError(json?.error || "Errore upload foto.");
         return;
       }
 
-      const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(path);
-      const publicUrl = pub?.publicUrl ? `${pub.publicUrl}?t=${Date.now()}` : "";
-
-      if (!publicUrl) {
-        setError("Foto caricata ma URL non disponibile. Controlla bucket public.");
+      const url = String(json?.publicUrl || "");
+      if (!url) {
+        setError("Foto caricata ma URL non disponibile.");
         return;
       }
 
-      setPhotoUrl(publicUrl);
+      setPhotoUrl(url);
     } catch (e: any) {
-      console.error("UPLOAD PHOTO EXCEPTION:", e);
-      const msg =
-        e?.message ||
-        (typeof e === "string" ? e : "") ||
-        (navigator.onLine ? "Errore di rete durante l’upload." : "Sei offline.");
-      setError(msg);
+      console.error("UPLOAD VIA API ERROR:", e);
+      setError(e?.message || "Errore durante l’upload.");
     } finally {
       setUploading(false);
     }
@@ -321,7 +278,6 @@ export default function NuovoProfiloAnimalePage() {
           )}
         </div>
 
-        {/* Upload robusto Android: label htmlFor + input non dentro label */}
         <div className="mt-6 flex flex-col gap-2">
           <input
             ref={fileRef}
@@ -332,16 +288,12 @@ export default function NuovoProfiloAnimalePage() {
             onChange={(e) => {
               const f = e.target.files?.[0] ?? null;
               uploadPhoto(f);
-              // reset per permettere di riselezionare lo stesso file
               e.currentTarget.value = "";
             }}
           />
 
           <div className="flex items-center gap-3">
-            <label
-              htmlFor="animal-photo"
-              className="cursor-pointer rounded-lg bg-black px-4 py-2 text-white"
-            >
+            <label htmlFor="animal-photo" className="cursor-pointer rounded-lg bg-black px-4 py-2 text-white">
               {uploading ? "Caricamento…" : photoUrl ? "Foto caricata ✅ (cambia)" : "Carica foto"}
             </label>
 
@@ -350,9 +302,7 @@ export default function NuovoProfiloAnimalePage() {
             ) : null}
           </div>
 
-          {photoUrl ? (
-            <p className="text-xs text-emerald-700">Foto caricata correttamente ✅</p>
-          ) : null}
+          {photoUrl ? <p className="text-xs text-emerald-700">Foto caricata correttamente ✅</p> : null}
         </div>
 
         {error ? (
@@ -362,11 +312,7 @@ export default function NuovoProfiloAnimalePage() {
         ) : null}
 
         <div className="mt-6 flex justify-end">
-          <button
-            onClick={submit}
-            disabled={saving}
-            className="rounded-lg bg-black px-5 py-3 text-white"
-          >
+          <button onClick={submit} disabled={saving} className="rounded-lg bg-black px-5 py-3 text-white">
             {saving ? "Salvataggio…" : "Crea profilo"}
           </button>
         </div>
