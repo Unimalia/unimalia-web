@@ -2,96 +2,127 @@ import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getProfessionalOrgId } from "@/lib/professionisti/org";
 
-function bad(error: string, status = 400) {
-  return NextResponse.json({ error }, { status });
+function isUuid(v: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
 }
 
-function isUuid(v: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
+function digitsOnly(v: string) {
+  return String(v ?? "").replace(/\D+/g, "");
 }
 
 export async function POST(req: Request) {
   const supabase = await createServerSupabaseClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return bad("Not authenticated", 401);
 
-  const orgId = await getProfessionalOrgId();
-  if (!orgId) return bad("Missing org");
+  // auth
+  const {
+    data: { user },
+    error: authErr,
+  } = await supabase.auth.getUser();
 
-  const body = await req.json().catch(() => null);
-  const microchipOrCode = String(body?.microchipOrCode || "").trim();
-  const scope = Array.isArray(body?.scope) ? body.scope.map(String) : ["read"];
-
-  if (!microchipOrCode) return bad("Missing microchipOrCode");
-  if (scope.length === 0) return bad("Missing scope");
-
-  // Lookup animale:
-  // - se UUID -> prova prima unimalia_code, poi id (per compat)
-  // - se non UUID -> chip_number
-  let animal: { id: string; owner_id: string } | null = null;
-
-  if (isUuid(microchipOrCode)) {
-    const { data: byCode, error: e1 } = await supabase
-      .from("animals")
-      .select("id, owner_id")
-      .eq("unimalia_code", microchipOrCode)
-      .maybeSingle();
-
-    if (e1) return bad(e1.message, 500);
-    if (byCode?.id && byCode?.owner_id) animal = byCode as any;
-
-    if (!animal) {
-      const { data: byId, error: e2 } = await supabase
-        .from("animals")
-        .select("id, owner_id")
-        .eq("id", microchipOrCode)
-        .maybeSingle();
-
-      if (e2) return bad(e2.message, 500);
-      if (byId?.id && byId?.owner_id) animal = byId as any;
-    }
-  } else {
-    const { data, error } = await supabase
-      .from("animals")
-      .select("id, owner_id")
-      .eq("chip_number", microchipOrCode)
-      .maybeSingle();
-
-    if (error) return bad(error.message, 500);
-    if (data?.id && data?.owner_id) animal = data as any;
+  if (authErr || !user) {
+    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  if (!animal) return bad("Animal not found");
+  const orgId = await getProfessionalOrgId();
+  if (!orgId) {
+    return NextResponse.json({ error: "Missing professional org" }, { status: 400 });
+  }
 
-  const { data: inserted, error: insErr } = await supabase
+  const body = await req.json().catch(() => null);
+  if (!body) return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+
+  // INPUTS supportati:
+  // - animalId (UUID)  ✅ per animali SENZA microchip
+  // - microchip (string) per animali CON microchip
+  // - scope (default: ["read"])
+  const animalIdRaw = body?.animalId ? String(body.animalId) : "";
+  const microchipRaw = body?.microchip ? String(body.microchip) : "";
+  const scopeRaw = Array.isArray(body?.scope) ? body.scope : ["read"];
+
+  const scope = scopeRaw
+    .map((s: any) => String(s))
+    .filter((s: string) => ["read", "write", "upload"].includes(s));
+
+  if (scope.length === 0) {
+    return NextResponse.json({ error: "Invalid scope" }, { status: 400 });
+  }
+
+  // 1) risolvo animalId:
+  //    priorità: animalId valido -> OK
+  //    altrimenti: microchip -> lookup su animals.chip_number
+  let animalId: string | null = null;
+
+  if (animalIdRaw && isUuid(animalIdRaw)) {
+    animalId = animalIdRaw;
+  } else if (microchipRaw) {
+    const chip = digitsOnly(microchipRaw);
+    if (chip.length < 10) {
+      return NextResponse.json({ error: "Invalid microchip" }, { status: 400 });
+    }
+
+    const { data: a, error: aErr } = await supabase
+      .from("animals")
+      .select("id")
+      .eq("chip_number", chip)
+      .maybeSingle();
+
+    if (aErr) return NextResponse.json({ error: aErr.message }, { status: 500 });
+    if (!a?.id) {
+      return NextResponse.json(
+        { error: "Animal not found (by microchip). If the animal has no microchip, use QR/animalId." },
+        { status: 404 }
+      );
+    }
+
+    animalId = a.id;
+  } else {
+    return NextResponse.json(
+      { error: "Missing animalId or microchip" },
+      { status: 400 }
+    );
+  }
+
+  // 2) verifica che l’animale esista (sempre)
+  const { data: animal, error: animalErr } = await supabase
+    .from("animals")
+    .select("id, owner_id")
+    .eq("id", animalId)
+    .maybeSingle();
+
+  if (animalErr) return NextResponse.json({ error: animalErr.message }, { status: 500 });
+  if (!animal) return NextResponse.json({ error: "Animal not found" }, { status: 404 });
+
+  // 3) idempotenza: se esiste già una richiesta pending/approved per (animal, org) evito duplicati
+  const { data: existing, error: exErr } = await supabase
+    .from("animal_access_requests")
+    .select("id, status")
+    .eq("animal_id", animalId)
+    .eq("org_id", orgId)
+    .in("status", ["pending", "approved"])
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (exErr) return NextResponse.json({ error: exErr.message }, { status: 500 });
+
+  if (existing?.id) {
+    return NextResponse.json({ ok: true, requestId: existing.id, status: existing.status });
+  }
+
+  // 4) crea richiesta
+  const { data: ins, error: insErr } = await supabase
     .from("animal_access_requests")
     .insert({
-      animal_id: animal.id,
+      animal_id: animalId,
       owner_id: animal.owner_id,
       org_id: orgId,
-      requested_by: user.id,
       requested_scope: scope,
       status: "pending",
     })
-    .select("id, created_at, animal_id, owner_id, org_id, status, requested_scope, expires_at")
+    .select("id")
     .single();
 
-  if (insErr) {
-    const msg = (insErr.message || "").toLowerCase();
-    if (msg.includes("duplicate") || msg.includes("unique")) {
-      const { data: existing } = await supabase
-        .from("animal_access_requests")
-        .select("id, created_at, animal_id, owner_id, org_id, status, requested_scope, expires_at")
-        .eq("animal_id", animal.id)
-        .eq("org_id", orgId)
-        .eq("status", "pending")
-        .maybeSingle();
+  if (insErr) return NextResponse.json({ error: insErr.message }, { status: 500 });
 
-      if (existing) return NextResponse.json({ request: existing });
-      return bad("Request already exists", 409);
-    }
-    return bad(insErr.message, 500);
-  }
-
-  return NextResponse.json({ request: inserted });
+  return NextResponse.json({ ok: true, requestId: ins.id, status: "pending" });
 }
