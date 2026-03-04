@@ -14,8 +14,11 @@ export default function RequestAccessClient() {
   const router = useRouter();
   const sp = useSearchParams();
 
-  const animalId = (sp.get("animalId") || "").trim();
-  const chip = (sp.get("chip") || "").trim();
+  // supporta: ?animalId=... oppure ?id=... (fallback)
+  const animalId = (sp.get("animalId") || sp.get("id") || "").trim();
+
+  // supporta: ?chip=... oppure ?microchip=... (fallback)
+  const chip = (sp.get("chip") || sp.get("microchip") || "").trim();
 
   const [loading, setLoading] = React.useState(true);
   const [animal, setAnimal] = React.useState<FoundAnimal | null>(null);
@@ -37,7 +40,12 @@ export default function RequestAccessClient() {
           return;
         }
 
-        const qs = animalId ? `id=${encodeURIComponent(animalId)}` : `chip=${encodeURIComponent(chip)}`;
+        // ✅ usa parametri compatibili con più versioni dell’API
+        // preferiamo animalId=..., altrimenti chip=...
+        const qs = animalId
+          ? `animalId=${encodeURIComponent(animalId)}`
+          : `chip=${encodeURIComponent(chip)}`;
+
         const res = await fetch(`/api/animals/find?${qs}`, { cache: "no-store" });
         const j = await res.json().catch(() => ({}));
 
@@ -47,16 +55,21 @@ export default function RequestAccessClient() {
           setErr(j?.error || "Errore lookup animale");
           return;
         }
-        if (!j?.found || !j?.animal?.id) {
+
+        // ✅ supporta risposte in forma { found, animal } oppure { animalId } ecc.
+        const a = j?.animal ?? null;
+        const id = a?.id || j?.animalId || null;
+
+        if (!id) {
           setErr("Animale non trovato.");
           return;
         }
 
         setAnimal({
-          id: j.animal.id,
-          name: j.animal.name || "",
-          species: j.animal.species ?? null,
-          chip_number: j.animal.chip_number ?? null,
+          id: String(id),
+          name: String(a?.name ?? ""),
+          species: (a?.species ?? null) as any,
+          chip_number: (a?.chip_number ?? a?.microchip ?? null) as any,
         });
       } finally {
         if (alive) setLoading(false);
@@ -70,7 +83,10 @@ export default function RequestAccessClient() {
   }, [animalId, chip]);
 
   async function sendRequest() {
-    if (!animal?.id && !chip) {
+    const resolvedAnimalId = animal?.id || animalId || null;
+    const resolvedChip = chip || animal?.chip_number || null;
+
+    if (!resolvedAnimalId && !resolvedChip) {
       setErr("missing animalId or microchip");
       return;
     }
@@ -78,14 +94,22 @@ export default function RequestAccessClient() {
     setBusy(true);
     setErr(null);
     try {
+      // ✅ body “compatibile”: manda sia camelCase che snake_case, e sia chip che microchip
+      const body = {
+        animalId: resolvedAnimalId,
+        animal_id: resolvedAnimalId,
+
+        chip: resolvedChip,
+        microchip: resolvedChip,
+
+        requestedScope: ["read"],
+        requested_scope: ["read"],
+      };
+
       const res = await fetch("/api/professionisti/access-request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          animalId: animal?.id || null,
-          chip: chip || null,
-          requestedScope: ["read"],
-        }),
+        body: JSON.stringify(body),
       });
 
       const j = await res.json().catch(() => ({}));
