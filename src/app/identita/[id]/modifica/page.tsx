@@ -9,6 +9,49 @@ import { supabase } from "@/lib/supabaseClient";
 
 const BUCKET = "animal-photos";
 
+async function compressImageToMax1MB(file: File): Promise<File> {
+  const MAX_BYTES = 1024 * 1024; // 1 MB
+
+  if (file.size <= MAX_BYTES) return file;
+
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const i = new Image();
+    i.onload = () => resolve(i);
+    i.onerror = reject;
+    i.src = URL.createObjectURL(file);
+  });
+
+  const canvas = document.createElement("canvas");
+
+  const maxSide = 1600; // limite dimensione lato
+  const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+
+  canvas.width = Math.round(img.width * scale);
+  canvas.height = Math.round(img.height * scale);
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas non disponibile");
+
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+  let quality = 0.9;
+  let blob: Blob | null = null;
+
+  while (quality > 0.4) {
+    blob = await new Promise((resolve) =>
+      canvas.toBlob(resolve as any, "image/jpeg", quality)
+    );
+
+    if (blob && blob.size <= MAX_BYTES) break;
+
+    quality -= 0.1;
+  }
+
+  if (!blob) throw new Error("Compressione immagine fallita");
+
+  return new File([blob], `photo_${Date.now()}.jpg`, { type: "image/jpeg" });
+}
+
 function normalizeChip(raw: string) {
   return (raw || "")
     .trim()
@@ -97,6 +140,8 @@ export default function ModificaAnimalePage() {
     setSaving(true);
 
     try {
+      const compressed = await compressImageToMax1MB(file);
+
       const { data: authData } = await supabase.auth.getUser();
       const user = authData.user;
 
@@ -110,7 +155,7 @@ export default function ModificaAnimalePage() {
 
       const { error } = await supabase.storage
         .from(BUCKET)
-        .upload(path, file, { upsert: true });
+        .upload(path, compressed, { upsert: true });
 
       if (error) {
         setError(error.message);
@@ -119,10 +164,7 @@ export default function ModificaAnimalePage() {
 
       const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
 
-      const publicUrl = data.publicUrl + "?t=" + Date.now();
-
-      setPhotoUrl(publicUrl);
-
+      setPhotoUrl(data.publicUrl + "?t=" + Date.now());
       setNotice("Foto aggiornata correttamente ✅");
     } catch (e: any) {
       console.error(e);
