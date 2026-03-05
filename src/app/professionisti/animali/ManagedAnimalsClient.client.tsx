@@ -39,6 +39,12 @@ function formatDate(iso: string | null) {
   return new Intl.DateTimeFormat("it-IT", { dateStyle: "medium" }).format(d);
 }
 
+function pickLastSeenAt(r: ManagedAnimalRow) {
+  // “ultima zampa in struttura”: usa il primo timestamp disponibile.
+  // Se in futuro aggiungi last_event_at dal server, lo metteremo qui come priorità #1.
+  return r.last_visit_at || r.next_reminder_at || null;
+}
+
 function renderStatus(s: string) {
   const v = (s ?? "").toLowerCase();
   if (v === "active" || v === "attivo") return "Attivo";
@@ -135,7 +141,7 @@ export default function ManagedAnimalsClient({
                 <td className="p-3">{r.species ?? "—"}</td>
                 <td className="p-3">{r.owner_name ?? "—"}</td>
                 <td className="p-3">{renderMicrochip(r.microchip)}</td>
-                <td className="p-3">{formatDate(r.last_visit_at)}</td>
+                <td className="p-3">{formatDate(pickLastSeenAt(r))}</td>
                 <td className="p-3">{formatDate(r.next_reminder_at)}</td>
                 <td className="p-3">{renderStatus(r.status)}</td>
                 <td className="p-3 font-mono text-xs opacity-80">{shortId(r.animal_id)}</td>
