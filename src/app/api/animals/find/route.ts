@@ -17,9 +17,22 @@ function looksLikeChip(v: string) {
   return d.length >= 10;
 }
 
-function isMissingColumnOrRelation(errMsg: string) {
+function isSkippableLookupError(errMsg: string) {
   const s = (errMsg || "").toLowerCase();
-  return s.includes("does not exist") || s.includes("unknown column") || s.includes("relation") && s.includes("does not exist");
+
+  // colonne/tabelle che non esistono (ambiente diverso)
+  if (s.includes("does not exist")) return true;
+  if (s.includes("unknown column")) return true;
+
+  // quando provi a confrontare una colonna UUID con una stringa tipo "UNIMALIA:...."
+  // non è un errore "grave": significa solo "questa strada non è quella giusta"
+  if (s.includes("invalid input syntax for type uuid")) return true;
+
+  // eventualmente anche interi/booleani, se capiterà in futuro
+  if (s.includes("invalid input syntax for type integer")) return true;
+  if (s.includes("invalid input syntax for type bigint")) return true;
+
+  return false;
 }
 
 async function tryFindByAnimalColumn(
@@ -35,7 +48,7 @@ async function tryFindByAnimalColumn(
     .maybeSingle();
 
   if (error) {
-    if (isMissingColumnOrRelation(error.message)) return { found: false as const, skip: true as const };
+    if (isSkippableLookupError(error.message)) return { found: false as const, skip: true as const };
     return { found: false as const, skip: false as const, error: error.message };
   }
   if (!data) return { found: false as const, skip: false as const };
@@ -58,7 +71,7 @@ async function tryFindByMappingTable(
     .maybeSingle();
 
   if (mapErr) {
-    if (isMissingColumnOrRelation(mapErr.message)) return { found: false as const, skip: true as const };
+    if (isSkippableLookupError(mapErr.message)) return { found: false as const, skip: true as const };
     return { found: false as const, skip: false as const, error: mapErr.message };
   }
   const resolvedAnimalId = (mapRow as any)?.[animalIdColumn] ? String((mapRow as any)[animalIdColumn]) : "";
@@ -246,7 +259,6 @@ export async function GET(req: Request) {
       });
     }
     if ((res as any).error) return NextResponse.json({ error: (res as any).error }, { status: 500 });
-    // se skip o not found: continua
   }
 
   // 2D) Prova tabelle mapping "probabili" (se esistono)
