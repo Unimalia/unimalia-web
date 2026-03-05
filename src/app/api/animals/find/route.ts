@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { supabaseAdmin } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -11,181 +11,145 @@ function digitsOnly(v: string) {
   return (v || "").replace(/\D+/g, "");
 }
 
-function looksLikeChip(v: string) {
-  const d = digitsOnly(v);
-  return d.length >= 10;
+function normalizeInput(raw: string) {
+  let v = (raw || "").trim();
+  if (!v) return "";
+
+  // supporta unimalia://xxx
+  v = v.replace(/^unimalia:\/\//i, "");
+
+  // supporta prefisso UNIMALIA: oppure UNIMALIA-
+  v = v.replace(/^unimalia[:\-]\s*/i, "");
+
+  return v.trim();
 }
 
-type AnimalRow = {
-  id: string;
-  name: string | null;
-  species: string | null;
-  chip_number: string | null;
-  owner_id: string;
-  status: string | null;
-  unimalia_code?: string | null;
-};
+function tryParseUrl(raw: string) {
+  try {
+    const withProto =
+      raw.startsWith("http://") || raw.startsWith("https://") ? raw : `https://${raw}`;
+    return new URL(withProto);
+  } catch {
+    return null;
+  }
+}
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
 
-  // Vecchi parametri
-  const rawChip = (url.searchParams.get("chip") || "").trim();
-  const rawId = (url.searchParams.get("id") || "").trim();
+  // legacy
+  const rawChip = url.searchParams.get("chip") || "";
+  const rawId = url.searchParams.get("id") || "";
 
-  // Nuovi parametri “universali”
-  const rawQ = (url.searchParams.get("q") || "").trim();
-  const rawCode = (url.searchParams.get("code") || "").trim();
+  // universal
+  const rawQ = url.searchParams.get("q") || "";
 
-  const supabase = await createServerSupabaseClient();
-  await supabase.auth.getUser().catch(() => null);
-
-  // 1) Comportamento legacy identico
-  if (rawId) {
-    if (!isUuid(rawId)) return NextResponse.json({ error: "Invalid id" }, { status: 400 });
-
-    const { data: animal, error } = await supabase
-      .from("animals")
-      .select("id, name, species, chip_number, owner_id, status, unimalia_code")
-      .eq("id", rawId)
-      .limit(1)
-      .maybeSingle<AnimalRow>();
-
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    if (!animal) return NextResponse.json({ found: false }, { status: 200 });
-
-    return NextResponse.json({
-      found: true,
-      animal: {
-        id: animal.id,
-        name: animal.name ?? "",
-        species: animal.species ?? null,
-        chip_number: animal.chip_number ?? null,
-        owner_id: animal.owner_id,
-        status: animal.status ?? null,
-        unimalia_code: animal.unimalia_code ?? null,
-      },
-    });
+  // se arriva un URL in q, estrai q=...
+  let q = rawQ.trim();
+  const maybeUrl = q ? tryParseUrl(q) : null;
+  if (maybeUrl) {
+    const qp = maybeUrl.searchParams.get("q");
+    if (qp) q = qp;
   }
 
-  if (rawChip) {
-    const { data: animal, error } = await supabase
-      .from("animals")
-      .select("id, name, species, chip_number, owner_id, status, unimalia_code")
-      .eq("chip_number", rawChip)
-      .limit(1)
-      .maybeSingle<AnimalRow>();
+  // normalizza q
+  q = normalizeInput(q);
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    if (!animal) return NextResponse.json({ found: false }, { status: 200 });
+  // priorità:
+  // 1) id esplicito
+  // 2) chip esplicito
+  // 3) q (può essere chip / id / unimalia_code / url)
+  const id = (rawId || "").trim();
+  const chip = digitsOnly(rawChip);
 
-    return NextResponse.json({
-      found: true,
-      animal: {
-        id: animal.id,
-        name: animal.name ?? "",
-        species: animal.species ?? null,
-        chip_number: animal.chip_number ?? null,
-        owner_id: animal.owner_id,
-        status: animal.status ?? null,
-        unimalia_code: animal.unimalia_code ?? null,
-      },
-    });
-  }
+  const admin = supabaseAdmin();
 
-  // 2) Modalità universale
-  const primary = (rawQ || rawCode).trim();
-  if (!primary) {
-    return NextResponse.json({ error: "Missing chip or id or q/code" }, { status: 400 });
-  }
+  // helper: risposta standard
+  const notFound = () => NextResponse.json({ found: false }, { status: 200 });
 
-  // Normalizza "UNIMALIA:xxxx" o "UNIMALIA-xxxx"
-  let token = primary.trim();
-  if (token.toUpperCase().startsWith("UNIMALIA:")) token = token.slice("UNIMALIA:".length).trim();
-  if (token.toUpperCase().startsWith("UNIMALIA-")) token = token.slice("UNIMALIA-".length).trim();
+  try {
+    // 1) lookup per id (animals.id)
+    if (id) {
+      if (!isUuid(id)) return NextResponse.json({ error: "Invalid id" }, { status: 400 });
 
-  // 2A) Prima prova la cosa GIUSTA per te: animals.unimalia_code
-  // (token è l'uuid senza prefisso)
-  if (token) {
-    const { data: animalByCode, error: codeErr } = await supabase
-      .from("animals")
-      .select("id, name, species, chip_number, owner_id, status, unimalia_code")
-      .eq("unimalia_code", token)
-      .limit(1)
-      .maybeSingle<AnimalRow>();
+      const { data: animal, error } = await admin
+        .from("animals")
+        .select("id, name, species, chip_number, owner_id, status, unimalia_code")
+        .eq("id", id)
+        .maybeSingle();
 
-    if (codeErr) return NextResponse.json({ error: codeErr.message }, { status: 500 });
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      if (!animal) return notFound();
 
-    if (animalByCode) {
-      return NextResponse.json({
-        found: true,
-        animal: {
-          id: animalByCode.id,
-          name: animalByCode.name ?? "",
-          species: animalByCode.species ?? null,
-          chip_number: animalByCode.chip_number ?? null,
-          owner_id: animalByCode.owner_id,
-          status: animalByCode.status ?? null,
-          unimalia_code: animalByCode.unimalia_code ?? null,
-        },
-      });
+      return NextResponse.json({ found: true, animal }, { status: 200 });
     }
-  }
 
-  // 2B) Se sembra microchip, prova chip_number
-  if (looksLikeChip(token)) {
-    const asChip = digitsOnly(token);
-    const { data: animalByChip, error: chipErr } = await supabase
-      .from("animals")
-      .select("id, name, species, chip_number, owner_id, status, unimalia_code")
-      .eq("chip_number", asChip)
-      .limit(1)
-      .maybeSingle<AnimalRow>();
+    // 2) lookup per chip_number
+    if (chip) {
+      const { data: animal, error } = await admin
+        .from("animals")
+        .select("id, name, species, chip_number, owner_id, status, unimalia_code")
+        .eq("chip_number", chip)
+        .maybeSingle();
 
-    if (chipErr) return NextResponse.json({ error: chipErr.message }, { status: 500 });
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      if (!animal) return notFound();
 
-    if (animalByChip) {
-      return NextResponse.json({
-        found: true,
-        animal: {
-          id: animalByChip.id,
-          name: animalByChip.name ?? "",
-          species: animalByChip.species ?? null,
-          chip_number: animalByChip.chip_number ?? null,
-          owner_id: animalByChip.owner_id,
-          status: animalByChip.status ?? null,
-          unimalia_code: animalByChip.unimalia_code ?? null,
-        },
-      });
+      return NextResponse.json({ found: true, animal }, { status: 200 });
     }
-  }
 
-  // 2C) Se è UUID, prova anche animals.id (solo come fallback)
-  if (isUuid(token)) {
-    const { data: animalById, error: idErr } = await supabase
-      .from("animals")
-      .select("id, name, species, chip_number, owner_id, status, unimalia_code")
-      .eq("id", token)
-      .limit(1)
-      .maybeSingle<AnimalRow>();
-
-    if (idErr) return NextResponse.json({ error: idErr.message }, { status: 500 });
-
-    if (animalById) {
-      return NextResponse.json({
-        found: true,
-        animal: {
-          id: animalById.id,
-          name: animalById.name ?? "",
-          species: animalById.species ?? null,
-          chip_number: animalById.chip_number ?? null,
-          owner_id: animalById.owner_id,
-          status: animalById.status ?? null,
-          unimalia_code: animalById.unimalia_code ?? null,
-        },
-      });
+    // 3) lookup universale q
+    if (!q) {
+      return NextResponse.json({ error: "Missing chip, id or q" }, { status: 400 });
     }
-  }
 
-  return NextResponse.json({ found: false }, { status: 200 });
+    // se q è 15/10 cifre -> chip
+    const dq = digitsOnly(q);
+    if (dq.length === 15 || dq.length === 10) {
+      const { data: animal, error } = await admin
+        .from("animals")
+        .select("id, name, species, chip_number, owner_id, status, unimalia_code")
+        .eq("chip_number", dq)
+        .maybeSingle();
+
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      if (!animal) return notFound();
+
+      return NextResponse.json({ found: true, animal }, { status: 200 });
+    }
+
+    // se q è uuid: può essere animals.id oppure unimalia_code
+    if (isUuid(q)) {
+      // prima prova animals.id
+      {
+        const { data: animal, error } = await admin
+          .from("animals")
+          .select("id, name, species, chip_number, owner_id, status, unimalia_code")
+          .eq("id", q)
+          .maybeSingle();
+
+        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+        if (animal) return NextResponse.json({ found: true, animal }, { status: 200 });
+      }
+
+      // poi prova unimalia_code
+      {
+        const { data: animal, error } = await admin
+          .from("animals")
+          .select("id, name, species, chip_number, owner_id, status, unimalia_code")
+          .eq("unimalia_code", q)
+          .maybeSingle();
+
+        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+        if (!animal) return notFound();
+
+        return NextResponse.json({ found: true, animal }, { status: 200 });
+      }
+    }
+
+    // fallback: se q non è uuid e non è chip -> niente
+    return notFound();
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message || "Server error" }, { status: 500 });
+  }
 }
