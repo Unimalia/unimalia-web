@@ -3,7 +3,7 @@
 export const dynamic = "force-dynamic";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -105,7 +105,6 @@ async function compressImageToJpeg(file: File, maxSide = 1600, quality = 0.85): 
 
 export default function NuovoProfiloAnimalePage() {
   const router = useRouter();
-  const sp = useSearchParams();
 
   const fileRef = useRef<HTMLInputElement | null>(null);
 
@@ -135,13 +134,16 @@ export default function NuovoProfiloAnimalePage() {
   const cleanedChip = useMemo(() => normalizeChip(chipNumber), [chipNumber]);
 
   useEffect(() => {
-    const chipFromUrl = (sp.get("chip") || sp.get("microchip") || "").trim();
+    // Leggiamo i query params in modo "client-only" (no useSearchParams => no Suspense)
+    if (typeof window === "undefined") return;
+
+    const params = new URLSearchParams(window.location.search);
+    const chipFromUrl = (params.get("chip") || params.get("microchip") || "").trim();
     if (!chipFromUrl) return;
 
-    // precompila il form come “ho microchip”
     setHasChip("yes");
     setChipNumber(chipFromUrl);
-  }, [sp]);
+  }, []);
 
   useEffect(() => {
     let alive = true;
