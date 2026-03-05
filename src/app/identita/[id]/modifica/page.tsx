@@ -24,6 +24,7 @@ export default function ModificaAnimalePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const [name, setName] = useState("");
   const [species, setSpecies] = useState("");
@@ -32,6 +33,7 @@ export default function ModificaAnimalePage() {
   const [size, setSize] = useState("");
   const [chipNumber, setChipNumber] = useState("");
   const [photoUrl, setPhotoUrl] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -83,26 +85,51 @@ export default function ModificaAnimalePage() {
   }, [id, router]);
 
   async function uploadPhoto(file: File | null) {
+    setError(null);
+
     if (!file) return;
 
-    const { data: authData } = await supabase.auth.getUser();
-    const user = authData.user;
-    if (!user) return;
-
-    const ext = file.name.split(".").pop();
-    const path = `profiles/${user.id}/${Date.now()}.${ext}`;
-
-    const { error } = await supabase.storage
-      .from(BUCKET)
-      .upload(path, file, { upsert: true });
-
-    if (error) {
-      setMsg("Errore nel caricamento foto.");
+    if (!file.type.startsWith("image/")) {
+      setError("File non valido.");
       return;
     }
 
-    const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
-    setPhotoUrl(data.publicUrl);
+    setSaving(true);
+
+    try {
+      const { data: authData } = await supabase.auth.getUser();
+      const user = authData.user;
+
+      if (!user) {
+        setError("Sessione scaduta.");
+        return;
+      }
+
+      const fileName = `animal_${Date.now()}.jpg`;
+      const path = `profiles/${user.id}/${fileName}`;
+
+      const { error } = await supabase.storage
+        .from(BUCKET)
+        .upload(path, file, { upsert: true });
+
+      if (error) {
+        setError(error.message);
+        return;
+      }
+
+      const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
+
+      const publicUrl = data.publicUrl + "?t=" + Date.now();
+
+      setPhotoUrl(publicUrl);
+
+      setNotice("Foto aggiornata correttamente ✅");
+    } catch (e: any) {
+      console.error(e);
+      setError("Errore durante upload foto.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function save() {
@@ -123,6 +150,7 @@ export default function ModificaAnimalePage() {
           color: color.trim() || null,
           size: size.trim() || null,
           chip_number: chipNumber ? normalizeChip(chipNumber) : null,
+          photo_url: photoUrl,
         })
         .eq("id", id);
 
@@ -232,11 +260,21 @@ export default function ModificaAnimalePage() {
               onChange={(e) => uploadPhoto(e.target.files?.[0] ?? null)}
             />
           </label>
+
+          {notice && (
+            <p className="text-sm text-emerald-600 mt-2">{notice}</p>
+          )}
         </div>
 
         {msg && (
           <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm">
             {msg}
+          </div>
+        )}
+
+        {error && (
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            {error}
           </div>
         )}
 
