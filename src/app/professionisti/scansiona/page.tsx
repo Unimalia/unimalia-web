@@ -218,15 +218,22 @@ export default function ScannerPage() {
             animalId: null,
             note: "chip lookup not found -> manual",
           });
-
           safePush(`/professionisti/scansiona/manuale?value=${encodeURIComponent(ex.chip)}`);
           return;
         }
 
         showBanner({ kind: "success", text: "Animale trovato. Verifico accesso…" }, 1200);
 
+        // ✅ usa SEMPRE l'id vero dell'animale se presente
+        const resolvedAnimalId = String(json?.animal?.id ?? json?.animalId ?? "").trim();
+
+        if (!resolvedAnimalId) {
+          showBanner({ kind: "error", text: "Animale non trovato (id mancante)" }, 2500);
+          return;
+        }
+
         const grantRes = await fetch(
-          `/api/professionisti/grants/check?animal_id=${encodeURIComponent(json.animalId)}`,
+          `/api/professionisti/grants/check?animal_id=${encodeURIComponent(resolvedAnimalId)}`,
           { cache: "no-store" }
         );
         const grantJson = await grantRes.json().catch(() => ({}));
@@ -239,21 +246,27 @@ export default function ScannerPage() {
         const hasGrant = Boolean(grantJson?.ok);
 
         if (!hasGrant) {
-          safePush(
-            `/professionisti/richieste-accesso?animalId=${encodeURIComponent(json.animalId)}`
-          );
+          safePush(`/professionisti/richieste-accesso?animalId=${encodeURIComponent(resolvedAnimalId)}`);
           return;
         }
 
-        safePush(`/professionisti/animali/${encodeURIComponent(json.animalId)}`);
+        safePush(`/professionisti/animali/${encodeURIComponent(resolvedAnimalId)}`);
         return;
       }
 
       if (ex.kind === "animalId") {
         showBanner({ kind: "success", text: "Codice riconosciuto. Verifico accesso…" }, 1200);
 
+        // ex.animalId qui dovrebbe già essere l'id animale vero
+        const resolvedAnimalId = String(ex.animalId ?? "").trim();
+
+        if (!resolvedAnimalId) {
+          showBanner({ kind: "error", text: "Animale non trovato (id mancante)" }, 2500);
+          return;
+        }
+
         const grantRes = await fetch(
-          `/api/professionisti/grants/check?animal_id=${encodeURIComponent(ex.animalId)}`,
+          `/api/professionisti/grants/check?animal_id=${encodeURIComponent(resolvedAnimalId)}`,
           { cache: "no-store" }
         );
         const grantJson = await grantRes.json().catch(() => ({}));
@@ -266,11 +279,11 @@ export default function ScannerPage() {
         const hasGrant = Boolean(grantJson?.ok);
 
         if (!hasGrant) {
-          safePush(`/professionisti/richieste-accesso?animalId=${encodeURIComponent(ex.animalId)}`);
+          safePush(`/professionisti/richieste-accesso?animalId=${encodeURIComponent(resolvedAnimalId)}`);
           return;
         }
 
-        safePush(`/professionisti/animali/${encodeURIComponent(ex.animalId)}`);
+        safePush(`/professionisti/animali/${encodeURIComponent(resolvedAnimalId)}`);
         return;
       }
 
@@ -287,7 +300,6 @@ export default function ScannerPage() {
         safePush(`/a/${encodeURIComponent(ex.token)}`);
         return;
       }
-
       showBanner({ kind: "error", text: ex.error ?? "Codice non valido." });
       void logScan({
         raw,
