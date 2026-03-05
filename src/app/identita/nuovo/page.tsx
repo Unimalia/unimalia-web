@@ -103,6 +103,29 @@ async function compressImageToJpeg(file: File, maxSide = 1600, quality = 0.85): 
   }
 }
 
+const DRAFT_KEY = "unimalia:identita:nuovo:draft:v1";
+
+function saveDraft(d: any) {
+  try {
+    sessionStorage.setItem(DRAFT_KEY, JSON.stringify(d));
+  } catch {}
+}
+
+function loadDraft(): any | null {
+  try {
+    const raw = sessionStorage.getItem(DRAFT_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function clearDraft() {
+  try {
+    sessionStorage.removeItem(DRAFT_KEY);
+  } catch {}
+}
+
 export default function NuovoProfiloAnimalePage() {
   const router = useRouter();
 
@@ -132,6 +155,55 @@ export default function NuovoProfiloAnimalePage() {
   const [notice, setNotice] = useState<string | null>(null);
 
   const cleanedChip = useMemo(() => normalizeChip(chipNumber), [chipNumber]);
+
+  useEffect(() => {
+    const d = loadDraft();
+    if (!d) return;
+
+    if (typeof d.name === "string") setName(d.name);
+    if (typeof d.species === "string") setSpecies(d.species);
+    if (typeof d.breed === "string") setBreed(d.breed);
+    if (typeof d.color === "string") setColor(d.color);
+    if (typeof d.size === "string") setSize(d.size);
+
+    if (d.hasChip === "yes" || d.hasChip === "no") setHasChip(d.hasChip);
+    if (typeof d.chipNumber === "string") setChipNumber(d.chipNumber);
+
+    if (typeof d.photoUrl === "string") setPhotoUrl(d.photoUrl);
+    if (typeof d.selectedFileName === "string") setSelectedFileName(d.selectedFileName);
+
+    if (typeof d.birthDate === "string") setBirthDate(d.birthDate);
+    if (typeof d.birthDateEstimated === "boolean") setBirthDateEstimated(d.birthDateEstimated);
+  }, []);
+
+  useEffect(() => {
+    saveDraft({
+      name,
+      species,
+      breed,
+      color,
+      size,
+      hasChip,
+      chipNumber,
+      photoUrl,
+      selectedFileName,
+      birthDate,
+      birthDateEstimated,
+      ts: Date.now(),
+    });
+  }, [
+    name,
+    species,
+    breed,
+    color,
+    size,
+    hasChip,
+    chipNumber,
+    photoUrl,
+    selectedFileName,
+    birthDate,
+    birthDateEstimated,
+  ]);
 
   useEffect(() => {
     // Leggiamo i query params in modo "client-only" (no useSearchParams => no Suspense)
@@ -300,6 +372,8 @@ export default function NuovoProfiloAnimalePage() {
 
       const { error } = await supabase.from("animals").insert(payload);
       if (error) throw error;
+
+      clearDraft();
 
       router.push("/identita");
     } catch (e: any) {

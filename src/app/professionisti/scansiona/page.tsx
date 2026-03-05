@@ -31,6 +31,7 @@ type Extract =
   | { kind: "animalId"; animalId: string }
   | { kind: "publicToken"; token: string }
   | { kind: "chip"; chip: string }
+  | { kind: "q"; q: string }
   | { kind: "error"; error: string };
 
 function extractFromScan(raw: string): Extract {
@@ -38,6 +39,12 @@ function extractFromScan(raw: string): Extract {
   if (!code) return { kind: "error", error: "Codice vuoto" };
 
   if (isUuid(code)) return { kind: "animalId", animalId: code };
+
+  // ✅ Supporta codici testuali UNIMALIA:xxxx / UNIMALIA-xxxx
+  // (li risolveremo via /api/animals/find?q=...)
+  if (/^unimalia[:\-]/i.test(code)) {
+    return { kind: "q", q: code };
+  }
 
   const d = digitsOnly(code);
 
@@ -61,6 +68,12 @@ function extractFromScan(raw: string): Extract {
         kind: "error",
         error: "Questo codice apre la lista animali (non è un animale). Usa QR UNIMALIA o microchip.",
       };
+    }
+
+    // ✅ QR universale: /scansiona?q=...
+    if (path === "/scansiona" || path === "/scansiona/") {
+      const q = (url.searchParams.get("q") || "").trim();
+      if (q) return { kind: "q", q };
     }
 
     const qAnimalId = url.searchParams.get("animalId") || url.searchParams.get("id");
@@ -203,12 +216,14 @@ export default function ScannerPage() {
       const ex = extractFromScan(normalized);
 
       if (ex.kind === "chip") {
-        const res = await fetch(`/api/animals/find?chip=${encodeURIComponent(ex.chip)}`, {
+        const res = await fetch(`/api/animals/find?q=${encodeURIComponent(ex.chip)}`, {
           cache: "no-store",
         });
         const json = await res.json().catch(() => ({}));
 
-        if (!res.ok || !json?.animalId) {
+        const resolvedAnimalId = String(json?.animal?.id ?? "").trim();
+
+        if (!res.ok || !json?.found || !resolvedAnimalId) {
           showBanner({ kind: "info", text: "Microchip non trovato. Apro gestione manuale…" }, 1500);
 
           void logScan({
@@ -223,14 +238,6 @@ export default function ScannerPage() {
         }
 
         showBanner({ kind: "success", text: "Animale trovato. Verifico accesso…" }, 1200);
-
-        // ✅ usa SEMPRE l'id vero dell'animale se presente
-        const resolvedAnimalId = String(json?.animal?.id ?? json?.animalId ?? "").trim();
-
-        if (!resolvedAnimalId) {
-          showBanner({ kind: "error", text: "Animale non trovato (id mancante)" }, 2500);
-          return;
-        }
 
         const grantRes = await fetch(
           `/api/professionisti/grants/check?animal_id=${encodeURIComponent(resolvedAnimalId)}`,
@@ -248,7 +255,7 @@ export default function ScannerPage() {
         if (!hasGrant) {
           safePush(
             `/professionisti/richieste-accesso?animalId=${encodeURIComponent(
-              String(json?.animal?.id ?? json?.animalId ?? "")
+              resolvedAnimalId
             )}&chip=${encodeURIComponent(String(ex.chip ?? ""))}`
           );
           return;
@@ -309,6 +316,50 @@ export default function ScannerPage() {
         return;
       }
 
+      if (ex.kind === "q") {
+        showBanner({ kind: "success", text: "Codice UNIMALIA riconosciuto. Risolvo animale…" }, 1200);
+
+        const findRes = await fetch(`/api/animals/find?q=${encodeURIComponent(ex.q)}`, {
+          cache: "no-store",
+        });
+        const findJson = await findRes.json().catch(() => ({}));
+
+        if (!findRes.ok) {
+          showBanner({ kind: "error", text: findJson?.error || "Errore lookup animale" }, 2500);
+          return;
+        }
+
+        const resolvedAnimalId = String(findJson?.animal?.id ?? "").trim();
+        if (!findJson?.found || !resolvedAnimalId) {
+          showBanner(
+            { kind: "error", text: "Animale non trovato. Codice UNIMALIA non valido o non associato." },
+            3000
+          );
+          return;
+        }
+
+        const grantRes = await fetch(
+          `/api/professionisti/grants/check?animal_id=${encodeURIComponent(resolvedAnimalId)}`,
+          { cache: "no-store" }
+        );
+        const grantJson = await grantRes.json().catch(() => ({}));
+
+        if (!grantRes.ok) {
+          showBanner({ kind: "error", text: grantJson?.error || "Errore verifica accesso" }, 2500);
+          return;
+        }
+
+        const hasGrant = Boolean(grantJson?.ok);
+
+        if (!hasGrant) {
+          safePush(`/professionisti/richieste-accesso?animalId=${encodeURIComponent(resolvedAnimalId)}`);
+          return;
+        }
+
+        safePush(`/professionisti/animali/${encodeURIComponent(resolvedAnimalId)}`);
+        return;
+      }
+
       if (ex.kind === "publicToken") {
         showBanner({ kind: "success", text: "Link UNIMALIA riconosciuto. Apertura…" }, 1500);
         void logScan({
@@ -322,6 +373,7 @@ export default function ScannerPage() {
         safePush(`/a/${encodeURIComponent(ex.token)}`);
         return;
       }
+
       showBanner({ kind: "error", text: ex.error ?? "Codice non valido." });
       void logScan({
         raw,

@@ -9,6 +9,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { isVetUser } from "@/app/professionisti/_components/ProShell";
 import { AnimalCodes } from "@/_components/animal/animal-codes";
 import { authHeaders } from "@/lib/client/authHeaders";
+import { getBarcodeValue, getQrValue } from "@/lib/animalCodes";
 
 type Animal = {
   id: string;
@@ -134,18 +135,14 @@ export default function ProAnimalPage() {
   const [eventsErr, setEventsErr] = useState<string | null>(null);
 
   const qrValue = useMemo(() => {
-    const origin = typeof window !== "undefined" ? window.location.origin : "";
-    if (!id) return "";
-    return origin ? `${origin}/scansiona/animali/${id}` : `UNIMALIA:${id}`;
-  }, [id]);
+    const origin = typeof window !== "undefined" ? window.location.origin : "https://unimalia.it";
+    if (!animal) return "";
+    return getQrValue(animal, origin);
+  }, [animal]);
 
   const barcodeValue = useMemo(() => {
     if (!animal) return "";
-    const chip = normalizeChip(animal.chip_number);
-    if (chip) return chip;
-    const code = (animal.unimalia_code || "").trim();
-    if (code) return `UNIMALIA:${code}`;
-    return `UNIMALIA:${animal.id}`;
+    return getBarcodeValue(animal);
   }, [animal]);
 
   async function loadAnimal() {
@@ -248,19 +245,19 @@ export default function ProAnimalPage() {
 
   const lastVisit = useMemo(() => {
     const list = (events || []).filter((e) => e.type === "visit" && e.event_date);
-    list.sort((a, b) => (new Date(b.event_date).getTime() - new Date(a.event_date).getTime()));
+    list.sort((a, b) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime());
     return list[0] ?? null;
   }, [events]);
 
   const lastVaccine = useMemo(() => {
     const list = (events || []).filter((e) => e.type === "vaccine" && e.event_date);
-    list.sort((a, b) => (new Date(b.event_date).getTime() - new Date(a.event_date).getTime()));
+    list.sort((a, b) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime());
     return list[0] ?? null;
   }, [events]);
 
   const latestTherapies = useMemo(() => {
     const list = (events || []).filter((e) => e.type === "therapy" && e.event_date);
-    list.sort((a, b) => (new Date(b.event_date).getTime() - new Date(a.event_date).getTime()));
+    list.sort((a, b) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime());
     return list.slice(0, 3);
   }, [events]);
 
@@ -279,7 +276,7 @@ export default function ProAnimalPage() {
       .filter((e) => e.type === "vaccine")
       .map((e) => ({ e, due: getDue(e) }))
       .filter((x) => x.due && x.due.getTime() <= limit.getTime())
-      .sort((a, b) => (a.due!.getTime() - b.due!.getTime())); // prima le più urgenti
+      .sort((a, b) => a.due!.getTime() - b.due!.getTime()); // prima le più urgenti
 
     return list;
   }, [events]);
@@ -314,15 +311,11 @@ export default function ProAnimalPage() {
 
   return (
     <div className="space-y-6">
-
       {/* HEADER */}
       <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-
           <div className="min-w-0">
-            <h1 className="truncate text-2xl font-semibold text-zinc-900">
-              {animal.name}
-            </h1>
+            <h1 className="truncate text-2xl font-semibold text-zinc-900">{animal.name}</h1>
 
             <p className="mt-1 text-sm text-zinc-600">
               {animal.species}
@@ -336,7 +329,6 @@ export default function ProAnimalPage() {
           </div>
 
           <div className="flex flex-wrap gap-2">
-
             <Link
               href="/professionisti/animali"
               className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
@@ -376,7 +368,6 @@ export default function ProAnimalPage() {
                 Solo vet può verificare
               </span>
             )}
-
           </div>
         </div>
 
@@ -388,25 +379,16 @@ export default function ProAnimalPage() {
         </div>
       </div>
 
-
       {/* STATO CLINICO RAPIDO */}
       <div className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
-
         <div className="flex items-start justify-between gap-3">
-          <h2 className="text-base font-semibold text-zinc-900">
-            Stato clinico rapido
-          </h2>
+          <h2 className="text-base font-semibold text-zinc-900">Stato clinico rapido</h2>
 
-          {eventsErr ? (
-            <span className="text-xs text-amber-700">
-              {eventsErr}
-            </span>
-          ) : null}
+          {eventsErr ? <span className="text-xs text-amber-700">{eventsErr}</span> : null}
         </div>
 
         {/* più compatto: 6 box */}
         <div className="mt-4 grid gap-3 text-sm md:grid-cols-6">
-
           <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
             <div className="text-xs text-zinc-500">Allergie</div>
             <div className="mt-1 font-semibold text-zinc-900">—</div>
@@ -463,7 +445,9 @@ export default function ProAnimalPage() {
                     <li key={e.id} className="truncate">
                       <span className="font-semibold">{e.title || "Vaccino"}</span>
                       <span className={isOver ? "text-red-700" : "text-amber-700"}>
-                        {" "}• {isOver ? "scaduta" : "in scadenza"} {due ? formatDateIT(due.toISOString()) : ""}
+                        {" "}
+                        • {isOver ? "scaduta" : "in scadenza"}{" "}
+                        {due ? formatDateIT(due.toISOString()) : ""}
                       </span>
                     </li>
                   );
@@ -471,27 +455,19 @@ export default function ProAnimalPage() {
               </ul>
             )}
           </div>
-
         </div>
 
         <p className="mt-3 text-xs text-zinc-500">
           Sintesi rapida della cartella clinica per valutazione immediata.
         </p>
-
       </div>
-
 
       {/* IDENTITÀ + MICROCHIP */}
       <div className="grid gap-4 md:grid-cols-2">
-
         <section className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
-
-          <h2 className="text-base font-semibold text-zinc-900">
-            Identità
-          </h2>
+          <h2 className="text-base font-semibold text-zinc-900">Identità</h2>
 
           <dl className="mt-3 grid gap-2 text-sm">
-
             <div className="flex justify-between gap-4">
               <dt className="text-zinc-500">Nome</dt>
               <dd className="font-medium text-zinc-900">{animal.name}</dd>
@@ -516,11 +492,9 @@ export default function ProAnimalPage() {
               <dt className="text-zinc-500">Taglia</dt>
               <dd className="font-medium text-zinc-900">{animal.size || "—"}</dd>
             </div>
-
           </dl>
 
           <div className="mt-4 flex flex-wrap gap-2">
-
             {isVet ? (
               <Link
                 href={`/professionisti/animali/${animal.id}/clinica`}
@@ -540,20 +514,13 @@ export default function ProAnimalPage() {
             >
               Storia servizi (in arrivo)
             </Link>
-
           </div>
-
         </section>
 
-
         <section className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
-
-          <h2 className="text-base font-semibold text-zinc-900">
-            Microchip
-          </h2>
+          <h2 className="text-base font-semibold text-zinc-900">Microchip</h2>
 
           <div className="mt-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-
             <div className="text-xs text-zinc-500">Numero</div>
 
             <div className="mt-1 text-sm font-semibold text-zinc-900">
@@ -572,18 +539,12 @@ export default function ProAnimalPage() {
             {animal.microchip_verified && (
               <div className="mt-2 text-xs text-zinc-600">
                 Verificato da:{" "}
-                <span className="font-semibold text-zinc-900">
-                  {microchipVerifierLabel}
-                </span>
+                <span className="font-semibold text-zinc-900">{microchipVerifierLabel}</span>
               </div>
             )}
-
           </div>
-
         </section>
-
       </div>
-
 
       {/* QR + BARCODE */}
       <AnimalCodes
@@ -591,7 +552,6 @@ export default function ProAnimalPage() {
         barcodeValue={barcodeValue}
         caption="Da usare in emergenza o per verifica rapida."
       />
-
     </div>
   );
 }
