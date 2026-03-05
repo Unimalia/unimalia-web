@@ -25,7 +25,6 @@ function normalizeForSearch(v: unknown) {
 }
 
 function tokenize(q: string) {
-  // split per spazi + punteggiatura, rimuove token vuoti e token da 1 carattere (troppi falsi positivi)
   return normalizeForSearch(q)
     .split(/[\s,.;:_\-+/\\|(){}\[\]"'’]+/g)
     .map((t) => t.trim())
@@ -47,8 +46,6 @@ function maxIso(a: string | null, b: string | null) {
 }
 
 function pickLastSeenAt(r: ManagedAnimalRow) {
-  // “ultima zampa in struttura”: usa il primo timestamp disponibile.
-  // Se in futuro aggiungi last_event_at dal server, lo metteremo qui come priorità #1.
   return r.last_visit_at || r.next_reminder_at || null;
 }
 
@@ -68,7 +65,6 @@ function shortId(id: string) {
 function renderMicrochip(m: string | null) {
   const v = (m ?? "").trim();
   if (!v) return "—";
-  // se è lungo, mostra finale (comodo per distinzione senza “rumore”)
   if (v.length > 10) return `…${v.slice(-6)}`;
   return v;
 }
@@ -87,6 +83,8 @@ export default function ManagedAnimalsClient({
     () => ({})
   );
 
+  const [lastSeenErr, setLastSeenErr] = React.useState<string | null>(null);
+
   const filtered = React.useMemo(() => {
     const tokens = tokenize(q);
     if (tokens.length === 0) return initialRows;
@@ -96,7 +94,6 @@ export default function ManagedAnimalsClient({
         .map(normalizeForSearch)
         .join(" | ");
 
-      // AND: tutte le parole devono comparire da qualche parte
       return tokens.every((t) => hay.includes(t));
     });
   }, [q, initialRows]);
@@ -106,19 +103,16 @@ export default function ManagedAnimalsClient({
 
     async function loadLastSeen() {
       try {
-        // piccola protezione: se un giorno hai 1000 righe non le fetchiamo tutte insieme
         const rows = initialRows.slice(0, 200);
 
         const out: Record<string, string | null> = {};
 
         const headers = await authHeaders();
 
-        // fetch sequenziale (più semplice, meno rischio rate-limit)
         for (const r of rows) {
           const animalId = r.animal_id;
           if (!animalId) continue;
 
-          // se già presente, salta
           if (lastSeenByAnimal[animalId] !== undefined) continue;
 
           const res = await fetch(
@@ -137,11 +131,17 @@ export default function ManagedAnimalsClient({
           }
 
           const json = await res.json().catch(() => ({}));
-          const events = (json?.events ?? []) as Array<{ event_date?: string | null }>;
+          const events = (json?.events ?? []) as Array<any>;
 
           let best: string | null = null;
+
           for (const e of events) {
-            const d = (e?.event_date ?? null) as any;
+            const d =
+              (e?.event_date ?? null) ||
+              (e?.occurred_at ?? null) ||
+              (e?.created_at ?? null) ||
+              null;
+
             if (typeof d === "string" && d.trim()) {
               best = maxIso(best, d);
             }
@@ -152,8 +152,9 @@ export default function ManagedAnimalsClient({
 
         if (!alive) return;
         setLastSeenByAnimal((prev) => ({ ...out, ...prev }));
-      } catch {
-        // niente: se fallisce, resterà "—"
+      } catch (e: any) {
+        if (!alive) return;
+        setLastSeenErr(String(e?.message ?? e ?? "Errore loadLastSeen"));
       }
     }
 
@@ -178,7 +179,6 @@ export default function ManagedAnimalsClient({
         <button
           onClick={() => router.push(`/professionisti/animali?q=${encodeURIComponent(q)}`)}
           className="rounded-md border px-3 py-2 text-sm font-semibold hover:bg-neutral-50"
-          title="Ricarica la pagina con query (utile se hai migliaia di righe)"
         >
           Cerca
         </button>
@@ -187,6 +187,12 @@ export default function ManagedAnimalsClient({
           {filtered.length} / {initialRows.length}
         </div>
       </div>
+
+      {lastSeenErr ? (
+        <div className="px-3 pb-3 text-xs text-red-700">
+          Errore caricamento “Ultima visita”: {lastSeenErr}
+        </div>
+      ) : null}
 
       <div className="overflow-auto">
         <table className="w-full text-sm">
@@ -203,6 +209,7 @@ export default function ManagedAnimalsClient({
               <th className="p-3"></th>
             </tr>
           </thead>
+
           <tbody>
             {filtered.map((r) => (
               <tr key={r.animal_id} className="border-t">
@@ -210,12 +217,17 @@ export default function ManagedAnimalsClient({
                 <td className="p-3">{r.species ?? "—"}</td>
                 <td className="p-3">{r.owner_name ?? "—"}</td>
                 <td className="p-3">{renderMicrochip(r.microchip)}</td>
+
                 <td className="p-3">
                   {formatDate(lastSeenByAnimal[r.animal_id] ?? pickLastSeenAt(r))}
                 </td>
+
                 <td className="p-3">{formatDate(r.next_reminder_at)}</td>
                 <td className="p-3">{renderStatus(r.status)}</td>
-                <td className="p-3 font-mono text-xs opacity-80">{shortId(r.animal_id)}</td>
+                <td className="p-3 font-mono text-xs opacity-80">
+                  {shortId(r.animal_id)}
+                </td>
+
                 <td className="p-3 text-right">
                   <Link
                     href={`/professionisti/animali/${r.animal_id}`}
