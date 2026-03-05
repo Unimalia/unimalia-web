@@ -22,6 +22,10 @@ function isSkippableLookupError(errMsg: string) {
 
   // colonne/tabelle che non esistono (ambiente diverso)
   if (s.includes("does not exist")) return true;
+
+  // Supabase: tabella non presente nello "schema cache"
+  if (s.includes("could not find the table") && s.includes("schema cache")) return true;
+
   if (s.includes("unknown column")) return true;
 
   // quando provi a confrontare una colonna UUID con una stringa tipo "UNIMALIA:...."
@@ -199,12 +203,10 @@ export async function GET(req: Request) {
         },
       });
     }
-    // se non trovato come chip, continuiamo (magari era un token numerico diverso)
   }
 
   // 2B) Se è UUID, NON assumiamo che sia animals.id: prima proviamo animals.id, poi le altre strade
   if (isUuid(token)) {
-    // prova animals.id
     const { data: animal, error } = await supabase
       .from("animals")
       .select("id, name, species, chip_number, owner_id, status")
@@ -228,8 +230,6 @@ export async function GET(req: Request) {
     }
   }
 
-  // 2C) Prova colonne "probabili" dentro animals (se esistono)
-  // (le colonne mancanti vengono ignorate senza rompere)
   const candidateAnimalColumns = [
     "public_token",
     "public_id",
@@ -261,8 +261,6 @@ export async function GET(req: Request) {
     if ((res as any).error) return NextResponse.json({ error: (res as any).error }, { status: 500 });
   }
 
-  // 2D) Prova tabelle mapping "probabili" (se esistono)
-  // Se non esistono, le saltiamo.
   const mappingCandidates: Array<[string, string, string]> = [
     ["animal_public_tokens", "token", "animal_id"],
     ["animal_public_links", "token", "animal_id"],
@@ -290,6 +288,5 @@ export async function GET(req: Request) {
     if ((res as any).error) return NextResponse.json({ error: (res as any).error }, { status: 500 });
   }
 
-  // niente da fare
   return NextResponse.json({ found: false }, { status: 200 });
 }
