@@ -51,7 +51,10 @@ export async function POST(req: Request) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!supabaseUrl || !supabaseAnon) {
-    return NextResponse.json({ error: "Server misconfigured (Supabase env missing)" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Server misconfigured (Supabase env missing)" },
+      { status: 500 }
+    );
   }
 
   const supabase = createClient(supabaseUrl, supabaseAnon, {
@@ -119,7 +122,9 @@ export async function POST(req: Request) {
         meta,
         status: "active",
       })
-      .select("*")
+      .select(
+        "id, animal_id, event_date, type, title, description, visibility, source, verified_at, verified_by, verified_by_org_id, verified_by_member_id, verified_by_label, created_by, created_at, updated_at, status, meta"
+      )
       .single();
 
     if (error || !data) {
