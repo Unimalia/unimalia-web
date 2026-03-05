@@ -31,6 +31,10 @@ type Animal = {
 
   // se vuoi (in futuro via join o api)
   microchip_verified_by_label?: string | null;
+
+  // ✅ NEW
+  birth_date?: string | null;
+  birth_date_is_estimated?: boolean | null;
 };
 
 type ClinicEventType =
@@ -119,6 +123,37 @@ function normalizeChip(raw: string | null) {
   return (raw || "").replace(/\s+/g, "").trim();
 }
 
+// ✅ NEW: calcolo età da birth_date
+function formatAgeFromBirthDate(birthDateISO?: string | null) {
+  if (!birthDateISO) return "—";
+
+  // birthDateISO è tipicamente "YYYY-MM-DD"
+  // new Date("YYYY-MM-DD") in JS viene interpretato come UTC midnight.
+  // Per evitare effetti strani, trasformiamo in data locale "safe".
+  const safe = /^\d{4}-\d{2}-\d{2}$/.test(birthDateISO)
+    ? new Date(`${birthDateISO}T12:00:00`)
+    : new Date(birthDateISO);
+
+  if (Number.isNaN(safe.getTime())) return "—";
+
+  const now = new Date();
+
+  let years = now.getFullYear() - safe.getFullYear();
+  let months = now.getMonth() - safe.getMonth();
+  const days = now.getDate() - safe.getDate();
+
+  if (days < 0) months -= 1;
+  if (months < 0) {
+    years -= 1;
+    months += 12;
+  }
+  if (years < 0) return "—";
+
+  if (years === 0) return `${months} mesi`;
+  if (months === 0) return `${years} anni`;
+  return `${years} anni ${months} mesi`;
+}
+
 export default function ProAnimalPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -163,9 +198,26 @@ export default function ProAnimalPage() {
 
     setIsVet(isVetUser(user));
 
-    const { data, error } = await supabase.from("animals").select("*").eq("id", id).single();
+    // ✅ MODIFICA: usa API server-side (evita RLS su client)
+    const res = await fetch(`/api/professionisti/animal?animalId=${encodeURIComponent(id)}`, {
+      cache: "no-store",
+      headers: {
+        ...(await authHeaders()),
+      },
+    });
 
-    if (error || !data) {
+    const json = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      setErr(json?.error || "Animale non trovato.");
+      setAnimal(null);
+      setLoading(false);
+      return;
+    }
+
+    const data = json?.animal ?? null;
+
+    if (!data) {
       setErr("Animale non trovato.");
       setAnimal(null);
       setLoading(false);
@@ -374,7 +426,8 @@ export default function ProAnimalPage() {
         <div className="mt-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-700">
           <div className="font-semibold">Privacy</div>
           <div className="mt-1 text-sm text-zinc-600">
-            Le identità NON sono pubbliche. Questa scheda è visibile solo a professionisti autorizzati e al proprietario.
+            Le identità NON sono pubbliche. Questa scheda è visibile solo a professionisti
+            autorizzati e al proprietario.
           </div>
         </div>
       </div>
@@ -382,7 +435,17 @@ export default function ProAnimalPage() {
       {/* STATO CLINICO RAPIDO */}
       <div className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
         <div className="flex items-start justify-between gap-3">
-          <h2 className="text-base font-semibold text-zinc-900">Stato clinico rapido</h2>
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-base font-semibold text-zinc-900">Stato clinico rapido</h2>
+
+            <div className="text-sm text-zinc-600 flex items-center gap-2">
+              <span>Età: {formatAgeFromBirthDate(animal?.birth_date)}</span>
+
+              {animal?.birth_date && animal?.birth_date_is_estimated ? (
+                <span className="text-xs text-zinc-500">(presunta)</span>
+              ) : null}
+            </div>
+          </div>
 
           {eventsErr ? <span className="text-xs text-amber-700">{eventsErr}</span> : null}
         </div>
@@ -429,7 +492,7 @@ export default function ProAnimalPage() {
 
           <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
             <div className="text-xs text-zinc-500">Ultima vaccinazione</div>
-            <div className="mt-1 font-semibold text-zinc-900">
+            <div className="mt-1 text-sm font-semibold text-zinc-900">
               {lastVaccine ? formatDateIT(lastVaccine.event_date) : "—"}
             </div>
 
