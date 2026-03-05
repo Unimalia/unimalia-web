@@ -57,6 +57,13 @@ type ClinicEventRow = {
   verified_by_label?: string | null;
   verified_by_org_id?: string | null;
   verified_by_member_id?: string | null;
+
+  // ✅ scadenze/richiami (se l'API le manda)
+  due_date?: string | null;
+  due_at?: string | null;
+  next_due_date?: string | null;
+  next_due_at?: string | null;
+  expires_at?: string | null;
 };
 
 function statusLabel(status: string) {
@@ -229,6 +236,54 @@ export default function ProAnimalPage() {
     return when ? `${who} • ${when}` : who;
   }, [animal?.microchip_verified, animal?.microchip_verified_by_label, animal?.microchip_verified_at]);
 
+  // =========================
+  // STATO CLINICO RAPIDO (da events)
+  // =========================
+
+  function toDateOrNull(v?: string | null) {
+    if (!v) return null;
+    const d = new Date(v);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+
+  const lastVisit = useMemo(() => {
+    const list = (events || []).filter((e) => e.type === "visit" && e.event_date);
+    list.sort((a, b) => (new Date(b.event_date).getTime() - new Date(a.event_date).getTime()));
+    return list[0] ?? null;
+  }, [events]);
+
+  const lastVaccine = useMemo(() => {
+    const list = (events || []).filter((e) => e.type === "vaccine" && e.event_date);
+    list.sort((a, b) => (new Date(b.event_date).getTime() - new Date(a.event_date).getTime()));
+    return list[0] ?? null;
+  }, [events]);
+
+  const latestTherapies = useMemo(() => {
+    const list = (events || []).filter((e) => e.type === "therapy" && e.event_date);
+    list.sort((a, b) => (new Date(b.event_date).getTime() - new Date(a.event_date).getTime()));
+    return list.slice(0, 3);
+  }, [events]);
+
+  const vaccinesDueSoonOrOverdue = useMemo(() => {
+    const now = new Date();
+    const limit = new Date(now.getTime() + 15 * 24 * 60 * 60 * 1000);
+
+    const getDue = (e: ClinicEventRow) =>
+      toDateOrNull(e.next_due_at) ||
+      toDateOrNull(e.next_due_date) ||
+      toDateOrNull(e.due_at) ||
+      toDateOrNull(e.due_date) ||
+      toDateOrNull(e.expires_at);
+
+    const list = (events || [])
+      .filter((e) => e.type === "vaccine")
+      .map((e) => ({ e, due: getDue(e) }))
+      .filter((x) => x.due && x.due.getTime() <= limit.getTime())
+      .sort((a, b) => (a.due!.getTime() - b.due!.getTime())); // prima le più urgenti
+
+    return list;
+  }, [events]);
+
   if (loading) {
     return (
       <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
@@ -337,11 +392,20 @@ export default function ProAnimalPage() {
       {/* STATO CLINICO RAPIDO */}
       <div className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
 
-        <h2 className="text-base font-semibold text-zinc-900">
-          Stato clinico rapido
-        </h2>
+        <div className="flex items-start justify-between gap-3">
+          <h2 className="text-base font-semibold text-zinc-900">
+            Stato clinico rapido
+          </h2>
 
-        <div className="mt-4 grid gap-3 text-sm md:grid-cols-5">
+          {eventsErr ? (
+            <span className="text-xs text-amber-700">
+              {eventsErr}
+            </span>
+          ) : null}
+        </div>
+
+        {/* più compatto: 6 box */}
+        <div className="mt-4 grid gap-3 text-sm md:grid-cols-6">
 
           <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
             <div className="text-xs text-zinc-500">Allergie</div>
@@ -354,18 +418,58 @@ export default function ProAnimalPage() {
           </div>
 
           <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
+            <div className="text-xs text-zinc-500">Ultime terapie</div>
+            {latestTherapies.length === 0 ? (
+              <div className="mt-1 font-semibold text-zinc-900">—</div>
+            ) : (
+              <ul className="mt-1 space-y-1 text-xs text-zinc-800">
+                {latestTherapies.map((t) => (
+                  <li key={t.id} className="truncate">
+                    <span className="font-semibold">{t.title || "Terapia"}</span>
+                    <span className="text-zinc-500"> • {formatDateIT(t.event_date)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
             <div className="text-xs text-zinc-500">Patologie croniche</div>
             <div className="mt-1 font-semibold text-zinc-900">—</div>
           </div>
 
           <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
             <div className="text-xs text-zinc-500">Ultima visita</div>
-            <div className="mt-1 font-semibold text-zinc-900">—</div>
+            <div className="mt-1 font-semibold text-zinc-900">
+              {lastVisit ? formatDateIT(lastVisit.event_date) : "—"}
+            </div>
           </div>
 
           <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
             <div className="text-xs text-zinc-500">Ultima vaccinazione</div>
-            <div className="mt-1 font-semibold text-zinc-900">—</div>
+            <div className="mt-1 font-semibold text-zinc-900">
+              {lastVaccine ? formatDateIT(lastVaccine.event_date) : "—"}
+            </div>
+
+            <div className="mt-2 text-xs text-zinc-500">Vaccinazioni scadute / in scadenza</div>
+
+            {vaccinesDueSoonOrOverdue.length === 0 ? (
+              <div className="mt-1 text-xs font-semibold text-zinc-900">—</div>
+            ) : (
+              <ul className="mt-1 space-y-1 text-xs text-zinc-800">
+                {vaccinesDueSoonOrOverdue.slice(0, 3).map(({ e, due }) => {
+                  const isOver = due!.getTime() < Date.now();
+                  return (
+                    <li key={e.id} className="truncate">
+                      <span className="font-semibold">{e.title || "Vaccino"}</span>
+                      <span className={isOver ? "text-red-700" : "text-amber-700"}>
+                        {" "}• {isOver ? "scaduta" : "in scadenza"} {due ? formatDateIT(due.toISOString()) : ""}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </div>
 
         </div>
