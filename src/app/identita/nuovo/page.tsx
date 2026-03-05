@@ -3,7 +3,7 @@
 export const dynamic = "force-dynamic";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -105,6 +105,7 @@ async function compressImageToJpeg(file: File, maxSide = 1600, quality = 0.85): 
 
 export default function NuovoProfiloAnimalePage() {
   const router = useRouter();
+  const sp = useSearchParams();
 
   const fileRef = useRef<HTMLInputElement | null>(null);
 
@@ -115,6 +116,9 @@ export default function NuovoProfiloAnimalePage() {
   const [breed, setBreed] = useState("");
   const [color, setColor] = useState("");
   const [size, setSize] = useState("");
+
+  const [birthDate, setBirthDate] = useState(""); // YYYY-MM-DD
+  const [birthDateEstimated, setBirthDateEstimated] = useState(false);
 
   const [hasChip, setHasChip] = useState<"yes" | "no">("no");
   const [chipNumber, setChipNumber] = useState("");
@@ -129,6 +133,15 @@ export default function NuovoProfiloAnimalePage() {
   const [notice, setNotice] = useState<string | null>(null);
 
   const cleanedChip = useMemo(() => normalizeChip(chipNumber), [chipNumber]);
+
+  useEffect(() => {
+    const chipFromUrl = (sp.get("chip") || sp.get("microchip") || "").trim();
+    if (!chipFromUrl) return;
+
+    // precompila il form come “ho microchip”
+    setHasChip("yes");
+    setChipNumber(chipFromUrl);
+  }, [sp]);
 
   useEffect(() => {
     let alive = true;
@@ -248,6 +261,8 @@ export default function NuovoProfiloAnimalePage() {
     if (!species.trim()) return setError("Seleziona il tipo animale.");
     if (!photoUrl) return setError("Carica una foto.");
 
+    if (!birthDate.trim()) return setError("Inserisci la data di nascita (anche presunta).");
+
     if (hasChip === "yes") {
       if (!cleanedChip) return setError("Inserisci il microchip.");
       if (cleanedChip.length < 10) return setError("Numero microchip non valido.");
@@ -276,6 +291,9 @@ export default function NuovoProfiloAnimalePage() {
         status: "home",
         chip_number: hasChip === "yes" ? cleanedChip : null,
         microchip_verified: false,
+
+        birth_date: birthDate,
+        birth_date_is_estimated: birthDateEstimated,
       };
 
       const { error } = await supabase.from("animals").insert(payload);
@@ -322,6 +340,27 @@ export default function NuovoProfiloAnimalePage() {
             <option value="Gatto">Gatto</option>
             <option value="Altro">Altro</option>
           </select>
+
+          <div>
+            <label className="block text-sm font-medium">Data di nascita *</label>
+            <input
+              type="date"
+              value={birthDate}
+              onChange={(e) => setBirthDate(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2"
+            />
+            <label className="mt-2 inline-flex items-center gap-2 text-sm text-zinc-700">
+              <input
+                type="checkbox"
+                checked={birthDateEstimated}
+                onChange={(e) => setBirthDateEstimated(e.target.checked)}
+              />
+              Data presunta
+            </label>
+            <p className="mt-1 text-xs text-zinc-500">
+              Se non conosci la data esatta, inserisci una data indicativa e spunta “presunta”.
+            </p>
+          </div>
         </div>
 
         <div className="mt-6">
@@ -345,10 +384,13 @@ export default function NuovoProfiloAnimalePage() {
                 className="w-full rounded-lg border border-zinc-300 px-3 py-2"
               />
 
-              {/* UI pronta per il futuro: bottone scansione (lo colleghiamo dopo) */}
               <button
                 type="button"
-                onClick={() => router.push("/professionisti/scansiona")}
+                onClick={() =>
+                  router.push(
+                    "/professionisti/scansiona?returnTo=" + encodeURIComponent("/identita/nuovo")
+                  )
+                }
                 className="rounded-lg border border-zinc-300 px-3 py-2 text-sm hover:bg-zinc-50"
               >
                 📷 Scansiona microchip
@@ -370,7 +412,6 @@ export default function NuovoProfiloAnimalePage() {
             onChange={(e) => {
               const f = e.target.files?.[0] ?? null;
               uploadPhoto(f);
-              // reset: permette di riselezionare lo stesso file e far scattare l’evento sempre
               e.currentTarget.value = "";
             }}
           />
@@ -393,11 +434,17 @@ export default function NuovoProfiloAnimalePage() {
         </div>
 
         {error ? (
-          <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>
+          <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            {error}
+          </div>
         ) : null}
 
         <div className="mt-6 flex justify-end">
-          <button onClick={submit} disabled={saving} className="rounded-lg bg-black px-5 py-3 text-white">
+          <button
+            onClick={submit}
+            disabled={saving}
+            className="rounded-lg bg-black px-5 py-3 text-white"
+          >
             {saving ? "Salvataggio…" : "Crea profilo"}
           </button>
         </div>
