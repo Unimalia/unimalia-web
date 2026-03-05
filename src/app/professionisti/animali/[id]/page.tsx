@@ -167,24 +167,22 @@ function extractWeightKg(e: any): number | null {
   const direct =
     e.weight_kg ??
     e.weightKg ??
+    e?.meta?.weight_kg ??
+    e?.meta?.weightKg ??
     e?.data?.weightKg ??
     e?.data?.weight_kg ??
     e?.payload?.weightKg ??
-    e?.payload?.weight_kg ??
-    e?.meta?.weightKg ??
-    e?.meta?.weight_kg;
+    e?.payload?.weight_kg;
 
   if (direct === null || direct === undefined) return null;
 
   const n = typeof direct === "number" ? direct : Number(String(direct).replace(",", "."));
   if (!Number.isFinite(n) || n <= 0) return null;
 
-  // arrotonda a 1 decimale se serve
   return Math.round(n * 10) / 10;
 }
 
 function formatWeightLabel(kg: number) {
-  // 12 -> "12 kg", 12.5 -> "12.5 kg"
   return Number.isInteger(kg) ? `${kg} kg` : `${kg} kg`;
 }
 
@@ -348,9 +346,7 @@ export default function ProAnimalPage() {
 
     list.sort((a, b) => new Date(b.e.event_date).getTime() - new Date(a.e.event_date).getTime());
 
-    return list.length > 0
-      ? { kg: list[0].kg as number, date: list[0].e.event_date as string }
-      : null;
+    return list.length > 0 ? { kg: list[0].kg as number, date: list[0].e.event_date as string } : null;
   }, [events]);
 
   const latestTherapies = useMemo(() => {

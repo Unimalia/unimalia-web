@@ -13,6 +13,10 @@ export async function GET(req: Request) {
   const token = getBearerToken(req);
   if (!token) return NextResponse.json({ error: "Missing Bearer token" }, { status: 401 });
 
+  const url = new URL(req.url);
+  const animalId = String(url.searchParams.get("animalId") ?? "").trim();
+  if (!animalId) return NextResponse.json({ error: "animalId required" }, { status: 400 });
+
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!supabaseUrl || !supabaseAnon) {
@@ -26,10 +30,6 @@ export async function GET(req: Request) {
   const { data: userData, error: userErr } = await supabase.auth.getUser(token);
   const user = userData?.user;
   if (userErr || !user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const url = new URL(req.url);
-  const animalId = (url.searchParams.get("animalId") || "").trim();
-  if (!animalId) return NextResponse.json({ error: "animalId required" }, { status: 400 });
 
   // ✅ GRANT CHECK (READ)
   const grant = await requireOwnerOrGrant(supabase, user.id, animalId, "read");
@@ -52,7 +52,7 @@ export async function GET(req: Request) {
     const { data, error } = await supabase
       .from("animal_clinic_events")
       .select(
-        "id, animal_id, event_date, type, title, description, visibility, source, verified_at, verified_by, verified_by_org_id, verified_by_member_id, verified_by_label, created_by, created_at, updated_at, status"
+        "id, animal_id, event_date, type, title, description, visibility, source, verified_at, verified_by, verified_by_org_id, verified_by_member_id, verified_by_label, created_by, created_at, updated_at, status, meta"
       )
       .eq("animal_id", animalId)
       .neq("status", "void")
