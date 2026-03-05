@@ -12,182 +12,111 @@ function digitsOnly(v: string) {
 }
 
 function looksLikeChip(v: string) {
-  // Microchip: spesso solo cifre (o con spazi). Se dopo pulizia restano >= 10 cifre, lo trattiamo come chip.
   const d = digitsOnly(v);
   return d.length >= 10;
 }
 
-function isSkippableLookupError(errMsg: string) {
-  const s = (errMsg || "").toLowerCase();
+type AnimalRow = {
+  id: string;
+  name: string | null;
+  species: string | null;
+  chip_number: string | null;
+  owner_id: string;
+  status: string | null;
+};
 
-  // colonne/tabelle che non esistono (ambiente diverso)
-  if (s.includes("does not exist")) return true;
-
-  // Supabase: tabella non presente nello "schema cache"
-  if (s.includes("could not find the table") && s.includes("schema cache")) return true;
-
-  if (s.includes("unknown column")) return true;
-
-  // quando provi a confrontare una colonna UUID con una stringa tipo "UNIMALIA:...."
-  // non è un errore "grave": significa solo "questa strada non è quella giusta"
-  if (s.includes("invalid input syntax for type uuid")) return true;
-
-  // eventualmente anche interi/booleani, se capiterà in futuro
-  if (s.includes("invalid input syntax for type integer")) return true;
-  if (s.includes("invalid input syntax for type bigint")) return true;
-
-  return false;
-}
-
-async function tryFindByAnimalColumn(
-  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
-  column: string,
-  value: string
-) {
-  const { data, error } = await supabase
-    .from("animals")
-    .select("id, name, species, chip_number, owner_id, status")
-    .eq(column, value)
-    .limit(1)
-    .maybeSingle();
-
-  if (error) {
-    if (isSkippableLookupError(error.message)) return { found: false as const, skip: true as const };
-    return { found: false as const, skip: false as const, error: error.message };
-  }
-  if (!data) return { found: false as const, skip: false as const };
-  return { found: true as const, animal: data };
-}
-
-async function tryFindByMappingTable(
-  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
-  table: string,
-  tokenColumn: string,
-  animalIdColumn: string,
-  tokenValue: string
-) {
-  // 1) risolvi animal_id dalla tabella mapping
-  const { data: mapRow, error: mapErr } = await supabase
-    .from(table)
-    .select(`${animalIdColumn}`)
-    .eq(tokenColumn, tokenValue)
-    .limit(1)
-    .maybeSingle();
-
-  if (mapErr) {
-    if (isSkippableLookupError(mapErr.message)) return { found: false as const, skip: true as const };
-    return { found: false as const, skip: false as const, error: mapErr.message };
-  }
-  const resolvedAnimalId = (mapRow as any)?.[animalIdColumn] ? String((mapRow as any)[animalIdColumn]) : "";
-  if (!resolvedAnimalId) return { found: false as const, skip: false as const };
-
-  // 2) carica animale
-  const { data: animal, error: aErr } = await supabase
-    .from("animals")
-    .select("id, name, species, chip_number, owner_id, status")
-    .eq("id", resolvedAnimalId)
-    .limit(1)
-    .maybeSingle();
-
-  if (aErr) return { found: false as const, skip: false as const, error: aErr.message };
-  if (!animal) return { found: false as const, skip: false as const };
-  return { found: true as const, animal };
-}
+type AnimalPublicRow = {
+  animal_id: string;
+};
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
 
-  // Compatibilità: vecchi parametri
-  const rawChip = url.searchParams.get("chip");
-  const rawId = url.searchParams.get("id");
+  // Compatibilità vecchia
+  const rawChip = (url.searchParams.get("chip") || "").trim();
+  const rawId = (url.searchParams.get("id") || "").trim();
 
-  // Nuovi parametri "universali"
-  const rawCode = url.searchParams.get("code");
-  const rawQ = url.searchParams.get("q");
-
-  const chip = (rawChip || "").trim();
-  const id = (rawId || "").trim();
-  const code = (rawCode || "").trim();
-  const q = (rawQ || "").trim();
+  // Modalità universale
+  const rawQ = (url.searchParams.get("q") || "").trim();
+  const rawCode = (url.searchParams.get("code") || "").trim();
 
   const supabase = await createServerSupabaseClient();
 
-  // opzionale: solo contesto (non blocchiamo se non loggato)
+  // opzionale: contesto auth (non blocca)
   await supabase.auth.getUser().catch(() => null);
 
-  // 0) input: scegliamo un "valore principale" (q/code) se presente, altrimenti id/chip
-  const primary = (q || code || id || chip).trim();
+  // Se usano i parametri vecchi, comportamento identico a prima
+  if (rawId) {
+    if (!isUuid(rawId)) return NextResponse.json({ error: "Invalid id" }, { status: 400 });
+
+    const { data: animal, error } = await supabase
+      .from("animals")
+      .select("id, name, species, chip_number, owner_id, status")
+      .eq("id", rawId)
+      .limit(1)
+      .maybeSingle<AnimalRow>();
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (!animal) return NextResponse.json({ found: false }, { status: 200 });
+
+    return NextResponse.json({
+      found: true,
+      animal: {
+        id: animal.id,
+        name: animal.name ?? "",
+        species: animal.species ?? null,
+        chip_number: animal.chip_number ?? null,
+        owner_id: animal.owner_id,
+        status: animal.status ?? null,
+      },
+    });
+  }
+
+  if (rawChip) {
+    const { data: animal, error } = await supabase
+      .from("animals")
+      .select("id, name, species, chip_number, owner_id, status")
+      .eq("chip_number", rawChip)
+      .limit(1)
+      .maybeSingle<AnimalRow>();
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (!animal) return NextResponse.json({ found: false }, { status: 200 });
+
+    return NextResponse.json({
+      found: true,
+      animal: {
+        id: animal.id,
+        name: animal.name ?? "",
+        species: animal.species ?? null,
+        chip_number: animal.chip_number ?? null,
+        owner_id: animal.owner_id,
+        status: animal.status ?? null,
+      },
+    });
+  }
+
+  // Modalità universale: q o code
+  const primary = (rawQ || rawCode).trim();
   if (!primary) {
-    return NextResponse.json({ error: "Missing chip or id or code/q" }, { status: 400 });
+    return NextResponse.json({ error: "Missing chip or id or q/code" }, { status: 400 });
   }
 
-  // 1) Se arrivano esplicitamente id/chip, manteniamo la logica originale
-  if (id) {
-    if (!isUuid(id)) return NextResponse.json({ error: "Invalid id" }, { status: 400 });
-
-    const { data: animal, error } = await supabase
-      .from("animals")
-      .select("id, name, species, chip_number, owner_id, status")
-      .eq("id", id)
-      .limit(1)
-      .maybeSingle();
-
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    if (!animal) return NextResponse.json({ found: false }, { status: 200 });
-
-    return NextResponse.json({
-      found: true,
-      animal: {
-        id: animal.id,
-        name: animal.name ?? "",
-        species: animal.species ?? null,
-        chip_number: animal.chip_number ?? null,
-        owner_id: animal.owner_id,
-        status: animal.status ?? null,
-      },
-    });
-  }
-
-  if (chip) {
-    const { data: animal, error } = await supabase
-      .from("animals")
-      .select("id, name, species, chip_number, owner_id, status")
-      .eq("chip_number", chip)
-      .limit(1)
-      .maybeSingle();
-
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    if (!animal) return NextResponse.json({ found: false }, { status: 200 });
-
-    return NextResponse.json({
-      found: true,
-      animal: {
-        id: animal.id,
-        name: animal.name ?? "",
-        species: animal.species ?? null,
-        chip_number: animal.chip_number ?? null,
-        owner_id: animal.owner_id,
-        status: animal.status ?? null,
-      },
-    });
-  }
-
-  // 2) Modalità universale: q/code
-  // Normalizziamo UNIMALIA:xxxx
+  // Normalizza prefisso UNIMALIA:
   let token = primary;
-  if (token.toUpperCase().startsWith("UNIMALIA:")) {
-    token = token.slice("UNIMALIA:".length).trim();
-  }
+  if (token.toUpperCase().startsWith("UNIMALIA:")) token = token.slice("UNIMALIA:".length).trim();
+  if (token.toUpperCase().startsWith("UNIMALIA-")) token = token.slice("UNIMALIA-".length).trim();
 
-  // 2A) Se assomiglia a microchip, prova come chip_number
-  if (looksLikeChip(primary) || looksLikeChip(token)) {
-    const asChip = digitsOnly(primary) || digitsOnly(token);
+  // Se sembra microchip, prova come chip_number
+  if (looksLikeChip(token)) {
+    const asChip = digitsOnly(token);
+
     const { data: animal, error } = await supabase
       .from("animals")
       .select("id, name, species, chip_number, owner_id, status")
       .eq("chip_number", asChip)
       .limit(1)
-      .maybeSingle();
+      .maybeSingle<AnimalRow>();
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     if (animal) {
@@ -205,14 +134,15 @@ export async function GET(req: Request) {
     }
   }
 
-  // 2B) Se è UUID, NON assumiamo che sia animals.id: prima proviamo animals.id, poi le altre strade
+  // Se è un UUID, NON assumiamo che sia animals.id:
+  // 1) prova animals.id
   if (isUuid(token)) {
     const { data: animal, error } = await supabase
       .from("animals")
       .select("id, name, species, chip_number, owner_id, status")
       .eq("id", token)
       .limit(1)
-      .maybeSingle();
+      .maybeSingle<AnimalRow>();
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     if (animal) {
@@ -230,63 +160,38 @@ export async function GET(req: Request) {
     }
   }
 
-  const candidateAnimalColumns = [
-    "public_token",
-    "public_id",
-    "public_code",
-    "unimalia_code",
-    "unimalia_token",
-    "identity_code",
-    "identity_id",
-    "code",
-    "token",
-  ];
+  // 2) prova token UNIMALIA via RPC get_animal_public (questa è la fonte vera)
+  // Nota: la RPC aspetta p_token = token (senza prefisso UNIMALIA:)
+  const { data: rpcData, error: rpcErr } = await supabase.rpc("get_animal_public", { p_token: token });
 
-  for (const col of candidateAnimalColumns) {
-    const res = await tryFindByAnimalColumn(supabase, col, primary);
-    if (res.found) {
-      const a = res.animal;
-      return NextResponse.json({
-        found: true,
-        animal: {
-          id: a.id,
-          name: a.name ?? "",
-          species: a.species ?? null,
-          chip_number: a.chip_number ?? null,
-          owner_id: a.owner_id,
-          status: a.status ?? null,
-        },
-      });
-    }
-    if ((res as any).error) return NextResponse.json({ error: (res as any).error }, { status: 500 });
+  if (rpcErr) return NextResponse.json({ error: rpcErr.message }, { status: 500 });
+
+  const first = (rpcData?.[0] as AnimalPublicRow) ?? null;
+  const resolvedAnimalId = first?.animal_id ? String(first.animal_id) : "";
+
+  if (!resolvedAnimalId) {
+    return NextResponse.json({ found: false }, { status: 200 });
   }
 
-  const mappingCandidates: Array<[string, string, string]> = [
-    ["animal_public_tokens", "token", "animal_id"],
-    ["animal_public_links", "token", "animal_id"],
-    ["animal_codes", "code", "animal_id"],
-    ["animal_identities", "public_id", "animal_id"],
-    ["identities", "public_id", "animal_id"],
-  ];
+  const { data: animal, error: aErr } = await supabase
+    .from("animals")
+    .select("id, name, species, chip_number, owner_id, status")
+    .eq("id", resolvedAnimalId)
+    .limit(1)
+    .maybeSingle<AnimalRow>();
 
-  for (const [table, tokenCol, animalIdCol] of mappingCandidates) {
-    const res = await tryFindByMappingTable(supabase, table, tokenCol, animalIdCol, primary);
-    if (res.found) {
-      const a = res.animal;
-      return NextResponse.json({
-        found: true,
-        animal: {
-          id: a.id,
-          name: a.name ?? "",
-          species: a.species ?? null,
-          chip_number: a.chip_number ?? null,
-          owner_id: a.owner_id,
-          status: a.status ?? null,
-        },
-      });
-    }
-    if ((res as any).error) return NextResponse.json({ error: (res as any).error }, { status: 500 });
-  }
+  if (aErr) return NextResponse.json({ error: aErr.message }, { status: 500 });
+  if (!animal) return NextResponse.json({ found: false }, { status: 200 });
 
-  return NextResponse.json({ found: false }, { status: 200 });
+  return NextResponse.json({
+    found: true,
+    animal: {
+      id: animal.id,
+      name: animal.name ?? "",
+      species: animal.species ?? null,
+      chip_number: animal.chip_number ?? null,
+      owner_id: animal.owner_id,
+      status: animal.status ?? null,
+    },
+  });
 }
