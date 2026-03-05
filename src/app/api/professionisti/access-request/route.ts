@@ -11,11 +11,12 @@ function digitsOnly(v: string) {
 }
 
 // Cache in-memory (per non fare tentativi ad ogni request)
-let REQUESTS_KEY_MODE: "org_id" | "requester" | "grantee" | null = null;
+type RequestsKeyMode = "org_id" | "requester" | "grantee";
+let REQUESTS_KEY_MODE: RequestsKeyMode | null = null;
 
-type KeyMode = NonNullable<typeof REQUESTS_KEY_MODE>;
-
-async function detectRequestsKeyMode(admin: ReturnType<typeof supabaseAdmin>): Promise<KeyMode> {
+async function detectRequestsKeyMode(
+  admin: ReturnType<typeof supabaseAdmin>
+): Promise<RequestsKeyMode> {
   if (REQUESTS_KEY_MODE) return REQUESTS_KEY_MODE;
 
   // 1) prova org_id
