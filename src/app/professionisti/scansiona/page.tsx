@@ -259,15 +259,33 @@ export default function ScannerPage() {
       }
 
       if (ex.kind === "animalId") {
-        showBanner({ kind: "success", text: "Codice riconosciuto. Verifico accesso…" }, 1200);
+        showBanner({ kind: "success", text: "Codice riconosciuto. Risolvo animale…" }, 1200);
 
-        // ex.animalId qui dovrebbe già essere l'id animale vero
-        const resolvedAnimalId = String(ex.animalId ?? "").trim();
+        // ✅ Risolvi sempre il codice in un vero animals.id (supporta UNIMALIA:..., chip, id)
+        const findRes = await fetch(
+          `/api/animals/find?q=${encodeURIComponent(String(raw ?? normalized ?? ex.animalId ?? ""))}`,
+          { cache: "no-store" }
+        );
+        const findJson = await findRes.json().catch(() => ({}));
 
-        if (!resolvedAnimalId) {
-          showBanner({ kind: "error", text: "Animale non trovato (id mancante)" }, 2500);
+        if (!findRes.ok) {
+          showBanner({ kind: "error", text: findJson?.error || "Errore lookup animale" }, 2500);
           return;
         }
+
+        const resolvedAnimalId = String(findJson?.animal?.id ?? "").trim();
+        if (!findJson?.found || !resolvedAnimalId) {
+          showBanner(
+            {
+              kind: "error",
+              text: "Animale non trovato. Prova con microchip o codice UNIMALIA valido.",
+            },
+            3000
+          );
+          return;
+        }
+
+        showBanner({ kind: "success", text: "Animale trovato. Verifico accesso…" }, 1200);
 
         const grantRes = await fetch(
           `/api/professionisti/grants/check?animal_id=${encodeURIComponent(resolvedAnimalId)}`,
@@ -283,8 +301,7 @@ export default function ScannerPage() {
         const hasGrant = Boolean(grantJson?.ok);
 
         if (!hasGrant) {
-          // ✅ qui non abbiamo chip, quindi lasciamo solo animalId
-          safePush(`/professionisti/richieste-accesso?animalId=${encodeURIComponent(ex.animalId)}`);
+          safePush(`/professionisti/richieste-accesso?animalId=${encodeURIComponent(resolvedAnimalId)}`);
           return;
         }
 
