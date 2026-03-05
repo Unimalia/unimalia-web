@@ -191,6 +191,7 @@ export async function POST(req: Request) {
     let payload: any = {
       animal_id: animal.id,
       owner_id: animal.owner_id,
+      requested_by: user.id,
       status: "pending",
       requested_scope,
     };
