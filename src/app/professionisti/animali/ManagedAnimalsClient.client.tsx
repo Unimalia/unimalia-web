@@ -3,6 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { authHeaders } from "@/lib/client/authHeaders";
 
 type ManagedAnimalRow = {
   animal_id: string;
@@ -91,13 +92,7 @@ export default function ManagedAnimalsClient({
     if (tokens.length === 0) return initialRows;
 
     return initialRows.filter((r) => {
-      const hay = [
-        r.animal_name,
-        r.owner_name,
-        r.species,
-        r.microchip,
-        r.animal_id,
-      ]
+      const hay = [r.animal_name, r.owner_name, r.species, r.microchip, r.animal_id]
         .map(normalizeForSearch)
         .join(" | ");
 
@@ -116,6 +111,8 @@ export default function ManagedAnimalsClient({
 
         const out: Record<string, string | null> = {};
 
+        const headers = await authHeaders();
+
         // fetch sequenziale (più semplice, meno rischio rate-limit)
         for (const r of rows) {
           const animalId = r.animal_id;
@@ -124,9 +121,15 @@ export default function ManagedAnimalsClient({
           // se già presente, salta
           if (lastSeenByAnimal[animalId] !== undefined) continue;
 
-          const res = await fetch(`/api/clinic-events/list?animalId=${encodeURIComponent(animalId)}`, {
-            cache: "no-store",
-          });
+          const res = await fetch(
+            `/api/clinic-events/list?animalId=${encodeURIComponent(animalId)}`,
+            {
+              cache: "no-store",
+              headers: {
+                ...headers,
+              },
+            }
+          );
 
           if (!res.ok) {
             out[animalId] = null;
