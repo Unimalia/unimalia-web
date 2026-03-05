@@ -69,6 +69,13 @@ type ClinicEventRow = {
   next_due_date?: string | null;
   next_due_at?: string | null;
   expires_at?: string | null;
+
+  // ✅ peso (il backend potrebbe mandarlo in forme diverse)
+  weight_kg?: number | null;
+  weightKg?: number | null;
+  data?: any; // se in futuro lo mettiamo in JSON
+  payload?: any;
+  meta?: any;
 };
 
 function statusLabel(status: string) {
@@ -152,6 +159,33 @@ function formatAgeFromBirthDate(birthDateISO?: string | null) {
   if (years === 0) return `${months} mesi`;
   if (months === 0) return `${years} anni`;
   return `${years} anni ${months} mesi`;
+}
+
+function extractWeightKg(e: any): number | null {
+  if (!e) return null;
+
+  const direct =
+    e.weight_kg ??
+    e.weightKg ??
+    e?.data?.weightKg ??
+    e?.data?.weight_kg ??
+    e?.payload?.weightKg ??
+    e?.payload?.weight_kg ??
+    e?.meta?.weightKg ??
+    e?.meta?.weight_kg;
+
+  if (direct === null || direct === undefined) return null;
+
+  const n = typeof direct === "number" ? direct : Number(String(direct).replace(",", "."));
+  if (!Number.isFinite(n) || n <= 0) return null;
+
+  // arrotonda a 1 decimale se serve
+  return Math.round(n * 10) / 10;
+}
+
+function formatWeightLabel(kg: number) {
+  // 12 -> "12 kg", 12.5 -> "12.5 kg"
+  return Number.isInteger(kg) ? `${kg} kg` : `${kg} kg`;
 }
 
 export default function ProAnimalPage() {
@@ -307,6 +341,18 @@ export default function ProAnimalPage() {
     return list[0] ?? null;
   }, [events]);
 
+  const lastWeight = useMemo(() => {
+    const list = (events || [])
+      .map((e) => ({ e, kg: extractWeightKg(e) }))
+      .filter((x) => x.kg !== null && x.e?.event_date);
+
+    list.sort((a, b) => new Date(b.e.event_date).getTime() - new Date(a.e.event_date).getTime());
+
+    return list.length > 0
+      ? { kg: list[0].kg as number, date: list[0].e.event_date as string }
+      : null;
+  }, [events]);
+
   const latestTherapies = useMemo(() => {
     const list = (events || []).filter((e) => e.type === "therapy" && e.event_date);
     list.sort((a, b) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime());
@@ -438,12 +484,26 @@ export default function ProAnimalPage() {
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-base font-semibold text-zinc-900">Stato clinico rapido</h2>
 
-            <div className="text-sm text-zinc-600 flex items-center gap-2">
+            <div className="text-sm text-zinc-600 flex items-center gap-3">
               <span>Età: {formatAgeFromBirthDate(animal?.birth_date)}</span>
 
               {animal?.birth_date && animal?.birth_date_is_estimated ? (
                 <span className="text-xs text-zinc-500">(presunta)</span>
               ) : null}
+
+              <span className="text-zinc-300">|</span>
+
+              <span>
+                Peso:{" "}
+                {lastWeight ? (
+                  <>
+                    {formatWeightLabel(lastWeight.kg)}{" "}
+                    <span className="text-zinc-500">• {formatDateIT(lastWeight.date)}</span>
+                  </>
+                ) : (
+                  "—"
+                )}
+              </span>
             </div>
           </div>
 
