@@ -246,9 +246,10 @@ export default function ScannerPage() {
         const hasGrant = Boolean(grantJson?.ok);
 
         if (!hasGrant) {
-          // ✅ passa SEMPRE anche il chip: RequestAccessClient può risolvere l'animale da chip
           safePush(
-            `/professionisti/richieste-accesso?animalId=${encodeURIComponent(String(json?.animal?.id ?? json?.animalId ?? ""))}&chip=${encodeURIComponent(ex.chip)}`
+            `/professionisti/richieste-accesso?animalId=${encodeURIComponent(
+              String(json?.animal?.id ?? json?.animalId ?? "")
+            )}&chip=${encodeURIComponent(String(ex.chip ?? ""))}`
           );
           return;
         }
