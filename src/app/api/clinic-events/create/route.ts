@@ -17,10 +17,31 @@ type Body = {
   visibility?: "owner" | "professionals" | "emergency";
   eventDate?: string; // YYYY-MM-DD
   source?: "professional" | "veterinarian";
+  // ✅ nuovo: peso (kg)
+  weightKg?: number | null;
 };
 
 function isValidDateYYYYMMDD(s: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(s);
+}
+
+function parseWeightKg(v: unknown): number | null {
+  if (v === null || v === undefined || v === "") return null;
+
+  if (typeof v === "number") {
+    if (!Number.isFinite(v) || v <= 0) return null;
+    return Math.round(v * 10) / 10;
+  }
+
+  if (typeof v === "string") {
+    const s = v.trim();
+    if (!s) return null;
+    const n = Number(s.replace(",", "."));
+    if (!Number.isFinite(n) || n <= 0) return null;
+    return Math.round(n * 10) / 10;
+  }
+
+  return null;
 }
 
 export async function POST(req: Request) {
@@ -76,6 +97,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "eventDate must be YYYY-MM-DD" }, { status: 400 });
   }
 
+  // ✅ nuovo: peso dentro meta (no migrazioni DB)
+  const weightKg = parseWeightKg((body as any).weightKg);
+  const meta = weightKg ? { weight_kg: weightKg } : {};
+
   try {
     const { data, error } = await supabase
       .from("animal_clinic_events")
@@ -91,7 +116,7 @@ export async function POST(req: Request) {
         verified_at: source === "veterinarian" ? new Date().toISOString() : null,
         verified_by: source === "veterinarian" ? user.id : null,
         verified_by_org_id: grant.actor_org_id,
-        meta: {},
+        meta,
         status: "active",
       })
       .select("*")
