@@ -10,6 +10,7 @@ import { PageShell } from "@/_components/ui/page-shell";
 import { Card } from "@/_components/ui/card";
 import { ButtonPrimary, ButtonSecondary } from "@/_components/ui/button";
 import { AnimalCodes } from "@/_components/animal/animal-codes";
+import { getBarcodeValue, getQrValue } from "@/lib/animalCodes";
 
 type Animal = {
   id: string;
@@ -91,14 +92,6 @@ function statusBadge(status: string) {
   }
 }
 
-function digitalBarcode(a: Animal) {
-  const chip = normalizeChip(a.chip_number || "");
-  if (chip) return chip;
-  const code = a.unimalia_code?.trim();
-  if (code) return `UNIMALIA:${code}`;
-  return `UNIMALIA:${a.id}`;
-}
-
 export default function IdentitaPage() {
   const router = useRouter();
 
@@ -119,9 +112,11 @@ export default function IdentitaPage() {
 
   const qrValue = useMemo(() => {
     if (!selected) return "";
-    const origin = typeof window !== "undefined" ? window.location.origin : "";
-    if (origin) return `${origin}/scansiona/animali/${selected.id}`;
-    return `UNIMALIA:${selected.id}`;
+    const origin =
+      typeof window !== "undefined" && window.location.origin
+        ? window.location.origin
+        : "https://unimalia.it";
+    return getQrValue(selected, origin);
   }, [selected]);
 
   useEffect(() => {
@@ -171,7 +166,9 @@ export default function IdentitaPage() {
       }
 
       // nascondi archiviati
-      const list = ((data as Animal[]) || []).filter((a) => (a.status || "").toLowerCase() !== "deleted");
+      const list = ((data as Animal[]) || []).filter(
+        (a) => (a.status || "").toLowerCase() !== "deleted"
+      );
 
       setAnimals(list);
       setLoading(false);
@@ -291,7 +288,9 @@ export default function IdentitaPage() {
 
       {err ? (
         <Card>
-          <div className="rounded-2xl border border-red-200 bg-white p-5 text-sm text-red-700 shadow-sm">{err}</div>
+          <div className="rounded-2xl border border-red-200 bg-white p-5 text-sm text-red-700 shadow-sm">
+            {err}
+          </div>
         </Card>
       ) : null}
 
@@ -321,7 +320,10 @@ export default function IdentitaPage() {
             const st = statusBadge(a.status);
 
             return (
-              <div key={a.id} className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
+              <div
+                key={a.id}
+                className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm"
+              >
                 <div className="relative h-44 bg-zinc-100">
                   <img
                     src={a.photo_url || "/placeholder-animal.jpg"}
@@ -426,13 +428,13 @@ export default function IdentitaPage() {
             <div className="mt-6">
               <AnimalCodes
                 qrValue={qrValue}
-                barcodeValue={digitalBarcode(selected)}
+                barcodeValue={getBarcodeValue(selected)}
                 caption="Stampa o mostra rapidamente in caso di necessità."
               />
             </div>
 
             <div className="mt-6 flex flex-wrap gap-2">
-              <ButtonSecondary href={`/scansiona/animali/${selected.id}`}>Pagina scansione →</ButtonSecondary>
+              <ButtonSecondary href={qrValue}>Pagina scansione →</ButtonSecondary>
               <ButtonPrimary href={`/identita/${selected.id}`}>Apri scheda →</ButtonPrimary>
             </div>
           </div>

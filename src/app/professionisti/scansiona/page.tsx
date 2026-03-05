@@ -71,9 +71,21 @@ function extractFromScan(raw: string): Extract {
     }
 
     // ✅ QR universale: /scansiona?q=...
+    // Esempio: https://unimalia.it/scansiona?q=UNIMALIA:xxxx oppure q=380...
     if (path === "/scansiona" || path === "/scansiona/") {
       const q = (url.searchParams.get("q") || "").trim();
-      if (q) return { kind: "q", q };
+      if (!q) return { kind: "error", error: "Link /scansiona senza parametro q" };
+
+      // Se q contiene un UUID puro, ok.
+      if (isUuid(q)) return { kind: "animalId", animalId: q };
+
+      // Se q è un microchip (numeri), ok.
+      const dq = digitsOnly(q);
+      if (dq.length === 15 || dq.length === 10) return { kind: "chip", chip: dq };
+
+      // Altrimenti (es: UNIMALIA:xxxx) lo trattiamo come “codice animale”
+      // e verrà risolto in handleScan tramite /api/animals/find?q=...
+      return { kind: "animalId", animalId: q };
     }
 
     const qAnimalId = url.searchParams.get("animalId") || url.searchParams.get("id");
@@ -270,7 +282,7 @@ export default function ScannerPage() {
 
         // ✅ Risolvi sempre il codice in un vero animals.id (supporta UNIMALIA:..., chip, id)
         const findRes = await fetch(
-          `/api/animals/find?q=${encodeURIComponent(String(raw ?? normalized ?? ex.animalId ?? ""))}`,
+          `/api/animals/find?q=${encodeURIComponent(String(ex.animalId ?? normalized ?? raw ?? ""))}`,
           { cache: "no-store" }
         );
         const findJson = await findRes.json().catch(() => ({}));
@@ -308,7 +320,9 @@ export default function ScannerPage() {
         const hasGrant = Boolean(grantJson?.ok);
 
         if (!hasGrant) {
-          safePush(`/professionisti/richieste-accesso?animalId=${encodeURIComponent(resolvedAnimalId)}`);
+          safePush(
+            `/professionisti/richieste-accesso?animalId=${encodeURIComponent(resolvedAnimalId)}`
+          );
           return;
         }
 
