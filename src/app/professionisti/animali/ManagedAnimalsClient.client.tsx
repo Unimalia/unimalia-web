@@ -39,6 +39,12 @@ function formatDate(iso: string | null) {
   return new Intl.DateTimeFormat("it-IT", { dateStyle: "medium" }).format(d);
 }
 
+function maxIso(a: string | null, b: string | null) {
+  if (!a) return b;
+  if (!b) return a;
+  return new Date(a).getTime() >= new Date(b).getTime() ? a : b;
+}
+
 function pickLastSeenAt(r: ManagedAnimalRow) {
   // “ultima zampa in struttura”: usa il primo timestamp disponibile.
   // Se in futuro aggiungi last_event_at dal server, lo metteremo qui come priorità #1.
@@ -76,6 +82,10 @@ export default function ManagedAnimalsClient({
   const router = useRouter();
   const [q, setQ] = React.useState(initialQuery || "");
 
+  const [lastSeenByAnimal, setLastSeenByAnimal] = React.useState<Record<string, string | null>>(
+    () => ({})
+  );
+
   const filtered = React.useMemo(() => {
     const tokens = tokenize(q);
     if (tokens.length === 0) return initialRows;
@@ -95,6 +105,62 @@ export default function ManagedAnimalsClient({
       return tokens.every((t) => hay.includes(t));
     });
   }, [q, initialRows]);
+
+  React.useEffect(() => {
+    let alive = true;
+
+    async function loadLastSeen() {
+      try {
+        // piccola protezione: se un giorno hai 1000 righe non le fetchiamo tutte insieme
+        const rows = initialRows.slice(0, 200);
+
+        const out: Record<string, string | null> = {};
+
+        // fetch sequenziale (più semplice, meno rischio rate-limit)
+        for (const r of rows) {
+          const animalId = r.animal_id;
+          if (!animalId) continue;
+
+          // se già presente, salta
+          if (lastSeenByAnimal[animalId] !== undefined) continue;
+
+          const res = await fetch(`/api/clinic-events/list?animalId=${encodeURIComponent(animalId)}`, {
+            cache: "no-store",
+          });
+
+          if (!res.ok) {
+            out[animalId] = null;
+            continue;
+          }
+
+          const json = await res.json().catch(() => ({}));
+          const events = (json?.events ?? []) as Array<{ event_date?: string | null }>;
+
+          let best: string | null = null;
+          for (const e of events) {
+            const d = (e?.event_date ?? null) as any;
+            if (typeof d === "string" && d.trim()) {
+              best = maxIso(best, d);
+            }
+          }
+
+          out[animalId] = best;
+        }
+
+        if (!alive) return;
+        setLastSeenByAnimal((prev) => ({ ...out, ...prev }));
+      } catch {
+        // niente: se fallisce, resterà "—"
+      }
+    }
+
+    void loadLastSeen();
+
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialRows]);
 
   return (
     <div className="rounded-lg border bg-white">
@@ -141,7 +207,9 @@ export default function ManagedAnimalsClient({
                 <td className="p-3">{r.species ?? "—"}</td>
                 <td className="p-3">{r.owner_name ?? "—"}</td>
                 <td className="p-3">{renderMicrochip(r.microchip)}</td>
-                <td className="p-3">{formatDate(pickLastSeenAt(r))}</td>
+                <td className="p-3">
+                  {formatDate(lastSeenByAnimal[r.animal_id] ?? pickLastSeenAt(r))}
+                </td>
                 <td className="p-3">{formatDate(r.next_reminder_at)}</td>
                 <td className="p-3">{renderStatus(r.status)}</td>
                 <td className="p-3 font-mono text-xs opacity-80">{shortId(r.animal_id)}</td>
