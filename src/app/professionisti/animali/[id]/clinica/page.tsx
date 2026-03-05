@@ -37,6 +37,9 @@ type ClinicEventRow = {
   verified_by_label?: string | null;
   verified_by_org_id?: string | null;
   verified_by_member_id?: string | null;
+
+  // ✅ opzionale: se un domani l’API lo manda
+  weight_kg?: number | null;
 };
 
 function typeLabel(t: ClinicEventType) {
@@ -86,13 +89,14 @@ export default function ClinicaPage() {
   const [events, setEvents] = useState<ClinicEventRow[]>([]);
   const [eventsErr, setEventsErr] = useState<string | null>(null);
 
-  // Nuovo evento (UI only, per ora)
+  // Nuovo evento
   const [newType, setNewType] = useState<ClinicEventType>("visit");
   const [newDate, setNewDate] = useState<string>(() => {
     const d = new Date();
     const pad = (n: number) => String(n).padStart(2, "0");
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
   });
+  const [newWeightKg, setNewWeightKg] = useState<string>(""); // UI-only -> poi lo persistiamo
   const [newTitle, setNewTitle] = useState<string>("");
   const [newDesc, setNewDesc] = useState<string>("");
   const [newFiles, setNewFiles] = useState<File[]>([]);
@@ -119,7 +123,7 @@ export default function ClinicaPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
 
-  // campi edit (UI only)
+  // campi edit
   const [editTitle, setEditTitle] = useState("");
   const [editType, setEditType] = useState<ClinicEventType>("visit");
   const [editDate, setEditDate] = useState("");
@@ -129,7 +133,7 @@ export default function ClinicaPage() {
   const [updating, setUpdating] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  // Promemoria owner
+  // Promemoria owner (UI)
   const [reminderEnabled, setReminderEnabled] = useState(false);
   const [remindAt, setRemindAt] = useState<string>("");
   const [remindEmail, setRemindEmail] = useState(true);
@@ -287,6 +291,19 @@ export default function ClinicaPage() {
     setSaveOk(null);
 
     try {
+      // peso (UI): se compilato deve essere > 0
+      let weightKg: number | null = null;
+      const w = newWeightKg.trim();
+      if (w) {
+        const parsed = Number(w.replace(",", "."));
+        if (!Number.isFinite(parsed) || parsed <= 0) {
+          setSaveErr("Peso non valido. Inserisci un numero > 0 (es. 12.5).");
+          setSaving(false);
+          return;
+        }
+        weightKg = parsed;
+      }
+
       const payload = {
         animalId: id,
         eventDate: newDate,
@@ -294,6 +311,8 @@ export default function ClinicaPage() {
         title: newTitle.trim(),
         description: newDesc.trim() || null,
         visibility: "owner" as const,
+        // ✅ nuovo: peso (il backend verrà aggiornato nello step successivo per salvarlo)
+        weightKg,
       };
 
       const res = await fetch("/api/clinic-events/create", {
@@ -343,6 +362,7 @@ export default function ClinicaPage() {
       setNewTitle("");
       setNewDesc("");
       setNewFiles([]);
+      setNewWeightKg("");
 
       // Reset promemoria UI (per ora non salviamo reminders)
       setReminderEnabled(false);
@@ -578,8 +598,10 @@ export default function ClinicaPage() {
     }
   }
 
+  const canSave = !saving && !!newDate && !!newTitle.trim();
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="text-sm">
         <Link
           href={`/professionisti/animali/${id}`}
@@ -589,7 +611,7 @@ export default function ClinicaPage() {
         </Link>
       </div>
 
-      <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm space-y-4">
+      <section className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm space-y-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-base font-semibold text-zinc-900">Cartella clinica</h1>
@@ -687,7 +709,7 @@ export default function ClinicaPage() {
             <button
               type="button"
               className="rounded-2xl bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-900 disabled:opacity-50"
-              disabled={saving || !newTitle.trim() || !newDate}
+              disabled={!canSave}
               onClick={() => void saveClinicEvent()}
             >
               {saving ? "Salvataggio…" : "Salva evento"}
@@ -706,8 +728,9 @@ export default function ClinicaPage() {
             </div>
           ) : null}
 
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
-            <label className="block">
+          {/* RIGA COMPATTA: Tipo / Data / Peso / File */}
+          <div className="mt-4 grid gap-3 md:grid-cols-12">
+            <label className="block md:col-span-4">
               <div className="text-xs font-semibold text-zinc-700">Tipo evento</div>
               <select
                 className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm"
@@ -724,8 +747,8 @@ export default function ClinicaPage() {
               </select>
             </label>
 
-            <label className="block">
-              <div className="text-xs font-semibold text-zinc-700">Data evento</div>
+            <label className="block md:col-span-3">
+              <div className="text-xs font-semibold text-zinc-700">Data</div>
               <input
                 type="date"
                 className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm"
@@ -734,30 +757,22 @@ export default function ClinicaPage() {
               />
             </label>
 
-            <label className="block md:col-span-2">
-              <div className="text-xs font-semibold text-zinc-700">Titolo</div>
+            <label className="block md:col-span-3">
+              <div className="text-xs font-semibold text-zinc-700">Peso (kg)</div>
               <input
-                type="text"
+                type="number"
+                inputMode="decimal"
+                step="0.1"
+                min="0"
                 className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm"
-                value={newTitle}
-                onChange={(e) => setNewTitle(e.target.value)}
-                placeholder="Es. Vaccino annuale / Visita controllo / Terapia…"
+                value={newWeightKg}
+                onChange={(e) => setNewWeightKg(e.target.value)}
+                placeholder="Es. 12.5"
               />
             </label>
 
             <label className="block md:col-span-2">
-              <div className="text-xs font-semibold text-zinc-700">Descrizione (opzionale)</div>
-              <textarea
-                className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm"
-                rows={3}
-                value={newDesc}
-                onChange={(e) => setNewDesc(e.target.value)}
-                placeholder="Dettagli clinici, note, dosaggi, ecc."
-              />
-            </label>
-
-            <label className="block md:col-span-2">
-              <div className="text-xs font-semibold text-zinc-700">Allegati (opzionale)</div>
+              <div className="text-xs font-semibold text-zinc-700">File</div>
               <input
                 type="file"
                 multiple
@@ -768,10 +783,34 @@ export default function ClinicaPage() {
                 }}
               />
               {newFiles.length > 0 ? (
-                <div className="mt-2 text-xs text-zinc-600">
-                  Selezionati: <span className="font-semibold">{newFiles.length}</span>
+                <div className="mt-1 text-[11px] text-zinc-600">
+                  📎 <span className="font-semibold">{newFiles.length}</span>
                 </div>
               ) : null}
+            </label>
+
+            {/* Titolo */}
+            <label className="block md:col-span-12">
+              <div className="text-xs font-semibold text-zinc-700">Titolo</div>
+              <input
+                type="text"
+                className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                placeholder="Es. Visita controllo / Vaccino annuale / Terapia…"
+              />
+            </label>
+
+            {/* Descrizione */}
+            <label className="block md:col-span-12">
+              <div className="text-xs font-semibold text-zinc-700">Descrizione (opzionale)</div>
+              <textarea
+                className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+                rows={3}
+                value={newDesc}
+                onChange={(e) => setNewDesc(e.target.value)}
+                placeholder="Dettagli clinici, note, dosaggi, ecc."
+              />
             </label>
           </div>
 
