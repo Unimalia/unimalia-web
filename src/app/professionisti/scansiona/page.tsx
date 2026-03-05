@@ -246,7 +246,10 @@ export default function ScannerPage() {
         const hasGrant = Boolean(grantJson?.ok);
 
         if (!hasGrant) {
-          safePush(`/professionisti/richieste-accesso?animalId=${encodeURIComponent(resolvedAnimalId)}`);
+          // ✅ passa SEMPRE anche il chip: RequestAccessClient può risolvere l'animale da chip
+          safePush(
+            `/professionisti/richieste-accesso?animalId=${encodeURIComponent(String(json?.animal?.id ?? json?.animalId ?? ""))}&chip=${encodeURIComponent(ex.chip)}`
+          );
           return;
         }
 
@@ -279,7 +282,8 @@ export default function ScannerPage() {
         const hasGrant = Boolean(grantJson?.ok);
 
         if (!hasGrant) {
-          safePush(`/professionisti/richieste-accesso?animalId=${encodeURIComponent(resolvedAnimalId)}`);
+          // ✅ qui non abbiamo chip, quindi lasciamo solo animalId
+          safePush(`/professionisti/richieste-accesso?animalId=${encodeURIComponent(ex.animalId)}`);
           return;
         }
 
