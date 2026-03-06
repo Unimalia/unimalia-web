@@ -42,8 +42,10 @@ type ClinicEventType =
   | "note"
   | "document"
   | "emergency"
+  | "weight"
   | "allergy"
-  | "feeding";
+  | "feeding"
+  | "surgery";
 
 type ClinicEventRow = {
   id: string;
@@ -103,10 +105,14 @@ function typeLabel(t: ClinicEventType) {
       return "Documento";
     case "emergency":
       return "Emergenza";
+    case "weight":
+      return "Peso";
     case "allergy":
       return "Allergia";
     case "feeding":
       return "Alimentazione";
+    case "surgery":
+      return "Intervento chirurgico";
     default:
       return t;
   }
@@ -136,6 +142,28 @@ function formatDateIT(iso: string) {
   } catch {
     return iso;
   }
+}
+
+function formatEventDateIT(dateStr?: string | null) {
+  if (!dateStr) return "—";
+
+  const s = String(dateStr).trim();
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    const [y, m, d] = s.split("-").map(Number);
+    const dt = new Date(y, m - 1, d);
+    return dt.toLocaleDateString("it-IT", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+  }
+
+  return new Date(s).toLocaleDateString("it-IT", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
 }
 
 function normalizeChip(raw: string | null) {
@@ -354,10 +382,6 @@ export default function ProAnimalPage() {
     animal?.microchip_verified_at,
   ]);
 
-  // =========================
-  // STATO CLINICO RAPIDO
-  // =========================
-
   function toDateOrNull(v?: string | null) {
     if (!v) return null;
     const d = new Date(v);
@@ -547,7 +571,7 @@ export default function ProAnimalPage() {
                 {lastWeight ? (
                   <>
                     {formatWeightLabel(lastWeight.kg)}{" "}
-                    <span className="text-zinc-500">• {formatDateIT(lastWeight.date)}</span>
+                    <span className="text-zinc-500">• {formatEventDateIT(lastWeight.date)}</span>
                   </>
                 ) : (
                   "—"
@@ -569,7 +593,7 @@ export default function ProAnimalPage() {
                 {allergyItems.map((a) => (
                   <li key={a.id} className="truncate">
                     <span className="font-semibold">{a.description || a.title || "Allergia"}</span>
-                    <span className="text-zinc-500"> • {formatDateIT(a.event_date)}</span>
+                    <span className="text-zinc-500"> • {formatEventDateIT(a.event_date)}</span>
                   </li>
                 ))}
               </ul>
@@ -600,7 +624,7 @@ export default function ProAnimalPage() {
                 {latestTherapies.map((t) => (
                   <li key={t.id} className="truncate">
                     <span className="font-semibold">{t.description || t.title || "Terapia"}</span>
-                    <span className="text-zinc-500"> • {formatDateIT(t.event_date)}</span>
+                    <span className="text-zinc-500"> • {formatEventDateIT(t.event_date)}</span>
                   </li>
                 ))}
               </ul>
@@ -615,14 +639,14 @@ export default function ProAnimalPage() {
           <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
             <div className="text-xs text-zinc-500">Ultima visita</div>
             <div className="mt-1 font-semibold text-zinc-900">
-              {lastVisit ? formatDateIT(lastVisit.event_date) : "—"}
+              {lastVisit ? formatEventDateIT(lastVisit.event_date) : "—"}
             </div>
           </div>
 
           <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
             <div className="text-xs text-zinc-500">Ultima vaccinazione</div>
             <div className="mt-1 text-sm font-semibold text-zinc-900">
-              {lastVaccine ? formatDateIT(lastVaccine.event_date) : "—"}
+              {lastVaccine ? formatEventDateIT(lastVaccine.event_date) : "—"}
             </div>
 
             <div className="mt-2 text-xs text-zinc-500">Vaccinazioni scadute / in scadenza</div>
@@ -639,7 +663,7 @@ export default function ProAnimalPage() {
                       <span className={isOver ? "text-red-700" : "text-amber-700"}>
                         {" "}
                         • {isOver ? "scaduta" : "in scadenza"}{" "}
-                        {due ? formatDateIT(due.toISOString()) : ""}
+                        {due ? formatEventDateIT(due.toISOString()) : ""}
                       </span>
                     </li>
                   );
