@@ -17,7 +17,8 @@ type ClinicEventType =
   | "therapy"
   | "note"
   | "document"
-  | "emergency";
+  | "emergency"
+  | "weight";
 
 type ClinicEventRow = {
   id: string;
@@ -38,8 +39,8 @@ type ClinicEventRow = {
   verified_by_org_id?: string | null;
   verified_by_member_id?: string | null;
 
-  // ✅ opzionale: se un domani l’API lo manda
-  weight_kg?: number | null;
+  // ✅ peso (salvato in meta da create route)
+  meta?: any;
 };
 
 function typeLabel(t: ClinicEventType) {
@@ -58,6 +59,8 @@ function typeLabel(t: ClinicEventType) {
       return "Documento";
     case "emergency":
       return "Emergenza";
+    case "weight":
+      return "Peso";
     default:
       return t;
   }
@@ -75,6 +78,31 @@ function formatDateIT(iso: string) {
   } catch {
     return iso;
   }
+}
+
+function extractWeightKg(e: any): number | null {
+  if (!e) return null;
+
+  const direct =
+    e.weight_kg ??
+    e.weightKg ??
+    e?.meta?.weight_kg ??
+    e?.meta?.weightKg ??
+    e?.data?.weightKg ??
+    e?.data?.weight_kg ??
+    e?.payload?.weightKg ??
+    e?.payload?.weight_kg;
+
+  if (direct === null || direct === undefined) return null;
+
+  const n = typeof direct === "number" ? direct : Number(String(direct).replace(",", "."));
+  if (!Number.isFinite(n) || n <= 0) return null;
+
+  return Math.round(n * 10) / 10;
+}
+
+function formatWeightLabel(kg: number) {
+  return Number.isInteger(kg) ? `${kg} kg` : `${kg} kg`;
 }
 
 export default function ClinicaPage() {
@@ -96,7 +124,7 @@ export default function ClinicaPage() {
     const pad = (n: number) => String(n).padStart(2, "0");
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
   });
-  const [newWeightKg, setNewWeightKg] = useState<string>(""); // UI-only -> poi lo persistiamo
+  const [newWeightKg, setNewWeightKg] = useState<string>("");
   const [newTitle, setNewTitle] = useState<string>("");
   const [newDesc, setNewDesc] = useState<string>("");
   const [newFiles, setNewFiles] = useState<File[]>([]);
@@ -301,17 +329,33 @@ export default function ClinicaPage() {
           setSaving(false);
           return;
         }
-        weightKg = parsed;
+        weightKg = Math.round(parsed * 10) / 10;
+      }
+
+      const titleTrim = newTitle.trim();
+      const titleForPayload =
+        titleTrim || (newType === "weight" && weightKg ? "Peso" : "");
+
+      if (!newType || !newDate) {
+        setSaveErr("Compila tipo e data.");
+        setSaving(false);
+        return;
+      }
+
+      // ✅ regola: per tutti serve un titolo, eccetto peso quando c’è weightKg
+      if (!titleForPayload) {
+        setSaveErr("Inserisci un titolo (oppure compila il peso se il tipo è “Peso”).");
+        setSaving(false);
+        return;
       }
 
       const payload = {
         animalId: id,
         eventDate: newDate,
         type: newType,
-        title: newTitle.trim(),
+        title: titleForPayload,
         description: newDesc.trim() || null,
         visibility: "owner" as const,
-        // ✅ nuovo: peso (il backend verrà aggiornato nello step successivo per salvarlo)
         weightKg,
       };
 
@@ -333,7 +377,7 @@ export default function ClinicaPage() {
 
       setSaveOk("Evento salvato ✅");
 
-      // Inserimento immediato in UI (così lo vedi anche se la list ha delay/cache)
+      // Inserimento immediato in UI
       if (json?.event) {
         setEvents((prev) => [json.event as ClinicEventRow, ...prev]);
       }
@@ -354,7 +398,6 @@ export default function ClinicaPage() {
         });
 
         if (!upRes.ok) {
-          // non blocchiamo il salvataggio evento: mostriamo solo un warning
           setSaveErr("Evento salvato, ma caricamento allegati non riuscito.");
         }
       }
@@ -364,7 +407,7 @@ export default function ClinicaPage() {
       setNewFiles([]);
       setNewWeightKg("");
 
-      // Reset promemoria UI (per ora non salviamo reminders)
+      // Reset promemoria UI
       setReminderEnabled(false);
       setRemindAt("");
       setReminderPresetDays(null);
@@ -392,7 +435,6 @@ export default function ClinicaPage() {
           "Content-Type": "application/json",
           ...(await authHeaders()),
         },
-        // mando più chiavi per essere compatibile con implementazioni diverse
         body: JSON.stringify({
           eventIds: [eventId],
           ids: [eventId],
@@ -406,7 +448,7 @@ export default function ClinicaPage() {
         return;
       }
 
-      // Update ottimistico: segna validato subito in UI
+      // Update ottimistico
       setEvents((prev) =>
         prev.map((e) =>
           e.id === eventId
@@ -419,7 +461,6 @@ export default function ClinicaPage() {
         )
       );
 
-      // Refresh reale
       await loadClinicEvents();
       await loadFilesCount();
     } catch {
@@ -482,7 +523,7 @@ export default function ClinicaPage() {
         return;
       }
 
-      // Update ottimistico: segna validati in UI
+      // Update ottimistico
       const nowIso = new Date().toISOString();
       setEvents((prev) =>
         prev.map((e) =>
@@ -507,11 +548,8 @@ export default function ClinicaPage() {
   }
 
   function canEditOrDelete(ev: ClinicEventRow) {
-    // PRO/VET possono sempre modificare eventi owner
     if (ev.source === "owner") return true;
 
-    // Per eventi pro/vet: serve creator id.
-    // Se non abbiamo created_by, per sicurezza NON permettiamo edit/delete (evita che pro X tocchi pro Y).
     const createdBy = (ev as any).created_by as string | null | undefined;
     if (!createdBy || !currentUserId) return false;
 
@@ -598,10 +636,13 @@ export default function ClinicaPage() {
     }
   }
 
-  const canSave = !saving && !!newDate && !!newTitle.trim();
+  const canSave =
+    !saving &&
+    !!newDate &&
+    (!!newTitle.trim() || (newType === "weight" && !!newWeightKg.trim()));
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <div className="text-sm">
         <Link
           href={`/professionisti/animali/${id}`}
@@ -611,7 +652,7 @@ export default function ClinicaPage() {
         </Link>
       </div>
 
-      <section className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm space-y-4">
+      <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm space-y-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-base font-semibold text-zinc-900">Cartella clinica</h1>
@@ -744,6 +785,7 @@ export default function ClinicaPage() {
                 <option value="note">Nota</option>
                 <option value="document">Documento</option>
                 <option value="emergency">Emergenza</option>
+                <option value="weight">Peso</option>
               </select>
             </label>
 
@@ -797,7 +839,11 @@ export default function ClinicaPage() {
                 className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm"
                 value={newTitle}
                 onChange={(e) => setNewTitle(e.target.value)}
-                placeholder="Es. Visita controllo / Vaccino annuale / Terapia…"
+                placeholder={
+                  newType === "weight"
+                    ? "Opzionale (se inserisci il peso, il titolo diventa “Peso”)"
+                    : "Es. Visita controllo / Vaccino annuale / Terapia…"
+                }
               />
             </label>
 
@@ -979,6 +1025,8 @@ export default function ClinicaPage() {
                 (ev.verified_by_label && ev.verified_by_label.trim()) ||
                 (isVerified ? "Veterinario" : null);
 
+              const evKg = extractWeightKg(ev);
+
               return (
                 <div
                   key={ev.id}
@@ -1019,6 +1067,14 @@ export default function ClinicaPage() {
                                 title={`Allegati: ${filesCountByEventId[ev.id]}`}
                               >
                                 📎 {filesCountByEventId[ev.id]}
+                              </span>
+                            ) : null}
+                            {evKg !== null ? (
+                              <span
+                                className="ml-2 inline-flex items-center rounded-full border border-zinc-200 bg-white px-2 py-0.5 text-xs font-semibold text-zinc-700"
+                                title="Peso registrato"
+                              >
+                                ⚖️ {formatWeightLabel(evKg)}
                               </span>
                             ) : null}
                           </div>
@@ -1075,6 +1131,7 @@ export default function ClinicaPage() {
             <div className="p-6">
               {(() => {
                 const allowed = detailEvent ? canEditOrDelete(detailEvent) : false;
+                const kg = extractWeightKg(detailEvent);
 
                 return (
                   <>
@@ -1085,6 +1142,12 @@ export default function ClinicaPage() {
                         </h2>
                         <div className="mt-1 text-xs text-zinc-600">
                           {typeLabel(detailEvent.type)} • {formatDateIT(detailEvent.event_date)}
+                          {kg !== null ? (
+                            <>
+                              {" "}
+                              • <span className="font-semibold text-zinc-800">⚖️ {formatWeightLabel(kg)}</span>
+                            </>
+                          ) : null}
                         </div>
                       </div>
 
@@ -1268,6 +1331,7 @@ export default function ClinicaPage() {
                                   <option value="note">Nota</option>
                                   <option value="document">Documento</option>
                                   <option value="emergency">Emergenza</option>
+                                  <option value="weight">Peso</option>
                                 </select>
                               </label>
 
@@ -1293,14 +1357,12 @@ export default function ClinicaPage() {
                             </div>
 
                             <p className="mt-3 text-xs text-zinc-600">
-                              Nota: quando abilitiamo l’audit log, ogni modifica verrà registrata e, se
-                              l’owner modifica un evento validato, potrà tornare “⏳ da validare”.
+                              Nota: il peso è salvato in “meta” e non è ancora modificabile da questa schermata.
                             </p>
                           </div>
                         </>
                       )}
 
-                      {/* Conferma eliminazione */}
                       {deleteConfirm ? (
                         <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
                           <div className="text-sm font-semibold text-red-800">Conferma eliminazione</div>
@@ -1339,7 +1401,6 @@ export default function ClinicaPage() {
                             type="button"
                             className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
                             onClick={() => {
-                              // ripristina valori originali
                               setEditTitle(detailEvent?.title || "");
                               setEditType(detailEvent?.type || "visit");
                               setEditDate((detailEvent?.event_date || "").slice(0, 10));
