@@ -57,6 +57,12 @@ export default function ProDashboardPage() {
           desc="Invia nuove richieste e monitora lo stato."
         />
         <CardLink
+          href="/professionisti/dashboard"
+          title="Dashboard clinica"
+          desc="Area clinica integrata nella dashboard professionisti. Bucket avanzati in arrivo."
+          right="In arrivo"
+        />
+        <CardLink
           href="/professionisti/impostazioni"
           title="Impostazioni"
           desc="Profilo, organizzazione, preferenze."

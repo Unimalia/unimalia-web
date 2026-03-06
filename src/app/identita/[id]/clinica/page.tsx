@@ -17,7 +17,9 @@ type ClinicEventType =
   | "therapy"
   | "note"
   | "document"
-  | "emergency";
+  | "emergency"
+  | "allergy"
+  | "feeding";
 
 type ClinicEventRow = {
   id: string;
@@ -31,7 +33,6 @@ type ClinicEventRow = {
   verified_at: string | null;
   verified_by: string | null;
   created_at: string;
-
   created_by?: string | null;
   verified_by_label?: string | null;
   verified_by_org_id?: string | null;
@@ -55,7 +56,23 @@ type FilterKey =
   | "note"
   | "document"
   | "emergency"
-  | "weight";
+  | "weight"
+  | "allergy"
+  | "feeding";
+
+const FILTERS: Array<{ key: FilterKey; label: string }> = [
+  { key: "all", label: "Tutti" },
+  { key: "visit", label: "Visite" },
+  { key: "vaccine", label: "Vaccini" },
+  { key: "exam", label: "Esami" },
+  { key: "therapy", label: "Terapie" },
+  { key: "allergy", label: "Allergie" },
+  { key: "feeding", label: "Alimentazione" },
+  { key: "note", label: "Note" },
+  { key: "document", label: "Documenti" },
+  { key: "emergency", label: "Emergenze" },
+  { key: "weight", label: "Peso" },
+];
 
 function typeLabel(t: ClinicEventType) {
   switch (t) {
@@ -73,6 +90,10 @@ function typeLabel(t: ClinicEventType) {
       return "Documento";
     case "emergency":
       return "Emergenza";
+    case "allergy":
+      return "Allergia";
+    case "feeding":
+      return "Alimentazione";
     default:
       return t;
   }
@@ -134,7 +155,14 @@ function extractWeightKg(e: any): number | null {
   return Math.round(n * 10) / 10;
 }
 
-// datetime-local helpers
+function extractTherapyStartDate(e: any): string | null {
+  return e?.meta?.therapy_start_date || null;
+}
+
+function extractTherapyEndDate(e: any): string | null {
+  return e?.meta?.therapy_end_date || null;
+}
+
 function toDateTimeLocalValue(date: Date) {
   const pad = (n: number) => String(n).padStart(2, "0");
   const yyyy = date.getFullYear();
@@ -150,6 +178,12 @@ function fromDateTimeLocalValue(v: string) {
   return isNaN(d.getTime()) ? new Date() : d;
 }
 
+function toDateOnly(v: string) {
+  const d = fromDateTimeLocalValue(v);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
 export default function AnimalClinicalPage() {
   const params = useParams<{ id: string }>();
   const animalId = params?.id;
@@ -158,32 +192,31 @@ export default function AnimalClinicalPage() {
   const [events, setEvents] = useState<ClinicEventRow[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  // form state
   const [type, setType] = useState<ClinicEventType>("note");
   const [description, setDescription] = useState("");
   const [dateLocal, setDateLocal] = useState(() => toDateTimeLocalValue(new Date()));
+  const [therapyStartDate, setTherapyStartDate] = useState("");
+  const [therapyEndDate, setTherapyEndDate] = useState("");
   const [saving, setSaving] = useState(false);
 
-  // allegati multipli (owner)
   const [files, setFiles] = useState<File[]>([]);
   const [filesErr, setFilesErr] = useState<string | null>(null);
 
-  // dettaglio evento
   const [detailEvent, setDetailEvent] = useState<ClinicEventRow | null>(null);
   const [detailFiles, setDetailFiles] = useState<EventFileRow[]>([]);
   const [detailFilesLoading, setDetailFilesLoading] = useState(false);
 
-  // modifica evento
   const [isEditing, setIsEditing] = useState(false);
   const [editType, setEditType] = useState<ClinicEventType>("note");
   const [editDateLocal, setEditDateLocal] = useState(() => toDateTimeLocalValue(new Date()));
   const [editDescription, setEditDescription] = useState("");
+  const [editTherapyStartDate, setEditTherapyStartDate] = useState("");
+  const [editTherapyEndDate, setEditTherapyEndDate] = useState("");
   const [updating, setUpdating] = useState(false);
   const [updateErr, setUpdateErr] = useState<string | null>(null);
 
-  // filtro documenti / peso
   const [filesCountByEventId, setFilesCountByEventId] = useState<Record<string, number>>({});
-  const [filter] = useState<FilterKey>("all");
+  const [filter, setFilter] = useState<FilterKey>("all");
 
   const backHref = useMemo(() => (animalId ? `/identita/${animalId}` : "/identita"), [animalId]);
 
@@ -196,7 +229,7 @@ export default function AnimalClinicalPage() {
     const { data, error } = await supabase
       .from("animal_clinic_events")
       .select(
-        "id, animal_id, event_date, type, title, description, visibility, source, verified_at, verified_by, created_at, created_by, verified_by_label, verified_by_org_id, verified_by_member_id, meta"
+        "id, animal_id, event_date, type, title, description, visibility, source, verified_at, verified_by, created_at, created_by, verified_by_label, verified_by_org_id, verified_by_member_id, meta, status"
       )
       .eq("animal_id", animalId)
       .neq("status", "void")
@@ -255,7 +288,6 @@ export default function AnimalClinicalPage() {
       await loadEvents();
       await loadFilesCount();
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [animalId]);
 
   useEffect(() => {
@@ -323,6 +355,13 @@ export default function AnimalClinicalPage() {
     const eventDate = fromDateTimeLocalValue(dateLocal).toISOString();
     const title = typeLabel(type);
 
+    const meta: Record<string, any> = {};
+
+    if (type === "therapy") {
+      if (therapyStartDate) meta.therapy_start_date = therapyStartDate;
+      meta.therapy_end_date = therapyEndDate || null;
+    }
+
     const payload = {
       animal_id: animalId,
       event_date: eventDate,
@@ -334,6 +373,7 @@ export default function AnimalClinicalPage() {
       source: "owner" as const,
       verified_at: null,
       verified_by: null,
+      meta,
     };
 
     const { data: inserted, error: insErr } = await supabase
@@ -355,6 +395,8 @@ export default function AnimalClinicalPage() {
     setDescription("");
     setType("note");
     setDateLocal(toDateTimeLocalValue(new Date()));
+    setTherapyStartDate("");
+    setTherapyEndDate("");
     setFiles([]);
 
     await loadEvents();
@@ -381,6 +423,8 @@ export default function AnimalClinicalPage() {
           type: editType,
           eventDate: fromDateTimeLocalValue(editDateLocal).toISOString(),
           description: editDescription.trim() || null,
+          therapyStartDate: editType === "therapy" ? editTherapyStartDate || null : null,
+          therapyEndDate: editType === "therapy" ? editTherapyEndDate || null : null,
         }),
       });
 
@@ -408,6 +452,11 @@ export default function AnimalClinicalPage() {
                 description: editDescription.trim() || null,
                 verified_at: null,
                 verified_by: null,
+                meta: {
+                  ...(prev.meta || {}),
+                  therapy_start_date: editType === "therapy" ? editTherapyStartDate || null : null,
+                  therapy_end_date: editType === "therapy" ? editTherapyEndDate || null : null,
+                },
               }
             : null
         );
@@ -451,7 +500,6 @@ export default function AnimalClinicalPage() {
       }
     >
       <div className="flex flex-col gap-6">
-        {/* Add event */}
         <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -464,6 +512,26 @@ export default function AnimalClinicalPage() {
             <span className="rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs text-zinc-500">
               Owner-only
             </span>
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            {FILTERS.map((f) => {
+              const active = filter === f.key;
+              return (
+                <button
+                  key={f.key}
+                  type="button"
+                  className={
+                    active
+                      ? "rounded-full border border-black bg-black px-3 py-1.5 text-xs font-semibold text-white"
+                      : "rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-800 hover:bg-zinc-50"
+                  }
+                  onClick={() => setFilter(f.key)}
+                >
+                  {f.label}
+                </button>
+              );
+            })}
           </div>
 
           <div className="mt-4 grid gap-3 md:grid-cols-3">
@@ -479,6 +547,8 @@ export default function AnimalClinicalPage() {
                 <option value="vaccine">Vaccinazione</option>
                 <option value="exam">Esame</option>
                 <option value="therapy">Terapia</option>
+                <option value="allergy">Allergia</option>
+                <option value="feeding">Alimentazione</option>
                 <option value="emergency">Emergenza</option>
                 <option value="document">Documento</option>
               </select>
@@ -497,13 +567,40 @@ export default function AnimalClinicalPage() {
               </p>
             </div>
 
+            {type === "therapy" ? (
+              <>
+                <div>
+                  <label className="block text-xs font-semibold text-zinc-700">Inizio terapia</label>
+                  <input
+                    type="date"
+                    className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+                    value={therapyStartDate}
+                    onChange={(e) => setTherapyStartDate(e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-zinc-700">Fine terapia</label>
+                  <input
+                    type="date"
+                    className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+                    value={therapyEndDate}
+                    onChange={(e) => setTherapyEndDate(e.target.value)}
+                  />
+                  <p className="mt-1 text-xs text-zinc-500">
+                    Se lasci vuoto, la terapia è considerata in corso.
+                  </p>
+                </div>
+              </>
+            ) : null}
+
             <div className="md:col-span-3">
               <label className="block text-xs font-semibold text-zinc-700">
                 Descrizione (facoltativa)
               </label>
               <textarea
                 className="mt-1 min-h-[96px] w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-zinc-200"
-                placeholder="Dettagli utili (farmaco, dosaggio, note cliniche)…"
+                placeholder="Dettagli utili (farmaco, dosaggio, note cliniche, etichetta ingredienti, sospetta allergia)…"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
@@ -528,23 +625,23 @@ export default function AnimalClinicalPage() {
                 </p>
               ) : (
                 <p className="mt-1 text-xs text-zinc-500">
-                  Puoi allegare uno o più documenti (referti, esami, PDF, immagini).
+                  Puoi allegare uno o più documenti (referti, esami, PDF, immagini, etichette ingredienti).
                 </p>
               )}
             </div>
           </div>
 
-          {error && (
+          {error ? (
             <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
               {error}
             </div>
-          )}
+          ) : null}
 
-          {filesErr && (
+          {filesErr ? (
             <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
               {filesErr}
             </div>
-          )}
+          ) : null}
 
           <div className="mt-4 flex flex-wrap gap-2">
             <button
@@ -569,7 +666,6 @@ export default function AnimalClinicalPage() {
           </p>
         </section>
 
-        {/* Timeline */}
         <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
           <h2 className="text-base font-semibold text-zinc-900">Timeline</h2>
           <p className="mt-1 text-sm text-zinc-600">
@@ -618,13 +714,14 @@ export default function AnimalClinicalPage() {
                       setEditType(ev.type);
                       setEditDateLocal(toDateTimeLocalValue(new Date(ev.event_date)));
                       setEditDescription(ev.description || "");
+                      setEditTherapyStartDate(extractTherapyStartDate(ev) || "");
+                      setEditTherapyEndDate(extractTherapyEndDate(ev) || "");
                     }}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <div className="text-xs text-zinc-500">
                           <div>Evento: {formatEventDateIT(ev.event_date)}</div>
-
                           {ev.created_at ? (
                             <div className="text-zinc-400">
                               Inserito il {formatInsertedAtIT(ev.created_at)}
@@ -634,7 +731,6 @@ export default function AnimalClinicalPage() {
 
                         <div className="mt-1 truncate text-sm font-semibold text-zinc-900">
                           {typeLabel(ev.type)}
-
                           {weightKg !== null ? (
                             <span className="ml-2 text-xs font-semibold text-zinc-700">
                               ⚖ {weightKg} kg
@@ -675,7 +771,7 @@ export default function AnimalClinicalPage() {
         </section>
       </div>
 
-      {detailEvent && (
+      {detailEvent ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-xl rounded-3xl bg-white p-6 shadow-xl max-h-[85vh] overflow-y-auto">
             <div className="flex items-start justify-between gap-3">
@@ -707,6 +803,19 @@ export default function AnimalClinicalPage() {
             {extractWeightKg(detailEvent) !== null ? (
               <div className="mt-4 text-sm text-zinc-700">
                 <span className="font-semibold">Peso:</span> ⚖ {extractWeightKg(detailEvent)} kg
+              </div>
+            ) : null}
+
+            {detailEvent.type === "therapy" ? (
+              <div className="mt-2 text-sm text-zinc-700 space-y-1">
+                <div>
+                  <span className="font-semibold">Inizio terapia:</span>{" "}
+                  {extractTherapyStartDate(detailEvent) || "—"}
+                </div>
+                <div>
+                  <span className="font-semibold">Fine terapia:</span>{" "}
+                  {extractTherapyEndDate(detailEvent) || "In corso"}
+                </div>
               </div>
             ) : null}
 
@@ -763,7 +872,6 @@ export default function AnimalClinicalPage() {
                 if (!files.length) return;
 
                 const fd = new FormData();
-
                 fd.append("eventId", detailEvent.id);
                 fd.append("animalId", detailEvent.animal_id);
 
@@ -793,6 +901,8 @@ export default function AnimalClinicalPage() {
                   setEditType(detailEvent.type);
                   setEditDateLocal(toDateTimeLocalValue(new Date(detailEvent.event_date)));
                   setEditDescription(detailEvent.description || "");
+                  setEditTherapyStartDate(extractTherapyStartDate(detailEvent) || "");
+                  setEditTherapyEndDate(extractTherapyEndDate(detailEvent) || "");
                 }}
               >
                 Modifica evento
@@ -814,6 +924,8 @@ export default function AnimalClinicalPage() {
                       <option value="vaccine">Vaccinazione</option>
                       <option value="exam">Esame</option>
                       <option value="therapy">Terapia</option>
+                      <option value="allergy">Allergia</option>
+                      <option value="feeding">Alimentazione</option>
                       <option value="emergency">Emergenza</option>
                       <option value="document">Documento</option>
                     </select>
@@ -828,6 +940,30 @@ export default function AnimalClinicalPage() {
                       onChange={(e) => setEditDateLocal(e.target.value)}
                     />
                   </div>
+
+                  {editType === "therapy" ? (
+                    <>
+                      <div>
+                        <label className="block text-xs font-semibold text-zinc-700">Inizio terapia</label>
+                        <input
+                          type="date"
+                          className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+                          value={editTherapyStartDate}
+                          onChange={(e) => setEditTherapyStartDate(e.target.value)}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-zinc-700">Fine terapia</label>
+                        <input
+                          type="date"
+                          className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+                          value={editTherapyEndDate}
+                          onChange={(e) => setEditTherapyEndDate(e.target.value)}
+                        />
+                      </div>
+                    </>
+                  ) : null}
 
                   <div className="md:col-span-2">
                     <label className="block text-xs font-semibold text-zinc-700">Titolo</label>
@@ -875,14 +1011,13 @@ export default function AnimalClinicalPage() {
                 </div>
 
                 <p className="mt-3 text-xs text-zinc-500">
-                  Se modifichi un evento già validato, il backend deve riportarlo a “⏳ Da
-                  rivalidare”.
+                  Se modifichi un evento già validato o creato dal professionista, il backend deve riportarlo a “⏳ Da rivalidare”.
                 </p>
               </div>
             ) : null}
           </div>
         </div>
-      )}
+      ) : null}
     </PageShell>
   );
 }

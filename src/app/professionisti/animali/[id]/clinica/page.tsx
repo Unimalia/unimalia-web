@@ -18,8 +18,9 @@ type ClinicEventType =
   | "note"
   | "document"
   | "emergency"
-  // lo teniamo nel type union per compatibilità con eventuali eventi già presenti
-  | "weight";
+  | "weight"
+  | "allergy"
+  | "feeding";
 
 type ClinicEventRow = {
   id: string;
@@ -58,7 +59,9 @@ type FilterKey =
   | "note"
   | "document"
   | "emergency"
-  | "weight";
+  | "weight"
+  | "allergy"
+  | "feeding";
 
 const FILTERS: Array<{ key: FilterKey; label: string }> = [
   { key: "all", label: "Tutti" },
@@ -66,6 +69,8 @@ const FILTERS: Array<{ key: FilterKey; label: string }> = [
   { key: "vaccine", label: "Vaccini" },
   { key: "exam", label: "Esami" },
   { key: "therapy", label: "Terapie" },
+  { key: "allergy", label: "Allergie" },
+  { key: "feeding", label: "Alimentazione" },
   { key: "note", label: "Note" },
   { key: "document", label: "Documenti" },
   { key: "emergency", label: "Emergenze" },
@@ -82,6 +87,10 @@ function typeLabel(t: ClinicEventType) {
       return "Esame";
     case "therapy":
       return "Terapia";
+    case "allergy":
+      return "Allergia";
+    case "feeding":
+      return "Alimentazione";
     case "note":
       return "Nota";
     case "document":
@@ -173,6 +182,14 @@ function extractWeightKg(e: any): number | null {
   return Math.round(n * 10) / 10;
 }
 
+function extractTherapyStartDate(e: any): string | null {
+  return e?.meta?.therapy_start_date || null;
+}
+
+function extractTherapyEndDate(e: any): string | null {
+  return e?.meta?.therapy_end_date || null;
+}
+
 function formatWeightLabel(kg: number) {
   return Number.isInteger(kg) ? `${kg} kg` : `${kg} kg`;
 }
@@ -190,6 +207,7 @@ export default function ClinicaPage() {
   const [eventsErr, setEventsErr] = useState<string | null>(null);
 
   const [filter, setFilter] = useState<FilterKey>("all");
+  const [search, setSearch] = useState("");
 
   const PAGE_SIZE = 50;
   const [visibleCount, setVisibleCount] = useState<number>(PAGE_SIZE);
@@ -206,6 +224,8 @@ export default function ClinicaPage() {
   const [newVetSignature, setNewVetSignature] = useState<string>("");
   const [vetOptions, setVetOptions] = useState<VetOption[]>([]);
   const [selectedVetId, setSelectedVetId] = useState<string>("");
+  const [therapyStartDate, setTherapyStartDate] = useState("");
+  const [therapyEndDate, setTherapyEndDate] = useState("");
 
   const [saving, setSaving] = useState(false);
   const [saveErr, setSaveErr] = useState<string | null>(null);
@@ -231,6 +251,8 @@ export default function ClinicaPage() {
   const [editType, setEditType] = useState<ClinicEventType>("visit");
   const [editDate, setEditDate] = useState("");
   const [editDesc, setEditDesc] = useState("");
+  const [editTherapyStartDate, setEditTherapyStartDate] = useState("");
+  const [editTherapyEndDate, setEditTherapyEndDate] = useState("");
 
   const [modalErr, setModalErr] = useState<string | null>(null);
   const [updating, setUpdating] = useState(false);
@@ -331,7 +353,7 @@ export default function ClinicaPage() {
 
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
-  }, [filter, events.length]);
+  }, [filter, events.length, search]);
 
   useEffect(() => {
     if (!detailEvent) return;
@@ -428,6 +450,8 @@ export default function ClinicaPage() {
         visibility: "owner" as const,
         weightKg,
         vetSignature: newVetSignature.trim() || null,
+        therapyStartDate: newType === "therapy" ? therapyStartDate || null : null,
+        therapyEndDate: newType === "therapy" ? therapyEndDate || null : null,
       };
 
       const res = await fetch("/api/clinic-events/create", {
@@ -475,6 +499,8 @@ export default function ClinicaPage() {
       setNewFiles([]);
       setNewWeightKg("");
       setNewVetSignature("");
+      setTherapyStartDate("");
+      setTherapyEndDate("");
 
       setReminderEnabled(false);
       setRemindAt("");
@@ -640,6 +666,8 @@ export default function ClinicaPage() {
           type: editType,
           eventDate: editDate,
           description: editDesc.trim() || null,
+          therapyStartDate: editType === "therapy" ? editTherapyStartDate || null : null,
+          therapyEndDate: editType === "therapy" ? editTherapyEndDate || null : null,
         }),
       });
 
@@ -702,21 +730,30 @@ export default function ClinicaPage() {
   }
 
   const filteredEvents = useMemo(() => {
-    if (filter === "all") return events;
+    const q = search.trim().toLowerCase();
 
-    if (filter === "weight") {
-      return (events || []).filter((e) => extractWeightKg(e) !== null);
-    }
+    const base = (() => {
+      if (filter === "all") return events;
+      if (filter === "weight") return (events || []).filter((e) => extractWeightKg(e) !== null);
+      if (filter === "document") {
+        return (events || []).filter((e) => {
+          const hasFiles = (filesCountByEventId?.[e.id] ?? 0) > 0;
+          return e.type === "document" || hasFiles;
+        });
+      }
+      return (events || []).filter((e) => e.type === filter);
+    })();
 
-    if (filter === "document") {
-      return (events || []).filter((e) => {
-        const hasFiles = (filesCountByEventId?.[e.id] ?? 0) > 0;
-        return e.type === "document" || hasFiles;
-      });
-    }
+    if (!q) return base;
 
-    return (events || []).filter((e) => e.type === filter);
-  }, [events, filter, filesCountByEventId]);
+    return base.filter((e) => {
+      const hay = [e.title, e.description, e.type, e?.meta?.created_by_member_label]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return hay.includes(q);
+    });
+  }, [events, filter, filesCountByEventId, search]);
 
   const shownEvents = useMemo(() => {
     return filteredEvents.slice(0, visibleCount);
@@ -858,6 +895,8 @@ export default function ClinicaPage() {
                 <option value="vaccine">Vaccinazione</option>
                 <option value="exam">Esame</option>
                 <option value="therapy">Terapia</option>
+                <option value="allergy">Allergia</option>
+                <option value="feeding">Alimentazione</option>
                 <option value="note">Nota</option>
                 <option value="document">Documento</option>
                 <option value="emergency">Emergenza</option>
@@ -905,6 +944,33 @@ export default function ClinicaPage() {
                 </div>
               ) : null}
             </label>
+
+            {newType === "therapy" ? (
+              <div className="grid gap-3 md:grid-cols-12 md:col-span-12">
+                <label className="block md:col-span-6">
+                  <div className="text-xs font-semibold text-zinc-700">Inizio terapia</div>
+                  <input
+                    type="date"
+                    className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+                    value={therapyStartDate}
+                    onChange={(e) => setTherapyStartDate(e.target.value)}
+                  />
+                </label>
+
+                <label className="block md:col-span-6">
+                  <div className="text-xs font-semibold text-zinc-700">Fine terapia</div>
+                  <input
+                    type="date"
+                    className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+                    value={therapyEndDate}
+                    onChange={(e) => setTherapyEndDate(e.target.value)}
+                  />
+                  <p className="mt-1 text-xs text-zinc-500">
+                    Se lasci vuoto, la terapia è considerata in corso.
+                  </p>
+                </label>
+              </div>
+            ) : null}
 
             <label className="block md:col-span-12">
               <div className="text-xs font-semibold text-zinc-700">Note cliniche</div>
@@ -1095,7 +1161,7 @@ export default function ClinicaPage() {
           </div>
         ) : null}
 
-        <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+        <div className="rounded-2xl border border-zinc-200 bg-white p-4 space-y-3">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="text-sm text-zinc-700">
               Eventi totali: <span className="font-semibold">{events.length}</span> • Filtrati:{" "}
@@ -1123,6 +1189,14 @@ export default function ClinicaPage() {
               })}
             </div>
           </div>
+
+          <input
+            type="text"
+            className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+            placeholder="Cerca in note, descrizione, tipo evento..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
 
         {eventsLoading ? (
@@ -1154,6 +1228,8 @@ export default function ClinicaPage() {
                     setEditType(ev.type);
                     setEditDate((ev.event_date || "").slice(0, 10));
                     setEditDesc(ev.description || "");
+                    setEditTherapyStartDate(extractTherapyStartDate(ev) || "");
+                    setEditTherapyEndDate(extractTherapyEndDate(ev) || "");
                   }}
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -1307,6 +1383,19 @@ export default function ClinicaPage() {
                             </div>
                           ) : null}
                         </div>
+
+                        {detailEvent.type === "therapy" ? (
+                          <div className="mt-2 text-sm text-zinc-700 space-y-1">
+                            <div>
+                              <span className="font-semibold">Inizio terapia:</span>{" "}
+                              {extractTherapyStartDate(detailEvent) || "—"}
+                            </div>
+                            <div>
+                              <span className="font-semibold">Fine terapia:</span>{" "}
+                              {extractTherapyEndDate(detailEvent) || "In corso"}
+                            </div>
+                          </div>
+                        ) : null}
                       </div>
 
                       <div className="flex items-center gap-2">
@@ -1541,6 +1630,8 @@ export default function ClinicaPage() {
                                   <option value="vaccine">Vaccinazione</option>
                                   <option value="exam">Esame</option>
                                   <option value="therapy">Terapia</option>
+                                  <option value="allergy">Allergia</option>
+                                  <option value="feeding">Alimentazione</option>
                                   <option value="note">Nota</option>
                                   <option value="document">Documento</option>
                                   <option value="emergency">Emergenza</option>
@@ -1556,6 +1647,34 @@ export default function ClinicaPage() {
                                   onChange={(e) => setEditDate(e.target.value)}
                                 />
                               </label>
+
+                              {editType === "therapy" ? (
+                                <>
+                                  <label className="block">
+                                    <div className="text-xs font-semibold text-zinc-700">
+                                      Inizio terapia
+                                    </div>
+                                    <input
+                                      type="date"
+                                      className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+                                      value={editTherapyStartDate}
+                                      onChange={(e) => setEditTherapyStartDate(e.target.value)}
+                                    />
+                                  </label>
+
+                                  <label className="block">
+                                    <div className="text-xs font-semibold text-zinc-700">
+                                      Fine terapia
+                                    </div>
+                                    <input
+                                      type="date"
+                                      className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+                                      value={editTherapyEndDate}
+                                      onChange={(e) => setEditTherapyEndDate(e.target.value)}
+                                    />
+                                  </label>
+                                </>
+                              ) : null}
 
                               <label className="block md:col-span-2">
                                 <div className="text-xs font-semibold text-zinc-700">Descrizione</div>
@@ -1620,6 +1739,8 @@ export default function ClinicaPage() {
                               setEditType(detailEvent?.type || "visit");
                               setEditDate((detailEvent?.event_date || "").slice(0, 10));
                               setEditDesc(detailEvent?.description || "");
+                              setEditTherapyStartDate(extractTherapyStartDate(detailEvent) || "");
+                              setEditTherapyEndDate(extractTherapyEndDate(detailEvent) || "");
                               setIsEditing(false);
                               setDeleteConfirm(false);
                               setModalErr(null);

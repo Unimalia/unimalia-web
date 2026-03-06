@@ -11,14 +11,24 @@ function getBearerToken(req: Request) {
 
 type Body = {
   id: string;
-  title: string;
-  type: string;
-  eventDate: string; // YYYY-MM-DD
+  title?: string;
+  type?: string;
+  eventDate?: string;
   description?: string | null;
+  therapyStartDate?: string | null;
+  therapyEndDate?: string | null;
+  priority?: "low" | "normal" | "high" | "urgent" | null;
 };
 
 function isValidDateYYYYMMDD(s: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(s);
+}
+
+function parseDateOnly(v: unknown): string | null {
+  if (typeof v !== "string") return null;
+  const s = v.trim();
+  if (!s) return null;
+  return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null;
 }
 
 export async function POST(req: Request) {
@@ -28,7 +38,10 @@ export async function POST(req: Request) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!supabaseUrl || !supabaseAnon) {
-    return NextResponse.json({ error: "Server misconfigured (Supabase env missing)" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Server misconfigured (Supabase env missing)" },
+      { status: 500 }
+    );
   }
 
   const supabase = createClient(supabaseUrl, supabaseAnon, {
@@ -43,9 +56,9 @@ export async function POST(req: Request) {
   if (!body) return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
 
   const id = (body.id || "").trim();
-  const title = (body.title || "").trim();
-  const type = (body.type || "").trim();
-  const eventDate = (body.eventDate || "").trim();
+  const title = typeof body.title === "string" ? body.title.trim() : "";
+  const type = typeof body.type === "string" ? body.type.trim() : "";
+  const eventDate = typeof body.eventDate === "string" ? body.eventDate.trim() : "";
   const description = (body.description ?? "").toString().trim() || null;
 
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
@@ -108,27 +121,59 @@ export async function POST(req: Request) {
     }
   }
 
+  const therapyStartDate = parseDateOnly((body as any).therapyStartDate);
+  const therapyEndDate = parseDateOnly((body as any).therapyEndDate);
+  const priority =
+    ["low", "normal", "high", "urgent"].includes(String((body as any).priority || ""))
+      ? String((body as any).priority)
+      : null;
+
+  const nextMeta: Record<string, any> = { ...(((current as any).meta as Record<string, any>) || {}) };
+
+  if (type === "therapy") {
+    if (therapyStartDate) nextMeta.therapy_start_date = therapyStartDate;
+    nextMeta.therapy_end_date = therapyEndDate || null;
+  } else {
+    delete nextMeta.therapy_start_date;
+    delete nextMeta.therapy_end_date;
+  }
+
+  if (priority) nextMeta.priority = priority;
+
   const before = {
     title: (current as any).title,
     type: (current as any).type,
     event_date: (current as any).event_date,
     description: (current as any).description,
+    meta: (current as any).meta,
   };
+
+  const updateData: Record<string, any> = {
+    title,
+    type,
+    event_date: eventDate,
+    description,
+    meta: nextMeta,
+  };
+
+  if ((current as any).verified_at || (current as any).source === "professional") {
+    updateData.verified_at = null;
+    updateData.verified_by = null;
+  }
+
+  await supabase.from("animal_clinic_event_audit").insert({
+    event_id: (current as any).id,
+    animal_id: animalId,
+    actor_user_id: user.id,
+    actor_org_id: grant.actor_org_id,
+    action: "update",
+    previous_data: current,
+    next_data: { ...current, ...updateData },
+  });
 
   const { data: updated, error } = await supabase
     .from("animal_clinic_events")
-    .update({
-      title,
-      type,
-      event_date: eventDate,
-      description,
-      // owner che modifica dopo validazione → torna da validare (semplice e difendibile)
-      verified_at: source === "owner" ? null : (current as any).verified_at,
-      verified_by: source === "owner" ? null : (current as any).verified_by,
-      verified_by_org_id: source === "owner" ? null : (current as any).verified_by_org_id,
-      verified_by_member_id: source === "owner" ? null : (current as any).verified_by_member_id,
-      verified_by_label: source === "owner" ? null : (current as any).verified_by_label,
-    })
+    .update(updateData)
     .eq("id", id)
     .select("*")
     .single();
@@ -153,6 +198,7 @@ export async function POST(req: Request) {
     type: (updated as any).type,
     event_date: (updated as any).event_date,
     description: (updated as any).description,
+    meta: (updated as any).meta,
   };
 
   await writeAudit(supabase, {
