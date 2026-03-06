@@ -71,7 +71,7 @@ const FILTERS: Array<{ key: FilterKey; label: string }> = [
   { key: "vaccine", label: "Vaccini" },
   { key: "exam", label: "Esami" },
   { key: "therapy", label: "Terapie" },
-  { key: "surgery", label: "Interventi chirurgici" },
+  { key: "surgery", label: "Intervento chirurgico" },
   { key: "allergy", label: "Allergie" },
   { key: "feeding", label: "Alimentazione" },
   { key: "note", label: "Note" },
