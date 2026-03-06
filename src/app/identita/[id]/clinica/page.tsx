@@ -22,7 +22,7 @@ type ClinicEventType =
 type ClinicEventRow = {
   id: string;
   animal_id: string;
-  event_date: string; // timestamptz
+  event_date: string;
   type: ClinicEventType;
   title: string;
   description: string | null;
@@ -32,9 +32,7 @@ type ClinicEventRow = {
   verified_by: string | null;
   created_at: string;
 
-  // extra campi compatibili
   created_by?: string | null;
-  created_by_label?: string | null;
   verified_by_label?: string | null;
   verified_by_org_id?: string | null;
   verified_by_member_id?: string | null;
@@ -48,7 +46,16 @@ type EventFileRow = {
   path?: string | null;
 };
 
-type FilterKey = "all" | "visit" | "vaccine" | "exam" | "therapy" | "note" | "document" | "emergency" | "weight";
+type FilterKey =
+  | "all"
+  | "visit"
+  | "vaccine"
+  | "exam"
+  | "therapy"
+  | "note"
+  | "document"
+  | "emergency"
+  | "weight";
 
 function typeLabel(t: ClinicEventType) {
   switch (t) {
@@ -71,20 +78,6 @@ function typeLabel(t: ClinicEventType) {
   }
 }
 
-function formatDateIT(iso: string) {
-  try {
-    return new Date(iso).toLocaleString("it-IT", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  } catch {
-    return iso;
-  }
-}
-
 function formatEventDateIT(dateStr?: string | null) {
   if (!dateStr) return "—";
 
@@ -101,7 +94,11 @@ function formatEventDateIT(dateStr?: string | null) {
     });
   }
 
-  return new Date(s).toLocaleDateString("it-IT");
+  return new Date(s).toLocaleDateString("it-IT", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
 }
 
 function formatInsertedAtIT(iso?: string | null) {
@@ -199,9 +196,10 @@ export default function AnimalClinicalPage() {
     const { data, error } = await supabase
       .from("animal_clinic_events")
       .select(
-        "id, animal_id, event_date, type, title, description, visibility, source, verified_at, verified_by, created_at, created_by, created_by_label, verified_by_label, verified_by_org_id, verified_by_member_id, meta"
+        "id, animal_id, event_date, type, title, description, visibility, source, verified_at, verified_by, created_at, created_by, verified_by_label, verified_by_org_id, verified_by_member_id, meta"
       )
       .eq("animal_id", animalId)
+      .neq("status", "void")
       .order("event_date", { ascending: false });
 
     if (error) {
@@ -394,13 +392,25 @@ export default function AnimalClinicalPage() {
       }
 
       await loadEvents();
+      await loadFilesCount();
 
       const refreshed = (json?.event as ClinicEventRow | undefined) ?? null;
       if (refreshed) {
         setDetailEvent(refreshed);
       } else {
-        const localRefreshed = events.find((e) => e.id === detailEvent.id) ?? null;
-        setDetailEvent(localRefreshed);
+        setDetailEvent((prev) =>
+          prev
+            ? {
+                ...prev,
+                type: editType,
+                title: typeLabel(editType),
+                event_date: fromDateTimeLocalValue(editDateLocal).toISOString(),
+                description: editDescription.trim() || null,
+                verified_at: null,
+                verified_by: null,
+              }
+            : null
+        );
       }
 
       setIsEditing(false);
@@ -419,7 +429,13 @@ export default function AnimalClinicalPage() {
       });
     }
 
-    return events;
+    if (filter === "weight") {
+      return (events || []).filter((e) => extractWeightKg(e) !== null);
+    }
+
+    if (filter === "all") return events;
+
+    return (events || []).filter((e) => e.type === filter);
   }, [events, filter, filesCountByEventId]);
 
   return (
@@ -549,8 +565,7 @@ export default function AnimalClinicalPage() {
           </div>
 
           <p className="mt-3 text-xs text-zinc-500">
-            Nota: gli allegati vengono associati all’evento. (Download/link in arrivo nel dettaglio
-            evento.)
+            Nota: gli allegati vengono associati all’evento e sono visibili nel dettaglio evento.
           </p>
         </section>
 
@@ -588,8 +603,8 @@ export default function AnimalClinicalPage() {
                     statusTextBadge = "⏳ Da validare";
                   }
                 } else {
-                  statusTextTop = `Creato da ${ev.created_by_label || "professionista"}`;
-                  statusTextBadge = isVerified ? "✓ Verificato professionista" : "⏳ Da rivalidare";
+                  statusTextTop = `Registrato da ${ev?.meta?.created_by_member_label || "professionista"}`;
+                  statusTextBadge = isVerified ? "✓ Validato" : "⏳ Da rivalidare";
                 }
 
                 return (
@@ -620,9 +635,9 @@ export default function AnimalClinicalPage() {
                         <div className="mt-1 truncate text-sm font-semibold text-zinc-900">
                           {typeLabel(ev.type)}
 
-                          {extractWeightKg(ev) !== null ? (
+                          {weightKg !== null ? (
                             <span className="ml-2 text-xs font-semibold text-zinc-700">
-                              ⚖ {extractWeightKg(ev)} kg
+                              ⚖ {weightKg} kg
                             </span>
                           ) : null}
                         </div>
@@ -668,7 +683,7 @@ export default function AnimalClinicalPage() {
                 <h2 className="text-lg font-semibold text-zinc-900">{detailEvent.title}</h2>
 
                 <div className="text-sm text-zinc-600 mt-1">
-                  {detailEvent.type} • {formatEventDateIT(detailEvent.event_date)}
+                  {typeLabel(detailEvent.type)} • {formatEventDateIT(detailEvent.event_date)}
                 </div>
 
                 <div className="text-xs text-zinc-400 mt-1">
@@ -699,7 +714,7 @@ export default function AnimalClinicalPage() {
               <span className="font-semibold">Creatore evento:</span>{" "}
               {detailEvent.source === "owner"
                 ? "Proprietario"
-                : detailEvent.created_by_label || "Professionista"}
+                : detailEvent?.meta?.created_by_member_label || "Professionista"}
             </div>
 
             <div className="mt-2 text-sm text-zinc-700">
@@ -713,11 +728,11 @@ export default function AnimalClinicalPage() {
                 : "⏳ Da validare"}
             </div>
 
-            {detailEvent.description && (
+            {detailEvent.description ? (
               <p className="mt-4 text-sm text-zinc-700 whitespace-pre-wrap">
                 {detailEvent.description}
               </p>
-            )}
+            ) : null}
 
             <div className="mt-4">
               <div className="text-xs font-semibold text-zinc-700">Allegati</div>
@@ -729,7 +744,7 @@ export default function AnimalClinicalPage() {
               ) : (
                 <ul className="mt-2 space-y-1">
                   {detailFiles.map((f) => (
-                    <li key={f.id} className="text-sm">
+                    <li key={f.id} className="text-sm text-zinc-800">
                       {f.filename}
                     </li>
                   ))}
