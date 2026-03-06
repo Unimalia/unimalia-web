@@ -20,7 +20,8 @@ type ClinicEventType =
   | "emergency"
   | "weight"
   | "allergy"
-  | "feeding";
+  | "feeding"
+  | "surgery";
 
 type ClinicEventRow = {
   id: string;
@@ -61,7 +62,8 @@ type FilterKey =
   | "emergency"
   | "weight"
   | "allergy"
-  | "feeding";
+  | "feeding"
+  | "surgery";
 
 const FILTERS: Array<{ key: FilterKey; label: string }> = [
   { key: "all", label: "Tutti" },
@@ -69,6 +71,7 @@ const FILTERS: Array<{ key: FilterKey; label: string }> = [
   { key: "vaccine", label: "Vaccini" },
   { key: "exam", label: "Esami" },
   { key: "therapy", label: "Terapie" },
+  { key: "surgery", label: "Interventi chirurgici" },
   { key: "allergy", label: "Allergie" },
   { key: "feeding", label: "Alimentazione" },
   { key: "note", label: "Note" },
@@ -99,12 +102,13 @@ function typeLabel(t: ClinicEventType) {
       return "Emergenza";
     case "weight":
       return "Peso";
+    case "surgery":
+      return "Intervento chirurgico";
     default:
       return t;
   }
 }
 
-// ✅ FIX timezone: se è YYYY-MM-DD mostriamo SOLO data (evita 01:00)
 function formatDateIT(iso: string) {
   try {
     const s = String(iso || "").trim();
@@ -193,6 +197,15 @@ function extractTherapyEndDate(e: any): string | null {
 function formatWeightLabel(kg: number) {
   return Number.isInteger(kg) ? `${kg} kg` : `${kg} kg`;
 }
+
+const FIELD_LABEL_CLASS = "mb-1.5 block text-xs font-semibold text-zinc-700";
+const FIELD_CLASS =
+  "w-full rounded-2xl border border-zinc-300 bg-zinc-50 px-3.5 py-2.5 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-zinc-500 focus:bg-white focus:ring-4 focus:ring-zinc-200";
+const TEXTAREA_CLASS = `${FIELD_CLASS} min-h-[112px]`;
+const FILE_INPUT_CLASS =
+  "block w-full rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 px-3.5 py-3 text-sm text-zinc-700 file:mr-3 file:rounded-xl file:border-0 file:bg-black file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:border-zinc-400 focus-within:border-zinc-500 focus-within:ring-4 focus-within:ring-zinc-200";
+const UPLOAD_TRIGGER_CLASS =
+  "inline-flex cursor-pointer items-center justify-center rounded-2xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800 transition hover:bg-zinc-50 focus-within:ring-4 focus-within:ring-zinc-200";
 
 export default function ClinicaPage() {
   const params = useParams<{ id: string }>();
@@ -763,6 +776,47 @@ export default function ClinicaPage() {
 
   const canSave = !saving && !!newDate && !!newType;
 
+  const detailInitialSnapshot = useMemo(() => {
+    if (!detailEvent) return "";
+    return JSON.stringify({
+      title: (detailEvent.title || "").trim(),
+      type: detailEvent.type,
+      eventDate: (detailEvent.event_date || "").slice(0, 10),
+      description: (detailEvent.description || "").trim(),
+      therapyStartDate: extractTherapyStartDate(detailEvent) || "",
+      therapyEndDate: extractTherapyEndDate(detailEvent) || "",
+    });
+  }, [detailEvent]);
+
+  const detailDraftSnapshot = useMemo(() => {
+    return JSON.stringify({
+      title: editTitle.trim(),
+      type: editType,
+      eventDate: editDate,
+      description: editDesc.trim(),
+      therapyStartDate: editType === "therapy" ? editTherapyStartDate || "" : "",
+      therapyEndDate: editType === "therapy" ? editTherapyEndDate || "" : "",
+    });
+  }, [editDate, editDesc, editTherapyEndDate, editTherapyStartDate, editTitle, editType]);
+
+  const isDetailDirty = isEditing && !!detailEvent && detailInitialSnapshot !== detailDraftSnapshot;
+
+  function resetEditStateFromEvent(ev: ClinicEventRow | null) {
+    setEditTitle(ev?.title || "");
+    setEditType(ev?.type || "visit");
+    setEditDate((ev?.event_date || "").slice(0, 10));
+    setEditDesc(ev?.description || "");
+    setEditTherapyStartDate(extractTherapyStartDate(ev) || "");
+    setEditTherapyEndDate(extractTherapyEndDate(ev) || "");
+  }
+
+  function closeDetailModal() {
+    setDetailEvent(null);
+    setIsEditing(false);
+    setDeleteConfirm(false);
+    setModalErr(null);
+  }
+
   return (
     <div className="space-y-6">
       <div className="text-sm">
@@ -859,7 +913,6 @@ export default function ClinicaPage() {
           </div>
         ) : null}
 
-        {/* NUOVO EVENTO (PRO) */}
         <div className="rounded-2xl border border-zinc-200 bg-white p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
@@ -883,11 +936,11 @@ export default function ClinicaPage() {
             </div>
           ) : null}
 
-          <div className="mt-4 grid gap-3 md:grid-cols-12">
+          <div className="mt-4 grid gap-4 md:grid-cols-12">
             <label className="block md:col-span-3">
-              <div className="text-xs font-semibold text-zinc-700">Tipo evento</div>
+              <span className={FIELD_LABEL_CLASS}>Tipo evento</span>
               <select
-                className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+                className={FIELD_CLASS}
                 value={newType}
                 onChange={(e) => setNewType(e.target.value as ClinicEventType)}
               >
@@ -895,6 +948,7 @@ export default function ClinicaPage() {
                 <option value="vaccine">Vaccinazione</option>
                 <option value="exam">Esame</option>
                 <option value="therapy">Terapia</option>
+                <option value="surgery">Intervento chirurgico</option>
                 <option value="allergy">Allergia</option>
                 <option value="feeding">Alimentazione</option>
                 <option value="note">Nota</option>
@@ -904,23 +958,23 @@ export default function ClinicaPage() {
             </label>
 
             <label className="block md:col-span-2">
-              <div className="text-xs font-semibold text-zinc-700">Data</div>
+              <span className={FIELD_LABEL_CLASS}>Data</span>
               <input
                 type="date"
-                className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+                className={FIELD_CLASS}
                 value={newDate}
                 onChange={(e) => setNewDate(e.target.value)}
               />
             </label>
 
             <label className="block md:col-span-2">
-              <div className="text-xs font-semibold text-zinc-700">Peso (kg)</div>
+              <span className={FIELD_LABEL_CLASS}>Peso (kg)</span>
               <input
                 type="number"
                 inputMode="decimal"
                 step="0.1"
                 min="0"
-                className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+                className={FIELD_CLASS}
                 value={newWeightKg}
                 onChange={(e) => setNewWeightKg(e.target.value)}
                 placeholder="Es. 12.5"
@@ -928,11 +982,11 @@ export default function ClinicaPage() {
             </label>
 
             <label className="block md:col-span-5">
-              <div className="text-xs font-semibold text-zinc-700">File</div>
+              <span className={FIELD_LABEL_CLASS}>Allegati</span>
               <input
                 type="file"
                 multiple
-                className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+                className={FILE_INPUT_CLASS}
                 onChange={(e) => {
                   const list = Array.from(e.target.files || []);
                   setNewFiles(list);
@@ -946,22 +1000,22 @@ export default function ClinicaPage() {
             </label>
 
             {newType === "therapy" ? (
-              <div className="grid gap-3 md:grid-cols-12 md:col-span-12">
+              <div className="grid gap-4 md:grid-cols-12 md:col-span-12">
                 <label className="block md:col-span-6">
-                  <div className="text-xs font-semibold text-zinc-700">Inizio terapia</div>
+                  <span className={FIELD_LABEL_CLASS}>Inizio terapia</span>
                   <input
                     type="date"
-                    className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+                    className={FIELD_CLASS}
                     value={therapyStartDate}
                     onChange={(e) => setTherapyStartDate(e.target.value)}
                   />
                 </label>
 
                 <label className="block md:col-span-6">
-                  <div className="text-xs font-semibold text-zinc-700">Fine terapia</div>
+                  <span className={FIELD_LABEL_CLASS}>Fine terapia</span>
                   <input
                     type="date"
-                    className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+                    className={FIELD_CLASS}
                     value={therapyEndDate}
                     onChange={(e) => setTherapyEndDate(e.target.value)}
                   />
@@ -973,10 +1027,10 @@ export default function ClinicaPage() {
             ) : null}
 
             <label className="block md:col-span-12">
-              <div className="text-xs font-semibold text-zinc-700">Note cliniche</div>
+              <span className={FIELD_LABEL_CLASS}>Note cliniche</span>
               <textarea
-                className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm"
-                rows={3}
+                className={TEXTAREA_CLASS}
+                rows={4}
                 value={newNotes}
                 onChange={(e) => setNewNotes(e.target.value)}
                 placeholder="Dettagli clinici, note, dosaggi, esito, osservazioni..."
@@ -984,14 +1038,12 @@ export default function ClinicaPage() {
             </label>
           </div>
 
-          <div className="mt-4 grid gap-3 md:grid-cols-12">
+          <div className="mt-4 grid gap-4 md:grid-cols-12">
             <label className="block md:col-span-9">
-              <div className="text-xs font-semibold text-zinc-700">
-                Firma veterinario (opzionale)
-              </div>
+              <span className={FIELD_LABEL_CLASS}>Firma veterinario (opzionale)</span>
               <input
                 type="text"
-                className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+                className={FIELD_CLASS}
                 placeholder="Temporaneo: sarà sostituito da tendina ricercabile veterinari"
                 value={newVetSignature || ""}
                 onChange={(e) => setNewVetSignature(e.target.value)}
@@ -1006,7 +1058,7 @@ export default function ClinicaPage() {
             <div className="flex items-end md:col-span-3">
               <button
                 type="button"
-                className="w-full rounded-2xl bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-900 disabled:opacity-50"
+                className="w-full rounded-2xl bg-black px-4 py-2.5 text-sm font-semibold text-white hover:bg-zinc-900 disabled:opacity-50"
                 disabled={!canSave}
                 onClick={() => void saveClinicEvent()}
               >
@@ -1042,12 +1094,12 @@ export default function ClinicaPage() {
             </div>
 
             {reminderEnabled ? (
-              <div className="mt-3 grid gap-3 md:grid-cols-2">
+              <div className="mt-3 grid gap-4 md:grid-cols-2">
                 <label className="block">
-                  <div className="text-xs font-semibold text-zinc-700">Data promemoria</div>
+                  <span className={FIELD_LABEL_CLASS}>Data promemoria</span>
                   <input
                     type="date"
-                    className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+                    className={FIELD_CLASS}
                     value={remindAt}
                     onChange={(e) => {
                       setRemindAt(e.target.value);
@@ -1057,7 +1109,7 @@ export default function ClinicaPage() {
                 </label>
 
                 <div className="block">
-                  <div className="text-xs font-semibold text-zinc-700">Canali</div>
+                  <span className={FIELD_LABEL_CLASS}>Canali</span>
                   <div className="mt-2 flex flex-wrap gap-2">
                     <label className="flex items-center gap-2 rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm">
                       <input
@@ -1192,7 +1244,7 @@ export default function ClinicaPage() {
 
           <input
             type="text"
-            className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+            className={FIELD_CLASS}
             placeholder="Cerca in note, descrizione, tipo evento..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -1223,13 +1275,7 @@ export default function ClinicaPage() {
                     setIsEditing(false);
                     setDeleteConfirm(false);
                     setModalErr(null);
-
-                    setEditTitle(ev.title || "");
-                    setEditType(ev.type);
-                    setEditDate((ev.event_date || "").slice(0, 10));
-                    setEditDesc(ev.description || "");
-                    setEditTherapyStartDate(extractTherapyStartDate(ev) || "");
-                    setEditTherapyEndDate(extractTherapyEndDate(ev) || "");
+                    resetEditStateFromEvent(ev);
                   }}
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -1388,11 +1434,13 @@ export default function ClinicaPage() {
                           <div className="mt-2 text-sm text-zinc-700 space-y-1">
                             <div>
                               <span className="font-semibold">Inizio terapia:</span>{" "}
-                              {extractTherapyStartDate(detailEvent) || "—"}
+                              {formatEventDateIT(extractTherapyStartDate(detailEvent))}
                             </div>
                             <div>
                               <span className="font-semibold">Fine terapia:</span>{" "}
-                              {extractTherapyEndDate(detailEvent) || "In corso"}
+                              {extractTherapyEndDate(detailEvent)
+                                ? formatEventDateIT(extractTherapyEndDate(detailEvent))
+                                : "In corso"}
                             </div>
                           </div>
                         ) : null}
@@ -1423,25 +1471,20 @@ export default function ClinicaPage() {
                             >
                               Elimina
                             </button>
+
+                            <button
+                              type="button"
+                              className="text-sm font-semibold text-zinc-600 hover:text-zinc-900"
+                              onClick={closeDetailModal}
+                            >
+                              Chiudi ✕
+                            </button>
                           </>
                         ) : (
                           <span className="rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-semibold text-zinc-700">
                             Modalità modifica
                           </span>
                         )}
-
-                        <button
-                          type="button"
-                          className="text-sm font-semibold text-zinc-600 hover:text-zinc-900"
-                          onClick={() => {
-                            setDetailEvent(null);
-                            setIsEditing(false);
-                            setDeleteConfirm(false);
-                            setModalErr(null);
-                          }}
-                        >
-                          Chiudi ✕
-                        </button>
                       </div>
                     </div>
 
@@ -1510,15 +1553,13 @@ export default function ClinicaPage() {
                               </ul>
                             )}
 
-                            <label className="block mt-3">
-                              <div className="text-xs font-semibold text-zinc-700">
-                                Aggiungi allegati
-                              </div>
+                            <label className="block mt-4">
+                              <span className={FIELD_LABEL_CLASS}>Aggiungi allegati</span>
 
                               <input
                                 type="file"
                                 multiple
-                                className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+                                className={FILE_INPUT_CLASS}
                                 onChange={async (e) => {
                                   const files = Array.from(e.target.files || []);
                                   if (!files.length) return;
@@ -1608,21 +1649,21 @@ export default function ClinicaPage() {
                           <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
                             <div className="text-xs font-semibold text-zinc-700">Modifica evento</div>
 
-                            <div className="mt-3 grid gap-3 md:grid-cols-2">
+                            <div className="mt-4 grid gap-4 md:grid-cols-2">
                               <label className="block md:col-span-2">
-                                <div className="text-xs font-semibold text-zinc-700">Titolo</div>
+                                <span className={FIELD_LABEL_CLASS}>Titolo</span>
                                 <input
                                   type="text"
-                                  className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+                                  className={FIELD_CLASS}
                                   value={editTitle}
                                   onChange={(e) => setEditTitle(e.target.value)}
                                 />
                               </label>
 
                               <label className="block">
-                                <div className="text-xs font-semibold text-zinc-700">Tipo</div>
+                                <span className={FIELD_LABEL_CLASS}>Tipo</span>
                                 <select
-                                  className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+                                  className={FIELD_CLASS}
                                   value={editType}
                                   onChange={(e) => setEditType(e.target.value as ClinicEventType)}
                                 >
@@ -1630,6 +1671,7 @@ export default function ClinicaPage() {
                                   <option value="vaccine">Vaccinazione</option>
                                   <option value="exam">Esame</option>
                                   <option value="therapy">Terapia</option>
+                                  <option value="surgery">Intervento chirurgico</option>
                                   <option value="allergy">Allergia</option>
                                   <option value="feeding">Alimentazione</option>
                                   <option value="note">Nota</option>
@@ -1639,10 +1681,10 @@ export default function ClinicaPage() {
                               </label>
 
                               <label className="block">
-                                <div className="text-xs font-semibold text-zinc-700">Data</div>
+                                <span className={FIELD_LABEL_CLASS}>Data</span>
                                 <input
                                   type="date"
-                                  className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+                                  className={FIELD_CLASS}
                                   value={editDate}
                                   onChange={(e) => setEditDate(e.target.value)}
                                 />
@@ -1651,24 +1693,20 @@ export default function ClinicaPage() {
                               {editType === "therapy" ? (
                                 <>
                                   <label className="block">
-                                    <div className="text-xs font-semibold text-zinc-700">
-                                      Inizio terapia
-                                    </div>
+                                    <span className={FIELD_LABEL_CLASS}>Inizio terapia</span>
                                     <input
                                       type="date"
-                                      className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+                                      className={FIELD_CLASS}
                                       value={editTherapyStartDate}
                                       onChange={(e) => setEditTherapyStartDate(e.target.value)}
                                     />
                                   </label>
 
                                   <label className="block">
-                                    <div className="text-xs font-semibold text-zinc-700">
-                                      Fine terapia
-                                    </div>
+                                    <span className={FIELD_LABEL_CLASS}>Fine terapia</span>
                                     <input
                                       type="date"
-                                      className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+                                      className={FIELD_CLASS}
                                       value={editTherapyEndDate}
                                       onChange={(e) => setEditTherapyEndDate(e.target.value)}
                                     />
@@ -1677,9 +1715,9 @@ export default function ClinicaPage() {
                               ) : null}
 
                               <label className="block md:col-span-2">
-                                <div className="text-xs font-semibold text-zinc-700">Descrizione</div>
+                                <span className={FIELD_LABEL_CLASS}>Descrizione</span>
                                 <textarea
-                                  className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+                                  className={TEXTAREA_CLASS}
                                   rows={4}
                                   value={editDesc}
                                   onChange={(e) => setEditDesc(e.target.value)}
@@ -1730,45 +1768,45 @@ export default function ClinicaPage() {
 
                     <div className="mt-6 flex justify-end gap-2">
                       {isEditing ? (
-                        <>
+                        isDetailDirty ? (
+                          <>
+                            <button
+                              type="button"
+                              className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+                              onClick={() => {
+                                resetEditStateFromEvent(detailEvent);
+                                setIsEditing(false);
+                                setDeleteConfirm(false);
+                                setModalErr(null);
+                              }}
+                              disabled={updating}
+                            >
+                              Annulla modifiche
+                            </button>
+
+                            <button
+                              type="button"
+                              className="rounded-2xl bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-900 disabled:opacity-50"
+                              disabled={!allowed || updating || !editTitle.trim() || !editDate}
+                              onClick={() => void updateDetailEvent()}
+                            >
+                              {updating ? "Salvataggio…" : "Salva e chiudi"}
+                            </button>
+                          </>
+                        ) : (
                           <button
                             type="button"
                             className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
-                            onClick={() => {
-                              setEditTitle(detailEvent?.title || "");
-                              setEditType(detailEvent?.type || "visit");
-                              setEditDate((detailEvent?.event_date || "").slice(0, 10));
-                              setEditDesc(detailEvent?.description || "");
-                              setEditTherapyStartDate(extractTherapyStartDate(detailEvent) || "");
-                              setEditTherapyEndDate(extractTherapyEndDate(detailEvent) || "");
-                              setIsEditing(false);
-                              setDeleteConfirm(false);
-                              setModalErr(null);
-                            }}
-                            disabled={updating}
+                            onClick={closeDetailModal}
                           >
-                            Annulla
+                            Chiudi
                           </button>
-
-                          <button
-                            type="button"
-                            className="rounded-2xl bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-900 disabled:opacity-50"
-                            disabled={!allowed || updating || !editTitle.trim() || !editDate}
-                            onClick={() => void updateDetailEvent()}
-                          >
-                            {updating ? "Salvataggio…" : "Conferma modifica"}
-                          </button>
-                        </>
+                        )
                       ) : (
                         <button
                           type="button"
                           className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
-                          onClick={() => {
-                            setDetailEvent(null);
-                            setIsEditing(false);
-                            setDeleteConfirm(false);
-                            setModalErr(null);
-                          }}
+                          onClick={closeDetailModal}
                         >
                           Chiudi
                         </button>

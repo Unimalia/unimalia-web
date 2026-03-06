@@ -19,7 +19,8 @@ type ClinicEventType =
   | "document"
   | "emergency"
   | "allergy"
-  | "feeding";
+  | "feeding"
+  | "surgery";
 
 type ClinicEventRow = {
   id: string;
@@ -58,7 +59,8 @@ type FilterKey =
   | "emergency"
   | "weight"
   | "allergy"
-  | "feeding";
+  | "feeding"
+  | "surgery";
 
 const FILTERS: Array<{ key: FilterKey; label: string }> = [
   { key: "all", label: "Tutti" },
@@ -68,6 +70,7 @@ const FILTERS: Array<{ key: FilterKey; label: string }> = [
   { key: "therapy", label: "Terapie" },
   { key: "allergy", label: "Allergie" },
   { key: "feeding", label: "Alimentazione" },
+  { key: "surgery", label: "Intervento chirurgico" },
   { key: "note", label: "Note" },
   { key: "document", label: "Documenti" },
   { key: "emergency", label: "Emergenze" },
@@ -94,6 +97,8 @@ function typeLabel(t: ClinicEventType) {
       return "Allergia";
     case "feeding":
       return "Alimentazione";
+    case "surgery":
+      return "Intervento chirurgico";
     default:
       return t;
   }
@@ -549,6 +554,7 @@ export default function AnimalClinicalPage() {
                 <option value="therapy">Terapia</option>
                 <option value="allergy">Allergia</option>
                 <option value="feeding">Alimentazione</option>
+                <option value="surgery">Intervento chirurgico</option>
                 <option value="emergency">Emergenza</option>
                 <option value="document">Documento</option>
               </select>
@@ -926,6 +932,7 @@ export default function AnimalClinicalPage() {
                       <option value="therapy">Terapia</option>
                       <option value="allergy">Allergia</option>
                       <option value="feeding">Alimentazione</option>
+                      <option value="surgery">Intervento chirurgico</option>
                       <option value="emergency">Emergenza</option>
                       <option value="document">Documento</option>
                     </select>
