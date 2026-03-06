@@ -616,19 +616,24 @@ export default function AnimalClinicalPage() {
               <label className="block text-xs font-semibold text-zinc-700">
                 Allegati (opzionale)
               </label>
-              <input
-                type="file"
-                multiple
-                className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-zinc-200"
-                onChange={(e) => {
-                  const list = Array.from(e.target.files || []);
-                  setFiles(list);
-                }}
-              />
+
+              <div className="mt-1">
+                <label className="inline-flex cursor-pointer items-center rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 focus-within:ring-2 focus-within:ring-emerald-500 focus-within:ring-offset-2">
+                  <span>Carica file</span>
+                  <input
+                    type="file"
+                    className="sr-only"
+                    multiple
+                    onChange={(e) => {
+                      const list = Array.from(e.target.files || []);
+                      setFiles(list);
+                    }}
+                  />
+                </label>
+              </div>
+
               {files.length > 0 ? (
-                <p className="mt-1 text-xs text-zinc-500">
-                  Selezionati: <span className="font-semibold">{files.length}</span>
-                </p>
+                <p className="mt-2 text-sm text-gray-600">{files.length} file selezionati</p>
               ) : (
                 <p className="mt-1 text-xs text-zinc-500">
                   Puoi allegare uno o più documenti (referti, esami, PDF, immagini, etichette ingredienti).
@@ -839,8 +844,8 @@ export default function AnimalClinicalPage() {
                   ? `✓ Validato da ${detailEvent.verified_by_label}`
                   : "✓ Validato"
                 : detailEvent.source === "professional"
-                ? "⏳ Da rivalidare"
-                : "⏳ Da validare"}
+                  ? "⏳ Da rivalidare"
+                  : "⏳ Da validare"}
             </div>
 
             {detailEvent.description ? (
@@ -867,35 +872,40 @@ export default function AnimalClinicalPage() {
               )}
             </div>
 
-            <input
-              type="file"
-              multiple
-              className="mt-2"
-              onChange={async (e) => {
-                if (!detailEvent) return;
+            <label className="mt-2 inline-flex cursor-pointer items-center rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 shadow-sm transition hover:bg-zinc-50 focus-within:ring-2 focus-within:ring-emerald-500 focus-within:ring-offset-2">
+              <span>Carica file</span>
+              <input
+                type="file"
+                multiple
+                className="sr-only"
+                onChange={async (e) => {
+                  if (!detailEvent) return;
 
-                const files = Array.from(e.target.files || []);
-                if (!files.length) return;
+                  const files = Array.from(e.target.files || []);
+                  if (!files.length) return;
 
-                const fd = new FormData();
-                fd.append("eventId", detailEvent.id);
-                fd.append("animalId", detailEvent.animal_id);
+                  const fd = new FormData();
+                  fd.append("eventId", detailEvent.id);
+                  fd.append("animalId", detailEvent.animal_id);
 
-                for (const f of files) fd.append("files", f);
+                  for (const f of files) fd.append("files", f);
 
-                await fetch("/api/clinic-events/files/upload", {
-                  method: "POST",
-                  headers: {
-                    ...(await authHeaders()),
-                  },
-                  body: fd,
-                });
+                  await fetch("/api/clinic-events/files/upload", {
+                    method: "POST",
+                    headers: {
+                      ...(await authHeaders()),
+                    },
+                    body: fd,
+                  });
 
-                await loadEvents();
-                await loadFilesCount();
-                await loadDetailFiles(detailEvent.id);
-              }}
-            />
+                  await loadEvents();
+                  await loadFilesCount();
+                  await loadDetailFiles(detailEvent.id);
+
+                  e.currentTarget.value = "";
+                }}
+              />
+            </label>
 
             <div className="mt-6 flex flex-wrap gap-2">
               <button
@@ -1005,7 +1015,7 @@ export default function AnimalClinicalPage() {
                     disabled={updating}
                     className="rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-900 disabled:opacity-60"
                   >
-                    {updating ? "Salvataggio..." : "Salva modifica"}
+                    {updating ? "Salvataggio..." : "Salva e chiudi"}
                   </button>
 
                   <button
@@ -1013,7 +1023,7 @@ export default function AnimalClinicalPage() {
                     onClick={() => setIsEditing(false)}
                     className="rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
                   >
-                    Annulla
+                    Chiudi
                   </button>
                 </div>
 
