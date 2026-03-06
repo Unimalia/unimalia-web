@@ -28,11 +28,8 @@ type Animal = {
 
   microchip_verified_at?: string | null;
   microchip_verified_org_id?: string | null;
-
-  // se vuoi (in futuro via join o api)
   microchip_verified_by_label?: string | null;
 
-  // ✅ NEW
   birth_date?: string | null;
   birth_date_is_estimated?: boolean | null;
 };
@@ -44,7 +41,9 @@ type ClinicEventType =
   | "therapy"
   | "note"
   | "document"
-  | "emergency";
+  | "emergency"
+  | "allergy"
+  | "feeding";
 
 type ClinicEventRow = {
   id: string;
@@ -58,22 +57,19 @@ type ClinicEventRow = {
   verified_at: string | null;
   verified_by: string | null;
 
-  // ✅ futuri campi (se presenti non rompono)
   verified_by_label?: string | null;
   verified_by_org_id?: string | null;
   verified_by_member_id?: string | null;
 
-  // ✅ scadenze/richiami (se l'API le manda)
   due_date?: string | null;
   due_at?: string | null;
   next_due_date?: string | null;
   next_due_at?: string | null;
   expires_at?: string | null;
 
-  // ✅ peso (il backend potrebbe mandarlo in forme diverse)
   weight_kg?: number | null;
   weightKg?: number | null;
-  data?: any; // se in futuro lo mettiamo in JSON
+  data?: any;
   payload?: any;
   meta?: any;
 };
@@ -107,6 +103,10 @@ function typeLabel(t: ClinicEventType) {
       return "Documento";
     case "emergency":
       return "Emergenza";
+    case "allergy":
+      return "Allergia";
+    case "feeding":
+      return "Alimentazione";
     default:
       return t;
   }
@@ -114,7 +114,19 @@ function typeLabel(t: ClinicEventType) {
 
 function formatDateIT(iso: string) {
   try {
-    return new Date(iso).toLocaleString("it-IT", {
+    const s = String(iso || "").trim();
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+      const [y, m, d] = s.split("-").map((x) => Number(x));
+      const dt = new Date(y, (m || 1) - 1, d || 1);
+      return dt.toLocaleDateString("it-IT", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      });
+    }
+
+    return new Date(s).toLocaleString("it-IT", {
       year: "numeric",
       month: "2-digit",
       day: "2-digit",
@@ -130,13 +142,9 @@ function normalizeChip(raw: string | null) {
   return (raw || "").replace(/\s+/g, "").trim();
 }
 
-// ✅ NEW: calcolo età da birth_date
 function formatAgeFromBirthDate(birthDateISO?: string | null) {
   if (!birthDateISO) return "—";
 
-  // birthDateISO è tipicamente "YYYY-MM-DD"
-  // new Date("YYYY-MM-DD") in JS viene interpretato come UTC midnight.
-  // Per evitare effetti strani, trasformiamo in data locale "safe".
   const safe = /^\d{4}-\d{2}-\d{2}$/.test(birthDateISO)
     ? new Date(`${birthDateISO}T12:00:00`)
     : new Date(birthDateISO);
@@ -180,6 +188,32 @@ function extractWeightKg(e: any): number | null {
   if (!Number.isFinite(n) || n <= 0) return null;
 
   return Math.round(n * 10) / 10;
+}
+
+function extractTherapyStartDate(e: any): string | null {
+  return e?.meta?.therapy_start_date || null;
+}
+
+function extractTherapyEndDate(e: any): string | null {
+  return e?.meta?.therapy_end_date || null;
+}
+
+function isTherapyActive(e: any) {
+  if (!e || e.type !== "therapy") return false;
+
+  const start = extractTherapyStartDate(e);
+  const end = extractTherapyEndDate(e);
+
+  if (!start) return false;
+
+  const today = new Date();
+  const todayYmd = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(
+    2,
+    "0"
+  )}-${String(today.getDate()).padStart(2, "0")}`;
+
+  if (!end) return true;
+  return end >= todayYmd;
 }
 
 function formatWeightLabel(kg: number) {
@@ -230,7 +264,6 @@ export default function ProAnimalPage() {
 
     setIsVet(isVetUser(user));
 
-    // ✅ MODIFICA: usa API server-side (evita RLS su client)
     const res = await fetch(`/api/professionisti/animal?animalId=${encodeURIComponent(id)}`, {
       cache: "no-store",
       headers: {
@@ -315,10 +348,14 @@ export default function ProAnimalPage() {
     const when = animal.microchip_verified_at ? formatDateIT(animal.microchip_verified_at) : null;
 
     return when ? `${who} • ${when}` : who;
-  }, [animal?.microchip_verified, animal?.microchip_verified_by_label, animal?.microchip_verified_at]);
+  }, [
+    animal?.microchip_verified,
+    animal?.microchip_verified_by_label,
+    animal?.microchip_verified_at,
+  ]);
 
   // =========================
-  // STATO CLINICO RAPIDO (da events)
+  // STATO CLINICO RAPIDO
   // =========================
 
   function toDateOrNull(v?: string | null) {
@@ -346,13 +383,31 @@ export default function ProAnimalPage() {
 
     list.sort((a, b) => new Date(b.e.event_date).getTime() - new Date(a.e.event_date).getTime());
 
-    return list.length > 0 ? { kg: list[0].kg as number, date: list[0].e.event_date as string } : null;
+    return list.length > 0
+      ? { kg: list[0].kg as number, date: list[0].e.event_date as string }
+      : null;
+  }, [events]);
+
+  const allergyItems = useMemo(() => {
+    const list = (events || [])
+      .filter((e) => e.type === "allergy")
+      .sort((a, b) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime());
+
+    return list.slice(0, 3);
+  }, [events]);
+
+  const activeTherapies = useMemo(() => {
+    return (events || [])
+      .filter((e) => e.type === "therapy" && isTherapyActive(e))
+      .sort((a, b) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime())
+      .slice(0, 3);
   }, [events]);
 
   const latestTherapies = useMemo(() => {
-    const list = (events || []).filter((e) => e.type === "therapy" && e.event_date);
-    list.sort((a, b) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime());
-    return list.slice(0, 3);
+    return (events || [])
+      .filter((e) => e.type === "therapy" && !isTherapyActive(e))
+      .sort((a, b) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime())
+      .slice(0, 3);
   }, [events]);
 
   const vaccinesDueSoonOrOverdue = useMemo(() => {
@@ -370,7 +425,7 @@ export default function ProAnimalPage() {
       .filter((e) => e.type === "vaccine")
       .map((e) => ({ e, due: getDue(e) }))
       .filter((x) => x.due && x.due.getTime() <= limit.getTime())
-      .sort((a, b) => a.due!.getTime() - b.due!.getTime()); // prima le più urgenti
+      .sort((a, b) => a.due!.getTime() - b.due!.getTime());
 
     return list;
   }, [events]);
@@ -405,7 +460,6 @@ export default function ProAnimalPage() {
 
   return (
     <div className="space-y-6">
-      {/* HEADER */}
       <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
@@ -474,7 +528,6 @@ export default function ProAnimalPage() {
         </div>
       </div>
 
-      {/* STATO CLINICO RAPIDO */}
       <div className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center justify-between gap-3">
@@ -506,16 +559,36 @@ export default function ProAnimalPage() {
           {eventsErr ? <span className="text-xs text-amber-700">{eventsErr}</span> : null}
         </div>
 
-        {/* più compatto: 6 box */}
         <div className="mt-4 grid gap-3 text-sm md:grid-cols-6">
           <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
             <div className="text-xs text-zinc-500">Allergie</div>
-            <div className="mt-1 font-semibold text-zinc-900">—</div>
+            {allergyItems.length === 0 ? (
+              <div className="mt-1 font-semibold text-zinc-900">—</div>
+            ) : (
+              <ul className="mt-1 space-y-1 text-xs text-zinc-800">
+                {allergyItems.map((a) => (
+                  <li key={a.id} className="truncate">
+                    <span className="font-semibold">{a.description || a.title || "Allergia"}</span>
+                    <span className="text-zinc-500"> • {formatDateIT(a.event_date)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
           <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
             <div className="text-xs text-zinc-500">Terapie attive</div>
-            <div className="mt-1 font-semibold text-zinc-900">—</div>
+            {activeTherapies.length === 0 ? (
+              <div className="mt-1 font-semibold text-zinc-900">—</div>
+            ) : (
+              <ul className="mt-1 space-y-1 text-xs text-zinc-800">
+                {activeTherapies.map((t) => (
+                  <li key={t.id} className="truncate">
+                    <span className="font-semibold">{t.description || t.title || "Terapia"}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
           <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
@@ -526,7 +599,7 @@ export default function ProAnimalPage() {
               <ul className="mt-1 space-y-1 text-xs text-zinc-800">
                 {latestTherapies.map((t) => (
                   <li key={t.id} className="truncate">
-                    <span className="font-semibold">{t.title || "Terapia"}</span>
+                    <span className="font-semibold">{t.description || t.title || "Terapia"}</span>
                     <span className="text-zinc-500"> • {formatDateIT(t.event_date)}</span>
                   </li>
                 ))}
@@ -581,7 +654,6 @@ export default function ProAnimalPage() {
         </p>
       </div>
 
-      {/* IDENTITÀ + MICROCHIP */}
       <div className="grid gap-4 md:grid-cols-2">
         <section className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
           <h2 className="text-base font-semibold text-zinc-900">Identità</h2>
@@ -655,17 +727,16 @@ export default function ProAnimalPage() {
               )}
             </div>
 
-            {animal.microchip_verified && (
+            {animal.microchip_verified ? (
               <div className="mt-2 text-xs text-zinc-600">
                 Verificato da:{" "}
                 <span className="font-semibold text-zinc-900">{microchipVerifierLabel}</span>
               </div>
-            )}
+            ) : null}
           </div>
         </section>
       </div>
 
-      {/* QR + BARCODE */}
       <AnimalCodes
         qrValue={qrValue || `UNIMALIA:${animal.id}`}
         barcodeValue={barcodeValue}
