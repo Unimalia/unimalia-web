@@ -18,6 +18,7 @@ type ClinicEventType =
   | "note"
   | "document"
   | "emergency"
+  // lo teniamo nel type union per compatibilità con eventuali eventi già presenti
   | "weight";
 
 type ClinicEventRow = {
@@ -39,9 +40,22 @@ type ClinicEventRow = {
   verified_by_org_id?: string | null;
   verified_by_member_id?: string | null;
 
-  // ✅ peso (salvato in meta da create route)
   meta?: any;
 };
+
+type FilterKey = "all" | "visit" | "vaccine" | "exam" | "therapy" | "note" | "document" | "emergency" | "weight";
+
+const FILTERS: Array<{ key: FilterKey; label: string }> = [
+  { key: "all", label: "Tutti" },
+  { key: "visit", label: "Visite" },
+  { key: "vaccine", label: "Vaccini" },
+  { key: "exam", label: "Esami" },
+  { key: "therapy", label: "Terapie" },
+  { key: "note", label: "Note" },
+  { key: "document", label: "Documenti" },
+  { key: "emergency", label: "Emergenze" },
+  { key: "weight", label: "Peso" }, // ✅ filtro su meta.weight_kg (NON sul type)
+];
 
 function typeLabel(t: ClinicEventType) {
   switch (t) {
@@ -66,9 +80,22 @@ function typeLabel(t: ClinicEventType) {
   }
 }
 
+// ✅ FIX timezone: se è YYYY-MM-DD mostriamo SOLO data (evita 01:00)
 function formatDateIT(iso: string) {
   try {
-    return new Date(iso).toLocaleString("it-IT", {
+    const s = String(iso || "").trim();
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+      const [y, m, d] = s.split("-").map((x) => Number(x));
+      const dt = new Date(y, (m || 1) - 1, d || 1); // local time
+      return dt.toLocaleDateString("it-IT", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      });
+    }
+
+    return new Date(s).toLocaleString("it-IT", {
       year: "numeric",
       month: "2-digit",
       day: "2-digit",
@@ -116,6 +143,13 @@ export default function ClinicaPage() {
   const [eventsLoading, setEventsLoading] = useState(false);
   const [events, setEvents] = useState<ClinicEventRow[]>([]);
   const [eventsErr, setEventsErr] = useState<string | null>(null);
+
+  // ✅ filtro timeline
+  const [filter, setFilter] = useState<FilterKey>("all");
+
+  // ✅ paginazione leggera
+  const PAGE_SIZE = 50;
+  const [visibleCount, setVisibleCount] = useState<number>(PAGE_SIZE);
 
   // Nuovo evento
   const [newType, setNewType] = useState<ClinicEventType>("visit");
@@ -251,6 +285,11 @@ export default function ClinicaPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  // ✅ reset paginazione quando cambia filtro o dati
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [filter, events.length]);
+
   // ✅ FIX: blocca scroll pagina quando la modal è aperta
   useEffect(() => {
     if (!detailEvent) return;
@@ -333,8 +372,8 @@ export default function ClinicaPage() {
       }
 
       const titleTrim = newTitle.trim();
-      const titleForPayload =
-        titleTrim || (newType === "weight" && weightKg ? "Peso" : "");
+      // ✅ Se c'è peso e titolo vuoto, usiamo “Peso” (indipendente dal tipo evento)
+      const titleForPayload = titleTrim || (weightKg ? "Peso" : "");
 
       if (!newType || !newDate) {
         setSaveErr("Compila tipo e data.");
@@ -342,9 +381,9 @@ export default function ClinicaPage() {
         return;
       }
 
-      // ✅ regola: per tutti serve un titolo, eccetto peso quando c’è weightKg
+      // ✅ regola: serve un titolo, ma se c'è peso lo autocompiliamo
       if (!titleForPayload) {
-        setSaveErr("Inserisci un titolo (oppure compila il peso se il tipo è “Peso”).");
+        setSaveErr("Inserisci un titolo (oppure compila il peso).");
         setSaving(false);
         return;
       }
@@ -523,7 +562,6 @@ export default function ClinicaPage() {
         return;
       }
 
-      // Update ottimistico
       const nowIso = new Date().toISOString();
       setEvents((prev) =>
         prev.map((e) =>
@@ -636,10 +674,28 @@ export default function ClinicaPage() {
     }
   }
 
+  // ✅ filtro applicato (peso = meta.weight_kg presente)
+  const filteredEvents = useMemo(() => {
+    if (filter === "all") return events;
+
+    if (filter === "weight") {
+      return (events || []).filter((e) => extractWeightKg(e) !== null);
+    }
+
+    return (events || []).filter((e) => e.type === filter);
+  }, [events, filter]);
+
+  // ✅ paginazione su eventi filtrati
+  const shownEvents = useMemo(() => {
+    return filteredEvents.slice(0, visibleCount);
+  }, [filteredEvents, visibleCount]);
+
+  const hasMore = shownEvents.length < filteredEvents.length;
+
   const canSave =
     !saving &&
     !!newDate &&
-    (!!newTitle.trim() || (newType === "weight" && !!newWeightKg.trim()));
+    (!!newTitle.trim() || !!newWeightKg.trim()); // titolo o peso
 
   return (
     <div className="space-y-6">
@@ -785,7 +841,6 @@ export default function ClinicaPage() {
                 <option value="note">Nota</option>
                 <option value="document">Documento</option>
                 <option value="emergency">Emergenza</option>
-                <option value="weight">Peso</option>
               </select>
             </label>
 
@@ -839,11 +894,7 @@ export default function ClinicaPage() {
                 className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm"
                 value={newTitle}
                 onChange={(e) => setNewTitle(e.target.value)}
-                placeholder={
-                  newType === "weight"
-                    ? "Opzionale (se inserisci il peso, il titolo diventa “Peso”)"
-                    : "Es. Visita controllo / Vaccino annuale / Terapia…"
-                }
+                placeholder="Se inserisci il peso e lasci il titolo vuoto, diventa “Peso”."
               />
             </label>
 
@@ -1007,15 +1058,46 @@ export default function ClinicaPage() {
           </div>
         ) : null}
 
+        {/* ✅ FILTRI */}
+        <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-sm text-zinc-700">
+              Eventi totali: <span className="font-semibold">{events.length}</span> • Filtrati:{" "}
+              <span className="font-semibold">{filteredEvents.length}</span> • Mostrati:{" "}
+              <span className="font-semibold">{shownEvents.length}</span>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {FILTERS.map((f) => {
+                const active = filter === f.key;
+                return (
+                  <button
+                    key={f.key}
+                    type="button"
+                    className={
+                      active
+                        ? "rounded-full border border-black bg-black px-3 py-1.5 text-xs font-semibold text-white"
+                        : "rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-800 hover:bg-zinc-50"
+                    }
+                    onClick={() => setFilter(f.key)}
+                  >
+                    {f.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
         {eventsLoading ? (
           <div className="text-sm text-zinc-600">Caricamento eventi…</div>
-        ) : events.length === 0 ? (
+        ) : filteredEvents.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-zinc-200 p-6 text-sm text-zinc-600">
-            Nessun evento disponibile (o non autorizzato).
+            Nessun evento per questo filtro.
           </div>
         ) : (
-          <div className="flex flex-col gap-3">
-            {events.map((ev) => {
+          <div className="flex flex-col gap-2">
+            {shownEvents.map((ev) => {
               const isVerified =
                 ev.source === "professional" || ev.source === "veterinarian" || !!ev.verified_at;
 
@@ -1030,7 +1112,7 @@ export default function ClinicaPage() {
               return (
                 <div
                   key={ev.id}
-                  className="rounded-2xl border border-zinc-200 p-4 cursor-pointer hover:border-zinc-400 transition"
+                  className="rounded-2xl border border-zinc-200 p-3 cursor-pointer hover:border-zinc-400 transition"
                   onClick={() => {
                     setDetailEvent(ev);
                     setIsEditing(false);
@@ -1057,13 +1139,13 @@ export default function ClinicaPage() {
                         ) : null}
 
                         <div className="min-w-0">
-                          <div className="text-xs text-zinc-500">{formatDateIT(ev.event_date)}</div>
+                          <div className="text-[11px] text-zinc-500">{formatDateIT(ev.event_date)}</div>
 
                           <div className="mt-1 truncate text-sm font-semibold text-zinc-900">
                             {ev.title || typeLabel(ev.type)}
                             {(filesCountByEventId[ev.id] ?? 0) > 0 ? (
                               <span
-                                className="ml-2 inline-flex items-center rounded-full border border-zinc-200 bg-white px-2 py-0.5 text-xs font-semibold text-zinc-700"
+                                className="ml-2 inline-flex items-center rounded-full border border-zinc-200 bg-white px-2 py-0.5 text-[11px] font-semibold text-zinc-700"
                                 title={`Allegati: ${filesCountByEventId[ev.id]}`}
                               >
                                 📎 {filesCountByEventId[ev.id]}
@@ -1071,7 +1153,7 @@ export default function ClinicaPage() {
                             ) : null}
                             {evKg !== null ? (
                               <span
-                                className="ml-2 inline-flex items-center rounded-full border border-zinc-200 bg-white px-2 py-0.5 text-xs font-semibold text-zinc-700"
+                                className="ml-2 inline-flex items-center rounded-full border border-zinc-200 bg-white px-2 py-0.5 text-[11px] font-semibold text-zinc-700"
                                 title="Peso registrato"
                               >
                                 ⚖️ {formatWeightLabel(evKg)}
@@ -1079,34 +1161,34 @@ export default function ClinicaPage() {
                             ) : null}
                           </div>
 
-                          <div className="mt-1 text-xs text-zinc-600">{typeLabel(ev.type)}</div>
+                          <div className="mt-1 text-[11px] text-zinc-600">{typeLabel(ev.type)}</div>
 
                           {ev.description ? (
-                            <p className="mt-2 text-sm text-zinc-700 line-clamp-3">{ev.description}</p>
+                            <p className="mt-2 text-sm text-zinc-700 line-clamp-2">{ev.description}</p>
                           ) : null}
                         </div>
                       </div>
                     </div>
 
                     <div className="shrink-0 flex flex-col items-end gap-2">
-                      <span className="rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs text-zinc-600">
+                      <span className="rounded-full border border-zinc-200 bg-white px-3 py-1 text-[11px] text-zinc-600">
                         {ev.visibility}
                       </span>
 
                       {isVerified ? (
-                        <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                        <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-700">
                           ✓ Validato {verifierLabel ? `da ${verifierLabel}` : ""}
                         </span>
                       ) : (
                         <div className="flex flex-col items-end gap-2">
-                          <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
+                          <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[11px] font-semibold text-amber-700">
                             ⏳ Da validare
                           </span>
 
                           {isVet ? (
                             <button
                               type="button"
-                              className="rounded-2xl bg-black px-3 py-2 text-xs font-semibold text-white hover:bg-zinc-900 disabled:opacity-50"
+                              className="rounded-2xl bg-black px-3 py-2 text-[11px] font-semibold text-white hover:bg-zinc-900 disabled:opacity-50"
                               disabled={verifyingId === ev.id}
                               onClick={() => void verifyEvent(ev.id)}
                               title="Valida questo evento"
@@ -1121,6 +1203,18 @@ export default function ClinicaPage() {
                 </div>
               );
             })}
+
+            {hasMore ? (
+              <div className="pt-2 flex justify-center">
+                <button
+                  type="button"
+                  className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+                  onClick={() => setVisibleCount((v) => v + PAGE_SIZE)}
+                >
+                  Carica altri
+                </button>
+              </div>
+            ) : null}
           </div>
         )}
       </section>
@@ -1145,7 +1239,10 @@ export default function ClinicaPage() {
                           {kg !== null ? (
                             <>
                               {" "}
-                              • <span className="font-semibold text-zinc-800">⚖️ {formatWeightLabel(kg)}</span>
+                              •{" "}
+                              <span className="font-semibold text-zinc-800">
+                                ⚖️ {formatWeightLabel(kg)}
+                              </span>
                             </>
                           ) : null}
                         </div>
@@ -1331,7 +1428,6 @@ export default function ClinicaPage() {
                                   <option value="note">Nota</option>
                                   <option value="document">Documento</option>
                                   <option value="emergency">Emergenza</option>
-                                  <option value="weight">Peso</option>
                                 </select>
                               </label>
 
