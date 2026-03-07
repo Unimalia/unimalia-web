@@ -7,7 +7,7 @@ import { supabase } from "@/lib/supabaseClient";
 type Professional = {
   id: string;
   display_name: string;
-  category: string; // macro key
+  category: string;
   city: string;
   province: string | null;
   address: string | null;
@@ -15,13 +15,16 @@ type Professional = {
   email: string | null;
   website: string | null;
   description: string | null;
+  verification_status: string;
+  verification_level: string;
+  public_visible: boolean;
 };
 
 type Tag = {
   id: string;
-  macro: string; // es: "veterinari"
-  key: string; // es: "tac"
-  label: string; // es: "TAC / TC"
+  macro: string;
+  key: string;
+  label: string;
   sort_order: number;
 };
 
@@ -45,6 +48,16 @@ function macroLabel(key: string) {
   return MACRO_CATEGORIES.find((c) => c.key === key)?.label ?? key;
 }
 
+function verificationBadgeLabel(p: Professional) {
+  if (p.verification_level === "regulated_vet") {
+    return "Struttura veterinaria verificata";
+  }
+  if (p.verification_level === "business") {
+    return "Attività verificata";
+  }
+  return "Profilo base verificato";
+}
+
 export default function ServiziPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -53,12 +66,10 @@ export default function ServiziPage() {
   const [tags, setTags] = useState<Tag[]>([]);
   const [links, setLinks] = useState<TagLink[]>([]);
 
-  // filtri
   const [city, setCity] = useState("");
-  const [macro, setMacro] = useState(""); // macro category
-  const [selectedTagId, setSelectedTagId] = useState<string>(""); // skill selezionata da autofill
+  const [macro, setMacro] = useState("");
+  const [selectedTagId, setSelectedTagId] = useState<string>("");
 
-  // search + autocomplete
   const [q, setQ] = useState("");
   const [openSug, setOpenSug] = useState(false);
   const sugBoxRef = useRef<HTMLDivElement | null>(null);
@@ -82,14 +93,15 @@ export default function ServiziPage() {
       setLoading(true);
       setError(null);
 
-      // 1) professionals approvati
       const pr = await supabase
         .from("professionals")
-        .select("id,display_name,category,city,province,address,phone,email,website,description")
-        .eq("approved", true)
+        .select(
+          "id,display_name,category,city,province,address,phone,email,website,description,verification_status,verification_level,public_visible"
+        )
+        .eq("public_visible", true)
+        .eq("verification_status", "verified")
         .order("created_at", { ascending: false });
 
-      // 2) tags attivi
       const tg = await supabase
         .from("professional_tags")
         .select("id,macro,key,label,sort_order")
@@ -97,7 +109,6 @@ export default function ServiziPage() {
         .order("macro", { ascending: true })
         .order("sort_order", { ascending: true });
 
-      // 3) links (per gli approved): li leggiamo tutti e filtriamo lato client
       const ln = await supabase.from("professional_tag_links").select("professional_id,tag_id");
 
       if (!alive) return;
@@ -110,6 +121,7 @@ export default function ServiziPage() {
         setLoading(false);
         return;
       }
+
       if (tg.error) {
         setError("Errore nel caricamento delle categorie. Riprova.");
         setProfessionals((pr.data as Professional[]) || []);
@@ -118,6 +130,7 @@ export default function ServiziPage() {
         setLoading(false);
         return;
       }
+
       if (ln.error) {
         setError("Errore nel caricamento dei filtri. Riprova.");
         setProfessionals((pr.data as Professional[]) || []);
@@ -139,7 +152,6 @@ export default function ServiziPage() {
     };
   }, []);
 
-  // map: professional_id -> set(tag_id)
   const proTagsMap = useMemo(() => {
     const m = new Map<string, Set<string>>();
     for (const l of links) {
@@ -149,7 +161,6 @@ export default function ServiziPage() {
     return m;
   }, [links]);
 
-  // suggerimenti autocomplete (su label e key)
   const suggestions = useMemo(() => {
     const s = q.trim().toLowerCase();
     if (s.length < 2) return [];
@@ -164,7 +175,7 @@ export default function ServiziPage() {
 
   function selectSuggestion(t: Tag) {
     setSelectedTagId(t.id);
-    setMacro(t.macro); // porta direttamente nella macro corretta
+    setMacro(t.macro);
     setQ(t.label);
     setOpenSug(false);
   }
@@ -207,7 +218,6 @@ export default function ServiziPage() {
     });
   }, [professionals, city, macro, selectedTagId, proTagsMap]);
 
-  // mostra 3 chip skill sulle card (se disponibili)
   const tagById = useMemo(() => {
     const m = new Map<string, Tag>();
     for (const t of tags) m.set(t.id, t);
@@ -266,7 +276,6 @@ export default function ServiziPage() {
         </div>
       </div>
 
-      {/* CHIPS MACRO */}
       <div className="mt-6 flex flex-wrap gap-2">
         {MACRO_CATEGORIES.map((c) => {
           const active = macro === c.key;
@@ -276,7 +285,7 @@ export default function ServiziPage() {
               type="button"
               onClick={() => {
                 setMacro(c.key);
-                setSelectedTagId(""); // cambi macro → reset skill specifica
+                setSelectedTagId("");
               }}
               className={[
                 "rounded-full px-4 py-2 text-sm font-semibold transition",
@@ -291,7 +300,6 @@ export default function ServiziPage() {
         })}
       </div>
 
-      {/* FILTRI + CERCA */}
       <div className="mt-6 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
         <div className="grid gap-3 sm:grid-cols-3">
           <div>
@@ -304,7 +312,6 @@ export default function ServiziPage() {
             />
           </div>
 
-          {/* CERCA con autofill */}
           <div className="sm:col-span-2" ref={sugBoxRef}>
             <label className="block text-sm font-medium text-zinc-900">
               Cerca (es. “tac”, “ecografia”, “ricovero”)
@@ -317,7 +324,7 @@ export default function ServiziPage() {
                 onChange={(e) => {
                   setQ(e.target.value);
                   setOpenSug(true);
-                  setSelectedTagId(""); // se sto scrivendo, tolgo selezione precedente
+                  setSelectedTagId("");
                 }}
                 onFocus={() => setOpenSug(true)}
               />
@@ -372,7 +379,6 @@ export default function ServiziPage() {
         </div>
       </div>
 
-      {/* LISTA */}
       <div ref={resultsRef} className="mt-8">
         {loading ? (
           <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
@@ -407,6 +413,12 @@ export default function ServiziPage() {
                     <span className="text-xs text-zinc-500">
                       {p.city}
                       {p.province ? ` (${p.province})` : ""}
+                    </span>
+                  </div>
+
+                  <div className="mt-3">
+                    <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                      {verificationBadgeLabel(p)}
                     </span>
                   </div>
 
