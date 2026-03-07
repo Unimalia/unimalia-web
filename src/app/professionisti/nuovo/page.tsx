@@ -118,7 +118,7 @@ export default function NuovoProfessionistaPage() {
 
       const { error } = await supabase.from("professionals").insert({
         owner_id: userId,
-        approved: false,
+        approved: true,
         display_name: displayName.trim(),
         category,
         city: city.trim(),
