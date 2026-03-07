@@ -352,6 +352,16 @@ export default function LoginClient() {
         </span>
       </p>
 
+      <div className="mt-4 rounded-xl border border-zinc-200 bg-white p-4 text-sm text-zinc-800 shadow-sm">
+        Sei un professionista?
+        <Link
+          href="/professionisti/login"
+          className="ml-2 font-semibold text-zinc-900 underline underline-offset-2"
+        >
+          Vai al Portale Professionisti
+        </Link>
+      </div>
+
       <div className="mt-6 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
         <div className="mb-5 flex gap-2">
           <button
