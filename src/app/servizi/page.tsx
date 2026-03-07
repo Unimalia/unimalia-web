@@ -20,7 +20,7 @@ type Professional = {
 type Tag = {
   id: string;
   macro: string; // es: "veterinari"
-  key: string;   // es: "tac"
+  key: string; // es: "tac"
   label: string; // es: "TAC / TC"
   sort_order: number;
 };
@@ -62,6 +62,7 @@ export default function ServiziPage() {
   const [q, setQ] = useState("");
   const [openSug, setOpenSug] = useState(false);
   const sugBoxRef = useRef<HTMLDivElement | null>(null);
+  const resultsRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
@@ -97,9 +98,7 @@ export default function ServiziPage() {
         .order("sort_order", { ascending: true });
 
       // 3) links (per gli approved): li leggiamo tutti e filtriamo lato client
-      const ln = await supabase
-        .from("professional_tag_links")
-        .select("professional_id,tag_id");
+      const ln = await supabase.from("professional_tag_links").select("professional_id,tag_id");
 
       if (!alive) return;
 
@@ -178,6 +177,17 @@ export default function ServiziPage() {
     setOpenSug(false);
   }
 
+  function selectMacroCategory(categoryKey: string) {
+    setMacro(categoryKey);
+    setSelectedTagId("");
+    setQ("");
+    setOpenSug(false);
+
+    setTimeout(() => {
+      resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 50);
+  }
+
   const filtered = useMemo(() => {
     const c = city.trim().toLowerCase();
     const m = macro.trim().toLowerCase();
@@ -208,9 +218,7 @@ export default function ServiziPage() {
     const set = proTagsMap.get(proId);
     if (!set) return [];
     const ids = Array.from(set.values());
-    const list = ids
-      .map((id) => tagById.get(id))
-      .filter(Boolean) as Tag[];
+    const list = ids.map((id) => tagById.get(id)).filter(Boolean) as Tag[];
     return list.slice(0, 3);
   }
 
@@ -229,6 +237,35 @@ export default function ServiziPage() {
         </Link>
       </div>
 
+      <div className="mt-8 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold tracking-wide text-zinc-500">PROFESSIONISTI</p>
+            <h2 className="mt-1 text-xl font-semibold text-zinc-900">
+              Trova il professionista giusto per categoria
+            </h2>
+          </div>
+
+          <p className="text-sm text-zinc-500">
+            Seleziona una categoria per vedere subito i professionisti registrati.
+          </p>
+        </div>
+
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {MACRO_CATEGORIES.filter((c) => c.key !== "").map((c) => (
+            <button
+              key={c.key}
+              type="button"
+              onClick={() => selectMacroCategory(c.key)}
+              className="rounded-2xl border border-zinc-200 bg-white px-4 py-4 text-left transition hover:border-zinc-300 hover:bg-zinc-50"
+            >
+              <p className="text-sm font-semibold text-zinc-900">{c.label}</p>
+              <p className="mt-1 text-xs text-zinc-500">Apri categoria</p>
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* CHIPS MACRO */}
       <div className="mt-6 flex flex-wrap gap-2">
         {MACRO_CATEGORIES.map((c) => {
@@ -243,7 +280,9 @@ export default function ServiziPage() {
               }}
               className={[
                 "rounded-full px-4 py-2 text-sm font-semibold transition",
-                active ? "bg-black text-white" : "border border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-50",
+                active
+                  ? "bg-black text-white"
+                  : "border border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-50",
               ].join(" ")}
             >
               {c.label}
@@ -267,7 +306,9 @@ export default function ServiziPage() {
 
           {/* CERCA con autofill */}
           <div className="sm:col-span-2" ref={sugBoxRef}>
-            <label className="block text-sm font-medium text-zinc-900">Cerca (es. “tac”, “ecografia”, “ricovero”)</label>
+            <label className="block text-sm font-medium text-zinc-900">
+              Cerca (es. “tac”, “ecografia”, “ricovero”)
+            </label>
             <div className="relative">
               <input
                 className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
@@ -332,7 +373,7 @@ export default function ServiziPage() {
       </div>
 
       {/* LISTA */}
-      <div className="mt-8">
+      <div ref={resultsRef} className="mt-8">
         {loading ? (
           <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
             <p className="text-sm text-zinc-700">Caricamento…</p>
