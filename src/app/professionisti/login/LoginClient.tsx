@@ -80,7 +80,11 @@ export default function LoginClient() {
       const { data } = await supabase.auth.getUser();
       const user = data.user;
 
-      if (!user || !user.user_metadata?.is_professional) {
+      const isProfessional =
+        !!user &&
+        Boolean(user.app_metadata?.is_professional || user.user_metadata?.is_professional);
+
+      if (!isProfessional) {
         await supabase.auth.signOut();
         setLoading(false);
         setErr("Questo account non è abilitato al Portale Professionisti.");
