@@ -48,12 +48,15 @@ function NavLink({
 }
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
+  const isProfessionalArea = pathname.startsWith("/professionisti");
+
   useEffect(() => setMounted(true), []);
 
-  // chiude menu su ESC
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") setOpen(false);
@@ -62,7 +65,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  // blocca scroll quando drawer aperto
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
@@ -87,7 +89,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const proHref = "/professionisti/dashboard";
 
   const mobileDrawer =
-    open && mounted
+    !isProfessionalArea && open && mounted
       ? createPortal(
           <div className="fixed inset-0 z-[1000] md:hidden">
             <button
@@ -145,85 +147,86 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900">
-      <header className="sticky top-0 z-50 border-b border-zinc-200 bg-white/80 backdrop-blur">
-        <div className="container-page flex items-center justify-between gap-3 py-4 sm:py-5 pl-2 sm:pl-4">
-          <Link href="/" className="flex items-center gap-3" aria-label="Vai alla home UNIMALIA">
-            <Image
-              src="/logo-main.png"
-              alt="UNIMALIA"
-              width={120}
-              height={110}
-              priority
-              className="h-11 w-auto sm:h-12"
-            />
-          </Link>
-
-          {/* DESKTOP */}
-          <div className="hidden min-w-0 flex-1 items-center justify-end gap-3 md:flex">
-            <nav className="flex min-w-0 flex-1 items-center justify-end gap-1 overflow-x-auto whitespace-nowrap">
-              {nav.map((item) => (
-                <NavLink key={item.href} href={item.href} label={item.label} />
-              ))}
-            </nav>
-
-            {/* CTA evidenziata */}
-            <Link
-              href={proHref}
-              className="inline-flex items-center justify-center rounded-xl bg-black px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-900"
-            >
-              Professionisti
+      {!isProfessionalArea && (
+        <header className="sticky top-0 z-50 border-b border-zinc-200 bg-white/80 backdrop-blur">
+          <div className="container-page flex items-center justify-between gap-3 py-4 sm:py-5 pl-2 sm:pl-4">
+            <Link href="/" className="flex items-center gap-3" aria-label="Vai alla home UNIMALIA">
+              <Image
+                src="/logo-main.png"
+                alt="UNIMALIA"
+                width={120}
+                height={110}
+                priority
+                className="h-11 w-auto sm:h-12"
+              />
             </Link>
 
-            <AuthButtons />
-          </div>
+            <div className="hidden min-w-0 flex-1 items-center justify-end gap-3 md:flex">
+              <nav className="flex min-w-0 flex-1 items-center justify-end gap-1 overflow-x-auto whitespace-nowrap">
+                {nav.map((item) => (
+                  <NavLink key={item.href} href={item.href} label={item.label} />
+                ))}
+              </nav>
 
-          {/* MOBILE */}
-          <div className="flex items-center gap-2 md:hidden">
-            <Link
-              href={proHref}
-              className="inline-flex items-center justify-center rounded-xl bg-black px-3 py-2 text-sm font-semibold text-white transition hover:bg-zinc-900"
-            >
-              Professionisti
-            </Link>
+              <Link
+                href={proHref}
+                className="inline-flex items-center justify-center rounded-xl bg-black px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-900"
+              >
+                Professionisti
+              </Link>
 
-            <button
-              type="button"
-              className="inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-900 shadow-sm transition hover:bg-zinc-50"
-              onClick={() => setOpen(true)}
-              aria-label="Apri menu"
-            >
-              ☰
-            </button>
+              <AuthButtons />
+            </div>
+
+            <div className="flex items-center gap-2 md:hidden">
+              <Link
+                href={proHref}
+                className="inline-flex items-center justify-center rounded-xl bg-black px-3 py-2 text-sm font-semibold text-white transition hover:bg-zinc-900"
+              >
+                Professionisti
+              </Link>
+
+              <button
+                type="button"
+                className="inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-900 shadow-sm transition hover:bg-zinc-50"
+                onClick={() => setOpen(true)}
+                aria-label="Apri menu"
+              >
+                ☰
+              </button>
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
+      )}
 
       {mobileDrawer}
 
       <main className="container-page py-8 sm:py-10">{children}</main>
 
-      <footer className="mt-14 border-t border-zinc-200 bg-white">
-        <div className="container-page py-8 text-sm text-zinc-600">
-          <p>
-            UNIMALIA nasce come impresa responsabile: una parte dei ricavi verrà reinvestita nel progetto e una parte
-            devolverà valore al mondo animale.
-          </p>
+      {!isProfessionalArea && (
+        <footer className="mt-14 border-t border-zinc-200 bg-white">
+          <div className="container-page py-8 text-sm text-zinc-600">
+            <p>
+              UNIMALIA nasce come impresa responsabile: una parte dei ricavi verrà reinvestita nel progetto e una parte
+              devolverà valore al mondo animale.
+            </p>
 
-          <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-sm">
-            <Link className="hover:underline" href="/privacy">
-              Privacy
-            </Link>
-            <Link className="hover:underline" href="/cookie">
-              Cookie
-            </Link>
-            <Link className="hover:underline" href="/termini">
-              Termini
-            </Link>
+            <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-sm">
+              <Link className="hover:underline" href="/privacy">
+                Privacy
+              </Link>
+              <Link className="hover:underline" href="/cookie">
+                Cookie
+              </Link>
+              <Link className="hover:underline" href="/termini">
+                Termini
+              </Link>
+            </div>
+
+            <p className="mt-4 text-xs text-zinc-500">© {new Date().getFullYear()} UNIMALIA</p>
           </div>
-
-          <p className="mt-4 text-xs text-zinc-500">© {new Date().getFullYear()} UNIMALIA</p>
-        </div>
-      </footer>
+        </footer>
+      )}
     </div>
   );
 }
