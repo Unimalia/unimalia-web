@@ -18,6 +18,9 @@ type Professional = {
   email: string | null;
   website: string | null;
   description: string | null;
+  verification_status: string;
+  verification_level: string;
+  public_visible: boolean;
 };
 
 type Tag = {
@@ -50,6 +53,78 @@ function macroLabel(key: string) {
   }
 }
 
+function badgeInfo(pro: Professional) {
+  if (pro.verification_level === "regulated_vet") {
+    if (pro.verification_status === "verified" && pro.public_visible) {
+      return {
+        label: "Struttura veterinaria verificata",
+        className: "bg-emerald-50 text-emerald-700",
+        title: "Scheda veterinaria verificata e visibile pubblicamente",
+      };
+    }
+
+    if (pro.verification_status === "rejected") {
+      return {
+        label: "Verifica rifiutata",
+        className: "bg-red-50 text-red-700",
+        title: "La verifica della scheda è stata rifiutata",
+      };
+    }
+
+    return {
+      label: "Struttura veterinaria in verifica",
+      className: "bg-amber-50 text-amber-700",
+      title: "Scheda in verifica, non ancora pubblica",
+    };
+  }
+
+  if (pro.verification_level === "business") {
+    if (pro.verification_status === "verified" && pro.public_visible) {
+      return {
+        label: "Attività verificata",
+        className: "bg-emerald-50 text-emerald-700",
+        title: "Scheda business verificata e visibile pubblicamente",
+      };
+    }
+
+    if (pro.verification_status === "rejected") {
+      return {
+        label: "Verifica rifiutata",
+        className: "bg-red-50 text-red-700",
+        title: "La verifica della scheda è stata rifiutata",
+      };
+    }
+
+    return {
+      label: "Attività in verifica",
+      className: "bg-amber-50 text-amber-700",
+      title: "Scheda in verifica, non ancora pubblica",
+    };
+  }
+
+  if (pro.verification_status === "verified" && pro.public_visible) {
+    return {
+      label: "Profilo base verificato",
+      className: "bg-emerald-50 text-emerald-700",
+      title: "Profilo base verificato e visibile pubblicamente",
+    };
+  }
+
+  if (pro.verification_status === "rejected") {
+    return {
+      label: "Verifica rifiutata",
+      className: "bg-red-50 text-red-700",
+      title: "La verifica della scheda è stata rifiutata",
+    };
+  }
+
+  return {
+    label: "Profilo base in verifica",
+    className: "bg-amber-50 text-amber-700",
+    title: "Scheda in verifica, non ancora pubblica",
+  };
+}
+
 export default function ServizioDettaglioPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
@@ -68,7 +143,6 @@ export default function ServizioDettaglioPage() {
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-  // contatto (richiesta)
   const [msg, setMsg] = useState("");
   const [sending, setSending] = useState(false);
   const [info, setInfo] = useState<string | null>(null);
@@ -83,7 +157,6 @@ export default function ServizioDettaglioPage() {
     return !!(pro?.owner_id && currentUserId && pro.owner_id === currentUserId);
   }, [pro?.owner_id, currentUserId]);
 
-  // ✅ back “intelligente ma deterministico”
   const backHref = useMemo(() => {
     if (preferBackToProfessionisti) return "/professionisti";
     return "/servizi";
@@ -101,7 +174,7 @@ export default function ServizioDettaglioPage() {
       const { data, error: proErr } = await supabase
         .from("professionals")
         .select(
-          "id,owner_id,approved,display_name,category,city,province,address,phone,email,website,description"
+          "id,owner_id,approved,display_name,category,city,province,address,phone,email,website,description,verification_status,verification_level,public_visible"
         )
         .eq("id", id)
         .single();
@@ -118,11 +191,12 @@ export default function ServizioDettaglioPage() {
 
       const p = data as Professional;
 
-      // se NON approvata: visibile solo a owner
       const { data: authData } = await supabase.auth.getUser();
       const uid = authData.user?.id ?? null;
 
-      if (!p.approved && (!uid || uid !== p.owner_id)) {
+      const isPublicProfile = p.public_visible && p.verification_status === "verified";
+
+      if (!isPublicProfile && (!uid || uid !== p.owner_id)) {
         setError("Scheda non trovata o non disponibile.");
         setPro(null);
         setTagLabels([]);
@@ -164,7 +238,6 @@ export default function ServizioDettaglioPage() {
     };
   }, [id]);
 
-  // anti-spam client-side
   const COOLDOWN_SECONDS = 30;
   const cooldownKey = useMemo(() => `unimalia:pro_contact:${id}`, [id]);
 
@@ -196,6 +269,7 @@ export default function ServizioDettaglioPage() {
       router.push("/login");
       return;
     }
+
     if (pro.owner_id && user.id === pro.owner_id) {
       setInfo("Questa è la tua scheda: non puoi inviare richieste a te stesso.");
       return;
@@ -204,6 +278,7 @@ export default function ServizioDettaglioPage() {
     const last = getLastSentAt();
     const until = last + COOLDOWN_SECONDS * 1000;
     const now = Date.now();
+
     if (now < until) {
       const sec = Math.ceil((until - now) / 1000);
       setInfo(`Attendi ${sec}s prima di inviare un altro messaggio.`);
@@ -269,6 +344,8 @@ export default function ServizioDettaglioPage() {
     );
   }
 
+  const badge = badgeInfo(pro);
+
   return (
     <main>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -295,17 +372,10 @@ export default function ServizioDettaglioPage() {
           </div>
 
           <span
-            className={[
-              "rounded-full px-3 py-1 text-xs font-semibold",
-              pro.approved ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700",
-            ].join(" ")}
-            title={
-              pro.approved
-                ? "Scheda visibile pubblicamente"
-                : "Scheda visibile solo a te finché non viene approvata"
-            }
+            className={["rounded-full px-3 py-1 text-xs font-semibold", badge.className].join(" ")}
+            title={badge.title}
           >
-            {pro.approved ? "Pubblica" : "In revisione"}
+            {badge.label}
           </span>
         </div>
 
