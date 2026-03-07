@@ -1,22 +1,11 @@
 export const dynamic = "force-dynamic";
 
+import ProShell from "./_components/ProShell";
+
 export default function ProfessionistiLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <>
-      <style>
-        {`
-          /* Nasconde header pubblico quando si entra nel portale professionisti */
-          body > header {
-            display: none !important;
-          }
-        `}
-      </style>
-
-      {children}
-    </>
-  );
+  return <ProShell>{children}</ProShell>;
 }

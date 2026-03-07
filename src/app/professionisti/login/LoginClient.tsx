@@ -5,27 +5,13 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
-function isProfessionalEmail(email?: string | null) {
-  const e = String(email || "").toLowerCase();
-  const allow = new Set([
-    "valentinotwister@hotmail.it",
-    // aggiungi qui altre email professionisti
-  ]);
-  return allow.has(e);
-}
-
-// ✅ Sanifica il redirect post-login
 function safeNextPath(next: string | null | undefined) {
   const n = String(next || "").trim();
 
-  // fallback
-  if (!n) return "/professionisti/animali";
+  if (!n) return "/professionisti/dashboard";
+  if (!n.startsWith("/professionisti")) return "/professionisti/dashboard";
+  if (n.startsWith("/professionisti/login")) return "/professionisti/dashboard";
 
-  // deve restare nel portale
-  if (!n.startsWith("/professionisti")) return "/professionisti/animali";
-
-  // evita loop sulla login
-  if (n.startsWith("/professionisti/login")) return "/professionisti/animali";
   return n;
 }
 
@@ -33,13 +19,15 @@ export default function LoginClient() {
   const router = useRouter();
   const sp = useSearchParams();
 
-  // ✅ Se non c’è next, mandiamo allo scanner (è il flusso più utile per i pro)
   const next = safeNextPath(sp.get("next"));
+  const initialMode = sp.get("mode") === "signup" ? "signup" : "login";
 
-  const [email, setEmail] = useState("valentinotwister@hotmail.it");
+  const [mode, setMode] = useState<"login" | "signup">(initialMode);
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
 
   const canSubmit = useMemo(
     () => email.trim().length > 3 && password.length >= 6,
@@ -49,34 +37,90 @@ export default function LoginClient() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErr(null);
+    setMsg(null);
     setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password,
-    });
+    try {
+      if (mode === "signup") {
+        const { error } = await supabase.auth.signUp({
+          email: email.trim(),
+          password,
+          options: {
+            data: {
+              is_professional: true,
+            },
+          },
+        });
 
-    if (error) {
+        if (error) {
+          setErr(error.message || "Errore registrazione.");
+          setLoading(false);
+          return;
+        }
+
+        setLoading(false);
+        setMsg(
+          "Registrazione completata. Se la conferma email è attiva, controlla la posta e poi accedi al Portale Professionisti."
+        );
+        setMode("login");
+        return;
+      }
+
+      const { error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+
+      if (error) {
+        setErr(error.message || "Errore login.");
+        setLoading(false);
+        return;
+      }
+
+      const { data } = await supabase.auth.getUser();
+      const user = data.user;
+
+      if (!user || !user.user_metadata?.is_professional) {
+        await supabase.auth.signOut();
+        setLoading(false);
+        setErr("Questo account non è abilitato al Portale Professionisti.");
+        return;
+      }
+
       setLoading(false);
-      setErr(error.message || "Errore login.");
+      router.replace(next);
+    } catch (e: any) {
+      setLoading(false);
+      setErr(e?.message || "Errore inatteso.");
+    }
+  }
+
+  async function handleResetPassword() {
+    setErr(null);
+    setMsg(null);
+
+    const e1 = email.trim();
+    if (!e1) {
+      setErr("Scrivi prima la tua email.");
       return;
     }
 
-    const { data } = await supabase.auth.getUser();
-    const user = data.user;
+    setLoading(true);
 
-    // ✅ PASSAPARTOUT: stessa allowlist del ProShell
-    if (!user || !isProfessionalEmail(user.email)) {
-      await supabase.auth.signOut();
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(e1);
+      if (error) {
+        setErr(error.message || "Errore invio reset password.");
+        setLoading(false);
+        return;
+      }
+
+      setMsg("Se l’email esiste, riceverai un link per reimpostare la password.");
+    } catch (e: any) {
+      setErr(e?.message || "Errore inatteso.");
+    } finally {
       setLoading(false);
-      setErr("Questo account non è abilitato al portale professionisti.");
-      return;
     }
-
-    setLoading(false);
-
-    // ✅ Redirect corretto (rispetta next)
-    router.replace(next);
   }
 
   return (
@@ -91,10 +135,43 @@ export default function LoginClient() {
         <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
           <h1 className="text-xl font-semibold">Portale Professionisti</h1>
           <p className="mt-2 text-sm text-zinc-600">
-            Accesso riservato ai professionisti abilitati.
+            Accesso e registrazione dedicati ai professionisti.
           </p>
 
-          <form onSubmit={onSubmit} className="mt-6 space-y-3">
+          <div className="mt-6 mb-5 flex gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setMode("login");
+                setErr(null);
+                setMsg(null);
+              }}
+              className={`rounded-lg px-3 py-2 text-sm font-medium ${
+                mode === "login"
+                  ? "bg-black text-white"
+                  : "border border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-50"
+              }`}
+            >
+              Accedi
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMode("signup");
+                setErr(null);
+                setMsg(null);
+              }}
+              className={`rounded-lg px-3 py-2 text-sm font-medium ${
+                mode === "signup"
+                  ? "bg-black text-white"
+                  : "border border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-50"
+              }`}
+            >
+              Registrati
+            </button>
+          </div>
+
+          <form onSubmit={onSubmit} className="space-y-3">
             <div>
               <label className="text-xs font-semibold text-zinc-700">Email</label>
               <input
@@ -102,6 +179,7 @@ export default function LoginClient() {
                 onChange={(e) => setEmail(e.target.value)}
                 className="mt-1 h-11 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm outline-none focus:border-zinc-400"
                 autoComplete="email"
+                type="email"
               />
             </div>
 
@@ -112,7 +190,7 @@ export default function LoginClient() {
                 onChange={(e) => setPassword(e.target.value)}
                 type="password"
                 className="mt-1 h-11 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm outline-none focus:border-zinc-400"
-                autoComplete="current-password"
+                autoComplete={mode === "login" ? "current-password" : "new-password"}
               />
             </div>
 
@@ -122,16 +200,40 @@ export default function LoginClient() {
               </div>
             ) : null}
 
+            {msg ? (
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800">
+                {msg}
+              </div>
+            ) : null}
+
             <button
               type="submit"
               disabled={!canSubmit || loading}
               className="mt-2 inline-flex h-11 w-full items-center justify-center rounded-2xl bg-black px-5 text-sm font-semibold text-white disabled:opacity-50"
             >
-              {loading ? "Accesso…" : "Accedi"}
+              {loading
+                ? mode === "login"
+                  ? "Accesso…"
+                  : "Registrazione…"
+                : mode === "login"
+                  ? "Accedi"
+                  : "Registrati come professionista"}
             </button>
 
-            <div className="text-xs opacity-70">
-              Dopo l’accesso verrai reindirizzato a: <span className="font-semibold">{next}</span>
+            {mode === "login" ? (
+              <button
+                type="button"
+                onClick={handleResetPassword}
+                disabled={loading}
+                className="inline-flex h-11 w-full items-center justify-center rounded-2xl border border-zinc-200 bg-white px-5 text-sm font-semibold text-zinc-900 hover:bg-zinc-50 disabled:opacity-50"
+              >
+                Password dimenticata
+              </button>
+            ) : null}
+
+            <div className="text-xs text-zinc-500">
+              Dopo l’accesso verrai reindirizzato a:{" "}
+              <span className="font-semibold text-zinc-700">{next}</span>
             </div>
           </form>
         </div>

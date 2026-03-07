@@ -14,19 +14,7 @@ function isActive(pathname: string, href: string) {
   return href === "/professionisti" ? pathname === href : pathname.startsWith(href);
 }
 
-type Item = { href: string; label: string };
-
-// ✅ SINGLE SOURCE OF TRUTH (email allowlists)
-const PROFESSIONAL_EMAILS = new Set<string>([
-  "valentinotwister@hotmail.it",
-  // aggiungi qui altre email professionisti:
-]);
-
-const VET_EMAILS = new Set<string>([
-  "valentinotwister@hotmail.it",
-  "EMAIL_CHE_HAI_VISTO_IN_CONSOLE",
-  // aggiungi qui altre email veterinari autorizzati:
-]);
+type Item = { href: string; label: string; description?: string };
 
 function getEmail(u: any) {
   return String(u?.email || "").toLowerCase().trim();
@@ -34,25 +22,25 @@ function getEmail(u: any) {
 
 export function isProfessionalUser(u: any) {
   if (!u) return false;
-  const email = getEmail(u);
-  if (PROFESSIONAL_EMAILS.has(email)) return true;
   return Boolean(u?.app_metadata?.is_professional || u?.user_metadata?.is_professional);
 }
 
 export function isVetUser(u: any) {
   if (!u) return false;
   const email = getEmail(u);
-  if (VET_EMAILS.has(email)) return true;
+  if (email === "valentinotwister@hotmail.it") return true;
   return Boolean(u?.app_metadata?.is_vet || u?.user_metadata?.is_vet);
 }
 
 function SideLink({
   href,
   label,
+  description,
   onClick,
 }: {
   href: string;
   label: string;
+  description?: string;
   onClick?: () => void;
 }) {
   const pathname = usePathname();
@@ -63,11 +51,21 @@ function SideLink({
       href={href}
       onClick={onClick}
       className={cx(
-        "flex items-center rounded-xl px-3 py-2 text-sm font-medium transition",
+        "block rounded-2xl px-3 py-3 transition",
         active ? "bg-black text-white" : "text-zinc-700 hover:bg-zinc-100 hover:text-black"
       )}
     >
-      {label}
+      <div className="text-sm font-semibold">{label}</div>
+      {description ? (
+        <div
+          className={cx(
+            "mt-1 text-xs leading-relaxed",
+            active ? "text-white/80" : "text-zinc-500"
+          )}
+        >
+          {description}
+        </div>
+      ) : null}
     </Link>
   );
 }
@@ -79,33 +77,31 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
 
-  // BLINDATURA: in /professionisti serve login professionista
   useEffect(() => {
     let alive = true;
 
     async function hardRedirectToLogin() {
       try {
         await supabase.auth.signOut();
-      } catch {
-        // ignore
-      }
+      } catch {}
+
       if (!alive) return;
-      router.replace("/professionisti/login?next=" + encodeURIComponent(pathname || "/professionisti"));
+
+      router.replace(
+        "/professionisti/login?next=" + encodeURIComponent(pathname || "/professionisti/dashboard")
+      );
     }
 
     async function check() {
-      // lascia passare la pagina di login professionisti
       if (pathname?.startsWith("/professionisti/login")) {
         if (alive) setAuthChecked(true);
         return;
       }
 
       const { data, error } = await supabase.auth.getUser();
-
-      // ✅ FIX: refresh token rotto → ripulisci sessione e rimanda al login
       const msg = String((error as any)?.message || "");
+
       if (error && msg.toLowerCase().includes("refresh token")) {
-        console.error("[ProShell] Invalid refresh token -> forcing re-login", error);
         await hardRedirectToLogin();
         return;
       }
@@ -116,7 +112,8 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
 
       if (!user || !isProfessionalUser(user)) {
         router.replace(
-          "/professionisti/login?next=" + encodeURIComponent(pathname || "/professionisti")
+          "/professionisti/login?next=" +
+            encodeURIComponent(pathname || "/professionisti/dashboard")
         );
         return;
       }
@@ -130,7 +127,6 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
     };
   }, [router, pathname]);
 
-  // ESC chiude drawer
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") setOpen(false);
@@ -139,7 +135,6 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  // lock scroll drawer
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
@@ -151,21 +146,49 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
 
   const items: Item[] = useMemo(
     () => [
-      { href: "/professionisti/dashboard", label: "Dashboard" },
-      { href: "/professionisti/scansiona", label: "Scansiona" },
-      { href: "/professionisti/animali", label: "Animali" },
-      { href: "/professionisti/richieste-accesso", label: "Richieste accesso" },
-      { href: "/professionisti/richieste", label: "Richieste" },
-      { href: "/professionisti/impostazioni", label: "Impostazioni" },
+      {
+        href: "/professionisti/dashboard",
+        label: "Dashboard",
+        description: "Hub operativo del Portale Professionisti.",
+      },
+      {
+        href: "/professionisti/scansiona",
+        label: "Scansiona",
+        description: "Microchip / QR per aprire rapidamente un animale.",
+      },
+      {
+        href: "/professionisti/animali",
+        label: "Animali in gestione",
+        description: "Vedi solo animali con grant attivo per la tua struttura.",
+      },
+      {
+        href: "/professionisti/richieste-accesso",
+        label: "Richieste accesso",
+        description: "Invia nuove richieste e monitora lo stato.",
+      },
+      {
+        href: "/professionisti/dashboard",
+        label: "Dashboard clinica",
+        description: "Area clinica integrata nella dashboard professionisti. Bucket avanzati in arrivo.",
+      },
+      {
+        href: "/professionisti/dashboard",
+        label: "In arrivo",
+        description: "Funzioni aggiuntive in arrivo.",
+      },
+      {
+        href: "/professionisti/impostazioni",
+        label: "Impostazioni",
+        description: "Profilo, organizzazione, preferenze.",
+      },
     ],
     []
   );
 
-  // skeleton mentre verifica auth
   if (!authChecked) {
     return (
       <div data-pro-portal="true" className="min-h-screen bg-zinc-50 text-zinc-900">
-        <div className="container-page px-3 sm:px-0 py-10">
+        <div className="container-page px-3 py-10 sm:px-0">
           <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
             <div className="h-6 w-40 rounded bg-zinc-200/70" />
             <div className="mt-3 h-4 w-full max-w-xl rounded bg-zinc-200/50" />
@@ -178,11 +201,10 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div data-pro-portal="true" className="min-h-screen bg-zinc-50 text-zinc-900">
-      {/* TOP BAR (solo portale) */}
-      <header className="sticky top-0 z-50 border-b border-zinc-200 bg-white/80 backdrop-blur">
-        <div className="container-page flex items-center justify-between gap-3 py-3 sm:py-4 px-3 sm:px-0">
+      <header className="sticky top-0 z-50 border-b border-zinc-200 bg-white/90 backdrop-blur">
+        <div className="container-page flex items-center justify-between gap-3 px-3 py-3 sm:px-0 sm:py-4">
           <Link
-            href="/professionisti"
+            href="/professionisti/dashboard"
             className="min-w-0 select-none"
             aria-label="Vai alla dashboard professionisti"
           >
@@ -207,25 +229,26 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      {/* LAYOUT */}
-      <div className="container-page grid grid-cols-1 gap-6 py-6 sm:py-8 lg:grid-cols-[260px_1fr] px-3 sm:px-0">
-        {/* SIDEBAR DESKTOP */}
+      <div className="container-page grid grid-cols-1 gap-6 px-3 py-6 sm:px-0 sm:py-8 lg:grid-cols-[320px_1fr]">
         <aside className="hidden lg:block">
           <div className="rounded-2xl border border-zinc-200 bg-white p-2 shadow-sm">
-            <div className="px-3 py-2 text-xs font-semibold text-zinc-500">Menu</div>
+            <div className="px-3 py-2 text-xs font-semibold tracking-wide text-zinc-500">MENU</div>
             <div className="flex flex-col gap-1">
-              {items.map((it) => (
-                <SideLink key={`${it.href}:${it.label}`} href={it.href} label={it.label} />
+              {items.map((it, index) => (
+                <SideLink
+                  key={`${it.href}:${it.label}:${index}`}
+                  href={it.href}
+                  label={it.label}
+                  description={it.description}
+                />
               ))}
             </div>
           </div>
         </aside>
 
-        {/* CONTENT */}
         <main className="min-w-0">{children}</main>
       </div>
 
-      {/* MOBILE DRAWER */}
       {open && (
         <div className="lg:hidden">
           <button
@@ -234,9 +257,9 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
             aria-label="Chiudi menu"
             onClick={() => setOpen(false)}
           />
-          <div className="fixed right-0 top-0 z-50 h-full w-[86%] max-w-sm bg-white shadow-xl">
+          <div className="fixed right-0 top-0 z-50 h-full w-[92%] max-w-sm bg-white shadow-xl">
             <div className="flex items-center justify-between border-b p-4">
-              <div className="text-sm font-semibold">Menu</div>
+              <div className="text-sm font-semibold">Portale Professionisti</div>
               <button
                 type="button"
                 className="rounded-xl border px-3 py-2 text-sm"
@@ -245,13 +268,15 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
                 Chiudi
               </button>
             </div>
+
             <div className="p-2">
               <div className="flex flex-col gap-1">
-                {items.map((it) => (
+                {items.map((it, index) => (
                   <SideLink
-                    key={`${it.href}:${it.label}:mobile`}
+                    key={`${it.href}:${it.label}:mobile:${index}`}
                     href={it.href}
                     label={it.label}
+                    description={it.description}
                     onClick={() => setOpen(false)}
                   />
                 ))}
