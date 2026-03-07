@@ -539,11 +539,13 @@ export default function AnimalClinicalPage() {
             })}
           </div>
 
-          <div className="mt-4 grid gap-3 md:grid-cols-3">
+          <div className="mt-5 grid gap-4 md:grid-cols-3">
             <div>
-              <label className="block text-xs font-semibold text-zinc-700">Categoria</label>
+              <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-700">
+                Categoria
+              </label>
               <select
-                className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-zinc-200"
+                className="mt-1 w-full rounded-xl border border-zinc-300 bg-zinc-50 px-3 py-2.5 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-zinc-400 focus:bg-white focus:ring-2 focus:ring-emerald-500/20"
                 value={type}
                 onChange={(e) => setType(e.target.value as ClinicEventType)}
               >
@@ -561,10 +563,12 @@ export default function AnimalClinicalPage() {
             </div>
 
             <div className="md:col-span-2">
-              <label className="block text-xs font-semibold text-zinc-700">Data e ora</label>
+              <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-700">
+                Data e ora
+              </label>
               <input
                 type="datetime-local"
-                className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-zinc-200"
+                className="mt-1 w-full rounded-xl border border-zinc-300 bg-zinc-50 px-3 py-2.5 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-zinc-400 focus:bg-white focus:ring-2 focus:ring-emerald-500/20"
                 value={dateLocal}
                 onChange={(e) => setDateLocal(e.target.value)}
               />
@@ -576,20 +580,24 @@ export default function AnimalClinicalPage() {
             {type === "therapy" ? (
               <>
                 <div>
-                  <label className="block text-xs font-semibold text-zinc-700">Inizio terapia</label>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-700">
+                    Inizio terapia
+                  </label>
                   <input
                     type="date"
-                    className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+                    className="mt-1 w-full rounded-xl border border-zinc-300 bg-zinc-50 px-3 py-2.5 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-zinc-400 focus:bg-white focus:ring-2 focus:ring-emerald-500/20"
                     value={therapyStartDate}
                     onChange={(e) => setTherapyStartDate(e.target.value)}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-zinc-700">Fine terapia</label>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-700">
+                    Fine terapia
+                  </label>
                   <input
                     type="date"
-                    className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+                    className="mt-1 w-full rounded-xl border border-zinc-300 bg-zinc-50 px-3 py-2.5 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-zinc-400 focus:bg-white focus:ring-2 focus:ring-emerald-500/20"
                     value={therapyEndDate}
                     onChange={(e) => setTherapyEndDate(e.target.value)}
                   />
@@ -601,11 +609,11 @@ export default function AnimalClinicalPage() {
             ) : null}
 
             <div className="md:col-span-3">
-              <label className="block text-xs font-semibold text-zinc-700">
+              <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-700">
                 Descrizione (facoltativa)
               </label>
               <textarea
-                className="mt-1 min-h-[96px] w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-zinc-200"
+                className="mt-1 min-h-[120px] w-full rounded-xl border border-zinc-300 bg-zinc-50 px-3 py-3 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-zinc-400 focus:bg-white focus:ring-2 focus:ring-emerald-500/20"
                 placeholder="Dettagli utili (farmaco, dosaggio, note cliniche, etichetta ingredienti, sospetta allergia)…"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -613,12 +621,12 @@ export default function AnimalClinicalPage() {
             </div>
 
             <div className="md:col-span-3">
-              <label className="block text-xs font-semibold text-zinc-700">
+              <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-700">
                 Allegati (opzionale)
               </label>
 
               <div className="mt-1">
-                <label className="inline-flex cursor-pointer items-center rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 focus-within:ring-2 focus-within:ring-emerald-500 focus-within:ring-offset-2">
+                <label className="inline-flex cursor-pointer items-center rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800 shadow-sm transition hover:bg-zinc-50 focus-within:ring-2 focus-within:ring-emerald-500 focus-within:ring-offset-2">
                   <span>Carica file</span>
                   <input
                     type="file"
@@ -659,7 +667,7 @@ export default function AnimalClinicalPage() {
               type="button"
               onClick={onAddEvent}
               disabled={saving || !animalId}
-              className="rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-900 disabled:opacity-60"
+              className="rounded-xl bg-black px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-900 disabled:opacity-60"
             >
               {saving ? "Salvataggio..." : "Aggiungi evento"}
             </button>
@@ -678,15 +686,15 @@ export default function AnimalClinicalPage() {
         </section>
 
         <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <h2 className="text-base font-semibold text-zinc-900">Timeline</h2>
-          <p className="mt-1 text-sm text-zinc-600">
-            Eventi in ordine cronologico (più recenti in alto).
+          <h2 className="text-base font-semibold text-zinc-900">Timeline clinica</h2>
+          <p className="mt-1 text-sm leading-6 text-zinc-600">
+            Eventi clinici in ordine cronologico, con stato validazione e dettagli principali subito visibili.
           </p>
 
           {loading ? (
             <div className="mt-4 text-sm text-zinc-600">Caricamento...</div>
           ) : filteredEvents.length === 0 ? (
-            <div className="mt-4 rounded-xl border border-dashed border-zinc-200 p-6 text-sm text-zinc-600">
+            <div className="mt-4 rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 p-6 text-sm leading-6 text-zinc-600">
               Nessun evento ancora. Aggiungi il primo evento per iniziare la timeline.
             </div>
           ) : (
@@ -717,7 +725,7 @@ export default function AnimalClinicalPage() {
                 return (
                   <div
                     key={ev.id}
-                    className="rounded-2xl border border-zinc-200 p-4 cursor-pointer hover:border-zinc-400"
+                    className="cursor-pointer rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-zinc-300 hover:shadow-md"
                     onClick={() => {
                       setDetailEvent(ev);
                       setIsEditing(false);
@@ -729,38 +737,45 @@ export default function AnimalClinicalPage() {
                       setEditTherapyEndDate(extractTherapyEndDate(ev) || "");
                     }}
                   >
-                    <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
-                        <div className="text-xs text-zinc-500">
-                          <div>Evento: {formatEventDateIT(ev.event_date)}</div>
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-500">
+                          <span className="rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 font-medium text-zinc-700">
+                            {typeLabel(ev.type)}
+                          </span>
+
+                          <span>{formatEventDateIT(ev.event_date)}</span>
+
                           {ev.created_at ? (
-                            <div className="text-zinc-400">
-                              Inserito il {formatInsertedAtIT(ev.created_at)}
-                            </div>
+                            <span className="text-zinc-400">
+                              • Inserito il {formatInsertedAtIT(ev.created_at)}
+                            </span>
                           ) : null}
                         </div>
 
-                        <div className="mt-1 truncate text-sm font-semibold text-zinc-900">
-                          {typeLabel(ev.type)}
+                        <div className="mt-3 text-sm font-semibold leading-5 text-zinc-900">
+                          {ev.title}
                           {weightKg !== null ? (
-                            <span className="ml-2 text-xs font-semibold text-zinc-700">
+                            <span className="ml-2 inline-flex items-center rounded-full border border-zinc-200 bg-white px-2 py-0.5 text-xs font-semibold text-zinc-700">
                               ⚖ {weightKg} kg
                             </span>
                           ) : null}
                         </div>
 
                         {ev.description ? (
-                          <p className="mt-2 text-sm text-zinc-700 line-clamp-2">{ev.description}</p>
+                          <p className="mt-2 text-sm leading-6 text-zinc-700 line-clamp-3">
+                            {ev.description}
+                          </p>
                         ) : null}
                       </div>
 
                       <div className="shrink-0 flex flex-col items-end gap-2">
-                        <span className="rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs text-zinc-600">
+                        <span className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-medium text-zinc-700">
                           {ev.visibility}
                         </span>
 
                         <div className="flex flex-col items-end gap-2">
-                          <span className="text-xs text-zinc-600">{statusTextTop}</span>
+                          <span className="text-xs font-medium text-zinc-600">{statusTextTop}</span>
 
                           <span
                             className={
@@ -787,13 +802,16 @@ export default function AnimalClinicalPage() {
           <div className="w-full max-w-xl rounded-3xl bg-white p-6 shadow-xl max-h-[85vh] overflow-y-auto">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h2 className="text-lg font-semibold text-zinc-900">{detailEvent.title}</h2>
+                <h2 className="text-lg font-semibold leading-6 text-zinc-900">{detailEvent.title}</h2>
 
-                <div className="text-sm text-zinc-600 mt-1">
-                  {typeLabel(detailEvent.type)} • {formatEventDateIT(detailEvent.event_date)}
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-zinc-600">
+                  <span className="rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-xs font-semibold text-zinc-700">
+                    {typeLabel(detailEvent.type)}
+                  </span>
+                  <span>{formatEventDateIT(detailEvent.event_date)}</span>
                 </div>
 
-                <div className="text-xs text-zinc-400 mt-1">
+                <div className="mt-2 text-xs text-zinc-400">
                   Inserito il {formatInsertedAtIT(detailEvent.created_at)}
                 </div>
               </div>
@@ -862,9 +880,12 @@ export default function AnimalClinicalPage() {
               ) : detailFiles.length === 0 ? (
                 <div className="text-xs text-zinc-500 mt-1">Nessun allegato</div>
               ) : (
-                <ul className="mt-2 space-y-1">
+                <ul className="mt-3 space-y-2">
                   {detailFiles.map((f) => (
-                    <li key={f.id} className="text-sm text-zinc-800">
+                    <li
+                      key={f.id}
+                      className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-800"
+                    >
                       {f.filename}
                     </li>
                   ))}
@@ -929,9 +950,11 @@ export default function AnimalClinicalPage() {
               <div className="mt-4 rounded-xl border border-zinc-200 p-4">
                 <div className="grid gap-3 md:grid-cols-2">
                   <div>
-                    <label className="block text-xs font-semibold text-zinc-700">Tipo</label>
+                    <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-700">
+                      Tipo
+                    </label>
                     <select
-                      className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+                      className="mt-1 w-full rounded-xl border border-zinc-300 bg-zinc-50 px-3 py-2.5 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-zinc-400 focus:bg-white focus:ring-2 focus:ring-emerald-500/20"
                       value={editType}
                       onChange={(e) => setEditType(e.target.value as ClinicEventType)}
                     >
@@ -949,10 +972,12 @@ export default function AnimalClinicalPage() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-zinc-700">Data evento</label>
+                    <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-700">
+                      Data evento
+                    </label>
                     <input
                       type="datetime-local"
-                      className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+                      className="mt-1 w-full rounded-xl border border-zinc-300 bg-zinc-50 px-3 py-2.5 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-zinc-400 focus:bg-white focus:ring-2 focus:ring-emerald-500/20"
                       value={editDateLocal}
                       onChange={(e) => setEditDateLocal(e.target.value)}
                     />
@@ -961,20 +986,24 @@ export default function AnimalClinicalPage() {
                   {editType === "therapy" ? (
                     <>
                       <div>
-                        <label className="block text-xs font-semibold text-zinc-700">Inizio terapia</label>
+                        <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-700">
+                          Inizio terapia
+                        </label>
                         <input
                           type="date"
-                          className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+                          className="mt-1 w-full rounded-xl border border-zinc-300 bg-zinc-50 px-3 py-2.5 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-zinc-400 focus:bg-white focus:ring-2 focus:ring-emerald-500/20"
                           value={editTherapyStartDate}
                           onChange={(e) => setEditTherapyStartDate(e.target.value)}
                         />
                       </div>
 
                       <div>
-                        <label className="block text-xs font-semibold text-zinc-700">Fine terapia</label>
+                        <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-700">
+                          Fine terapia
+                        </label>
                         <input
                           type="date"
-                          className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+                          className="mt-1 w-full rounded-xl border border-zinc-300 bg-zinc-50 px-3 py-2.5 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-zinc-400 focus:bg-white focus:ring-2 focus:ring-emerald-500/20"
                           value={editTherapyEndDate}
                           onChange={(e) => setEditTherapyEndDate(e.target.value)}
                         />
@@ -983,7 +1012,9 @@ export default function AnimalClinicalPage() {
                   ) : null}
 
                   <div className="md:col-span-2">
-                    <label className="block text-xs font-semibold text-zinc-700">Titolo</label>
+                    <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-700">
+                      Titolo
+                    </label>
                     <input
                       type="text"
                       className="mt-1 w-full rounded-xl border border-zinc-200 bg-zinc-100 px-3 py-2 text-sm text-zinc-600"
@@ -993,9 +1024,11 @@ export default function AnimalClinicalPage() {
                   </div>
 
                   <div className="md:col-span-2">
-                    <label className="block text-xs font-semibold text-zinc-700">Descrizione</label>
+                    <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-700">
+                      Descrizione
+                    </label>
                     <textarea
-                      className="mt-1 min-h-[96px] w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+                      className="mt-1 min-h-[120px] w-full rounded-xl border border-zinc-300 bg-zinc-50 px-3 py-3 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-zinc-400 focus:bg-white focus:ring-2 focus:ring-emerald-500/20"
                       value={editDescription}
                       onChange={(e) => setEditDescription(e.target.value)}
                     />
@@ -1013,7 +1046,7 @@ export default function AnimalClinicalPage() {
                     type="button"
                     onClick={() => void onUpdateEvent()}
                     disabled={updating}
-                    className="rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-900 disabled:opacity-60"
+                    className="rounded-xl bg-black px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-900 disabled:opacity-60"
                   >
                     {updating ? "Salvataggio..." : "Salva e chiudi"}
                   </button>
