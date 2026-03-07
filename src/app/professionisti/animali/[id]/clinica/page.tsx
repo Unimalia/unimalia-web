@@ -109,6 +109,19 @@ function typeLabel(t: ClinicEventType) {
   }
 }
 
+function visibilityLabel(value: "owner" | "professionals" | "emergency" | string) {
+  switch (value) {
+    case "owner":
+      return "Privato";
+    case "professionals":
+      return "Professionisti";
+    case "emergency":
+      return "Emergenza";
+    default:
+      return value;
+  }
+}
+
 function formatDateIT(iso: string) {
   try {
     const s = String(iso || "").trim();
@@ -206,8 +219,6 @@ const TEXTAREA_CLASS =
   "mt-1 min-h-[120px] w-full rounded-xl border border-zinc-300 bg-zinc-50 px-3 py-3 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-zinc-400 focus:bg-white focus:ring-2 focus:ring-emerald-500/20";
 const FILE_INPUT_CLASS =
   "block w-full rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 px-3.5 py-3 text-sm text-zinc-700 file:mr-3 file:rounded-xl file:border-0 file:bg-black file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:border-zinc-400 focus-within:border-zinc-500 focus-within:ring-4 focus-within:ring-zinc-200";
-const UPLOAD_TRIGGER_CLASS =
-  "inline-flex cursor-pointer items-center justify-center rounded-2xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800 transition hover:bg-zinc-50 focus-within:ring-4 focus-within:ring-zinc-200";
 
 export default function ClinicaPage() {
   const params = useParams<{ id: string }>();
@@ -830,11 +841,11 @@ export default function ClinicaPage() {
         </Link>
       </div>
 
-      <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm space-y-4">
+      <section className="space-y-4 rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-base font-semibold text-zinc-900">Cartella clinica</h1>
-            <p className="mt-1 text-sm text-zinc-600">
+            <p className="mt-1 text-sm leading-6 text-zinc-600">
               Timeline eventi (owner + pro) e stato validazione.
             </p>
           </div>
@@ -842,12 +853,12 @@ export default function ClinicaPage() {
           {isVet ? (
             <Link
               href={`/professionisti/animali/${id}/verifica`}
-              className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+              className="rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800 shadow-sm transition hover:bg-zinc-50"
             >
               Validazione (vet)
             </Link>
           ) : (
-            <span className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-2 text-sm font-semibold text-zinc-600">
+            <span className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm font-semibold text-zinc-600">
               Validazione riservata ai vet
             </span>
           )}
@@ -869,7 +880,7 @@ export default function ClinicaPage() {
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
-                  className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50 disabled:opacity-50"
+                  className="rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800 shadow-sm transition hover:bg-zinc-50 disabled:opacity-50"
                   disabled={bulkVerifying}
                   onClick={() => selectAllPending()}
                 >
@@ -878,7 +889,7 @@ export default function ClinicaPage() {
 
                 <button
                   type="button"
-                  className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50 disabled:opacity-50"
+                  className="rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800 shadow-sm transition hover:bg-zinc-50 disabled:opacity-50"
                   disabled={bulkVerifying || selectedIds.size === 0}
                   onClick={() => void verifyMany(Array.from(selectedIds))}
                 >
@@ -887,7 +898,7 @@ export default function ClinicaPage() {
 
                 <button
                   type="button"
-                  className="rounded-2xl bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-900 disabled:opacity-50"
+                  className="rounded-xl bg-black px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-900 disabled:opacity-50"
                   disabled={bulkVerifying}
                   onClick={() => void verifyMany(pendingIds)}
                   title="Valida tutti gli eventi in attesa"
@@ -898,7 +909,7 @@ export default function ClinicaPage() {
                 {selectedIds.size > 0 ? (
                   <button
                     type="button"
-                    className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50 disabled:opacity-50"
+                    className="rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800 shadow-sm transition hover:bg-zinc-50 disabled:opacity-50"
                     disabled={bulkVerifying}
                     onClick={() => clearSelection()}
                   >
@@ -908,18 +919,18 @@ export default function ClinicaPage() {
               </div>
             </div>
 
-            <p className="mt-2 text-xs text-zinc-600">
+            <p className="mt-2 text-xs leading-5 text-zinc-600">
               Suggerimento: puoi selezionare i singoli eventi “⏳ da validare” direttamente dalla
               timeline.
             </p>
           </div>
         ) : null}
 
-        <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+        <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <h2 className="text-sm font-semibold text-zinc-900">Nuovo evento (PRO)</h2>
-              <p className="mt-1 text-xs text-zinc-600">
+              <p className="mt-1.5 text-xs leading-5 text-zinc-600">
                 L’owner riceve il promemoria via email (push: in arrivo quando UNIMALIA sarà web
                 app).
               </p>
@@ -927,13 +938,13 @@ export default function ClinicaPage() {
           </div>
 
           {saveErr ? (
-            <div className="mt-3 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+            <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3.5 text-sm leading-6 text-red-800">
               {saveErr}
             </div>
           ) : null}
 
           {saveOk ? (
-            <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
+            <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3.5 text-sm leading-6 text-emerald-800">
               {saveOk}
             </div>
           ) : null}
@@ -995,14 +1006,14 @@ export default function ClinicaPage() {
                 }}
               />
               {newFiles.length > 0 ? (
-                <div className="mt-1 text-[11px] text-zinc-600">
+                <div className="mt-1.5 text-[11px] leading-5 text-zinc-600">
                   📎 <span className="font-semibold">{newFiles.length}</span>
                 </div>
               ) : null}
             </label>
 
             {newType === "therapy" ? (
-              <div className="grid gap-4 md:grid-cols-12 md:col-span-12">
+              <div className="grid gap-4 md:col-span-12 md:grid-cols-12">
                 <label className="block md:col-span-6">
                   <span className={FIELD_LABEL_CLASS}>Inizio terapia</span>
                   <input
@@ -1021,7 +1032,7 @@ export default function ClinicaPage() {
                     value={therapyEndDate}
                     onChange={(e) => setTherapyEndDate(e.target.value)}
                   />
-                  <p className="mt-1 text-xs text-zinc-500">
+                  <p className="mt-1.5 text-xs leading-5 text-zinc-500">
                     Se lasci vuoto, la terapia è considerata in corso.
                   </p>
                 </label>
@@ -1051,7 +1062,7 @@ export default function ClinicaPage() {
                 onChange={(e) => setNewVetSignature(e.target.value)}
               />
               {vetOptions.length === 0 && !selectedVetId ? (
-                <div className="mt-1 text-[11px] text-zinc-500">
+                <div className="mt-1.5 text-[11px] leading-5 text-zinc-500">
                   Campo temporaneo: presto verrà sostituito da una tendina ricercabile.
                 </div>
               ) : null}
@@ -1188,13 +1199,13 @@ export default function ClinicaPage() {
                 ) : null}
 
                 {newType === "vaccine" && remindAt ? (
-                  <p className="md:col-span-2 text-xs text-zinc-600">
+                  <p className="text-xs leading-5 text-zinc-600 md:col-span-2">
                     Nota vaccino: oltre al promemoria alla data impostata, l’owner verrà avvisato
                     anche <span className="font-semibold">15 giorni prima</span>.
                   </p>
                 ) : null}
 
-                <p className="md:col-span-2 text-xs text-zinc-600">
+                <p className="text-xs leading-5 text-zinc-600 md:col-span-2">
                   Nota: il promemoria verrà inviato{" "}
                   <span className="font-semibold">solo al proprietario</span>.
                 </p>
@@ -1204,13 +1215,13 @@ export default function ClinicaPage() {
         </div>
 
         {eventsErr ? (
-          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3.5 text-sm leading-6 text-amber-900">
             {eventsErr}
           </div>
         ) : null}
 
         {verifyErr ? (
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3.5 text-sm leading-6 text-red-800">
             {verifyErr}
           </div>
         ) : null}
@@ -1218,11 +1229,12 @@ export default function ClinicaPage() {
         <div>
           <h2 className="text-base font-semibold text-zinc-900">Timeline clinica</h2>
           <p className="mt-1 text-sm leading-6 text-zinc-600">
-            Eventi clinici in ordine cronologico, con stato validazione e dettagli principali subito visibili.
+            Eventi clinici in ordine cronologico, con stato validazione e dettagli principali
+            subito visibili.
           </p>
         </div>
 
-        <div className="rounded-2xl border border-zinc-200 bg-white p-4 space-y-3">
+        <div className="space-y-3 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="text-sm text-zinc-700">
               Eventi totali: <span className="font-semibold">{events.length}</span> • Filtrati:{" "}
@@ -1336,7 +1348,7 @@ export default function ClinicaPage() {
                           </div>
 
                           {ev.description ? (
-                            <p className="mt-2 text-sm leading-6 text-zinc-700 line-clamp-3">
+                            <p className="mt-2 line-clamp-3 text-sm leading-6 text-zinc-700">
                               {ev.description}
                             </p>
                           ) : null}
@@ -1344,9 +1356,9 @@ export default function ClinicaPage() {
                       </div>
                     </div>
 
-                    <div className="shrink-0 flex flex-col items-end gap-2">
+                    <div className="flex shrink-0 flex-col items-end gap-2">
                       <span className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-medium text-zinc-700">
-                        {ev.visibility}
+                        {visibilityLabel(ev.visibility)}
                       </span>
 
                       <div className="flex flex-col items-end gap-2">
@@ -1375,7 +1387,7 @@ export default function ClinicaPage() {
                       {!isVerified && isVet ? (
                         <button
                           type="button"
-                          className="rounded-2xl bg-black px-3 py-2 text-[11px] font-semibold text-white hover:bg-zinc-900 disabled:opacity-50"
+                          className="rounded-xl bg-black px-3 py-2 text-[11px] font-semibold text-white shadow-sm transition hover:bg-zinc-900 disabled:opacity-50"
                           disabled={verifyingId === ev.id}
                           onClick={(e) => {
                             e.stopPropagation();
@@ -1393,10 +1405,10 @@ export default function ClinicaPage() {
             })}
 
             {hasMore ? (
-              <div className="pt-2 flex justify-center">
+              <div className="flex justify-center pt-2">
                 <button
                   type="button"
-                  className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+                  className="rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800 shadow-sm transition hover:bg-zinc-50"
                   onClick={() => setVisibleCount((v) => v + PAGE_SIZE)}
                 >
                   Carica altri
@@ -1409,15 +1421,15 @@ export default function ClinicaPage() {
 
       {detailEvent ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-2xl max-h-[85vh] overflow-hidden rounded-3xl bg-white shadow-xl">
-            <div className="p-6">
+          <div className="max-h-[85vh] w-full max-w-2xl overflow-hidden rounded-3xl bg-white shadow-xl">
+            <div className="p-5 md:p-6">
               {(() => {
                 const allowed = detailEvent ? canEditOrDelete(detailEvent) : false;
                 const kg = extractWeightKg(detailEvent);
 
                 return (
                   <>
-                    <div className="flex items-start justify-between">
+                    <div className="flex items-start justify-between gap-4">
                       <div>
                         <h2 className="text-lg font-semibold leading-6 text-zinc-900">
                           {detailEvent.title}
@@ -1435,7 +1447,7 @@ export default function ClinicaPage() {
                         </div>
 
                         {kg !== null ? (
-                          <div className="mt-2">
+                          <div className="mt-3 text-sm leading-6 text-zinc-700">
                             <span className="inline-flex items-center rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-xs font-semibold text-zinc-700">
                               ⚖ {formatWeightLabel(kg)}
                             </span>
@@ -1443,7 +1455,7 @@ export default function ClinicaPage() {
                         ) : null}
 
                         {detailEvent.type === "therapy" ? (
-                          <div className="mt-3 text-sm text-zinc-700 space-y-1">
+                          <div className="mt-3 space-y-1.5 text-sm leading-6 text-zinc-700">
                             <div>
                               <span className="font-semibold">Inizio terapia:</span>{" "}
                               {formatEventDateIT(extractTherapyStartDate(detailEvent))}
@@ -1463,7 +1475,7 @@ export default function ClinicaPage() {
                           <>
                             <button
                               type="button"
-                              className="rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-800 hover:bg-zinc-50 disabled:opacity-50"
+                              className="rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800 shadow-sm transition hover:bg-zinc-50 disabled:opacity-50"
                               disabled={!allowed}
                               onClick={() => {
                                 setIsEditing(true);
@@ -1476,7 +1488,7 @@ export default function ClinicaPage() {
 
                             <button
                               type="button"
-                              className="rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-100 disabled:opacity-50"
+                              className="rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-700 shadow-sm transition hover:bg-red-100 disabled:opacity-50"
                               disabled={!allowed}
                               onClick={() => setDeleteConfirm(true)}
                               title={!allowed ? "Non autorizzato a eliminare questo evento" : ""}
@@ -1486,14 +1498,14 @@ export default function ClinicaPage() {
 
                             <button
                               type="button"
-                              className="text-sm font-semibold text-zinc-600 hover:text-zinc-900"
+                              className="rounded-xl border border-zinc-200 bg-white px-3.5 py-2 text-sm font-semibold text-zinc-800 shadow-sm transition hover:bg-zinc-50"
                               onClick={closeDetailModal}
                             >
-                              Chiudi ✕
+                              Chiudi
                             </button>
                           </>
                         ) : (
-                          <span className="rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-semibold text-zinc-700">
+                          <span className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-semibold text-zinc-700">
                             Modalità modifica
                           </span>
                         )}
@@ -1501,18 +1513,18 @@ export default function ClinicaPage() {
                     </div>
 
                     {modalErr ? (
-                      <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+                      <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3.5 text-sm leading-6 text-red-800">
                         {modalErr}
                       </div>
                     ) : null}
 
-                    <div className="mt-6 space-y-4 text-sm max-h-[55vh] overflow-y-auto pr-1">
+                    <div className="mt-6 max-h-[55vh] space-y-4 overflow-y-auto pr-1 text-sm">
                       {!isEditing ? (
                         <>
                           {detailEvent.description ? (
                             <div>
                               <div className="text-xs font-semibold text-zinc-700">Descrizione</div>
-                              <p className="mt-1 whitespace-pre-wrap text-zinc-800">
+                              <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-zinc-700">
                                 {detailEvent.description}
                               </p>
                             </div>
@@ -1522,7 +1534,7 @@ export default function ClinicaPage() {
                             <div className="text-xs font-semibold text-zinc-700">Allegati</div>
 
                             {detailFilesLoading ? (
-                              <div className="mt-2 text-xs text-zinc-600">Caricamento…</div>
+                              <div className="mt-2 text-xs text-zinc-600">Caricamento...</div>
                             ) : detailFiles.length === 0 ? (
                               <div className="mt-2 text-xs text-zinc-600">Nessun allegato.</div>
                             ) : (
@@ -1538,7 +1550,7 @@ export default function ClinicaPage() {
                               </ul>
                             )}
 
-                            <label className="block mt-4">
+                            <label className="mt-4 block">
                               <span className={FIELD_LABEL_CLASS}>Aggiungi allegati</span>
 
                               <input
@@ -1614,11 +1626,11 @@ export default function ClinicaPage() {
                               Meta informazioni
                             </div>
 
-                            <div className="mt-2 space-y-1 text-xs text-zinc-600">
+                            <div className="mt-2 space-y-1.5 text-xs leading-5 text-zinc-600">
                               <div>
                                 ID evento: <span className="font-mono">{detailEvent.id}</span>
                               </div>
-                              <div>Visibilità: {detailEvent.visibility}</div>
+                              <div>Visibilità: {visibilityLabel(detailEvent.visibility)}</div>
                               <div>Fonte: {detailEvent.source}</div>
                               {detailEvent.created_by_label ? (
                                 <div>Creato da: {detailEvent.created_by_label}</div>
@@ -1710,7 +1722,7 @@ export default function ClinicaPage() {
                               </label>
                             </div>
 
-                            <p className="mt-3 text-xs text-zinc-600">
+                            <p className="mt-3 text-xs leading-5 text-zinc-600">
                               Nota: il peso è salvato in “meta” e non è ancora modificabile da
                               questa schermata.
                             </p>
@@ -1723,7 +1735,7 @@ export default function ClinicaPage() {
                           <div className="text-sm font-semibold text-red-800">
                             Conferma eliminazione
                           </div>
-                          <p className="mt-1 text-sm text-red-800">
+                          <p className="mt-1 text-sm leading-6 text-red-800">
                             Vuoi eliminare questo evento? L’azione sarà tracciata nello storico
                             (quando attiviamo l’audit log).
                           </p>
@@ -1731,7 +1743,7 @@ export default function ClinicaPage() {
                           <div className="mt-3 flex flex-wrap gap-2">
                             <button
                               type="button"
-                              className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+                              className="rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800 shadow-sm transition hover:bg-zinc-50"
                               onClick={() => setDeleteConfirm(false)}
                               disabled={deleting}
                             >
@@ -1740,7 +1752,7 @@ export default function ClinicaPage() {
 
                             <button
                               type="button"
-                              className="rounded-2xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+                              className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700 disabled:opacity-50"
                               disabled={!allowed || deleting}
                               onClick={() => void deleteDetailEvent()}
                             >
@@ -1751,13 +1763,13 @@ export default function ClinicaPage() {
                       ) : null}
                     </div>
 
-                    <div className="mt-6 flex justify-end gap-2">
+                    <div className="mt-6 flex flex-wrap items-center justify-end gap-2">
                       {isEditing ? (
                         isDetailDirty ? (
                           <>
                             <button
                               type="button"
-                              className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+                              className="rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800 shadow-sm transition hover:bg-zinc-50"
                               onClick={() => {
                                 resetEditStateFromEvent(detailEvent);
                                 setIsEditing(false);
@@ -1781,7 +1793,7 @@ export default function ClinicaPage() {
                         ) : (
                           <button
                             type="button"
-                            className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+                            className="rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800 shadow-sm transition hover:bg-zinc-50"
                             onClick={closeDetailModal}
                           >
                             Chiudi
@@ -1790,7 +1802,7 @@ export default function ClinicaPage() {
                       ) : (
                         <button
                           type="button"
-                          className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+                          className="rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800 shadow-sm transition hover:bg-zinc-50"
                           onClick={closeDetailModal}
                         >
                           Chiudi
