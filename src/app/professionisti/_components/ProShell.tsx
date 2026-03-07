@@ -76,6 +76,7 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
 
   const [open, setOpen] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -144,6 +145,21 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
     };
   }, [open]);
 
+  async function handleLogout() {
+    if (loggingOut) return;
+
+    setLoggingOut(true);
+
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      // ignore
+    } finally {
+      setOpen(false);
+      router.replace("/professionisti/login");
+    }
+  }
+
   const items: Item[] = useMemo(
     () => [
       {
@@ -169,7 +185,8 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
       {
         href: "/professionisti/dashboard",
         label: "Dashboard clinica",
-        description: "Area clinica integrata nella dashboard professionisti. Bucket avanzati in arrivo.",
+        description:
+          "Area clinica integrata nella dashboard professionisti. Bucket avanzati in arrivo.",
       },
       {
         href: "/professionisti/dashboard",
@@ -219,6 +236,15 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-2">
             <button
               type="button"
+              onClick={handleLogout}
+              disabled={loggingOut}
+              className="hidden rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 shadow-sm hover:bg-zinc-50 disabled:opacity-60 lg:inline-flex"
+            >
+              {loggingOut ? "Uscita..." : "Logout"}
+            </button>
+
+            <button
+              type="button"
               className="inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold shadow-sm hover:bg-zinc-50 lg:hidden"
               onClick={() => setOpen(true)}
               aria-label="Apri menu"
@@ -233,6 +259,7 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
         <aside className="hidden lg:block">
           <div className="rounded-2xl border border-zinc-200 bg-white p-2 shadow-sm">
             <div className="px-3 py-2 text-xs font-semibold tracking-wide text-zinc-500">MENU</div>
+
             <div className="flex flex-col gap-1">
               {items.map((it, index) => (
                 <SideLink
@@ -242,6 +269,17 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
                   description={it.description}
                 />
               ))}
+            </div>
+
+            <div className="mt-3 border-t border-zinc-200 pt-3">
+              <button
+                type="button"
+                onClick={handleLogout}
+                disabled={loggingOut}
+                className="block w-full rounded-2xl px-3 py-3 text-left text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100 hover:text-black disabled:opacity-60"
+              >
+                {loggingOut ? "Uscita..." : "Logout"}
+              </button>
             </div>
           </div>
         </aside>
@@ -280,6 +318,17 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
                     onClick={() => setOpen(false)}
                   />
                 ))}
+              </div>
+
+              <div className="mt-3 border-t border-zinc-200 pt-3">
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  disabled={loggingOut}
+                  className="block w-full rounded-2xl px-3 py-3 text-left text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100 hover:text-black disabled:opacity-60"
+                >
+                  {loggingOut ? "Uscita..." : "Logout"}
+                </button>
               </div>
             </div>
           </div>
