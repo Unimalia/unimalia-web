@@ -198,10 +198,12 @@ function formatWeightLabel(kg: number) {
   return Number.isInteger(kg) ? `${kg} kg` : `${kg} kg`;
 }
 
-const FIELD_LABEL_CLASS = "mb-1.5 block text-xs font-semibold text-zinc-700";
+const FIELD_LABEL_CLASS =
+  "mb-1.5 block text-xs font-semibold uppercase tracking-wide text-zinc-700";
 const FIELD_CLASS =
-  "w-full rounded-2xl border border-zinc-300 bg-zinc-50 px-3.5 py-2.5 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-zinc-500 focus:bg-white focus:ring-4 focus:ring-zinc-200";
-const TEXTAREA_CLASS = `${FIELD_CLASS} min-h-[112px]`;
+  "mt-1 w-full rounded-xl border border-zinc-300 bg-zinc-50 px-3 py-2.5 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-zinc-400 focus:bg-white focus:ring-2 focus:ring-emerald-500/20";
+const TEXTAREA_CLASS =
+  "mt-1 min-h-[120px] w-full rounded-xl border border-zinc-300 bg-zinc-50 px-3 py-3 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-zinc-400 focus:bg-white focus:ring-2 focus:ring-emerald-500/20";
 const FILE_INPUT_CLASS =
   "block w-full rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 px-3.5 py-3 text-sm text-zinc-700 file:mr-3 file:rounded-xl file:border-0 file:bg-black file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:border-zinc-400 focus-within:border-zinc-500 focus-within:ring-4 focus-within:ring-zinc-200";
 const UPLOAD_TRIGGER_CLASS =
@@ -936,7 +938,7 @@ export default function ClinicaPage() {
             </div>
           ) : null}
 
-          <div className="mt-4 grid gap-4 md:grid-cols-12">
+          <div className="mt-5 grid gap-4 md:grid-cols-12">
             <label className="block md:col-span-3">
               <span className={FIELD_LABEL_CLASS}>Tipo evento</span>
               <select
@@ -1038,7 +1040,7 @@ export default function ClinicaPage() {
             </label>
           </div>
 
-          <div className="mt-4 grid gap-4 md:grid-cols-12">
+          <div className="mt-5 grid gap-4 md:grid-cols-12">
             <label className="block md:col-span-9">
               <span className={FIELD_LABEL_CLASS}>Firma veterinario (opzionale)</span>
               <input
@@ -1058,7 +1060,7 @@ export default function ClinicaPage() {
             <div className="flex items-end md:col-span-3">
               <button
                 type="button"
-                className="w-full rounded-2xl bg-black px-4 py-2.5 text-sm font-semibold text-white hover:bg-zinc-900 disabled:opacity-50"
+                className="w-full rounded-xl bg-black px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-900 disabled:opacity-60"
                 disabled={!canSave}
                 onClick={() => void saveClinicEvent()}
               >
@@ -1213,6 +1215,13 @@ export default function ClinicaPage() {
           </div>
         ) : null}
 
+        <div>
+          <h2 className="text-base font-semibold text-zinc-900">Timeline clinica</h2>
+          <p className="mt-1 text-sm leading-6 text-zinc-600">
+            Eventi clinici in ordine cronologico, con stato validazione e dettagli principali subito visibili.
+          </p>
+        </div>
+
         <div className="rounded-2xl border border-zinc-200 bg-white p-4 space-y-3">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="text-sm text-zinc-700">
@@ -1254,7 +1263,7 @@ export default function ClinicaPage() {
         {eventsLoading ? (
           <div className="text-sm text-zinc-600">Caricamento eventi…</div>
         ) : filteredEvents.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-zinc-200 p-6 text-sm text-zinc-600">
+          <div className="mt-4 rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 p-6 text-sm leading-6 text-zinc-600">
             Nessun evento per questo filtro.
           </div>
         ) : (
@@ -1269,7 +1278,7 @@ export default function ClinicaPage() {
               return (
                 <div
                   key={ev.id}
-                  className="rounded-2xl border border-zinc-200 p-3 cursor-pointer hover:border-zinc-400 transition"
+                  className="cursor-pointer rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-zinc-300 hover:shadow-md"
                   onClick={() => {
                     setDetailEvent(ev);
                     setIsEditing(false);
@@ -1278,7 +1287,7 @@ export default function ClinicaPage() {
                     resetEditStateFromEvent(ev);
                   }}
                 >
-                  <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
                       <div className="flex items-start gap-2">
                         {!isVerified && isVet ? (
@@ -1292,29 +1301,33 @@ export default function ClinicaPage() {
                         ) : null}
 
                         <div className="min-w-0">
-                          <div className="text-xs text-zinc-500">
-                            <div>Evento: {formatEventDateIT(ev.event_date)}</div>
+                          <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-500">
+                            <span className="rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 font-medium text-zinc-700">
+                              {typeLabel(ev.type)}
+                            </span>
+
+                            <span>{formatEventDateIT(ev.event_date)}</span>
 
                             {ev.created_at ? (
-                              <div className="text-zinc-400">
-                                Inserito il {formatInsertedAtIT(ev.created_at)}
-                              </div>
+                              <span className="text-zinc-400">
+                                • Inserito il {formatInsertedAtIT(ev.created_at)}
+                              </span>
                             ) : null}
                           </div>
 
-                          <div className="mt-1 truncate text-sm font-semibold text-zinc-900">
+                          <div className="mt-3 text-sm font-semibold leading-5 text-zinc-900">
                             {ev.title || typeLabel(ev.type)}
                             {evKg !== null ? (
                               <span
-                                className="ml-2 inline-flex items-center rounded-full border border-zinc-200 bg-white px-2 py-0.5 text-[11px] font-semibold text-zinc-700"
+                                className="ml-2 inline-flex items-center rounded-full border border-zinc-200 bg-white px-2 py-0.5 text-xs font-semibold text-zinc-700"
                                 title="Peso registrato"
                               >
-                                ⚖️ {formatWeightLabel(evKg)}
+                                ⚖ {formatWeightLabel(evKg)}
                               </span>
                             ) : null}
                             {(filesCountByEventId[ev.id] ?? 0) > 0 ? (
                               <span
-                                className="ml-2 inline-flex items-center rounded-full border border-zinc-200 bg-white px-2 py-0.5 text-[11px] font-semibold text-zinc-700"
+                                className="ml-2 inline-flex items-center rounded-full border border-zinc-200 bg-white px-2 py-0.5 text-xs font-semibold text-zinc-700"
                                 title={`Allegati: ${filesCountByEventId[ev.id]}`}
                               >
                                 📎 {filesCountByEventId[ev.id]}
@@ -1322,10 +1335,8 @@ export default function ClinicaPage() {
                             ) : null}
                           </div>
 
-                          <div className="mt-1 text-[11px] text-zinc-600">{typeLabel(ev.type)}</div>
-
                           {ev.description ? (
-                            <p className="mt-2 text-sm text-zinc-700 line-clamp-2">
+                            <p className="mt-2 text-sm leading-6 text-zinc-700 line-clamp-3">
                               {ev.description}
                             </p>
                           ) : null}
@@ -1334,15 +1345,17 @@ export default function ClinicaPage() {
                     </div>
 
                     <div className="shrink-0 flex flex-col items-end gap-2">
-                      <span className="rounded-full border border-zinc-200 bg-white px-3 py-1 text-[11px] text-zinc-600">
+                      <span className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-medium text-zinc-700">
                         {ev.visibility}
                       </span>
 
                       <div className="flex flex-col items-end gap-2">
                         {ev.source === "owner" ? (
-                          <span className="text-xs text-zinc-600">Creato da proprietario</span>
+                          <span className="text-xs font-medium text-zinc-600">
+                            Creato da proprietario
+                          </span>
                         ) : (
-                          <span className="text-xs text-zinc-600">
+                          <span className="text-xs font-medium text-zinc-600">
                             Registrato da{" "}
                             {ev?.meta?.created_by_member_label || ev.created_by_label || "Clinica"}
                           </span>
@@ -1406,32 +1419,31 @@ export default function ClinicaPage() {
                   <>
                     <div className="flex items-start justify-between">
                       <div>
-                        <h2 className="text-lg font-semibold text-zinc-900">
-                          {detailEvent.title || typeLabel(detailEvent.type)}
+                        <h2 className="text-lg font-semibold leading-6 text-zinc-900">
+                          {detailEvent.title}
                         </h2>
-                        <div className="mt-1 text-xs text-zinc-600 space-y-1">
-                          <div>
-                            {typeLabel(detailEvent.type)} •{" "}
-                            {formatEventDateIT(detailEvent.event_date)}
-                          </div>
 
-                          {detailEvent.created_at ? (
-                            <div className="text-zinc-400">
-                              Inserito il {formatInsertedAtIT(detailEvent.created_at)}
-                            </div>
-                          ) : null}
-
-                          {kg !== null ? (
-                            <div>
-                              <span className="font-semibold text-zinc-800">
-                                ⚖️ {formatWeightLabel(kg)}
-                              </span>
-                            </div>
-                          ) : null}
+                        <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-zinc-600">
+                          <span className="rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-xs font-semibold text-zinc-700">
+                            {typeLabel(detailEvent.type)}
+                          </span>
+                          <span>{formatEventDateIT(detailEvent.event_date)}</span>
                         </div>
 
+                        <div className="mt-2 text-xs text-zinc-400">
+                          Inserito il {formatInsertedAtIT(detailEvent.created_at)}
+                        </div>
+
+                        {kg !== null ? (
+                          <div className="mt-2">
+                            <span className="inline-flex items-center rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-xs font-semibold text-zinc-700">
+                              ⚖ {formatWeightLabel(kg)}
+                            </span>
+                          </div>
+                        ) : null}
+
                         {detailEvent.type === "therapy" ? (
-                          <div className="mt-2 text-sm text-zinc-700 space-y-1">
+                          <div className="mt-3 text-sm text-zinc-700 space-y-1">
                             <div>
                               <span className="font-semibold">Inizio terapia:</span>{" "}
                               {formatEventDateIT(extractTherapyStartDate(detailEvent))}
@@ -1514,40 +1526,13 @@ export default function ClinicaPage() {
                             ) : detailFiles.length === 0 ? (
                               <div className="mt-2 text-xs text-zinc-600">Nessun allegato.</div>
                             ) : (
-                              <ul className="mt-2 space-y-2">
+                              <ul className="mt-3 space-y-2">
                                 {detailFiles.map((f) => (
                                   <li
                                     key={f.id}
-                                    className="flex items-center justify-between gap-3 text-sm text-zinc-800"
+                                    className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-800"
                                   >
-                                    <div className="min-w-0">
-                                      <span className="font-semibold">{f.filename}</span>
-                                      <span className="ml-2 text-xs text-zinc-600">
-                                        ({f.mime || "file"})
-                                      </span>
-                                    </div>
-
-                                    <button
-                                      type="button"
-                                      className="text-xs font-semibold text-zinc-700 underline hover:text-zinc-900"
-                                      onClick={async () => {
-                                        try {
-                                          const res = await fetch(
-                                            `/api/clinic-events/files/download?fileId=${encodeURIComponent(
-                                              f.id
-                                            )}`,
-                                            { headers: { ...(await authHeaders()) } }
-                                          );
-                                          const j = await res.json().catch(() => ({}));
-                                          if (!res.ok || !j?.url) return;
-                                          window.open(j.url, "_blank", "noopener,noreferrer");
-                                        } catch {
-                                          // no-op
-                                        }
-                                      }}
-                                    >
-                                      Apri
-                                    </button>
+                                    {f.filename}
                                   </li>
                                 ))}
                               </ul>
@@ -1649,7 +1634,7 @@ export default function ClinicaPage() {
                           <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
                             <div className="text-xs font-semibold text-zinc-700">Modifica evento</div>
 
-                            <div className="mt-4 grid gap-4 md:grid-cols-2">
+                            <div className="mt-5 grid gap-4 md:grid-cols-2">
                               <label className="block md:col-span-2">
                                 <span className={FIELD_LABEL_CLASS}>Titolo</span>
                                 <input
@@ -1750,7 +1735,7 @@ export default function ClinicaPage() {
                               onClick={() => setDeleteConfirm(false)}
                               disabled={deleting}
                             >
-                              Annulla
+                              Chiudi
                             </button>
 
                             <button
@@ -1786,7 +1771,7 @@ export default function ClinicaPage() {
 
                             <button
                               type="button"
-                              className="rounded-2xl bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-900 disabled:opacity-50"
+                              className="rounded-xl bg-black px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-900 disabled:opacity-60"
                               disabled={!allowed || updating || !editTitle.trim() || !editDate}
                               onClick={() => void updateDetailEvent()}
                             >
