@@ -1,4 +1,3 @@
-// src/app/professionisti/richieste-accesso/page.tsx
 import RequestAccessClient from "./RequestAccessClient";
 
 export const dynamic = "force-dynamic";
