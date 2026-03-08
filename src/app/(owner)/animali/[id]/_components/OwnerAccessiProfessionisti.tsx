@@ -8,6 +8,8 @@ type AccessRequest = {
   animal_id: string;
   owner_id?: string;
   org_id: string;
+  org_name?: string | null;
+  animal_name?: string | null;
   status: "pending" | "approved" | "rejected" | "blocked" | "revoked" | string;
   created_at: string;
   requested_scope?: string[] | null;
@@ -19,6 +21,8 @@ type AccessGrant = {
   animal_id: string;
   grantee_type: string;
   grantee_id: string;
+  org_name?: string | null;
+  animal_name?: string | null;
   status: "active" | "revoked" | string;
   valid_to: string | null;
   revoked_at: string | null;
@@ -30,12 +34,23 @@ type AccessGrant = {
 
 type Duration = "24h" | "7d" | "6m" | "forever";
 
-function formatAccessScopeFromGrant(g: AccessGrant) {
+function formatScopeFromGrant(g: AccessGrant) {
   const parts: string[] = [];
   if (g.scope_read) parts.push("lettura");
   if (g.scope_write) parts.push("modifica");
-  if (g.scope_upload) parts.push("upload");
-  return parts.length ? parts.join(", ") : "Accesso base";
+  return parts.length ? parts.join(", ") : "accesso base";
+}
+
+function formatRequestedScope(scope?: string[] | null) {
+  if (!scope?.length) return "accesso base";
+
+  return scope
+    .map((item) => {
+      if (item === "read") return "lettura";
+      if (item === "write") return "modifica";
+      return item;
+    })
+    .join(", ");
 }
 
 function labelDuration(d: Duration) {
@@ -55,8 +70,8 @@ function formatDate(value: string | null | undefined) {
   return new Date(value).toLocaleDateString("it-IT");
 }
 
-function formatOrgLabel(orgId: string) {
-  return `Professionista ${orgId}`;
+function formatOrgLabel(name?: string | null, fallbackId?: string | null) {
+  return name?.trim() || fallbackId || "Professionista";
 }
 
 export default function OwnerAccessiProfessionisti({ animalId }: { animalId: string }) {
@@ -77,7 +92,6 @@ export default function OwnerAccessiProfessionisti({ animalId }: { animalId: str
     try {
       const res = await fetch(`/api/owner/animals/${animalId}/access`, { cache: "no-store" });
       const json = await res.json();
-
       if (!res.ok) throw new Error(json?.error || "Errore caricamento accessi");
 
       const nextReqs: AccessRequest[] = json.requests || [];
@@ -100,7 +114,6 @@ export default function OwnerAccessiProfessionisti({ animalId }: { animalId: str
 
   useEffect(() => {
     void load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [animalId]);
 
   const pendingRequests = useMemo(() => requests.filter((r) => r.status === "pending"), [requests]);
@@ -110,7 +123,7 @@ export default function OwnerAccessiProfessionisti({ animalId }: { animalId: str
     [requests]
   );
 
-  const activeAccesses = useMemo(
+  const activeGrants = useMemo(
     () => grants.filter((g) => !g.revoked_at && g.status === "active"),
     [grants]
   );
@@ -162,11 +175,10 @@ export default function OwnerAccessiProfessionisti({ animalId }: { animalId: str
     });
   }
 
-  async function revokeAccess(accessId: string) {
+  async function revokeGrant(grantId: string) {
     startTransition(async () => {
-      const res = await fetch(`/api/owner/grants/${accessId}/revoke`, { method: "POST" });
+      const res = await fetch(`/api/owner/grants/${grantId}/revoke`, { method: "POST" });
       const json = await res.json().catch(() => ({}));
-
       if (!res.ok) {
         alert(json?.error || "Errore revoca accesso");
         return;
@@ -179,7 +191,7 @@ export default function OwnerAccessiProfessionisti({ animalId }: { animalId: str
 
   return (
     <section className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-semibold text-zinc-900">Accessi professionisti</h2>
           <p className="mt-1 text-sm text-zinc-600">
@@ -209,30 +221,25 @@ export default function OwnerAccessiProfessionisti({ animalId }: { animalId: str
       ) : null}
 
       <div className="space-y-3">
-        <div>
-          <h3 className="text-base font-semibold text-zinc-900">Accessi attivi</h3>
-          <p className="mt-1 text-sm text-zinc-600">
-            Professionisti che possono già aprire la scheda di questo animale.
-          </p>
-        </div>
+        <h3 className="text-base font-semibold text-zinc-900">Accessi attivi</h3>
 
-        {activeAccesses.length === 0 ? (
+        {activeGrants.length === 0 ? (
           <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600">
             Nessun accesso attivo.
           </div>
         ) : (
           <ul className="space-y-3">
-            {activeAccesses.map((g) => (
+            {activeGrants.map((g) => (
               <li
                 key={g.id}
                 className="rounded-2xl border border-zinc-200 bg-white p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="text-sm">
                   <div className="font-semibold text-zinc-900">
-                    {formatOrgLabel(g.grantee_id)}
+                    {formatOrgLabel(g.org_name, g.grantee_id)}
                   </div>
                   <div className="mt-1 text-zinc-600">
-                    Permessi: {formatAccessScopeFromGrant(g)}
+                    Permessi: {formatScopeFromGrant(g)}
                   </div>
                   <div className="mt-1 text-zinc-500">
                     Scadenza: {formatDate(g.valid_to)}
@@ -240,8 +247,8 @@ export default function OwnerAccessiProfessionisti({ animalId }: { animalId: str
                 </div>
 
                 <button
-                  className="rounded-2xl bg-red-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
-                  onClick={() => revokeAccess(g.id)}
+                  className="rounded-2xl bg-red-600 text-white px-4 py-2 text-sm font-semibold disabled:opacity-60"
+                  onClick={() => revokeGrant(g.id)}
                   disabled={isPending}
                 >
                   Revoca accesso
@@ -253,12 +260,7 @@ export default function OwnerAccessiProfessionisti({ animalId }: { animalId: str
       </div>
 
       <div className="space-y-3">
-        <div>
-          <h3 className="text-base font-semibold text-zinc-900">Richieste in attesa</h3>
-          <p className="mt-1 text-sm text-zinc-600">
-            Approva l’accesso e scegli per quanto tempo deve restare attivo.
-          </p>
-        </div>
+        <h3 className="text-base font-semibold text-zinc-900">Richieste in attesa</h3>
 
         {pendingRequests.length === 0 ? (
           <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600">
@@ -274,16 +276,15 @@ export default function OwnerAccessiProfessionisti({ animalId }: { animalId: str
                   key={r.id}
                   className="rounded-2xl border border-zinc-200 bg-white p-4 space-y-4"
                 >
-                  <div>
-                    <div className="text-sm font-semibold text-zinc-900">
-                      {formatOrgLabel(r.org_id)}
+                  <div className="text-sm">
+                    <div className="font-semibold text-zinc-900">
+                      {formatOrgLabel(r.org_name, r.org_id)}
                     </div>
-                    <div className="mt-1 text-sm text-zinc-600">
-                      Richiesta inviata il {formatDateTime(r.created_at)}
+                    <div className="mt-1 text-zinc-600">
+                      Richiesta del {formatDateTime(r.created_at)}
                     </div>
-                    <div className="mt-1 text-sm text-zinc-500">
-                      Permessi richiesti:{" "}
-                      {r.requested_scope?.length ? r.requested_scope.join(", ") : "accesso base"}
+                    <div className="mt-1 text-zinc-500">
+                      Permessi richiesti: {formatRequestedScope(r.requested_scope)}
                     </div>
                   </div>
 
@@ -318,10 +319,9 @@ export default function OwnerAccessiProfessionisti({ animalId }: { animalId: str
                       Rifiuta
                     </button>
                     <button
-                      className="rounded-2xl bg-black px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                      className="rounded-2xl bg-black text-white px-4 py-2 text-sm font-semibold disabled:opacity-60"
                       onClick={() => approveRequest(r.id)}
                       disabled={isPending}
-                      title={`Approva per ${labelDuration(duration)}`}
                     >
                       Approva accesso
                     </button>
@@ -342,11 +342,9 @@ export default function OwnerAccessiProfessionisti({ animalId }: { animalId: str
               {historyRequests.map((r) => (
                 <li key={r.id} className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
                   <div className="text-sm font-semibold text-zinc-900">
-                    {formatOrgLabel(r.org_id)}
+                    {formatOrgLabel(r.org_name, r.org_id)}
                   </div>
-                  <div className="mt-1 text-sm text-zinc-600">
-                    Stato: {r.status}
-                  </div>
+                  <div className="mt-1 text-sm text-zinc-600">Stato: {r.status}</div>
                   <div className="mt-1 text-sm text-zinc-500">
                     Data: {formatDateTime(r.created_at)}
                   </div>
