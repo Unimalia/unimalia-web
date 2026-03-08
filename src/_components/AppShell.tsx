@@ -116,6 +116,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let alive = true;
+    let intervalId: number | null = null;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
 
     async function loadPendingOwnerRequests() {
       if (pathname.startsWith("/professionisti")) {
@@ -159,19 +161,45 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           }
           return next;
         });
+
+        if (!channel) {
+          channel = supabase
+            .channel(`owner-access-requests-${user.id}`)
+            .on(
+              "postgres_changes",
+              {
+                event: "*",
+                schema: "public",
+                table: "animal_access_requests",
+                filter: `owner_id=eq.${user.id}`,
+              },
+              () => {
+                void loadPendingOwnerRequests();
+              }
+            )
+            .subscribe();
+        }
       } finally {
         if (alive) setOwnerLoading(false);
       }
     }
 
     void loadPendingOwnerRequests();
-    const interval = window.setInterval(() => {
+
+    intervalId = window.setInterval(() => {
       void loadPendingOwnerRequests();
     }, 5000);
 
     return () => {
       alive = false;
-      window.clearInterval(interval);
+
+      if (intervalId) {
+        window.clearInterval(intervalId);
+      }
+
+      if (channel) {
+        void supabase.removeChannel(channel);
+      }
     };
   }, [pathname, ownerDismissedIds]);
 
