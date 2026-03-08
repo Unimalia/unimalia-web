@@ -11,6 +11,13 @@ type FoundAnimal = {
 };
 
 type WaitStatus = "idle" | "sending" | "waiting" | "approved" | "error";
+type ScopeKey = "read" | "write" | "upload";
+
+function scopeLabel(scope: ScopeKey) {
+  if (scope === "read") return "Lettura";
+  if (scope === "write") return "Modifica";
+  return "Upload allegati";
+}
 
 export default function RequestAccessClient() {
   const router = useRouter();
@@ -28,6 +35,7 @@ export default function RequestAccessClient() {
   const [autoStarted, setAutoStarted] = React.useState(false);
   const [status, setStatus] = React.useState<WaitStatus>("idle");
   const [secondsWaiting, setSecondsWaiting] = React.useState(0);
+  const [selectedScopes, setSelectedScopes] = React.useState<ScopeKey[]>(["read", "write", "upload"]);
 
   const resolvedAnimalId = animal?.id || animalId || null;
   const resolvedChip = chip || animal?.chip_number || null;
@@ -85,6 +93,16 @@ export default function RequestAccessClient() {
     };
   }, [animalId, chip]);
 
+  function toggleScope(scope: ScopeKey) {
+    setSelectedScopes((prev) => {
+      if (prev.includes(scope)) {
+        const next = prev.filter((x) => x !== scope);
+        return next.length > 0 ? next : ["read"];
+      }
+      return [...prev, scope];
+    });
+  }
+
   async function checkAccessNow(targetAnimalId: string) {
     const res = await fetch(
       `/api/professionisti/grants/check?animal_id=${encodeURIComponent(targetAnimalId)}`,
@@ -106,6 +124,12 @@ export default function RequestAccessClient() {
       return;
     }
 
+    if (selectedScopes.length === 0) {
+      setErr("Seleziona almeno un permesso.");
+      setStatus("error");
+      return;
+    }
+
     setBusy(true);
     setErr(null);
     setStatus("sending");
@@ -116,8 +140,8 @@ export default function RequestAccessClient() {
         animal_id: resolvedAnimalId,
         chip: resolvedChip,
         microchip: resolvedChip,
-        requestedScope: ["read"],
-        requested_scope: ["read"],
+        requestedScope: selectedScopes,
+        requested_scope: selectedScopes,
       };
 
       const res = await fetch("/api/professionisti/access-request", {
@@ -243,9 +267,33 @@ export default function RequestAccessClient() {
             <div className="mt-5 space-y-4">
               <div className="rounded-2xl bg-zinc-50 p-4 text-sm text-zinc-700">
                 {auto
-                  ? "Stiamo inviando automaticamente la richiesta di accesso…"
-                  : "Invia la richiesta di accesso al proprietario per continuare."}
+                  ? "Stiamo inviando automaticamente la richiesta di accesso con permessi completi standard."
+                  : "Seleziona i permessi richiesti e invia la richiesta al proprietario."}
               </div>
+
+              {!auto && (
+                <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+                  <label className="block text-sm font-medium text-zinc-900">
+                    Permessi richiesti
+                  </label>
+
+                  <div className="mt-3 flex flex-col gap-2">
+                    {(["read", "write", "upload"] as ScopeKey[]).map((scope) => (
+                      <label
+                        key={scope}
+                        className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-900"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedScopes.includes(scope)}
+                          onChange={() => toggleScope(scope)}
+                        />
+                        <span>{scopeLabel(scope)}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {!auto && (
                 <button
@@ -259,15 +307,20 @@ export default function RequestAccessClient() {
             </div>
           ) : (
             <div className="mt-5 space-y-4">
+              <div className="rounded-2xl bg-zinc-50 p-4 text-sm text-zinc-700">
+                Permessi richiesti:{" "}
+                <span className="font-semibold">
+                  {selectedScopes.map(scopeLabel).join(", ")}
+                </span>
+              </div>
+
               {status === "waiting" && (
                 <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
                   <div className="font-semibold">In attesa di approvazione</div>
                   <div className="mt-1">
                     Il proprietario deve autorizzare l’accesso. Questa pagina si aggiorna da sola.
                   </div>
-                  <div className="mt-2 text-xs opacity-80">
-                    Attesa attuale: {secondsWaiting}s
-                  </div>
+                  <div className="mt-2 text-xs opacity-80">Attesa attuale: {secondsWaiting}s</div>
                 </div>
               )}
 
