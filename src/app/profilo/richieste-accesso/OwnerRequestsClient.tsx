@@ -11,12 +11,28 @@ type Row = {
   status: "pending" | "approved" | "rejected" | "blocked" | "revoked" | string;
   requested_scope?: string[] | null;
   expires_at?: string | null;
-
   animal_name?: string | null;
   org_name?: string | null;
 };
 
 type Duration = "24h" | "7d" | "6m" | "forever";
+
+function formatDateTime(value: string | null | undefined) {
+  if (!value) return "—";
+  return new Date(value).toLocaleString("it-IT");
+}
+
+function formatDate(value: string | null | undefined) {
+  if (!value) return "Senza scadenza";
+  return new Date(value).toLocaleDateString("it-IT");
+}
+
+function labelDuration(d: Duration) {
+  if (d === "24h") return "24 ore";
+  if (d === "7d") return "7 giorni";
+  if (d === "6m") return "6 mesi";
+  return "Senza scadenza";
+}
 
 export default function OwnerRequestsClient() {
   const router = useRouter();
@@ -27,13 +43,14 @@ export default function OwnerRequestsClient() {
   const [rows, setRows] = useState<Row[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  const [duration, setDuration] = useState<Duration>("forever");
+  const [durationByRequestId, setDurationByRequestId] = useState<Record<string, Duration>>({});
 
   const animalId = searchParams.get("animalId");
 
   async function load() {
     setLoading(true);
     setError(null);
+
     try {
       const url = animalId
         ? `/api/owner/access-requests?animalId=${encodeURIComponent(animalId)}`
@@ -43,7 +60,16 @@ export default function OwnerRequestsClient() {
       const json = await res.json().catch(() => ({}));
 
       if (!res.ok) throw new Error(json?.error || "Errore caricamento richieste");
-      setRows(json.rows ?? []);
+      const nextRows = json.rows ?? [];
+      setRows(nextRows);
+
+      setDurationByRequestId((prev) => {
+        const next = { ...prev };
+        for (const row of nextRows) {
+          if (row.status === "pending" && !next[row.id]) next[row.id] = "7d";
+        }
+        return next;
+      });
     } catch (e: any) {
       setError(e?.message || "Errore");
     } finally {
@@ -60,6 +86,8 @@ export default function OwnerRequestsClient() {
   const history = useMemo(() => rows.filter((r) => r.status !== "pending"), [rows]);
 
   async function act(id: string, action: "approve" | "reject" | "revoke") {
+    const selectedDuration = durationByRequestId[id] ?? "7d";
+
     startTransition(async () => {
       const res = await fetch("/api/owner/access-requests", {
         method: "POST",
@@ -67,7 +95,7 @@ export default function OwnerRequestsClient() {
         body: JSON.stringify({
           id,
           action,
-          duration: action === "approve" ? duration : undefined,
+          duration: action === "approve" ? selectedDuration : undefined,
         }),
       });
 
@@ -83,111 +111,157 @@ export default function OwnerRequestsClient() {
   }
 
   return (
-    <div className="p-4 space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold">Richieste accesso</h1>
-        <button
-          className="rounded-xl border px-3 py-2 text-sm disabled:opacity-60"
-          onClick={() => void load()}
-          disabled={loading || isPending}
-        >
-          Aggiorna
-        </button>
+    <div className="space-y-5 p-4">
+      <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold text-zinc-900">Richieste di accesso</h1>
+            <p className="mt-2 text-sm text-zinc-600">
+              Qui puoi autorizzare o rifiutare le richieste dei professionisti.
+            </p>
+          </div>
+
+          <button
+            className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50 disabled:opacity-60"
+            onClick={() => void load()}
+            disabled={loading || isPending}
+          >
+            Aggiorna
+          </button>
+        </div>
       </div>
 
-      {error ? <div className="text-sm text-red-600">{error}</div> : null}
-      {loading ? <div className="text-sm opacity-70">Caricamento…</div> : null}
+      {error ? (
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          {error}
+        </div>
+      ) : null}
 
-      <section className="rounded-2xl border p-4 space-y-3">
-        <div className="flex items-center justify-between gap-3">
-          <div className="font-medium">In attesa</div>
+      {loading ? (
+        <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-600 shadow-sm">
+          Caricamento…
+        </div>
+      ) : null}
 
-          <div className="flex items-center gap-2 text-sm">
-            <span className="opacity-70">Durata approvazione:</span>
-            <select
-              className="rounded-xl border px-3 py-2"
-              value={duration}
-              onChange={(e) => setDuration(e.target.value as Duration)}
-              disabled={isPending}
-            >
-              <option value="24h">24 ore</option>
-              <option value="7d">7 giorni</option>
-              <option value="6m">6 mesi</option>
-              <option value="forever">Senza scadenza</option>
-            </select>
-          </div>
+      <section className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm space-y-4">
+        <div>
+          <h2 className="text-base font-semibold text-zinc-900">In attesa</h2>
+          <p className="mt-1 text-sm text-zinc-600">
+            Approva l’accesso scegliendo la durata più adatta.
+          </p>
         </div>
 
         {pending.length === 0 ? (
-          <div className="text-sm opacity-70">Nessuna richiesta pending.</div>
+          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600">
+            Nessuna richiesta in attesa.
+          </div>
         ) : (
-          <div className="space-y-2">
-            {pending.map((r) => (
-              <div
-                key={r.id}
-                className="rounded-xl border p-3 flex items-center justify-between gap-3"
-              >
-                <div className="text-sm">
-                  <div className="font-medium">
-                    {r.animal_name ?? r.animal_id} • {r.org_name ?? r.org_id}
-                  </div>
-                  <div className="opacity-70">
-                    Scope: {r.requested_scope?.length ? r.requested_scope.join(", ") : "—"} •{" "}
-                    {new Date(r.created_at).toLocaleString("it-IT")}
-                  </div>
-                </div>
+          <div className="space-y-3">
+            {pending.map((r) => {
+              const selectedDuration = durationByRequestId[r.id] ?? "7d";
 
-                <div className="flex gap-2">
-                  <button
-                    className="rounded-xl border px-3 py-2 text-sm disabled:opacity-60"
-                    onClick={() => act(r.id, "reject")}
-                    disabled={isPending}
-                  >
-                    Rifiuta
-                  </button>
-                  <button
-                    className="rounded-xl bg-black text-white px-3 py-2 text-sm disabled:opacity-60"
-                    onClick={() => act(r.id, "approve")}
-                    disabled={isPending}
-                  >
-                    Approva
-                  </button>
+              return (
+                <div
+                  key={r.id}
+                  className="rounded-2xl border border-zinc-200 bg-white p-4 space-y-4"
+                >
+                  <div className="text-sm">
+                    <div className="font-semibold text-zinc-900">
+                      {r.animal_name ?? r.animal_id} • {r.org_name ?? r.org_id}
+                    </div>
+                    <div className="mt-1 text-zinc-600">
+                      Richiesta del {formatDateTime(r.created_at)}
+                    </div>
+                    <div className="mt-1 text-zinc-500">
+                      Permessi richiesti:{" "}
+                      {r.requested_scope?.length ? r.requested_scope.join(", ") : "accesso base"}
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl bg-zinc-50 p-4">
+                    <label className="block text-sm font-medium text-zinc-900">
+                      Durata autorizzazione
+                    </label>
+                    <select
+                      className="mt-2 w-full rounded-2xl border border-zinc-300 bg-white px-3 py-2 text-sm outline-none focus:border-zinc-900"
+                      value={selectedDuration}
+                      onChange={(e) =>
+                        setDurationByRequestId((prev) => ({
+                          ...prev,
+                          [r.id]: e.target.value as Duration,
+                        }))
+                      }
+                      disabled={isPending}
+                    >
+                      <option value="24h">{labelDuration("24h")}</option>
+                      <option value="7d">{labelDuration("7d")}</option>
+                      <option value="6m">{labelDuration("6m")}</option>
+                      <option value="forever">{labelDuration("forever")}</option>
+                    </select>
+                  </div>
+
+                  <div className="flex flex-wrap gap-3">
+                    <button
+                      className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 disabled:opacity-60"
+                      onClick={() => act(r.id, "reject")}
+                      disabled={isPending}
+                    >
+                      Rifiuta
+                    </button>
+                    <button
+                      className="rounded-2xl bg-black px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                      onClick={() => act(r.id, "approve")}
+                      disabled={isPending}
+                    >
+                      Approva accesso
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>
 
-      <section className="rounded-2xl border p-4 space-y-3">
-        <div className="font-medium">Storico</div>
+      <section className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm space-y-4">
+        <div>
+          <h2 className="text-base font-semibold text-zinc-900">Storico</h2>
+          <p className="mt-1 text-sm text-zinc-600">
+            Storico delle richieste già gestite.
+          </p>
+        </div>
 
         {history.length === 0 ? (
-          <div className="text-sm opacity-70">Nessuno storico.</div>
+          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600">
+            Nessuno storico.
+          </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-3">
             {history.map((r) => (
               <div
                 key={r.id}
-                className="rounded-xl border p-3 flex items-center justify-between gap-3"
+                className="rounded-2xl border border-zinc-200 bg-white p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="text-sm">
-                  <div className="font-medium">
+                  <div className="font-semibold text-zinc-900">
                     {r.animal_name ?? r.animal_id} • {r.org_name ?? r.org_id}
                   </div>
-                  <div className="opacity-70">
-                    Stato: {r.status} • {new Date(r.created_at).toLocaleString("it-IT")}
-                    {r.expires_at ? ` • Scade: ${new Date(r.expires_at).toLocaleDateString("it-IT")}` : ""}
+                  <div className="mt-1 text-zinc-600">
+                    Stato: {r.status}
+                  </div>
+                  <div className="mt-1 text-zinc-500">
+                    Data: {formatDateTime(r.created_at)}
+                    {r.expires_at ? ` • Scade: ${formatDate(r.expires_at)}` : ""}
                   </div>
                 </div>
 
                 {r.status === "approved" ? (
                   <button
-                    className="rounded-xl bg-red-600 text-white px-3 py-2 text-sm disabled:opacity-60"
+                    className="rounded-2xl bg-red-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
                     onClick={() => act(r.id, "revoke")}
                     disabled={isPending}
                   >
-                    Revoca
+                    Revoca accesso
                   </button>
                 ) : null}
               </div>
