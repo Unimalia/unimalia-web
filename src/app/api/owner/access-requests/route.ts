@@ -4,10 +4,18 @@ import { createServerSupabaseClient, supabaseAdmin } from "@/lib/supabase/server
 type Action = "approve" | "reject" | "block" | "revoke";
 type Duration = "24h" | "7d" | "6m" | "forever";
 
+function isValidAction(value: string): value is Action {
+  return value === "approve" || value === "reject" || value === "block" || value === "revoke";
+}
+
+function isValidDuration(value: string): value is Duration {
+  return value === "24h" || value === "7d" || value === "6m" || value === "forever";
+}
+
 function computeValidTo(duration: Duration) {
   const now = new Date();
-  if (duration === "forever") return null;
 
+  if (duration === "forever") return null;
   if (duration === "24h") now.setHours(now.getHours() + 24);
   if (duration === "7d") now.setDate(now.getDate() + 7);
   if (duration === "6m") now.setMonth(now.getMonth() + 6);
@@ -33,7 +41,7 @@ export async function GET(req: Request) {
     .select("id, created_at, animal_id, owner_id, org_id, status, requested_scope, expires_at")
     .eq("owner_id", user.id)
     .order("created_at", { ascending: false })
-    .limit(50);
+    .limit(100);
 
   if (animalId) q = q.eq("animal_id", animalId);
 
@@ -60,7 +68,9 @@ export async function GET(req: Request) {
   ]);
 
   const animalNameById = new Map<string, string>();
-  for (const a of animals ?? []) animalNameById.set(a.id, a.name ?? a.id);
+  for (const a of animals ?? []) {
+    animalNameById.set(a.id, a.name ?? a.id);
+  }
 
   const orgNameById = new Map<string, string>();
   for (const o of orgs ?? []) {
@@ -92,8 +102,14 @@ export async function POST(req: Request) {
   }
 
   const id = String(body.id);
-  const action = String(body.action) as Action;
-  const duration = (body.duration ? String(body.duration) : "24h") as Duration;
+  const actionRaw = String(body.action);
+  if (!isValidAction(actionRaw)) {
+    return NextResponse.json({ error: "Unknown action" }, { status: 400 });
+  }
+
+  const action: Action = actionRaw;
+  const durationRaw = body.duration ? String(body.duration) : "7d";
+  const duration: Duration = isValidDuration(durationRaw) ? durationRaw : "7d";
 
   const { data: reqRow, error: reqErr } = await supabase
     .from("animal_access_requests")
@@ -109,36 +125,84 @@ export async function POST(req: Request) {
     const admin = supabaseAdmin();
     const validTo = computeValidTo(duration);
 
-    const { error: grantErr } = await admin.from("animal_access_grants").insert({
-      animal_id: reqRow.animal_id,
-      granted_by_user_id: user.id,
-      grantee_type: "org",
-      grantee_id: reqRow.org_id,
-      scope_read: (reqRow.requested_scope ?? []).includes("read"),
-      scope_write: (reqRow.requested_scope ?? []).includes("write"),
-      scope_upload: (reqRow.requested_scope ?? []).includes("upload"),
-      purpose: "owner_approved_request",
-      valid_from: new Date().toISOString(),
-      valid_to: validTo,
-      status: "active",
-    });
+    const requestedScope = Array.isArray(reqRow.requested_scope) ? reqRow.requested_scope : [];
 
-    if (grantErr) return NextResponse.json({ error: grantErr.message }, { status: 500 });
+    const { data: existingGrant, error: existingGrantErr } = await admin
+      .from("animal_access_grants")
+      .select("id")
+      .eq("animal_id", reqRow.animal_id)
+      .eq("grantee_type", "org")
+      .eq("grantee_id", reqRow.org_id)
+      .is("revoked_at", null)
+      .maybeSingle();
+
+    if (existingGrantErr) {
+      return NextResponse.json({ error: existingGrantErr.message }, { status: 500 });
+    }
+
+    if (existingGrant?.id) {
+      const { error: updGrantErr } = await admin
+        .from("animal_access_grants")
+        .update({
+          granted_by_user_id: user.id,
+          scope_read: requestedScope.includes("read"),
+          scope_write: requestedScope.includes("write"),
+          scope_upload: requestedScope.includes("upload"),
+          purpose: "owner_approved_request",
+          valid_from: new Date().toISOString(),
+          valid_to: validTo,
+          status: "active",
+          revoked_at: null,
+          revoked_by_user_id: null,
+        })
+        .eq("id", existingGrant.id);
+
+      if (updGrantErr) {
+        return NextResponse.json({ error: updGrantErr.message }, { status: 500 });
+      }
+    } else {
+      const { error: grantErr } = await admin.from("animal_access_grants").insert({
+        animal_id: reqRow.animal_id,
+        granted_by_user_id: user.id,
+        grantee_type: "org",
+        grantee_id: reqRow.org_id,
+        scope_read: requestedScope.includes("read"),
+        scope_write: requestedScope.includes("write"),
+        scope_upload: requestedScope.includes("upload"),
+        purpose: "owner_approved_request",
+        valid_from: new Date().toISOString(),
+        valid_to: validTo,
+        status: "active",
+      });
+
+      if (grantErr) {
+        return NextResponse.json({ error: grantErr.message }, { status: 500 });
+      }
+    }
 
     const { error: updErr } = await supabase
       .from("animal_access_requests")
-      .update({ status: "approved", expires_at: validTo })
+      .update({
+        status: "approved",
+        expires_at: validTo,
+      })
       .eq("id", id);
 
     if (updErr) return NextResponse.json({ error: updErr.message }, { status: 500 });
 
-    return NextResponse.json({ ok: true, status: "approved" });
+    return NextResponse.json({
+      ok: true,
+      status: "approved",
+      expires_at: validTo,
+    });
   }
 
   if (action === "reject") {
     const { error: updErr } = await supabase
       .from("animal_access_requests")
-      .update({ status: "rejected" })
+      .update({
+        status: "rejected",
+      })
       .eq("id", id);
 
     if (updErr) return NextResponse.json({ error: updErr.message }, { status: 500 });
@@ -149,7 +213,9 @@ export async function POST(req: Request) {
   if (action === "block") {
     const { error: updErr } = await supabase
       .from("animal_access_requests")
-      .update({ status: "blocked" })
+      .update({
+        status: "blocked",
+      })
       .eq("id", id);
 
     if (updErr) return NextResponse.json({ error: updErr.message }, { status: 500 });
@@ -176,7 +242,9 @@ export async function POST(req: Request) {
 
     const { error: updErr } = await supabase
       .from("animal_access_requests")
-      .update({ status: "revoked" })
+      .update({
+        status: "revoked",
+      })
       .eq("id", id);
 
     if (updErr) return NextResponse.json({ error: updErr.message }, { status: 500 });
