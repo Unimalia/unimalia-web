@@ -127,17 +127,15 @@ function Spinner({ className = "" }: { className?: string }) {
   );
 }
 
-function ModeCard({
+function ModeButton({
   active,
   title,
-  description,
   icon,
   onClick,
   disabled,
 }: {
   active: boolean;
   title: string;
-  description: string;
   icon: string;
   onClick: () => void;
   disabled?: boolean;
@@ -148,22 +146,15 @@ function ModeCard({
       onClick={onClick}
       disabled={disabled}
       className={[
-        "w-full rounded-2xl border p-4 text-left transition",
+        "inline-flex items-center gap-2 rounded-2xl border px-4 py-2 text-sm font-semibold transition",
         active
           ? "border-black bg-black text-white"
-          : "border-zinc-200 bg-white text-zinc-900 hover:border-zinc-300 hover:bg-zinc-50",
+          : "border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-50",
         disabled ? "opacity-60" : "",
       ].join(" ")}
     >
-      <div className="flex items-start gap-3">
-        <div className="text-xl">{icon}</div>
-        <div>
-          <div className="text-sm font-semibold">{title}</div>
-          <div className={active ? "mt-1 text-xs text-white/80" : "mt-1 text-xs text-zinc-500"}>
-            {description}
-          </div>
-        </div>
-      </div>
+      <span>{icon}</span>
+      <span>{title}</span>
     </button>
   );
 }
@@ -190,7 +181,7 @@ export default function ScannerPage() {
     if (path === "/professionisti/animali" || path === "/professionisti/animali/") {
       showBanner({
         kind: "error",
-        text: "Bloccato: lo scanner deve aprire una scheda animale o la gestione manuale.",
+        text: "Bloccato: questa azione deve aprire una singola scheda animale o una richiesta di accesso.",
       });
       return;
     }
@@ -274,26 +265,26 @@ export default function ScannerPage() {
           return;
         }
 
-        showBanner({ kind: "success", text: "Animale trovato. Controllo accesso…" }, 1200);
+        showBanner({ kind: "success", text: "Animale trovato. Controllo accesso…" }, 1000);
 
-        const grantRes = await fetch(
+        const accessRes = await fetch(
           `/api/professionisti/grants/check?animal_id=${encodeURIComponent(resolvedAnimalId)}`,
           { cache: "no-store" }
         );
-        const grantJson = await grantRes.json().catch(() => ({}));
+        const accessJson = await accessRes.json().catch(() => ({}));
 
-        if (!grantRes.ok) {
-          showBanner({ kind: "error", text: grantJson?.error || "Errore verifica accesso" }, 2500);
+        if (!accessRes.ok) {
+          showBanner({ kind: "error", text: accessJson?.error || "Errore verifica accesso" }, 2500);
           return;
         }
 
-        const hasGrant = Boolean(grantJson?.ok);
+        const hasAccess = Boolean(accessJson?.ok);
 
-        if (!hasGrant) {
+        if (!hasAccess) {
           safePush(
             `/professionisti/richieste-accesso?animalId=${encodeURIComponent(
               resolvedAnimalId
-            )}&chip=${encodeURIComponent(String(ex.chip ?? ""))}`
+            )}&chip=${encodeURIComponent(String(ex.chip ?? ""))}&auto=1`
           );
           return;
         }
@@ -303,7 +294,7 @@ export default function ScannerPage() {
       }
 
       if (ex.kind === "animalId") {
-        showBanner({ kind: "success", text: "Codice riconosciuto. Risolvo animale…" }, 1200);
+        showBanner({ kind: "success", text: "Codice riconosciuto. Risolvo animale…" }, 1000);
 
         const findRes = await fetch(
           `/api/animals/find?q=${encodeURIComponent(String(ex.animalId ?? normalized ?? raw ?? ""))}`,
@@ -328,24 +319,26 @@ export default function ScannerPage() {
           return;
         }
 
-        showBanner({ kind: "success", text: "Animale trovato. Controllo accesso…" }, 1200);
+        showBanner({ kind: "success", text: "Animale trovato. Controllo accesso…" }, 1000);
 
-        const grantRes = await fetch(
+        const accessRes = await fetch(
           `/api/professionisti/grants/check?animal_id=${encodeURIComponent(resolvedAnimalId)}`,
           { cache: "no-store" }
         );
-        const grantJson = await grantRes.json().catch(() => ({}));
+        const accessJson = await accessRes.json().catch(() => ({}));
 
-        if (!grantRes.ok) {
-          showBanner({ kind: "error", text: grantJson?.error || "Errore verifica accesso" }, 2500);
+        if (!accessRes.ok) {
+          showBanner({ kind: "error", text: accessJson?.error || "Errore verifica accesso" }, 2500);
           return;
         }
 
-        const hasGrant = Boolean(grantJson?.ok);
+        const hasAccess = Boolean(accessJson?.ok);
 
-        if (!hasGrant) {
+        if (!hasAccess) {
           safePush(
-            `/professionisti/richieste-accesso?animalId=${encodeURIComponent(resolvedAnimalId)}`
+            `/professionisti/richieste-accesso?animalId=${encodeURIComponent(
+              resolvedAnimalId
+            )}&auto=1`
           );
           return;
         }
@@ -355,7 +348,7 @@ export default function ScannerPage() {
       }
 
       if (ex.kind === "q") {
-        showBanner({ kind: "success", text: "Codice UNIMALIA riconosciuto. Risolvo animale…" }, 1200);
+        showBanner({ kind: "success", text: "Codice UNIMALIA riconosciuto. Risolvo animale…" }, 1000);
 
         const findRes = await fetch(`/api/animals/find?q=${encodeURIComponent(ex.q)}`, {
           cache: "no-store",
@@ -379,21 +372,25 @@ export default function ScannerPage() {
           return;
         }
 
-        const grantRes = await fetch(
+        const accessRes = await fetch(
           `/api/professionisti/grants/check?animal_id=${encodeURIComponent(resolvedAnimalId)}`,
           { cache: "no-store" }
         );
-        const grantJson = await grantRes.json().catch(() => ({}));
+        const accessJson = await accessRes.json().catch(() => ({}));
 
-        if (!grantRes.ok) {
-          showBanner({ kind: "error", text: grantJson?.error || "Errore verifica accesso" }, 2500);
+        if (!accessRes.ok) {
+          showBanner({ kind: "error", text: accessJson?.error || "Errore verifica accesso" }, 2500);
           return;
         }
 
-        const hasGrant = Boolean(grantJson?.ok);
+        const hasAccess = Boolean(accessJson?.ok);
 
-        if (!hasGrant) {
-          safePush(`/professionisti/richieste-accesso?animalId=${encodeURIComponent(resolvedAnimalId)}`);
+        if (!hasAccess) {
+          safePush(
+            `/professionisti/richieste-accesso?animalId=${encodeURIComponent(
+              resolvedAnimalId
+            )}&auto=1`
+          );
           return;
         }
 
@@ -402,7 +399,8 @@ export default function ScannerPage() {
       }
 
       if (ex.kind === "publicToken") {
-        showBanner({ kind: "success", text: "Link UNIMALIA riconosciuto. Apertura…" }, 1500);
+        showBanner({ kind: "success", text: "Link UNIMALIA riconosciuto. Apertura…" }, 1200);
+
         void logScan({
           raw,
           normalized,
@@ -416,6 +414,7 @@ export default function ScannerPage() {
       }
 
       showBanner({ kind: "error", text: ex.error ?? "Codice non valido." });
+
       void logScan({
         raw,
         normalized,
@@ -429,22 +428,26 @@ export default function ScannerPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
-      <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+    <div className="mx-auto max-w-3xl space-y-5">
+      <div className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="text-xs font-semibold tracking-wide text-zinc-500">SCANSIONE</p>
-            <h1 className="mt-2 text-2xl font-semibold text-zinc-900">Apri rapidamente una scheda animale</h1>
+            <h1 className="mt-2 text-2xl font-semibold text-zinc-900">Apri una scheda animale</h1>
             <p className="mt-2 max-w-2xl text-sm text-zinc-600">
-              Scansiona un QR UNIMALIA, leggi un microchip oppure inserisci manualmente un codice.
-              Se l’animale è già autorizzato lo apri subito, altrimenti verrai portato alla richiesta di accesso.
+              Scansiona un QR UNIMALIA, un microchip oppure inserisci manualmente un codice.
+              Se l’animale è già autorizzato si apre subito. Se manca autorizzazione, la richiesta parte automaticamente.
             </p>
           </div>
 
           <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-700">
             <div className="font-medium text-zinc-900">Stato</div>
             <div className="mt-1 flex items-center gap-2">
-              {busy ? <Spinner /> : <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />}
+              {busy ? (
+                <Spinner />
+              ) : (
+                <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
+              )}
               <span>{statusLabel}</span>
             </div>
           </div>
@@ -486,53 +489,51 @@ export default function ScannerPage() {
         </div>
       )}
 
-      <div className="grid gap-3 md:grid-cols-3">
-        <ModeCard
-          active={mode === "camera"}
-          title="Fotocamera"
-          description="Scansiona QR UNIMALIA e codici direttamente dalla camera."
-          icon="📷"
-          onClick={() => setMode("camera")}
-          disabled={busy}
-        />
-        <ModeCard
-          active={mode === "manuale"}
-          title="Inserimento manuale"
-          description="Incolla un link, un microchip o un codice UNIMALIA."
-          icon="⌨️"
-          onClick={() => setMode("manuale")}
-          disabled={busy}
-        />
-        <ModeCard
-          active={mode === "usb"}
-          title="Lettore USB"
-          description="Usa un lettore esterno per scansione rapida in ambulatorio."
-          icon="🔫"
-          onClick={() => setMode("usb")}
-          disabled={busy}
-        />
+      <div className="rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm">
+        <div className="flex flex-wrap gap-2">
+          <ModeButton
+            active={mode === "camera"}
+            title="Fotocamera"
+            icon="📷"
+            onClick={() => setMode("camera")}
+            disabled={busy}
+          />
+          <ModeButton
+            active={mode === "manuale"}
+            title="Manuale"
+            icon="⌨️"
+            onClick={() => setMode("manuale")}
+            disabled={busy}
+          />
+          <ModeButton
+            active={mode === "usb"}
+            title="Lettore USB"
+            icon="🔫"
+            onClick={() => setMode("usb")}
+            disabled={busy}
+          />
+        </div>
       </div>
 
       {mode === "camera" && (
-        <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
+        <div className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
           <div className="mb-4">
-            <h2 className="text-lg font-semibold text-zinc-900">Modalità fotocamera</h2>
+            <h2 className="text-lg font-semibold text-zinc-900">Fotocamera</h2>
             <p className="mt-1 text-sm text-zinc-600">
-              Punta la fotocamera verso un QR UNIMALIA o un codice compatibile.
+              Inquadra un QR UNIMALIA o un codice compatibile.
             </p>
           </div>
 
           <CameraScanner onScan={(value) => handleScan(value)} disabled={busy} />
 
           <div className="mt-4 rounded-2xl bg-zinc-50 p-4 text-xs text-zinc-600">
-            Supporta QR UNIMALIA, UUID diretto e microchip da 15 cifre. Sono accettati anche codici da
-            10 cifre se previsti nel tuo flusso operativo.
+            Supporta QR UNIMALIA, UUID diretto e microchip da 15 cifre. Sono accettati anche codici da 10 cifre se previsti nel tuo flusso operativo.
           </div>
         </div>
       )}
 
       {mode === "manuale" && (
-        <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
+        <div className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
           <div className="mb-4">
             <h2 className="text-lg font-semibold text-zinc-900">Inserimento manuale</h2>
             <p className="mt-1 text-sm text-zinc-600">
@@ -566,7 +567,7 @@ export default function ScannerPage() {
                 onClick={() => void handleScan(manualValue)}
               >
                 {busy ? <Spinner /> : null}
-                <span>Apri scheda animale</span>
+                <span>Apri o richiedi accesso</span>
               </button>
 
               <button
@@ -578,21 +579,16 @@ export default function ScannerPage() {
                 Pulisci
               </button>
             </div>
-
-            <div className="rounded-2xl bg-zinc-50 p-4 text-xs text-zinc-600">
-              Se il microchip non viene trovato, si apre la gestione manuale per creare o associare
-              l’animale.
-            </div>
           </div>
         </div>
       )}
 
       {mode === "usb" && (
-        <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
+        <div className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
           <div className="mb-4">
             <h2 className="text-lg font-semibold text-zinc-900">Lettore USB</h2>
             <p className="mt-1 text-sm text-zinc-600">
-              Usa il lettore collegato per acquisire rapidamente il codice del microchip.
+              Usa il lettore collegato per acquisire rapidamente il microchip.
             </p>
           </div>
 
@@ -600,29 +596,18 @@ export default function ScannerPage() {
         </div>
       )}
 
-      <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <p className="text-xs font-semibold tracking-wide text-zinc-500">COME FUNZIONA</p>
+      <div className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
+        <p className="text-xs font-semibold tracking-wide text-zinc-500">FLUSSO</p>
 
-        <div className="mt-4 grid gap-4 md:grid-cols-3">
-          <div className="rounded-2xl bg-zinc-50 p-4">
-            <div className="text-sm font-semibold text-zinc-900">1. Scansiona o incolla</div>
-            <div className="mt-1 text-xs text-zinc-600">
-              QR UNIMALIA, microchip, UUID o link compatibile.
-            </div>
+        <div className="mt-3 space-y-2 text-sm text-zinc-700">
+          <div className="rounded-2xl bg-zinc-50 px-4 py-3">
+            1. Scansioni o incolli il codice dell’animale.
           </div>
-
-          <div className="rounded-2xl bg-zinc-50 p-4">
-            <div className="text-sm font-semibold text-zinc-900">2. Controllo accesso</div>
-            <div className="mt-1 text-xs text-zinc-600">
-              Se hai già accesso all’animale, la scheda si apre subito.
-            </div>
+          <div className="rounded-2xl bg-zinc-50 px-4 py-3">
+            2. Se hai già accesso, la scheda si apre subito.
           </div>
-
-          <div className="rounded-2xl bg-zinc-50 p-4">
-            <div className="text-sm font-semibold text-zinc-900">3. Se manca accesso</div>
-            <div className="mt-1 text-xs text-zinc-600">
-              Vieni portato alla richiesta di accesso o alla gestione manuale.
-            </div>
+          <div className="rounded-2xl bg-zinc-50 px-4 py-3">
+            3. Se non hai ancora accesso, la richiesta parte automaticamente e il proprietario può approvarla.
           </div>
         </div>
       </div>
