@@ -10,6 +10,8 @@ type FoundAnimal = {
   chip_number: string | null;
 };
 
+type WaitStatus = "idle" | "sending" | "waiting" | "approved" | "error";
+
 export default function RequestAccessClient() {
   const router = useRouter();
   const sp = useSearchParams();
@@ -24,6 +26,11 @@ export default function RequestAccessClient() {
   const [busy, setBusy] = React.useState(false);
   const [done, setDone] = React.useState(false);
   const [autoStarted, setAutoStarted] = React.useState(false);
+  const [status, setStatus] = React.useState<WaitStatus>("idle");
+  const [secondsWaiting, setSecondsWaiting] = React.useState(0);
+
+  const resolvedAnimalId = animal?.id || animalId || null;
+  const resolvedChip = chip || animal?.chip_number || null;
 
   React.useEffect(() => {
     let alive = true;
@@ -78,17 +85,30 @@ export default function RequestAccessClient() {
     };
   }, [animalId, chip]);
 
-  async function sendRequest() {
-    const resolvedAnimalId = animal?.id || animalId || null;
-    const resolvedChip = chip || animal?.chip_number || null;
+  async function checkAccessNow(targetAnimalId: string) {
+    const res = await fetch(
+      `/api/professionisti/grants/check?animal_id=${encodeURIComponent(targetAnimalId)}`,
+      { cache: "no-store" }
+    );
+    const j = await res.json().catch(() => ({}));
 
+    if (!res.ok) {
+      throw new Error(j?.error || "Errore controllo accesso");
+    }
+
+    return Boolean(j?.ok);
+  }
+
+  async function sendRequest() {
     if (!resolvedAnimalId && !resolvedChip) {
       setErr("Dati insufficienti per inviare la richiesta.");
+      setStatus("error");
       return;
     }
 
     setBusy(true);
     setErr(null);
+    setStatus("sending");
 
     try {
       const body = {
@@ -107,12 +127,16 @@ export default function RequestAccessClient() {
       });
 
       const j = await res.json().catch(() => ({}));
+
       if (!res.ok) {
         setErr(j?.error || "Errore invio richiesta");
+        setStatus("error");
         return;
       }
 
       setDone(true);
+      setStatus("waiting");
+      setSecondsWaiting(0);
     } finally {
       setBusy(false);
     }
@@ -124,6 +148,43 @@ export default function RequestAccessClient() {
     void sendRequest();
   }, [auto, animal, done, busy, autoStarted]);
 
+  React.useEffect(() => {
+    if (!done || !resolvedAnimalId || status !== "waiting") return;
+
+    let alive = true;
+
+    const timer = window.setInterval(() => {
+      setSecondsWaiting((s) => s + 2);
+    }, 2000);
+
+    const poller = window.setInterval(async () => {
+      try {
+        const hasAccess = await checkAccessNow(resolvedAnimalId);
+
+        if (!alive) return;
+
+        if (hasAccess) {
+          setStatus("approved");
+          window.clearInterval(timer);
+          window.clearInterval(poller);
+
+          setTimeout(() => {
+            router.replace(`/professionisti/animali/${encodeURIComponent(resolvedAnimalId)}`);
+          }, 900);
+        }
+      } catch (e: any) {
+        if (!alive) return;
+        setErr(e?.message || "Errore controllo accesso");
+      }
+    }, 2500);
+
+    return () => {
+      alive = false;
+      window.clearInterval(timer);
+      window.clearInterval(poller);
+    };
+  }, [done, resolvedAnimalId, status, router]);
+
   return (
     <div className="mx-auto max-w-2xl space-y-5">
       <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
@@ -132,7 +193,8 @@ export default function RequestAccessClient() {
             <p className="text-xs font-semibold tracking-wide text-zinc-500">AUTORIZZAZIONE</p>
             <h1 className="mt-2 text-2xl font-semibold text-zinc-900">Richiesta accesso</h1>
             <p className="mt-2 text-sm text-zinc-600">
-              Se non hai ancora accesso a questo animale, la richiesta viene inviata al proprietario per l’approvazione.
+              Se non hai ancora accesso a questo animale, la richiesta viene inviata al proprietario
+              per l’approvazione.
             </p>
           </div>
 
@@ -196,10 +258,34 @@ export default function RequestAccessClient() {
               )}
             </div>
           ) : (
-            <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
-              <div className="font-semibold">Richiesta inviata</div>
-              <div className="mt-1">
-                Il proprietario può approvare l’accesso dal suo account. Appena approvato, nel prossimo step collegheremo questa schermata all’apertura automatica della scheda animale.
+            <div className="mt-5 space-y-4">
+              {status === "waiting" && (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                  <div className="font-semibold">In attesa di approvazione</div>
+                  <div className="mt-1">
+                    Il proprietario deve autorizzare l’accesso. Questa pagina si aggiorna da sola.
+                  </div>
+                  <div className="mt-2 text-xs opacity-80">
+                    Attesa attuale: {secondsWaiting}s
+                  </div>
+                </div>
+              )}
+
+              {status === "approved" && (
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+                  <div className="font-semibold">Accesso approvato</div>
+                  <div className="mt-1">Sto aprendo automaticamente la scheda animale…</div>
+                </div>
+              )}
+
+              {status === "sending" && (
+                <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-700">
+                  Invio richiesta in corso…
+                </div>
+              )}
+
+              <div className="rounded-2xl bg-zinc-50 p-4 text-sm text-zinc-700">
+                Una volta approvato dal proprietario, l’animale si aprirà automaticamente.
               </div>
             </div>
           )}
