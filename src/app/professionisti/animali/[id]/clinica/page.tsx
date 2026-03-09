@@ -21,7 +21,9 @@ type ClinicEventType =
   | "weight"
   | "allergy"
   | "feeding"
-  | "surgery";
+  | "surgery"
+  | "chronic_condition"
+  | "follow_up";
 
 type ClinicEventRow = {
   id: string;
@@ -63,7 +65,9 @@ type FilterKey =
   | "weight"
   | "allergy"
   | "feeding"
-  | "surgery";
+  | "surgery"
+  | "chronic_condition"
+  | "follow_up";
 
 const FILTERS: Array<{ key: FilterKey; label: string }> = [
   { key: "all", label: "Tutti" },
@@ -71,6 +75,8 @@ const FILTERS: Array<{ key: FilterKey; label: string }> = [
   { key: "vaccine", label: "Vaccini" },
   { key: "exam", label: "Esami" },
   { key: "therapy", label: "Terapie" },
+  { key: "chronic_condition", label: "Patologie croniche" },
+  { key: "follow_up", label: "Ricontrolli" },
   { key: "surgery", label: "Intervento chirurgico" },
   { key: "allergy", label: "Allergie" },
   { key: "feeding", label: "Alimentazione" },
@@ -90,6 +96,10 @@ function typeLabel(t: ClinicEventType) {
       return "Esame";
     case "therapy":
       return "Terapia";
+    case "chronic_condition":
+      return "Patologia cronica";
+    case "follow_up":
+      return "Ricontrollo";
     case "allergy":
       return "Allergia";
     case "feeding":
@@ -961,6 +971,8 @@ export default function ClinicaPage() {
                 <option value="vaccine">Vaccinazione</option>
                 <option value="exam">Esame</option>
                 <option value="therapy">Terapia</option>
+                <option value="chronic_condition">Patologia cronica</option>
+                <option value="follow_up">Prossimo ricontrollo</option>
                 <option value="surgery">Intervento chirurgico</option>
                 <option value="allergy">Allergia</option>
                 <option value="feeding">Alimentazione</option>
@@ -1668,6 +1680,8 @@ export default function ClinicaPage() {
                                   <option value="vaccine">Vaccinazione</option>
                                   <option value="exam">Esame</option>
                                   <option value="therapy">Terapia</option>
+                                  <option value="chronic_condition">Patologia cronica</option>
+                                  <option value="follow_up">Prossimo ricontrollo</option>
                                   <option value="surgery">Intervento chirurgico</option>
                                   <option value="allergy">Allergia</option>
                                   <option value="feeding">Alimentazione</option>

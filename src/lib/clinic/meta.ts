@@ -48,3 +48,19 @@ export function extractCreatedByMemberLabel(e: any): string | null {
 export function extractPriority(e: any): string | null {
   return e?.priority || e?.meta?.priority || null;
 }
+
+export function extractChronicDiagnosis(e: any): string | null {
+  return e?.meta?.diagnosis || null;
+}
+
+export function extractChronicDiagnosisDate(e: any): string | null {
+  return e?.meta?.diagnosis_date || null;
+}
+
+export function extractFollowUpType(e: any): string | null {
+  return e?.meta?.follow_up_type || null;
+}
+
+export function extractFollowUpDate(e: any): string | null {
+  return e?.meta?.scheduled_date || null;
+}
