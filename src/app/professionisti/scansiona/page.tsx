@@ -6,7 +6,7 @@ import UsbScannerMode from "./UsbScannerMode";
 import { normalizeScanResult } from "@/lib/normalizeScanResult";
 import CameraScanner from "./CameraScanner";
 
-type Mode = "camera" | "manuale" | "usb";
+type Mode = "camera" | "codice";
 type Banner = { kind: "success" | "error" | "info"; text: string } | null;
 
 function isUuid(v: string) {
@@ -130,12 +130,14 @@ function Spinner({ className = "" }: { className?: string }) {
 function ModeButton({
   active,
   title,
+  description,
   icon,
   onClick,
   disabled,
 }: {
   active: boolean;
   title: string;
+  description: string;
   icon: string;
   onClick: () => void;
   disabled?: boolean;
@@ -146,15 +148,22 @@ function ModeButton({
       onClick={onClick}
       disabled={disabled}
       className={[
-        "inline-flex items-center gap-2 rounded-2xl border px-4 py-2 text-sm font-semibold transition",
+        "w-full rounded-2xl border p-4 text-left transition",
         active
           ? "border-black bg-black text-white"
-          : "border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-50",
+          : "border-zinc-200 bg-white text-zinc-900 hover:border-zinc-300 hover:bg-zinc-50",
         disabled ? "opacity-60" : "",
       ].join(" ")}
     >
-      <span>{icon}</span>
-      <span>{title}</span>
+      <div className="flex items-start gap-3">
+        <div className="text-xl">{icon}</div>
+        <div>
+          <div className="text-sm font-semibold">{title}</div>
+          <div className={active ? "mt-1 text-xs text-white/80" : "mt-1 text-xs text-zinc-500"}>
+            {description}
+          </div>
+        </div>
+      </div>
     </button>
   );
 }
@@ -168,6 +177,9 @@ export default function ScannerPage() {
   const [banner, setBanner] = useState<Banner>(null);
 
   const bannerTimer = useRef<number | null>(null);
+  const cameraSectionRef = useRef<HTMLDivElement | null>(null);
+  const codeSectionRef = useRef<HTMLDivElement | null>(null);
+  const lastScanRef = useRef<{ code: string; ts: number } | null>(null);
 
   function showBanner(next: Banner, autoMs = 4000) {
     setBanner(next);
@@ -181,20 +193,31 @@ export default function ScannerPage() {
     if (path === "/professionisti/animali" || path === "/professionisti/animali/") {
       showBanner({
         kind: "error",
-        text: "Bloccato: questa azione deve aprire una singola scheda animale o una richiesta di accesso.",
+        text: "Bloccato: lo scanner deve aprire una scheda animale o la gestione manuale.",
       });
       return;
     }
     router.push(path);
   }
 
-  const lastScanRef = useRef<{ code: string; ts: number } | null>(null);
+  function openCameraMode() {
+    setMode("camera");
+    setTimeout(() => {
+      cameraSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 50);
+  }
+
+  function openCodeMode() {
+    setMode("codice");
+    setTimeout(() => {
+      codeSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 50);
+  }
 
   const statusLabel = useMemo(() => {
     if (busy) return "Elaborazione in corso...";
-    if (mode === "camera") return "Fotocamera pronta";
-    if (mode === "manuale") return "Inserimento manuale attivo";
-    return "Lettore USB pronto";
+    if (mode === "camera") return "Fotocamera / webcam pronta";
+    return "Codice manuale / lettore pronto";
   }, [busy, mode]);
 
   async function logScan(payload: {
@@ -265,22 +288,22 @@ export default function ScannerPage() {
           return;
         }
 
-        showBanner({ kind: "success", text: "Animale trovato. Controllo accesso…" }, 1000);
+        showBanner({ kind: "success", text: "Animale trovato. Controllo accesso…" }, 1200);
 
-        const accessRes = await fetch(
+        const grantRes = await fetch(
           `/api/professionisti/grants/check?animal_id=${encodeURIComponent(resolvedAnimalId)}`,
           { cache: "no-store" }
         );
-        const accessJson = await accessRes.json().catch(() => ({}));
+        const grantJson = await grantRes.json().catch(() => ({}));
 
-        if (!accessRes.ok) {
-          showBanner({ kind: "error", text: accessJson?.error || "Errore verifica accesso" }, 2500);
+        if (!grantRes.ok) {
+          showBanner({ kind: "error", text: grantJson?.error || "Errore verifica accesso" }, 2500);
           return;
         }
 
-        const hasAccess = Boolean(accessJson?.ok);
+        const hasGrant = Boolean(grantJson?.ok);
 
-        if (!hasAccess) {
+        if (!hasGrant) {
           safePush(
             `/professionisti/richieste-accesso?animalId=${encodeURIComponent(
               resolvedAnimalId
@@ -294,7 +317,7 @@ export default function ScannerPage() {
       }
 
       if (ex.kind === "animalId") {
-        showBanner({ kind: "success", text: "Codice riconosciuto. Risolvo animale…" }, 1000);
+        showBanner({ kind: "success", text: "Codice riconosciuto. Risolvo animale…" }, 1200);
 
         const findRes = await fetch(
           `/api/animals/find?q=${encodeURIComponent(String(ex.animalId ?? normalized ?? raw ?? ""))}`,
@@ -319,22 +342,22 @@ export default function ScannerPage() {
           return;
         }
 
-        showBanner({ kind: "success", text: "Animale trovato. Controllo accesso…" }, 1000);
+        showBanner({ kind: "success", text: "Animale trovato. Controllo accesso…" }, 1200);
 
-        const accessRes = await fetch(
+        const grantRes = await fetch(
           `/api/professionisti/grants/check?animal_id=${encodeURIComponent(resolvedAnimalId)}`,
           { cache: "no-store" }
         );
-        const accessJson = await accessRes.json().catch(() => ({}));
+        const grantJson = await grantRes.json().catch(() => ({}));
 
-        if (!accessRes.ok) {
-          showBanner({ kind: "error", text: accessJson?.error || "Errore verifica accesso" }, 2500);
+        if (!grantRes.ok) {
+          showBanner({ kind: "error", text: grantJson?.error || "Errore verifica accesso" }, 2500);
           return;
         }
 
-        const hasAccess = Boolean(accessJson?.ok);
+        const hasGrant = Boolean(grantJson?.ok);
 
-        if (!hasAccess) {
+        if (!hasGrant) {
           safePush(
             `/professionisti/richieste-accesso?animalId=${encodeURIComponent(
               resolvedAnimalId
@@ -348,7 +371,7 @@ export default function ScannerPage() {
       }
 
       if (ex.kind === "q") {
-        showBanner({ kind: "success", text: "Codice UNIMALIA riconosciuto. Risolvo animale…" }, 1000);
+        showBanner({ kind: "success", text: "Codice UNIMALIA riconosciuto. Risolvo animale…" }, 1200);
 
         const findRes = await fetch(`/api/animals/find?q=${encodeURIComponent(ex.q)}`, {
           cache: "no-store",
@@ -372,20 +395,20 @@ export default function ScannerPage() {
           return;
         }
 
-        const accessRes = await fetch(
+        const grantRes = await fetch(
           `/api/professionisti/grants/check?animal_id=${encodeURIComponent(resolvedAnimalId)}`,
           { cache: "no-store" }
         );
-        const accessJson = await accessRes.json().catch(() => ({}));
+        const grantJson = await grantRes.json().catch(() => ({}));
 
-        if (!accessRes.ok) {
-          showBanner({ kind: "error", text: accessJson?.error || "Errore verifica accesso" }, 2500);
+        if (!grantRes.ok) {
+          showBanner({ kind: "error", text: grantJson?.error || "Errore verifica accesso" }, 2500);
           return;
         }
 
-        const hasAccess = Boolean(accessJson?.ok);
+        const hasGrant = Boolean(grantJson?.ok);
 
-        if (!hasAccess) {
+        if (!hasGrant) {
           safePush(
             `/professionisti/richieste-accesso?animalId=${encodeURIComponent(
               resolvedAnimalId
@@ -399,8 +422,7 @@ export default function ScannerPage() {
       }
 
       if (ex.kind === "publicToken") {
-        showBanner({ kind: "success", text: "Link UNIMALIA riconosciuto. Apertura…" }, 1200);
-
+        showBanner({ kind: "success", text: "Link UNIMALIA riconosciuto. Apertura…" }, 1500);
         void logScan({
           raw,
           normalized,
@@ -414,7 +436,6 @@ export default function ScannerPage() {
       }
 
       showBanner({ kind: "error", text: ex.error ?? "Codice non valido." });
-
       void logScan({
         raw,
         normalized,
@@ -429,14 +450,17 @@ export default function ScannerPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-5">
-      <div className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <p className="text-xs font-semibold tracking-wide text-zinc-500">SCANSIONE</p>
-            <h1 className="mt-2 text-2xl font-semibold text-zinc-900">Apri una scheda animale</h1>
+            <h1 className="mt-2 text-2xl font-semibold text-zinc-900">
+              Apri rapidamente una scheda animale
+            </h1>
             <p className="mt-2 max-w-2xl text-sm text-zinc-600">
-              Scansiona un QR UNIMALIA, un microchip oppure inserisci manualmente un codice.
-              Se l’animale è già autorizzato si apre subito. Se manca autorizzazione, la richiesta parte automaticamente.
+              Usa la fotocamera del telefono, la webcam del computer oppure inserisci il codice
+              manualmente. Se hai già accesso, la scheda si apre subito. Se manca autorizzazione,
+              parte la richiesta al proprietario.
             </p>
           </div>
 
@@ -451,6 +475,26 @@ export default function ScannerPage() {
               <span>{statusLabel}</span>
             </div>
           </div>
+        </div>
+
+        <div className="mt-5 flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={openCameraMode}
+            disabled={busy}
+            className="inline-flex items-center justify-center rounded-2xl bg-black px-5 py-3 text-sm font-semibold text-white hover:bg-zinc-800 disabled:opacity-60"
+          >
+            Avvia fotocamera / webcam
+          </button>
+
+          <button
+            type="button"
+            onClick={openCodeMode}
+            disabled={busy}
+            className="inline-flex items-center justify-center rounded-2xl border border-zinc-200 bg-white px-5 py-3 text-sm font-semibold text-zinc-900 hover:bg-zinc-50 disabled:opacity-60"
+          >
+            Inserisci codice / usa lettore
+          </button>
         </div>
       </div>
 
@@ -489,55 +533,78 @@ export default function ScannerPage() {
         </div>
       )}
 
-      <div className="rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm">
-        <div className="flex flex-wrap gap-2">
-          <ModeButton
-            active={mode === "camera"}
-            title="Fotocamera"
-            icon="📷"
-            onClick={() => setMode("camera")}
-            disabled={busy}
-          />
-          <ModeButton
-            active={mode === "manuale"}
-            title="Manuale"
-            icon="⌨️"
-            onClick={() => setMode("manuale")}
-            disabled={busy}
-          />
-          <ModeButton
-            active={mode === "usb"}
-            title="Lettore USB"
-            icon="🔫"
-            onClick={() => setMode("usb")}
-            disabled={busy}
-          />
+      <div className="grid gap-3 md:grid-cols-2">
+        <ModeButton
+          active={mode === "camera"}
+          title="Fotocamera / webcam"
+          description="La modalità più rapida per QR UNIMALIA e codici visibili."
+          icon="📷"
+          onClick={openCameraMode}
+          disabled={busy}
+        />
+        <ModeButton
+          active={mode === "codice"}
+          title="Codice / lettore"
+          description="Incolla il codice o usa un lettore USB collegato."
+          icon="⌨️"
+          onClick={openCodeMode}
+          disabled={busy}
+        />
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-3">
+        <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+          <div className="text-sm font-semibold text-zinc-900">1. Acquisisci codice</div>
+          <div className="mt-1 text-xs text-zinc-600">
+            QR UNIMALIA, microchip, UUID o codice compatibile.
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+          <div className="text-sm font-semibold text-zinc-900">2. Verifica accesso</div>
+          <div className="mt-1 text-xs text-zinc-600">
+            Se l’animale è già autorizzato, entri subito nella scheda.
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+          <div className="text-sm font-semibold text-zinc-900">3. Se manca accesso</div>
+          <div className="mt-1 text-xs text-zinc-600">
+            Parte la richiesta al proprietario e resti in attesa di conferma.
+          </div>
         </div>
       </div>
 
       {mode === "camera" && (
-        <div className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
+        <div
+          ref={cameraSectionRef}
+          className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm"
+        >
           <div className="mb-4">
-            <h2 className="text-lg font-semibold text-zinc-900">Fotocamera</h2>
+            <h2 className="text-lg font-semibold text-zinc-900">Fotocamera / webcam</h2>
             <p className="mt-1 text-sm text-zinc-600">
-              Inquadra un QR UNIMALIA o un codice compatibile.
+              Punta la fotocamera del telefono o la webcam del computer verso il codice.
             </p>
           </div>
 
           <CameraScanner onScan={(value) => handleScan(value)} disabled={busy} />
 
           <div className="mt-4 rounded-2xl bg-zinc-50 p-4 text-xs text-zinc-600">
-            Supporta QR UNIMALIA, UUID diretto e microchip da 15 cifre. Sono accettati anche codici da 10 cifre se previsti nel tuo flusso operativo.
+            Supporta QR UNIMALIA, link compatibili, UUID diretti e microchip da 15 cifre.
           </div>
         </div>
       )}
 
-      {mode === "manuale" && (
-        <div className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
-          <div className="mb-4">
-            <h2 className="text-lg font-semibold text-zinc-900">Inserimento manuale</h2>
+      {mode === "codice" && (
+        <div
+          ref={codeSectionRef}
+          className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm space-y-6"
+        >
+          <div>
+            <h2 className="text-lg font-semibold text-zinc-900">Codice / lettore</h2>
             <p className="mt-1 text-sm text-zinc-600">
-              Incolla un link QR, un microchip, un UUID o un codice UNIMALIA.
+              Usa questa area se vuoi incollare un codice manualmente oppure leggere il microchip
+              con un lettore USB.
             </p>
           </div>
 
@@ -567,7 +634,7 @@ export default function ScannerPage() {
                 onClick={() => void handleScan(manualValue)}
               >
                 {busy ? <Spinner /> : null}
-                <span>Apri o richiedi accesso</span>
+                <span>Apri scheda animale</span>
               </button>
 
               <button
@@ -580,37 +647,24 @@ export default function ScannerPage() {
               </button>
             </div>
           </div>
-        </div>
-      )}
 
-      {mode === "usb" && (
-        <div className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
-          <div className="mb-4">
-            <h2 className="text-lg font-semibold text-zinc-900">Lettore USB</h2>
+          <div className="border-t border-zinc-200 pt-5">
+            <h3 className="text-sm font-semibold text-zinc-900">Oppure usa il lettore USB</h3>
             <p className="mt-1 text-sm text-zinc-600">
-              Usa il lettore collegato per acquisire rapidamente il microchip.
+              Se il lettore è collegato, acquisisci qui il codice senza cambiare pagina.
             </p>
+
+            <div className="mt-4">
+              <UsbScannerMode onScan={handleScan} disabled={busy} />
+            </div>
           </div>
 
-          <UsbScannerMode onScan={handleScan} disabled={busy} />
+          <div className="rounded-2xl bg-zinc-50 p-4 text-xs text-zinc-600">
+            Se il microchip non viene trovato, si apre la gestione manuale per creare o associare
+            l’animale.
+          </div>
         </div>
       )}
-
-      <div className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
-        <p className="text-xs font-semibold tracking-wide text-zinc-500">FLUSSO</p>
-
-        <div className="mt-3 space-y-2 text-sm text-zinc-700">
-          <div className="rounded-2xl bg-zinc-50 px-4 py-3">
-            1. Scansioni o incolli il codice dell’animale.
-          </div>
-          <div className="rounded-2xl bg-zinc-50 px-4 py-3">
-            2. Se hai già accesso, la scheda si apre subito.
-          </div>
-          <div className="rounded-2xl bg-zinc-50 px-4 py-3">
-            3. Se non hai ancora accesso, la richiesta parte automaticamente e il proprietario può approvarla.
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
