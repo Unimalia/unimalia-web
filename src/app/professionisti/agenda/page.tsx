@@ -153,22 +153,175 @@ export default function AgendaPage() {
     saveAgendaAppointments(next);
   }
 
+  function getAvailableVetsForSlot(date: string, startTime: string) {
+    if (!settings) return [];
+
+    return settings.vets.filter((vet) => {
+      const shift = resolveVetShift(vet, date, overrides);
+      if (!shift.enabled) return false;
+
+      const visitType = settings.visitTypes.find((item) => item.id === form.visitTypeId);
+      const duration = visitType?.duration || settings.slotMinutes;
+      const endTime = getEndTimeFromDuration(startTime, duration);
+
+      if (startTime < shift.start || endTime > shift.end) return false;
+
+      if (
+        doesIntervalOverlap(startTime, endTime, shift.breakStart, shift.breakEnd) &&
+        shift.breakStart !== "00:00" &&
+        shift.breakEnd !== "00:00"
+      ) {
+        return false;
+      }
+
+      const hasConflict = appointments.some((item) => {
+        if (item.date !== date) return false;
+        if (!appointmentIsActive(item)) return false;
+        if (form.id && item.id === form.id) return false;
+        if (item.vetId !== vet.id) return false;
+
+        return doesIntervalOverlap(startTime, endTime, item.startTime, item.endTime);
+      });
+
+      return !hasConflict;
+    });
+  }
+
+  function getAvailableRoomsForSlot(date: string, startTime: string) {
+    if (!settings) return [];
+
+    const visitType = settings.visitTypes.find((item) => item.id === form.visitTypeId);
+    const duration = visitType?.duration || settings.slotMinutes;
+    const endTime = getEndTimeFromDuration(startTime, duration);
+
+    return settings.rooms.filter((room) => {
+      const hasConflict = appointments.some((item) => {
+        if (item.date !== date) return false;
+        if (!appointmentIsActive(item)) return false;
+        if (form.id && item.id === form.id) return false;
+        if (item.roomId !== room.id) return false;
+
+        return doesIntervalOverlap(startTime, endTime, item.startTime, item.endTime);
+      });
+
+      return !hasConflict;
+    });
+  }
+
+  const availableVetsForForm = useMemo(() => {
+    return getAvailableVetsForSlot(form.date, form.startTime);
+  }, [form.date, form.startTime, form.visitTypeId, appointments, settings, overrides]);
+
+  const availableRoomsForForm = useMemo(() => {
+    return getAvailableRoomsForSlot(form.date, form.startTime);
+  }, [form.date, form.startTime, form.visitTypeId, appointments, settings]);
+
+  useEffect(() => {
+    if (!isModalOpen) return;
+
+    if (availableVetsForForm.length > 0) {
+      const stillValidVet = availableVetsForForm.some((vet) => vet.id === form.vetId);
+      if (!stillValidVet) {
+        setForm((prev) => ({
+          ...prev,
+          vetId: availableVetsForForm[0]?.id || "",
+        }));
+      }
+    }
+
+    if (availableRoomsForForm.length > 0) {
+      const stillValidRoom = availableRoomsForForm.some((room) => room.id === form.roomId);
+      if (!stillValidRoom) {
+        setForm((prev) => ({
+          ...prev,
+          roomId: availableRoomsForForm[0]?.id || "",
+        }));
+      }
+    }
+  }, [
+    isModalOpen,
+    availableVetsForForm,
+    availableRoomsForForm,
+    form.vetId,
+    form.roomId,
+  ]);
+
   function openCreateModal(startTime?: string, vetId?: string, roomId?: string) {
     if (!settings) return;
 
+    const nextStartTime = startTime || "09:00";
+    const nextDate = selectedDate;
+    const defaultVisitTypeId = settings.visitTypes[0]?.id || "";
+
+    const availableVets = settings.vets.filter((vet) => {
+      const shift = resolveVetShift(vet, nextDate, overrides);
+      if (!shift.enabled) return false;
+
+      const visitType = settings.visitTypes.find((item) => item.id === defaultVisitTypeId);
+      const duration = visitType?.duration || settings.slotMinutes;
+      const endTime = getEndTimeFromDuration(nextStartTime, duration);
+
+      if (nextStartTime < shift.start || endTime > shift.end) return false;
+
+      if (
+        doesIntervalOverlap(nextStartTime, endTime, shift.breakStart, shift.breakEnd) &&
+        shift.breakStart !== "00:00" &&
+        shift.breakEnd !== "00:00"
+      ) {
+        return false;
+      }
+
+      const hasConflict = appointments.some((item) => {
+        if (item.date !== nextDate) return false;
+        if (!appointmentIsActive(item)) return false;
+        if (item.vetId !== vet.id) return false;
+
+        return doesIntervalOverlap(nextStartTime, endTime, item.startTime, item.endTime);
+      });
+
+      return !hasConflict;
+    });
+
+    const availableRooms = settings.rooms.filter((room) => {
+      const visitType = settings.visitTypes.find((item) => item.id === defaultVisitTypeId);
+      const duration = visitType?.duration || settings.slotMinutes;
+      const endTime = getEndTimeFromDuration(nextStartTime, duration);
+
+      const hasConflict = appointments.some((item) => {
+        if (item.date !== nextDate) return false;
+        if (!appointmentIsActive(item)) return false;
+        if (item.roomId !== room.id) return false;
+
+        return doesIntervalOverlap(nextStartTime, endTime, item.startTime, item.endTime);
+      });
+
+      return !hasConflict;
+    });
+
+    const resolvedVetId =
+      vetId && availableVets.some((v) => v.id === vetId)
+        ? vetId
+        : availableVets[0]?.id || "";
+
+    const resolvedRoomId =
+      roomId && availableRooms.some((r) => r.id === roomId)
+        ? roomId
+        : availableRooms[0]?.id || "";
+
     setForm({
       id: null,
-      date: selectedDate,
-      startTime: startTime || "09:00",
-      vetId: vetId || settings.vets[0]?.id || "",
-      roomId: roomId || settings.rooms[0]?.id || "",
+      date: nextDate,
+      startTime: nextStartTime,
+      vetId: resolvedVetId,
+      roomId: resolvedRoomId,
       animalId: "",
       animalName: "",
       ownerName: "",
-      visitTypeId: settings.visitTypes[0]?.id || "",
+      visitTypeId: defaultVisitTypeId,
       notes: "",
       status: "confirmed",
     });
+
     setIsModalOpen(true);
   }
 
@@ -751,7 +904,7 @@ export default function AgendaPage() {
                   onChange={(e) => setForm((prev) => ({ ...prev, vetId: e.target.value }))}
                   className="w-full rounded-2xl border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-emerald-500"
                 >
-                  {settings.vets.map((vet) => (
+                  {availableVetsForForm.map((vet) => (
                     <option key={vet.id} value={vet.id}>
                       {vet.name}
                     </option>
@@ -768,7 +921,7 @@ export default function AgendaPage() {
                   onChange={(e) => setForm((prev) => ({ ...prev, roomId: e.target.value }))}
                   className="w-full rounded-2xl border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-emerald-500"
                 >
-                  {settings.rooms.map((room) => (
+                  {availableRoomsForForm.map((room) => (
                     <option key={room.id} value={room.id}>
                       {room.name}
                     </option>
