@@ -127,12 +127,14 @@ export function doesIntervalOverlap(
   startB: string,
   endB: string
 ) {
-  const a1 = timeToMinutes(startA);
-  const a2 = timeToMinutes(endA);
-  const b1 = timeToMinutes(startB);
-  const b2 = timeToMinutes(endB);
+  const aStart = timeToMinutes(startA);
+  const aEnd = timeToMinutes(endA);
+  const bStart = timeToMinutes(startB);
+  const bEnd = timeToMinutes(endB);
 
-  return a1 < b2 && b1 < a2;
+  // Intervalli [start, end)
+  // Quindi 09:00-09:30 NON si sovrappone a 09:30-10:00
+  return aStart < bEnd && bStart < aEnd;
 }
 
 export function appointmentCoversSlot(appointment: AgendaAppointment, slotTime: string) {
