@@ -23,6 +23,7 @@ type Body = {
   vetSignature?: string | null;
   vetSignatureMemberId?: string | null;
   priority?: "low" | "normal" | "high" | "urgent" | null;
+  meta?: Record<string, any> | null;
 };
 
 function isValidDateYYYYMMDD(s: string) {
@@ -128,6 +129,15 @@ export async function POST(req: Request) {
       : null;
 
   const meta: Record<string, any> = {};
+
+  const incomingMeta =
+    body.meta && typeof body.meta === "object" && !Array.isArray(body.meta)
+      ? body.meta
+      : null;
+
+  if (incomingMeta) {
+    Object.assign(meta, incomingMeta);
+  }
 
   if (weightKg) meta.weight_kg = weightKg;
   if (vetSignature) meta.created_by_member_label = vetSignature;

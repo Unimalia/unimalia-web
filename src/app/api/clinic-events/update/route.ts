@@ -18,6 +18,7 @@ type Body = {
   therapyStartDate?: string | null;
   therapyEndDate?: string | null;
   priority?: "low" | "normal" | "high" | "urgent" | null;
+  meta?: Record<string, any> | null;
 };
 
 function isValidDateYYYYMMDD(s: string) {
@@ -128,7 +129,18 @@ export async function POST(req: Request) {
       ? String((body as any).priority)
       : null;
 
-  const nextMeta: Record<string, any> = { ...(((current as any).meta as Record<string, any>) || {}) };
+  const nextMeta: Record<string, any> = {
+    ...(((current as any).meta as Record<string, any>) || {}),
+  };
+
+  const incomingMeta =
+    body.meta && typeof body.meta === "object" && !Array.isArray(body.meta)
+      ? body.meta
+      : null;
+
+  if (incomingMeta) {
+    Object.assign(nextMeta, incomingMeta);
+  }
 
   if (type === "therapy") {
     if (therapyStartDate) nextMeta.therapy_start_date = therapyStartDate;
