@@ -262,7 +262,7 @@ export default function ClinicaPage() {
   const [selectedVetId, setSelectedVetId] = useState<string>("");
   const [therapyStartDate, setTherapyStartDate] = useState("");
   const [therapyEndDate, setTherapyEndDate] = useState("");
-  const [vaccineType, setVaccineType] = useState("");
+  const [selectedVaccines, setSelectedVaccines] = useState<string[]>([]);
   const [vaccineBatch, setVaccineBatch] = useState("");
   const [vaccineNextDue, setVaccineNextDue] = useState("");
   const [animalSpecies, setAnimalSpecies] = useState<string | null>(null);
@@ -303,6 +303,12 @@ export default function ClinicaPage() {
   const [remindEmail, setRemindEmail] = useState(true);
 
   const [reminderPresetDays, setReminderPresetDays] = useState<number | null>(null);
+
+  function toggleSelectedVaccine(value: string) {
+    setSelectedVaccines((prev) =>
+      prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]
+    );
+  }
 
   useEffect(() => {
     (async () => {
@@ -506,7 +512,10 @@ export default function ClinicaPage() {
         animalId: id,
         eventDate: newDate,
         type: newType,
-        title: titleForPayload,
+        title:
+          newType === "vaccine" && selectedVaccines.length > 0
+            ? `Vaccinazione: ${selectedVaccines.join(", ")}`
+            : titleForPayload,
         description: newNotes.trim() || null,
         visibility: "owner" as const,
         weightKg,
@@ -516,11 +525,14 @@ export default function ClinicaPage() {
         meta:
           newType === "vaccine"
             ? {
-                vaccine_type: vaccineType || null,
+                vaccine_types: selectedVaccines,
                 batch_number: vaccineBatch || null,
                 next_due_date: vaccineNextDue || null,
               }
-            : undefined,
+            : null,
+        reminderEnabled,
+        remindAt: reminderEnabled ? remindAt || null : null,
+        remindEmail,
       };
 
       const res = await fetch("/api/clinic-events/create", {
@@ -570,7 +582,7 @@ export default function ClinicaPage() {
       setNewVetSignature("");
       setTherapyStartDate("");
       setTherapyEndDate("");
-      setVaccineType("");
+      setSelectedVaccines([]);
       setVaccineBatch("");
       setVaccineNextDue("");
 
@@ -1058,23 +1070,36 @@ export default function ClinicaPage() {
 
             {newType === "vaccine" ? (
               <div className="grid gap-4 md:col-span-12 md:grid-cols-12">
-                <label className="block md:col-span-4">
-                  <span className={FIELD_LABEL_CLASS}>Vaccino</span>
-                  <select
-                    className={FIELD_CLASS}
-                    value={vaccineType}
-                    onChange={(e) => setVaccineType(e.target.value)}
-                  >
-                    <option value="">Seleziona vaccino</option>
-                    {(animalSpecies === "cat" ? CAT_VACCINES : DOG_VACCINES).map((v) => (
-                      <option key={v.value} value={v.value}>
-                        {v.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                <div className="block md:col-span-6">
+                  <span className={FIELD_LABEL_CLASS}>Vaccini eseguiti</span>
 
-                <label className="block md:col-span-4">
+                  <div className="mt-1 grid gap-2 rounded-2xl border border-zinc-300 bg-zinc-50 p-3">
+                    {(animalSpecies === "cat" ? CAT_VACCINES : DOG_VACCINES).map((v) => {
+                      const checked = selectedVaccines.includes(v.value);
+
+                      return (
+                        <label
+                          key={v.value}
+                          className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800"
+                        >
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4"
+                            checked={checked}
+                            onChange={() => toggleSelectedVaccine(v.value)}
+                          />
+                          <span>{v.label}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+
+                  <p className="mt-1.5 text-xs leading-5 text-zinc-500">
+                    Puoi selezionare più vaccini nello stesso evento.
+                  </p>
+                </div>
+
+                <label className="block md:col-span-3">
                   <span className={FIELD_LABEL_CLASS}>Lotto vaccino</span>
                   <input
                     type="text"
@@ -1085,7 +1110,7 @@ export default function ClinicaPage() {
                   />
                 </label>
 
-                <label className="block md:col-span-4">
+                <label className="block md:col-span-3">
                   <span className={FIELD_LABEL_CLASS}>Prossimo richiamo</span>
                   <input
                     type="date"
