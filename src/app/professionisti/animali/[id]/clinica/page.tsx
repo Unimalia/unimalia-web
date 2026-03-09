@@ -119,6 +119,11 @@ const CAT_VACCINES = [
   { value: "chlamydia", label: "Clamidia" },
 ];
 
+function isCatSpecies(species?: string | null) {
+  const s = String(species || "").trim().toLowerCase();
+  return s === "cat" || s === "gatto";
+}
+
 function visibilityLabel(value: "owner" | "professionals" | "emergency" | string) {
   switch (value) {
     case "owner":
@@ -1074,7 +1079,7 @@ export default function ClinicaPage() {
                   <span className={FIELD_LABEL_CLASS}>Vaccini eseguiti</span>
 
                   <div className="mt-1 grid gap-2 rounded-2xl border border-zinc-300 bg-zinc-50 p-3">
-                    {(animalSpecies === "cat" ? CAT_VACCINES : DOG_VACCINES).map((v) => {
+                    {(isCatSpecies(animalSpecies) ? CAT_VACCINES : DOG_VACCINES).map((v) => {
                       const checked = selectedVaccines.includes(v.value);
 
                       return (
