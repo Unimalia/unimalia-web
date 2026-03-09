@@ -333,6 +333,7 @@ export default function AgendaDemoPage() {
   const [settings, setSettings] = useState<AgendaSettings>(DEFAULT_SETTINGS);
   const [appointments, setAppointments] = useState<DemoAppointment[]>([]);
   const [selectedDate, setSelectedDate] = useState(todayIsoLocal());
+  const [selectedVetFilter, setSelectedVetFilter] = useState<string>("all");
 
   const [bookingTarget, setBookingTarget] = useState<{
     time: string;
@@ -361,12 +362,26 @@ export default function AgendaDemoPage() {
     return appointments.filter((item) => item.date === selectedDate);
   }, [appointments, selectedDate]);
 
+  const activeVetsForDay = useMemo(() => {
+    const dayKey = getDayKeyFromDate(selectedDate);
+
+    return settings.vets.filter((vet) => {
+      const shift = vet.schedule?.[dayKey as keyof typeof vet.schedule];
+      return Boolean(shift?.enabled);
+    });
+  }, [settings.vets, selectedDate]);
+
   const gridRows = useMemo(() => {
     const times = generateTimes("00:00", "23:59", settings.slotMinutes);
     const rows: SlotRow[] = [];
     const dayKey = getDayKeyFromDate(selectedDate);
 
-    for (const vet of settings.vets) {
+    const vetsToShow =
+      selectedVetFilter === "all"
+        ? settings.vets
+        : settings.vets.filter((vet) => vet.id === selectedVetFilter);
+
+    for (const vet of vetsToShow) {
       const shift = vet.schedule?.[dayKey];
       if (!shift || !shift.enabled) continue;
 
@@ -399,7 +414,7 @@ export default function AgendaDemoPage() {
     });
 
     return rows;
-  }, [settings, dayAppointments, selectedDate]);
+  }, [settings, dayAppointments, selectedDate, selectedVetFilter]);
 
   const selectedAnimal = DEMO_ANIMALS.find((a) => a.id === selectedAnimalId);
   const selectedVisitType = settings.visitTypes.find(
@@ -512,6 +527,24 @@ export default function AgendaDemoPage() {
               />
             </div>
 
+            <div className="rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm">
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                Veterinario
+              </label>
+              <select
+                value={selectedVetFilter}
+                onChange={(e) => setSelectedVetFilter(e.target.value)}
+                className="rounded-xl border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-emerald-500"
+              >
+                <option value="all">Tutti i veterinari</option>
+                {activeVetsForDay.map((vet) => (
+                  <option key={vet.id} value={vet.id}>
+                    {vet.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <Link
               href="/professionisti/impostazioni/agenda"
               className="inline-flex items-center justify-center rounded-2xl bg-neutral-900 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:opacity-90"
@@ -554,6 +587,29 @@ export default function AgendaDemoPage() {
             <div className="mt-2 text-3xl font-bold text-neutral-900">
               {stats.followUps}
             </div>
+          </div>
+        </div>
+
+        <div className="mb-6 rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm">
+          <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+            Veterinari in turno nel giorno selezionato
+          </div>
+
+          <div className="mt-3 flex flex-wrap gap-3">
+            {activeVetsForDay.length === 0 ? (
+              <div className="text-sm text-neutral-500">
+                Nessun veterinario attivo in questa data.
+              </div>
+            ) : (
+              activeVetsForDay.map((vet) => (
+                <div
+                  key={vet.id}
+                  className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-800"
+                >
+                  {vet.name}
+                </div>
+              ))
+            )}
           </div>
         </div>
 
