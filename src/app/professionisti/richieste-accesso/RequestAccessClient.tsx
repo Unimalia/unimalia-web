@@ -11,12 +11,11 @@ type FoundAnimal = {
 };
 
 type WaitStatus = "idle" | "sending" | "waiting" | "approved" | "error";
-type ScopeKey = "read" | "write" | "upload";
+type ScopeKey = "read" | "write";
 
 function scopeLabel(scope: ScopeKey) {
   if (scope === "read") return "Lettura";
-  if (scope === "write") return "Modifica";
-  return "Upload allegati";
+  return "Modifica";
 }
 
 export default function RequestAccessClient() {
@@ -35,7 +34,7 @@ export default function RequestAccessClient() {
   const [autoStarted, setAutoStarted] = React.useState(false);
   const [status, setStatus] = React.useState<WaitStatus>("idle");
   const [secondsWaiting, setSecondsWaiting] = React.useState(0);
-  const [selectedScopes, setSelectedScopes] = React.useState<ScopeKey[]>(["read", "write", "upload"]);
+  const [selectedScopes, setSelectedScopes] = React.useState<ScopeKey[]>(["read", "write"]);
 
   const resolvedAnimalId = animal?.id || animalId || null;
   const resolvedChip = chip || animal?.chip_number || null;
@@ -267,7 +266,7 @@ export default function RequestAccessClient() {
             <div className="mt-5 space-y-4">
               <div className="rounded-2xl bg-zinc-50 p-4 text-sm text-zinc-700">
                 {auto
-                  ? "Stiamo inviando automaticamente la richiesta di accesso con permessi completi standard."
+                  ? "Stiamo inviando automaticamente la richiesta di accesso standard."
                   : "Seleziona i permessi richiesti e invia la richiesta al proprietario."}
               </div>
 
@@ -278,7 +277,7 @@ export default function RequestAccessClient() {
                   </label>
 
                   <div className="mt-3 flex flex-col gap-2">
-                    {(["read", "write", "upload"] as ScopeKey[]).map((scope) => (
+                    {(["read", "write"] as ScopeKey[]).map((scope) => (
                       <label
                         key={scope}
                         className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-900"

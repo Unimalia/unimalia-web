@@ -337,7 +337,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 <div className="text-zinc-600">
                   Permessi richiesti:{" "}
                   {currentOwnerRequest.requested_scope?.length
-                    ? currentOwnerRequest.requested_scope.join(", ")
+                    ? currentOwnerRequest.requested_scope
+                        .filter((x) => x === "read" || x === "write")
+                        .map((x) => (x === "read" ? "lettura" : "modifica"))
+                        .join(", ")
                     : "accesso base"}
                 </div>
               </div>

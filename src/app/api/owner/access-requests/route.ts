@@ -125,7 +125,10 @@ export async function POST(req: Request) {
     const admin = supabaseAdmin();
     const validTo = computeValidTo(duration);
 
-    const requestedScope = Array.isArray(reqRow.requested_scope) ? reqRow.requested_scope : [];
+    const requestedScopeRaw = Array.isArray(reqRow.requested_scope) ? reqRow.requested_scope : [];
+    const requestedScope = requestedScopeRaw.filter(
+      (item) => item === "read" || item === "write"
+    );
 
     const { data: existingGrant, error: existingGrantErr } = await admin
       .from("animal_access_grants")
@@ -147,7 +150,7 @@ export async function POST(req: Request) {
           granted_by_user_id: user.id,
           scope_read: requestedScope.includes("read"),
           scope_write: requestedScope.includes("write"),
-          scope_upload: requestedScope.includes("upload"),
+          scope_upload: false,
           purpose: "owner_approved_request",
           valid_from: new Date().toISOString(),
           valid_to: validTo,
@@ -168,7 +171,7 @@ export async function POST(req: Request) {
         grantee_id: reqRow.org_id,
         scope_read: requestedScope.includes("read"),
         scope_write: requestedScope.includes("write"),
-        scope_upload: requestedScope.includes("upload"),
+        scope_upload: false,
         purpose: "owner_approved_request",
         valid_from: new Date().toISOString(),
         valid_to: validTo,
