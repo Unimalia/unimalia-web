@@ -1,459 +1,750 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 type VisitType = {
   id: string;
   label: string;
-  durationMin: number;
-  roomType: "visit" | "surgery";
-  species: "all" | "dog" | "cat";
+  duration: number;
 };
 
 type Vet = {
   id: string;
   name: string;
-  shiftStart: string;
-  shiftEnd: string;
 };
 
 type Room = {
   id: string;
   name: string;
-  type: "visit" | "surgery";
 };
 
-type Appointment = {
+type Animal = {
   id: string;
+  name: string;
+  species: "Cane" | "Gatto";
+  breed: string;
+  ownerName: string;
+  code: string;
+};
+
+type AgendaSettings = {
+  clinicName: string;
+  startHour: string;
+  endHour: string;
+  breakStart: string;
+  breakEnd: string;
+  slotMinutes: number;
+  vets: Vet[];
+  rooms: Room[];
+  visitTypes: VisitType[];
+};
+
+type DemoAppointment = {
+  id: string;
+  date: string;
   time: string;
-  durationMin: number;
   vetId: string;
   roomId: string;
+  animalId: string;
   animalName: string;
+  ownerName: string;
   visitTypeId: string;
+  visitTypeLabel: string;
+  duration: number;
+  notes: string;
+  createdAt: string;
 };
 
-const STORAGE_KEY = "unimalia_agenda_settings_v1";
-
-type AgendaSettingsPayload = {
-  clinicStart: string;
-  clinicEnd: string;
-  lunchStart: string;
-  lunchEnd: string;
-  rooms: Room[];
-  visitSettings: VisitType[];
+type SlotRow = {
+  time: string;
+  isBreak: boolean;
+  vetId: string;
+  roomId: string;
+  appointment?: DemoAppointment;
 };
 
-function loadAgendaSettings(): AgendaSettingsPayload | null {
-  if (typeof window === "undefined") return null;
+const SETTINGS_KEYS = [
+  "unimalia_agenda_settings",
+  "unimalia-agenda-settings",
+  "agenda_settings_demo",
+  "agendaSettings",
+  "unimaliaAgendaSettings",
+];
 
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw) as AgendaSettingsPayload;
-  } catch {
-    return null;
-  }
+const APPOINTMENTS_KEY = "unimalia_agenda_demo_appointments";
+
+const DEFAULT_SETTINGS: AgendaSettings = {
+  clinicName: "Clinica UNIMALIA Demo",
+  startHour: "09:00",
+  endHour: "18:00",
+  breakStart: "13:00",
+  breakEnd: "14:00",
+  slotMinutes: 30,
+  vets: [
+    { id: "vet-1", name: "Dott.ssa Rossi" },
+    { id: "vet-2", name: "Dott. Bianchi" },
+  ],
+  rooms: [
+    { id: "room-1", name: "Visita 1" },
+    { id: "room-2", name: "Visita 2" },
+  ],
+  visitTypes: [
+    { id: "visit", label: "Visita clinica", duration: 30 },
+    { id: "vaccine", label: "Vaccino", duration: 15 },
+    { id: "follow_up", label: "Ricontrollo", duration: 20 },
+    { id: "therapy", label: "Terapia", duration: 30 },
+  ],
+};
+
+const DEMO_ANIMALS: Animal[] = [
+  {
+    id: "animal-demo-1",
+    name: "Luna",
+    species: "Cane",
+    breed: "Labrador",
+    ownerName: "Marco Rossi",
+    code: "UNI-001",
+  },
+  {
+    id: "animal-demo-2",
+    name: "Milo",
+    species: "Gatto",
+    breed: "Europeo",
+    ownerName: "Giulia Bianchi",
+    code: "UNI-002",
+  },
+  {
+    id: "animal-demo-3",
+    name: "Nala",
+    species: "Cane",
+    breed: "Border Collie",
+    ownerName: "Francesca Verdi",
+    code: "UNI-003",
+  },
+  {
+    id: "animal-demo-4",
+    name: "Leo",
+    species: "Gatto",
+    breed: "Maine Coon",
+    ownerName: "Paolo Neri",
+    code: "UNI-004",
+  },
+];
+
+function pad(num: number) {
+  return num.toString().padStart(2, "0");
 }
 
-const DEFAULT_VISIT_TYPES: VisitType[] = [
-  { id: "vaccine", label: "Vaccino", durationMin: 15, roomType: "visit", species: "all" },
-  { id: "visit", label: "Visita base", durationMin: 20, roomType: "visit", species: "all" },
-  {
-    id: "vaccine_blood",
-    label: "Vaccino + esame del sangue",
-    durationMin: 30,
-    roomType: "visit",
-    species: "all",
-  },
-  {
-    id: "cat_check",
-    label: "Controllo gatto",
-    durationMin: 20,
-    roomType: "visit",
-    species: "cat",
-  },
-  {
-    id: "dog_skin",
-    label: "Controllo dermatologico cane",
-    durationMin: 30,
-    roomType: "visit",
-    species: "dog",
-  },
-  { id: "surgery", label: "Intervento", durationMin: 120, roomType: "surgery", species: "all" },
-];
+function todayIsoLocal() {
+  const now = new Date();
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
 
-const VETS: Vet[] = [
-  { id: "x", name: "Dr. X", shiftStart: "11:00", shiftEnd: "20:00" },
-  { id: "y", name: "Dr. Y", shiftStart: "09:00", shiftEnd: "18:00" },
-  { id: "z", name: "Dr. Z", shiftStart: "09:00", shiftEnd: "12:00" },
-  { id: "q", name: "Dr. Q", shiftStart: "10:00", shiftEnd: "19:00" },
-];
-
-const DEFAULT_ROOMS: Room[] = [
-  { id: "visit-1", name: "Stanza Visite 1", type: "visit" },
-  { id: "visit-2", name: "Stanza Visite 2", type: "visit" },
-  { id: "surgery-1", name: "Sala Operatoria", type: "surgery" },
-];
-
-const APPOINTMENTS: Appointment[] = [
-  {
-    id: "a1",
-    time: "09:00",
-    durationMin: 20,
-    vetId: "y",
-    roomId: "visit-1",
-    animalName: "Luna",
-    visitTypeId: "visit",
-  },
-  {
-    id: "a2",
-    time: "09:30",
-    durationMin: 15,
-    vetId: "y",
-    roomId: "visit-2",
-    animalName: "Leo",
-    visitTypeId: "vaccine",
-  },
-  {
-    id: "a3",
-    time: "10:00",
-    durationMin: 120,
-    vetId: "x",
-    roomId: "surgery-1",
-    animalName: "Mia",
-    visitTypeId: "surgery",
-  },
-  {
-    id: "a4",
-    time: "10:00",
-    durationMin: 120,
-    vetId: "q",
-    roomId: "surgery-1",
-    animalName: "Mia",
-    visitTypeId: "surgery",
-  },
-  {
-    id: "a5",
-    time: "10:30",
-    durationMin: 20,
-    vetId: "y",
-    roomId: "visit-1",
-    animalName: "Kira",
-    visitTypeId: "visit",
-  },
-  {
-    id: "a6",
-    time: "11:00",
-    durationMin: 15,
-    vetId: "x",
-    roomId: "visit-2",
-    animalName: "Nina",
-    visitTypeId: "vaccine",
-  },
-];
-
-function toMinutes(hhmm: string) {
-  const [h, m] = hhmm.split(":").map(Number);
+function timeToMinutes(value: string) {
+  const [h, m] = value.split(":").map(Number);
   return h * 60 + m;
 }
 
-function toHHMM(totalMin: number) {
-  const h = Math.floor(totalMin / 60);
-  const m = totalMin % 60;
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+function minutesToTime(total: number) {
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  return `${pad(h)}:${pad(m)}`;
 }
 
-function overlaps(aStart: number, aEnd: number, bStart: number, bEnd: number) {
-  return aStart < bEnd && bStart < aEnd;
+function loadAgendaSettings(): AgendaSettings {
+  if (typeof window === "undefined") return DEFAULT_SETTINGS;
+
+  for (const key of SETTINGS_KEYS) {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) continue;
+
+    try {
+      const parsed = JSON.parse(raw);
+
+      return {
+        clinicName: parsed?.clinicName || DEFAULT_SETTINGS.clinicName,
+        startHour: parsed?.startHour || DEFAULT_SETTINGS.startHour,
+        endHour: parsed?.endHour || DEFAULT_SETTINGS.endHour,
+        breakStart: parsed?.breakStart || DEFAULT_SETTINGS.breakStart,
+        breakEnd: parsed?.breakEnd || DEFAULT_SETTINGS.breakEnd,
+        slotMinutes:
+          typeof parsed?.slotMinutes === "number" && parsed.slotMinutes > 0
+            ? parsed.slotMinutes
+            : DEFAULT_SETTINGS.slotMinutes,
+        vets:
+          Array.isArray(parsed?.vets) && parsed.vets.length > 0
+            ? parsed.vets.map((v: any, index: number) => ({
+                id: v?.id || `vet-${index + 1}`,
+                name: v?.name || `Veterinario ${index + 1}`,
+              }))
+            : DEFAULT_SETTINGS.vets,
+        rooms:
+          Array.isArray(parsed?.rooms) && parsed.rooms.length > 0
+            ? parsed.rooms.map((r: any, index: number) => ({
+                id: r?.id || `room-${index + 1}`,
+                name: r?.name || `Stanza ${index + 1}`,
+              }))
+            : DEFAULT_SETTINGS.rooms,
+        visitTypes:
+          Array.isArray(parsed?.visitTypes) && parsed.visitTypes.length > 0
+            ? parsed.visitTypes.map((t: any, index: number) => ({
+                id: t?.id || `type-${index + 1}`,
+                label: t?.label || `Tipo visita ${index + 1}`,
+                duration:
+                  typeof t?.duration === "number" && t.duration > 0 ? t.duration : 30,
+              }))
+            : DEFAULT_SETTINGS.visitTypes,
+      };
+    } catch {
+      // ignora valori corrotti e continua
+    }
+  }
+
+  return DEFAULT_SETTINGS;
 }
 
-function isInLunchBreak(start: number, end: number, lunchStart: string, lunchEnd: string) {
-  const lunchStartMin = toMinutes(lunchStart);
-  const lunchEndMin = toMinutes(lunchEnd);
-  return overlaps(start, end, lunchStartMin, lunchEndMin);
+function loadAppointments(): DemoAppointment[] {
+  if (typeof window === "undefined") return [];
+
+  const raw = window.localStorage.getItem(APPOINTMENTS_KEY);
+  if (!raw) return [];
+
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
 }
 
-function getVisitTypeById(id: string, visitTypes: VisitType[]) {
-  return visitTypes.find((v) => v.id === id) || null;
+function saveAppointments(items: DemoAppointment[]) {
+  window.localStorage.setItem(APPOINTMENTS_KEY, JSON.stringify(items));
+}
+
+function isBreakTime(
+  time: string,
+  breakStart: string,
+  breakEnd: string
+): boolean {
+  const t = timeToMinutes(time);
+  return t >= timeToMinutes(breakStart) && t < timeToMinutes(breakEnd);
+}
+
+function generateTimes(startHour: string, endHour: string, slotMinutes: number) {
+  const start = timeToMinutes(startHour);
+  const end = timeToMinutes(endHour);
+
+  const times: string[] = [];
+  for (let cursor = start; cursor < end; cursor += slotMinutes) {
+    times.push(minutesToTime(cursor));
+  }
+
+  return times;
 }
 
 export default function AgendaDemoPage() {
-  const [clinicStart, setClinicStart] = useState("09:00");
-  const [clinicEnd, setClinicEnd] = useState("19:00");
-  const [lunchStart, setLunchStart] = useState("13:00");
-  const [lunchEnd, setLunchEnd] = useState("14:00");
-  const [visitTypes, setVisitTypes] = useState<VisitType[]>(DEFAULT_VISIT_TYPES);
-  const [rooms, setRooms] = useState<Room[]>(DEFAULT_ROOMS);
+  const [mounted, setMounted] = useState(false);
+  const [settings, setSettings] = useState<AgendaSettings>(DEFAULT_SETTINGS);
+  const [appointments, setAppointments] = useState<DemoAppointment[]>([]);
+  const [selectedDate, setSelectedDate] = useState(todayIsoLocal());
 
-  const [animalName, setAnimalName] = useState("Luna");
-  const [species, setSpecies] = useState<"dog" | "cat">("dog");
-  const [vetId, setVetId] = useState("y");
-  const [visitTypeId, setVisitTypeId] = useState("vaccine");
+  const [bookingTarget, setBookingTarget] = useState<{
+    time: string;
+    vetId: string;
+    roomId: string;
+  } | null>(null);
+
+  const [selectedAnimalId, setSelectedAnimalId] = useState(DEMO_ANIMALS[0].id);
+  const [selectedVisitTypeId, setSelectedVisitTypeId] = useState(
+    DEFAULT_SETTINGS.visitTypes[0].id
+  );
+  const [bookingNotes, setBookingNotes] = useState("");
 
   useEffect(() => {
-    const saved = loadAgendaSettings();
-    if (!saved) return;
+    setMounted(true);
 
-    setClinicStart(saved.clinicStart || "09:00");
-    setClinicEnd(saved.clinicEnd || "19:00");
-    setLunchStart(saved.lunchStart || "13:00");
-    setLunchEnd(saved.lunchEnd || "14:00");
-    setVisitTypes(Array.isArray(saved.visitSettings) ? saved.visitSettings : DEFAULT_VISIT_TYPES);
-    setRooms(Array.isArray(saved.rooms) ? saved.rooms : DEFAULT_ROOMS);
+    const loadedSettings = loadAgendaSettings();
+    setSettings(loadedSettings);
+    setSelectedVisitTypeId(loadedSettings.visitTypes[0]?.id || "");
+
+    const loadedAppointments = loadAppointments();
+    setAppointments(loadedAppointments);
   }, []);
 
-  const filteredVisitTypes = useMemo(() => {
-    return visitTypes.filter((v) => v.species === "all" || v.species === species);
-  }, [species, visitTypes]);
+  const dayAppointments = useMemo(() => {
+    return appointments.filter((item) => item.date === selectedDate);
+  }, [appointments, selectedDate]);
 
-  const selectedVisitType = useMemo(() => {
-    const match = filteredVisitTypes.find((v) => v.id === visitTypeId);
-    return match || filteredVisitTypes[0] || null;
-  }, [filteredVisitTypes, visitTypeId]);
+  const gridRows = useMemo(() => {
+    const times = generateTimes(
+      settings.startHour,
+      settings.endHour,
+      settings.slotMinutes
+    );
 
-  const selectedVet = useMemo(() => {
-    return VETS.find((v) => v.id === vetId) || null;
-  }, [vetId]);
+    const rows: SlotRow[] = [];
 
-  const availableSlots = useMemo(() => {
-    if (!selectedVisitType || !selectedVet) return [];
+    for (const time of times) {
+      for (const vet of settings.vets) {
+        for (const room of settings.rooms) {
+          const appointment = dayAppointments.find(
+            (item) =>
+              item.time === time &&
+              item.vetId === vet.id &&
+              item.roomId === room.id
+          );
 
-    const duration = selectedVisitType.durationMin;
-    const vetStart = Math.max(toMinutes(selectedVet.shiftStart), toMinutes(clinicStart));
-    const vetEnd = Math.min(toMinutes(selectedVet.shiftEnd), toMinutes(clinicEnd));
-
-    const candidateRooms = rooms.filter((r) => r.type === selectedVisitType.roomType);
-
-    const slots: Array<{ time: string; roomName: string }> = [];
-
-    for (let t = vetStart; t + duration <= vetEnd; t += 15) {
-      const slotEnd = t + duration;
-
-      if (isInLunchBreak(t, slotEnd, lunchStart, lunchEnd)) continue;
-
-      const vetBusy = APPOINTMENTS.some((a) => {
-        if (a.vetId !== selectedVet.id) return false;
-        const aStart = toMinutes(a.time);
-        const aEnd = aStart + a.durationMin;
-        return overlaps(t, slotEnd, aStart, aEnd);
-      });
-
-      if (vetBusy) continue;
-
-      const freeRoom = candidateRooms.find((room) => {
-        const roomBusy = APPOINTMENTS.some((a) => {
-          if (a.roomId !== room.id) return false;
-          const aStart = toMinutes(a.time);
-          const aEnd = aStart + a.durationMin;
-          return overlaps(t, slotEnd, aStart, aEnd);
-        });
-
-        return !roomBusy;
-      });
-
-      if (!freeRoom) continue;
-
-      slots.push({
-        time: toHHMM(t),
-        roomName: freeRoom.name,
-      });
+          rows.push({
+            time,
+            isBreak: isBreakTime(time, settings.breakStart, settings.breakEnd),
+            vetId: vet.id,
+            roomId: room.id,
+            appointment,
+          });
+        }
+      }
     }
 
-    return slots.slice(0, 8);
-  }, [selectedVisitType, selectedVet, rooms, clinicStart, clinicEnd, lunchStart, lunchEnd]);
+    return rows;
+  }, [settings, dayAppointments]);
 
-  const todayAgenda = useMemo(() => {
-    return APPOINTMENTS.map((a) => {
-      const vt = getVisitTypeById(a.visitTypeId, visitTypes);
-      const vet = VETS.find((v) => v.id === a.vetId);
-      const room = rooms.find((r) => r.id === a.roomId);
+  const selectedAnimal = DEMO_ANIMALS.find((a) => a.id === selectedAnimalId);
+  const selectedVisitType = settings.visitTypes.find(
+    (t) => t.id === selectedVisitTypeId
+  );
 
-      return {
-        ...a,
-        visitTypeLabel: vt?.label || a.visitTypeId,
-        vetName: vet?.name || a.vetId,
-        roomName: room?.name || a.roomId,
-      };
-    }).sort((a, b) => toMinutes(a.time) - toMinutes(b.time));
-  }, [visitTypes, rooms]);
+  function openBooking(time: string, vetId: string, roomId: string) {
+    setBookingTarget({ time, vetId, roomId });
+    setSelectedAnimalId(DEMO_ANIMALS[0]?.id || "");
+    setSelectedVisitTypeId(settings.visitTypes[0]?.id || "");
+    setBookingNotes("");
+  }
+
+  function closeBooking() {
+    setBookingTarget(null);
+    setBookingNotes("");
+  }
+
+  function handleCreateAppointment() {
+    if (!bookingTarget || !selectedAnimal || !selectedVisitType) return;
+
+    const alreadyExists = appointments.some(
+      (item) =>
+        item.date === selectedDate &&
+        item.time === bookingTarget.time &&
+        item.vetId === bookingTarget.vetId &&
+        item.roomId === bookingTarget.roomId
+    );
+
+    if (alreadyExists) {
+      alert("Questo slot è già occupato.");
+      return;
+    }
+
+    const newAppointment: DemoAppointment = {
+      id: crypto.randomUUID(),
+      date: selectedDate,
+      time: bookingTarget.time,
+      vetId: bookingTarget.vetId,
+      roomId: bookingTarget.roomId,
+      animalId: selectedAnimal.id,
+      animalName: selectedAnimal.name,
+      ownerName: selectedAnimal.ownerName,
+      visitTypeId: selectedVisitType.id,
+      visitTypeLabel: selectedVisitType.label,
+      duration: selectedVisitType.duration,
+      notes: bookingNotes.trim(),
+      createdAt: new Date().toISOString(),
+    };
+
+    const updated = [...appointments, newAppointment];
+    setAppointments(updated);
+    saveAppointments(updated);
+    closeBooking();
+  }
+
+  function handleDeleteAppointment(id: string) {
+    const confirmed = window.confirm("Vuoi eliminare questo appuntamento?");
+    if (!confirmed) return;
+
+    const updated = appointments.filter((item) => item.id !== id);
+    setAppointments(updated);
+    saveAppointments(updated);
+  }
+
+  const stats = useMemo(() => {
+    const total = dayAppointments.length;
+    const vaccines = dayAppointments.filter((a) => a.visitTypeId === "vaccine").length;
+    const followUps = dayAppointments.filter((a) => a.visitTypeId === "follow_up").length;
+
+    return { total, vaccines, followUps };
+  }, [dayAppointments]);
+
+  if (!mounted) {
+    return (
+      <div className="p-6">
+        <div className="text-sm text-neutral-500">Caricamento agenda demo...</div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-zinc-50">
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mb-8 rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <div className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
-                Demo agenda UNIMALIA
-              </div>
-              <h1 className="mt-2 text-3xl font-bold tracking-tight text-zinc-900">
-                Agenda clinica intelligente
-              </h1>
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-600">
-                Il veterinario sceglie animale, specie e tipo visita. UNIMALIA propone
-                automaticamente i primi slot liberi compatibili con turno, pausa comune e stanze.
-              </p>
+    <div className="min-h-screen bg-neutral-50">
+      <div className="mx-auto max-w-7xl p-6">
+        <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-sm font-medium uppercase tracking-wide text-emerald-700">
+              UNIMALIA · Demo veterinario
+            </p>
+            <h1 className="mt-1 text-3xl font-bold text-neutral-900">
+              Agenda clinica demo
+            </h1>
+            <p className="mt-2 max-w-3xl text-sm text-neutral-600">
+              Obiettivo demo: mostrare in pochi minuti agenda, identità animale e
+              cartella clinica. Ora il pulsante <strong>Prenota</strong> crea davvero
+              un appuntamento in localStorage.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm">
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                Data agenda
+              </label>
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="rounded-xl border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-emerald-500"
+              />
             </div>
 
-            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
-              Pausa clinica automatica: {lunchStart}–{lunchEnd}
+            <Link
+              href="/professionisti/impostazioni/agenda"
+              className="inline-flex items-center justify-center rounded-2xl bg-neutral-900 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:opacity-90"
+            >
+              Apri impostazioni agenda
+            </Link>
+          </div>
+        </div>
+
+        <div className="mb-6 grid gap-4 md:grid-cols-4">
+          <div className="rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm">
+            <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+              Clinica
+            </div>
+            <div className="mt-2 text-lg font-bold text-neutral-900">
+              {settings.clinicName}
+            </div>
+          </div>
+
+          <div className="rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm">
+            <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+              Appuntamenti del giorno
+            </div>
+            <div className="mt-2 text-3xl font-bold text-neutral-900">{stats.total}</div>
+          </div>
+
+          <div className="rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm">
+            <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+              Vaccini
+            </div>
+            <div className="mt-2 text-3xl font-bold text-neutral-900">
+              {stats.vaccines}
+            </div>
+          </div>
+
+          <div className="rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm">
+            <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+              Ricontrolli
+            </div>
+            <div className="mt-2 text-3xl font-bold text-neutral-900">
+              {stats.followUps}
             </div>
           </div>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-12">
-          <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm lg:col-span-4">
-            <h2 className="text-lg font-semibold text-zinc-900">Prenotazione rapida</h2>
-            <p className="mt-1 text-sm text-zinc-600">
-              Simula la prenotazione come farebbe una clinica medio-piccola.
-            </p>
-
-            <div className="mt-6 space-y-4">
-              <label className="block">
-                <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-zinc-700">
-                  Nome animale
-                </span>
-                <input
-                  value={animalName}
-                  onChange={(e) => setAnimalName(e.target.value)}
-                  className="w-full rounded-xl border border-zinc-300 bg-zinc-50 px-3 py-2.5 text-sm text-zinc-900 outline-none focus:border-zinc-400 focus:bg-white"
-                />
-              </label>
-
-              <label className="block">
-                <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-zinc-700">
-                  Specie
-                </span>
-                <select
-                  value={species}
-                  onChange={(e) => {
-                    const next = e.target.value as "dog" | "cat";
-                    setSpecies(next);
-                    const nextOptions = visitTypes.filter(
-                      (v) => v.species === "all" || v.species === next
-                    );
-                    if (!nextOptions.some((v) => v.id === visitTypeId)) {
-                      setVisitTypeId(nextOptions[0]?.id || "vaccine");
-                    }
-                  }}
-                  className="w-full rounded-xl border border-zinc-300 bg-zinc-50 px-3 py-2.5 text-sm text-zinc-900 outline-none focus:border-zinc-400 focus:bg-white"
-                >
-                  <option value="dog">Cane</option>
-                  <option value="cat">Gatto</option>
-                </select>
-              </label>
-
-              <label className="block">
-                <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-zinc-700">
-                  Veterinario
-                </span>
-                <select
-                  value={vetId}
-                  onChange={(e) => setVetId(e.target.value)}
-                  className="w-full rounded-xl border border-zinc-300 bg-zinc-50 px-3 py-2.5 text-sm text-zinc-900 outline-none focus:border-zinc-400 focus:bg-white"
-                >
-                  {VETS.map((vet) => (
-                    <option key={vet.id} value={vet.id}>
-                      {vet.name} ({vet.shiftStart}–{vet.shiftEnd})
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="block">
-                <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-zinc-700">
-                  Tipo visita
-                </span>
-                <select
-                  value={visitTypeId}
-                  onChange={(e) => setVisitTypeId(e.target.value)}
-                  className="w-full rounded-xl border border-zinc-300 bg-zinc-50 px-3 py-2.5 text-sm text-zinc-900 outline-none focus:border-zinc-400 focus:bg-white"
-                >
-                  {filteredVisitTypes.map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.label} ({v.durationMin} min)
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-
-            <div className="mt-6 rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-              <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                Logica automatica
-              </div>
-              <ul className="mt-3 space-y-2 text-sm text-zinc-700">
-                <li>• legge turno del veterinario</li>
-                <li>• salta la pausa 13:00–14:00</li>
-                <li>• controlla la stanza richiesta</li>
-                <li>• propone i primi slot davvero liberi</li>
-              </ul>
-            </div>
-          </section>
-
-          <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm lg:col-span-4">
-            <h2 className="text-lg font-semibold text-zinc-900">Primi slot disponibili</h2>
-            <p className="mt-1 text-sm text-zinc-600">
-              Proposta automatica per {animalName || "animale"}.
-            </p>
-
-            <div className="mt-6 space-y-3">
-              {availableSlots.length === 0 ? (
-                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-                  Nessuno slot disponibile con questi vincoli.
-                </div>
-              ) : (
-                availableSlots.map((slot) => (
-                  <div
-                    key={`${slot.time}-${slot.roomName}`}
-                    className="flex items-center justify-between rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3"
-                  >
-                    <div>
-                      <div className="text-base font-semibold text-zinc-900">{slot.time}</div>
-                      <div className="text-xs text-zinc-500">{slot.roomName}</div>
-                    </div>
-
-                    <button className="rounded-xl bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-900">
-                      Prenota
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
-          </section>
-
-          <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm lg:col-span-4">
-            <h2 className="text-lg font-semibold text-zinc-900">Agenda di oggi</h2>
-            <p className="mt-1 text-sm text-zinc-600">
-              Configurazione reale caricata dalle impostazioni agenda della clinica.
-            </p>
-
-            <div className="mt-6 space-y-3">
-              {todayAgenda.map((item) => (
-                <div
-                  key={item.id}
-                  className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="text-base font-semibold text-zinc-900">{item.time}</div>
-                    <div className="rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-semibold text-zinc-700">
-                      {item.roomName}
-                    </div>
-                  </div>
-
-                  <div className="mt-2 text-sm font-semibold text-zinc-900">
-                    {item.animalName} • {item.visitTypeLabel}
-                  </div>
-
-                  <div className="mt-1 text-xs text-zinc-500">
-                    {item.vetName} • {item.durationMin} min
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
+        <div className="mb-6 rounded-3xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 shadow-sm">
+          <strong>Nota demo:</strong> gli appuntamenti vengono salvati in localStorage
+          con chiave <code>unimalia_agenda_demo_appointments</code>. Quindi restano
+          visibili al refresh del browser, ma non sono ancora su database.
         </div>
+
+        <div className="overflow-hidden rounded-3xl border border-neutral-200 bg-white shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="min-w-full border-collapse">
+              <thead className="bg-neutral-100">
+                <tr>
+                  <th className="border-b border-neutral-200 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-neutral-600">
+                    Ora
+                  </th>
+                  <th className="border-b border-neutral-200 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-neutral-600">
+                    Veterinario
+                  </th>
+                  <th className="border-b border-neutral-200 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-neutral-600">
+                    Stanza
+                  </th>
+                  <th className="border-b border-neutral-200 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-neutral-600">
+                    Stato
+                  </th>
+                  <th className="border-b border-neutral-200 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-neutral-600">
+                    Animale
+                  </th>
+                  <th className="border-b border-neutral-200 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-neutral-600">
+                    Prestazione
+                  </th>
+                  <th className="border-b border-neutral-200 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-neutral-600">
+                    Azioni
+                  </th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {gridRows.map((row) => {
+                  const vet = settings.vets.find((v) => v.id === row.vetId);
+                  const room = settings.rooms.find((r) => r.id === row.roomId);
+
+                  if (row.isBreak) {
+                    return (
+                      <tr
+                        key={`${row.time}-${row.vetId}-${row.roomId}`}
+                        className="bg-neutral-50"
+                      >
+                        <td className="border-b border-neutral-100 px-4 py-4 text-sm font-semibold text-neutral-700">
+                          {row.time}
+                        </td>
+                        <td className="border-b border-neutral-100 px-4 py-4 text-sm text-neutral-600">
+                          {vet?.name}
+                        </td>
+                        <td className="border-b border-neutral-100 px-4 py-4 text-sm text-neutral-600">
+                          {room?.name}
+                        </td>
+                        <td
+                          colSpan={4}
+                          className="border-b border-neutral-100 px-4 py-4 text-sm font-medium text-amber-700"
+                        >
+                          Pausa clinica
+                        </td>
+                      </tr>
+                    );
+                  }
+
+                  return (
+                    <tr
+                      key={`${row.time}-${row.vetId}-${row.roomId}`}
+                      className="align-top hover:bg-neutral-50"
+                    >
+                      <td className="border-b border-neutral-100 px-4 py-4 text-sm font-semibold text-neutral-800">
+                        {row.time}
+                      </td>
+                      <td className="border-b border-neutral-100 px-4 py-4 text-sm text-neutral-700">
+                        {vet?.name}
+                      </td>
+                      <td className="border-b border-neutral-100 px-4 py-4 text-sm text-neutral-700">
+                        {room?.name}
+                      </td>
+                      <td className="border-b border-neutral-100 px-4 py-4 text-sm">
+                        {row.appointment ? (
+                          <span className="inline-flex rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800">
+                            Occupato
+                          </span>
+                        ) : (
+                          <span className="inline-flex rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-800">
+                            Libero
+                          </span>
+                        )}
+                      </td>
+                      <td className="border-b border-neutral-100 px-4 py-4 text-sm text-neutral-700">
+                        {row.appointment ? (
+                          <div className="space-y-1">
+                            <div className="font-semibold text-neutral-900">
+                              {row.appointment.animalName}
+                            </div>
+                            <div className="text-xs text-neutral-500">
+                              Proprietario: {row.appointment.ownerName}
+                            </div>
+                            <Link
+                              href={`/professionisti/animali/${row.appointment.animalId}`}
+                              className="inline-flex text-xs font-semibold text-emerald-700 hover:underline"
+                            >
+                              Apri scheda animale
+                            </Link>
+                          </div>
+                        ) : (
+                          <span className="text-neutral-400">—</span>
+                        )}
+                      </td>
+                      <td className="border-b border-neutral-100 px-4 py-4 text-sm text-neutral-700">
+                        {row.appointment ? (
+                          <div className="space-y-1">
+                            <div className="font-medium text-neutral-900">
+                              {row.appointment.visitTypeLabel}
+                            </div>
+                            <div className="text-xs text-neutral-500">
+                              {row.appointment.duration} min
+                            </div>
+                            {row.appointment.notes ? (
+                              <div className="text-xs text-neutral-500">
+                                Note: {row.appointment.notes}
+                              </div>
+                            ) : null}
+                          </div>
+                        ) : (
+                          <span className="text-neutral-400">—</span>
+                        )}
+                      </td>
+                      <td className="border-b border-neutral-100 px-4 py-4 text-sm">
+                        {row.appointment ? (
+                          <button
+                            onClick={() => handleDeleteAppointment(row.appointment!.id)}
+                            className="inline-flex rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-100"
+                          >
+                            Elimina
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => openBooking(row.time, row.vetId, row.roomId)}
+                            className="inline-flex rounded-2xl bg-neutral-900 px-3 py-2 text-xs font-semibold text-white transition hover:opacity-90"
+                          >
+                            Prenota
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+
+                {gridRows.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={7}
+                      className="px-4 py-10 text-center text-sm text-neutral-500"
+                    >
+                      Nessuno slot generato. Controlla le impostazioni agenda.
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {bookingTarget ? (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+            <div className="w-full max-w-2xl rounded-3xl bg-white p-6 shadow-2xl">
+              <div className="mb-6 flex items-start justify-between gap-4">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                    Nuovo appuntamento
+                  </div>
+                  <h2 className="mt-1 text-2xl font-bold text-neutral-900">
+                    Prenota slot {bookingTarget.time}
+                  </h2>
+                  <p className="mt-2 text-sm text-neutral-600">
+                    Data: <strong>{selectedDate}</strong> · Veterinario:{" "}
+                    <strong>
+                      {settings.vets.find((v) => v.id === bookingTarget.vetId)?.name}
+                    </strong>{" "}
+                    · Stanza:{" "}
+                    <strong>
+                      {settings.rooms.find((r) => r.id === bookingTarget.roomId)?.name}
+                    </strong>
+                  </p>
+                </div>
+
+                <button
+                  onClick={closeBooking}
+                  className="rounded-2xl border border-neutral-300 px-3 py-2 text-sm font-semibold text-neutral-700 hover:bg-neutral-50"
+                >
+                  Chiudi
+                </button>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-neutral-800">
+                    Animale
+                  </label>
+                  <select
+                    value={selectedAnimalId}
+                    onChange={(e) => setSelectedAnimalId(e.target.value)}
+                    className="w-full rounded-2xl border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-emerald-500"
+                  >
+                    {DEMO_ANIMALS.map((animal) => (
+                      <option key={animal.id} value={animal.id}>
+                        {animal.name} · {animal.species} · {animal.ownerName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-neutral-800">
+                    Tipo prestazione
+                  </label>
+                  <select
+                    value={selectedVisitTypeId}
+                    onChange={(e) => setSelectedVisitTypeId(e.target.value)}
+                    className="w-full rounded-2xl border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-emerald-500"
+                  >
+                    {settings.visitTypes.map((type) => (
+                      <option key={type.id} value={type.id}>
+                        {type.label} · {type.duration} min
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {selectedAnimal ? (
+                <div className="mt-4 rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                    Identità animale
+                  </div>
+                  <div className="mt-2 text-sm text-neutral-700">
+                    <strong>{selectedAnimal.name}</strong> · {selectedAnimal.species} ·{" "}
+                    {selectedAnimal.breed}
+                  </div>
+                  <div className="mt-1 text-sm text-neutral-700">
+                    Proprietario: {selectedAnimal.ownerName}
+                  </div>
+                  <div className="mt-1 text-sm text-neutral-700">
+                    Codice animale: {selectedAnimal.code}
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="mt-4">
+                <label className="mb-2 block text-sm font-semibold text-neutral-800">
+                  Note appuntamento
+                </label>
+                <textarea
+                  value={bookingNotes}
+                  onChange={(e) => setBookingNotes(e.target.value)}
+                  rows={4}
+                  placeholder="Inserisci note cliniche o organizzative..."
+                  className="w-full rounded-2xl border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                <button
+                  onClick={closeBooking}
+                  className="rounded-2xl border border-neutral-300 px-4 py-3 text-sm font-semibold text-neutral-700 hover:bg-neutral-50"
+                >
+                  Annulla
+                </button>
+                <button
+                  onClick={handleCreateAppointment}
+                  className="rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-700"
+                >
+                  Conferma prenotazione
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );
