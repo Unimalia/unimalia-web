@@ -9,9 +9,28 @@ type VisitType = {
   duration: number;
 };
 
+type WeeklyShift = {
+  enabled: boolean;
+  start: string;
+  end: string;
+  breakStart: string;
+  breakEnd: string;
+};
+
+type VetSchedule = {
+  monday: WeeklyShift;
+  tuesday: WeeklyShift;
+  wednesday: WeeklyShift;
+  thursday: WeeklyShift;
+  friday: WeeklyShift;
+  saturday: WeeklyShift;
+  sunday: WeeklyShift;
+};
+
 type Vet = {
   id: string;
   name: string;
+  schedule: VetSchedule;
 };
 
 type Room = {
@@ -82,8 +101,32 @@ const DEFAULT_SETTINGS: AgendaSettings = {
   breakEnd: "14:00",
   slotMinutes: 30,
   vets: [
-    { id: "vet-1", name: "Dott.ssa Rossi" },
-    { id: "vet-2", name: "Dott. Bianchi" },
+    {
+      id: "vet-1",
+      name: "Dott.ssa Rossi",
+      schedule: {
+        monday: { enabled: true, start: "09:00", end: "18:00", breakStart: "13:00", breakEnd: "14:00" },
+        tuesday: { enabled: true, start: "09:00", end: "18:00", breakStart: "13:00", breakEnd: "14:00" },
+        wednesday: { enabled: true, start: "09:00", end: "18:00", breakStart: "13:00", breakEnd: "14:00" },
+        thursday: { enabled: true, start: "09:00", end: "18:00", breakStart: "13:00", breakEnd: "14:00" },
+        friday: { enabled: true, start: "09:00", end: "18:00", breakStart: "13:00", breakEnd: "14:00" },
+        saturday: { enabled: false, start: "09:00", end: "13:00", breakStart: "00:00", breakEnd: "00:00" },
+        sunday: { enabled: false, start: "00:00", end: "00:00", breakStart: "00:00", breakEnd: "00:00" },
+      },
+    },
+    {
+      id: "vet-2",
+      name: "Dott. Bianchi",
+      schedule: {
+        monday: { enabled: true, start: "10:00", end: "19:00", breakStart: "14:00", breakEnd: "15:00" },
+        tuesday: { enabled: true, start: "10:00", end: "19:00", breakStart: "14:00", breakEnd: "15:00" },
+        wednesday: { enabled: true, start: "10:00", end: "19:00", breakStart: "14:00", breakEnd: "15:00" },
+        thursday: { enabled: true, start: "10:00", end: "19:00", breakStart: "14:00", breakEnd: "15:00" },
+        friday: { enabled: true, start: "10:00", end: "19:00", breakStart: "14:00", breakEnd: "15:00" },
+        saturday: { enabled: false, start: "00:00", end: "00:00", breakStart: "00:00", breakEnd: "00:00" },
+        sunday: { enabled: false, start: "00:00", end: "00:00", breakStart: "00:00", breakEnd: "00:00" },
+      },
+    },
   ],
   rooms: [
     { id: "room-1", name: "Visita 1" },
@@ -152,6 +195,47 @@ function minutesToTime(total: number) {
   return `${pad(h)}:${pad(m)}`;
 }
 
+function getDayKeyFromDate(date: string): keyof VetSchedule {
+  const dayIndex = new Date(`${date}T12:00:00`).getDay();
+
+  switch (dayIndex) {
+    case 1:
+      return "monday";
+    case 2:
+      return "tuesday";
+    case 3:
+      return "wednesday";
+    case 4:
+      return "thursday";
+    case 5:
+      return "friday";
+    case 6:
+      return "saturday";
+    default:
+      return "sunday";
+  }
+}
+
+function isWithinShift(time: string, shift: WeeklyShift): boolean {
+  if (!shift.enabled) return false;
+
+  const current = timeToMinutes(time);
+  const start = timeToMinutes(shift.start);
+  const end = timeToMinutes(shift.end);
+
+  return current >= start && current < end;
+}
+
+function isWithinVetBreak(time: string, shift: WeeklyShift): boolean {
+  if (!shift.enabled) return false;
+
+  const current = timeToMinutes(time);
+  const breakStart = timeToMinutes(shift.breakStart);
+  const breakEnd = timeToMinutes(shift.breakEnd);
+
+  return current >= breakStart && current < breakEnd;
+}
+
 function loadAgendaSettings(): AgendaSettings {
   if (typeof window === "undefined") return DEFAULT_SETTINGS;
 
@@ -177,6 +261,7 @@ function loadAgendaSettings(): AgendaSettings {
             ? parsed.vets.map((v: any, index: number) => ({
                 id: v?.id || `vet-${index + 1}`,
                 name: v?.name || `Veterinario ${index + 1}`,
+                schedule: v?.schedule || DEFAULT_SETTINGS.vets[0].schedule,
               }))
             : DEFAULT_SETTINGS.vets,
         rooms:
@@ -277,16 +362,17 @@ export default function AgendaDemoPage() {
   }, [appointments, selectedDate]);
 
   const gridRows = useMemo(() => {
-    const times = generateTimes(
-      settings.startHour,
-      settings.endHour,
-      settings.slotMinutes
-    );
-
+    const times = generateTimes("00:00", "23:59", settings.slotMinutes);
     const rows: SlotRow[] = [];
+    const dayKey = getDayKeyFromDate(selectedDate);
 
-    for (const time of times) {
-      for (const vet of settings.vets) {
+    for (const vet of settings.vets) {
+      const shift = vet.schedule?.[dayKey];
+      if (!shift || !shift.enabled) continue;
+
+      for (const time of times) {
+        if (!isWithinShift(time, shift)) continue;
+
         for (const room of settings.rooms) {
           const appointment = dayAppointments.find(
             (item) =>
@@ -297,7 +383,7 @@ export default function AgendaDemoPage() {
 
           rows.push({
             time,
-            isBreak: isBreakTime(time, settings.breakStart, settings.breakEnd),
+            isBreak: isWithinVetBreak(time, shift),
             vetId: vet.id,
             roomId: room.id,
             appointment,
@@ -306,8 +392,14 @@ export default function AgendaDemoPage() {
       }
     }
 
+    rows.sort((a, b) => {
+      const timeDiff = timeToMinutes(a.time) - timeToMinutes(b.time);
+      if (timeDiff !== 0) return timeDiff;
+      return a.vetId.localeCompare(b.vetId);
+    });
+
     return rows;
-  }, [settings, dayAppointments]);
+  }, [settings, dayAppointments, selectedDate]);
 
   const selectedAnimal = DEMO_ANIMALS.find((a) => a.id === selectedAnimalId);
   const selectedVisitType = settings.visitTypes.find(
