@@ -45,7 +45,9 @@ type ClinicEventType =
   | "weight"
   | "allergy"
   | "feeding"
-  | "surgery";
+  | "surgery"
+  | "chronic_condition"
+  | "follow_up";
 
 type ClinicEventRow = {
   id: string;
@@ -113,6 +115,10 @@ function typeLabel(t: ClinicEventType) {
       return "Alimentazione";
     case "surgery":
       return "Intervento chirurgico";
+    case "chronic_condition":
+      return "Patologia cronica";
+    case "follow_up":
+      return "Ricontrollo";
     default:
       return t;
   }
@@ -420,6 +426,13 @@ export default function ProAnimalPage() {
     return list.slice(0, 3);
   }, [events]);
 
+  const chronicConditions = useMemo(() => {
+    return (events || [])
+      .filter((e) => e.type === "chronic_condition")
+      .sort((a, b) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime())
+      .slice(0, 3);
+  }, [events]);
+
   const activeTherapies = useMemo(() => {
     return (events || [])
       .filter((e) => e.type === "therapy" && isTherapyActive(e))
@@ -633,7 +646,21 @@ export default function ProAnimalPage() {
 
           <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
             <div className="text-xs text-zinc-500">Patologie croniche</div>
-            <div className="mt-1 font-semibold text-zinc-900">—</div>
+
+            {chronicConditions.length === 0 ? (
+              <div className="mt-1 font-semibold text-zinc-900">—</div>
+            ) : (
+              <ul className="mt-1 space-y-1 text-xs text-zinc-800">
+                {chronicConditions.map((c) => (
+                  <li key={c.id} className="truncate">
+                    <span className="font-semibold">
+                      {c.description || c.title || "Patologia"}
+                    </span>
+                    <span className="text-zinc-500"> • {formatEventDateIT(c.event_date)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
           <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
