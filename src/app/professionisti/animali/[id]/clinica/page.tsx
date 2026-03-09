@@ -13,15 +13,10 @@ import { authHeaders } from "@/lib/client/authHeaders";
 type ClinicEventType =
   | "visit"
   | "vaccine"
-  | "exam"
   | "therapy"
-  | "note"
-  | "document"
-  | "emergency"
-  | "weight"
-  | "allergy"
-  | "feeding"
+  | "exam"
   | "surgery"
+  | "note"
   | "chronic_condition"
   | "follow_up";
 
@@ -100,18 +95,8 @@ function typeLabel(t: ClinicEventType) {
       return "Patologia cronica";
     case "follow_up":
       return "Ricontrollo";
-    case "allergy":
-      return "Allergia";
-    case "feeding":
-      return "Alimentazione";
     case "note":
       return "Nota";
-    case "document":
-      return "Documento";
-    case "emergency":
-      return "Emergenza";
-    case "weight":
-      return "Peso";
     case "surgery":
       return "Intervento chirurgico";
     default:
@@ -774,7 +759,7 @@ export default function ClinicaPage() {
       if (filter === "document") {
         return (events || []).filter((e) => {
           const hasFiles = (filesCountByEventId?.[e.id] ?? 0) > 0;
-          return e.type === "document" || hasFiles;
+          return hasFiles;
         });
       }
       return (events || []).filter((e) => e.type === filter);
@@ -974,11 +959,7 @@ export default function ClinicaPage() {
                 <option value="chronic_condition">Patologia cronica</option>
                 <option value="follow_up">Prossimo ricontrollo</option>
                 <option value="surgery">Intervento chirurgico</option>
-                <option value="allergy">Allergia</option>
-                <option value="feeding">Alimentazione</option>
                 <option value="note">Nota</option>
-                <option value="document">Documento</option>
-                <option value="emergency">Emergenza</option>
               </select>
             </label>
 
@@ -1683,11 +1664,7 @@ export default function ClinicaPage() {
                                   <option value="chronic_condition">Patologia cronica</option>
                                   <option value="follow_up">Prossimo ricontrollo</option>
                                   <option value="surgery">Intervento chirurgico</option>
-                                  <option value="allergy">Allergia</option>
-                                  <option value="feeding">Alimentazione</option>
                                   <option value="note">Nota</option>
-                                  <option value="document">Documento</option>
-                                  <option value="emergency">Emergenza</option>
                                 </select>
                               </label>
 

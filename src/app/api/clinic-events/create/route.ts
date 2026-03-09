@@ -200,6 +200,28 @@ export async function POST(req: Request) {
       result: "success",
     });
 
+    // AUTO REMINDER VACCINI
+    try {
+      const nextDue = meta?.next_due_date;
+
+      if (type === "vaccine" && nextDue) {
+        const admin = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!
+        );
+
+        await admin.from("animal_reminders").insert({
+          animal_id: animalId,
+          type: "vaccine",
+          title: `Richiamo vaccino`,
+          due_date: nextDue,
+          status: "scheduled",
+        });
+      }
+    } catch (e) {
+      console.error("Reminder creation failed", e);
+    }
+
     return NextResponse.json({ ok: true, event: data }, { status: 200 });
   } catch {
     await writeAudit(supabase, {
