@@ -24,6 +24,9 @@ type Body = {
   vetSignatureMemberId?: string | null;
   priority?: "low" | "normal" | "high" | "urgent" | null;
   meta?: Record<string, any> | null;
+  reminderEnabled?: boolean;
+  remindAt?: string | null;
+  remindEmail?: boolean;
 };
 
 function isValidDateYYYYMMDD(s: string) {
@@ -115,14 +118,17 @@ export async function POST(req: Request) {
   const weightKg = parseWeightKg((body as any).weightKg);
   const therapyStartDate = parseDateOnly((body as any).therapyStartDate);
   const therapyEndDate = parseDateOnly((body as any).therapyEndDate);
+
   const vetSignature =
     typeof (body as any).vetSignature === "string"
       ? (body as any).vetSignature.trim() || null
       : null;
+
   const vetSignatureMemberId =
     typeof (body as any).vetSignatureMemberId === "string"
       ? (body as any).vetSignatureMemberId.trim() || null
       : null;
+
   const priority =
     ["low", "normal", "high", "urgent"].includes(String((body as any).priority || ""))
       ? String((body as any).priority)
