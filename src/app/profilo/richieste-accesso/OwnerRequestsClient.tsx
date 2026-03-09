@@ -174,7 +174,12 @@ export default function OwnerRequestsClient() {
                     </div>
                     <div className="mt-1 text-zinc-500">
                       Permessi richiesti:{" "}
-                      {r.requested_scope?.length ? r.requested_scope.join(", ") : "accesso base"}
+                      {r.requested_scope?.length
+                        ? r.requested_scope
+                            .filter((x) => x === "read" || x === "write")
+                            .map((x) => (x === "read" ? "lettura" : "modifica"))
+                            .join(", ")
+                        : "accesso base"}
                     </div>
                   </div>
 
