@@ -265,6 +265,7 @@ export default function ClinicaPage() {
   const [vaccineType, setVaccineType] = useState("");
   const [vaccineBatch, setVaccineBatch] = useState("");
   const [vaccineNextDue, setVaccineNextDue] = useState("");
+  const [animalSpecies, setAnimalSpecies] = useState<string | null>(null);
 
   const [saving, setSaving] = useState(false);
   const [saveErr, setSaveErr] = useState<string | null>(null);
@@ -359,6 +360,26 @@ export default function ClinicaPage() {
     }
   }
 
+  async function loadAnimal() {
+    if (!id) return;
+
+    try {
+      const res = await fetch(`/api/professionisti/animal?animalId=${encodeURIComponent(id)}`, {
+        cache: "no-store",
+        headers: {
+          ...(await authHeaders()),
+        },
+      });
+
+      if (!res.ok) return;
+
+      const json = await res.json().catch(() => ({}));
+      setAnimalSpecies(json?.animal?.species || null);
+    } catch {
+      // ignore
+    }
+  }
+
   async function loadFilesCount() {
     if (!id) return;
 
@@ -384,6 +405,7 @@ export default function ClinicaPage() {
   useEffect(() => {
     if (!id) return;
     void (async () => {
+      await loadAnimal();
       await loadClinicEvents();
       await loadFilesCount();
     })();
@@ -1044,7 +1066,7 @@ export default function ClinicaPage() {
                     onChange={(e) => setVaccineType(e.target.value)}
                   >
                     <option value="">Seleziona vaccino</option>
-                    {DOG_VACCINES.map((v) => (
+                    {(animalSpecies === "cat" ? CAT_VACCINES : DOG_VACCINES).map((v) => (
                       <option key={v.value} value={v.value}>
                         {v.label}
                       </option>
