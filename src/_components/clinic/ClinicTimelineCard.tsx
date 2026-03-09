@@ -1,7 +1,13 @@
 "use client";
 
 import { formatEventDateIT, formatInsertedAtIT } from "@/lib/clinic/format";
-import { extractWeightKg, extractCreatedByMemberLabel } from "@/lib/clinic/meta";
+import {
+  extractWeightKg,
+  extractCreatedByMemberLabel,
+  extractChronicDiagnosis,
+  extractFollowUpType,
+  extractFollowUpDate
+} from "@/lib/clinic/meta";
 
 export type ClinicTimelineCardEvent = {
   id: string;
@@ -24,8 +30,13 @@ export function ClinicTimelineCard({
   ev: ClinicTimelineCardEvent;
   onClick: () => void;
 }) {
+
   const weight = extractWeightKg(ev);
   const isVerified = ev.source === "professional" || !!ev.verified_at;
+
+  const chronicDiagnosis = extractChronicDiagnosis(ev);
+  const followUpType = extractFollowUpType(ev);
+  const followUpDate = extractFollowUpDate(ev);
 
   let top = "";
   let badge = "";
@@ -34,10 +45,10 @@ export function ClinicTimelineCard({
     top = "Creato da proprietario";
     if (ev.verified_at && ev.verified_by_label) badge = `✓ Validato da ${ev.verified_by_label}`;
     else if (ev.verified_at) badge = "✓ Validato";
-    else badge = "⏳ Da validare";
+    else badge = "⧗ Da validare";
   } else {
     top = `Registrato da ${extractCreatedByMemberLabel(ev) || "professionista"}`;
-    badge = isVerified ? "✓ Validato" : "⏳ Da rivalidare";
+    badge = isVerified ? "✓ Validato" : "⧗ Da rivalidare";
   }
 
   return (
@@ -46,21 +57,53 @@ export function ClinicTimelineCard({
       onClick={onClick}
     >
       <div className="flex items-start justify-between gap-3">
+
         <div className="min-w-0">
+
           <div className="text-xs text-zinc-500">
             <div>Evento: {formatEventDateIT(ev.event_date)}</div>
-            {ev.created_at ? <div className="text-zinc-400">Inserito il {formatInsertedAtIT(ev.created_at)}</div> : null}
+            {ev.created_at ? (
+              <div className="text-zinc-400">
+                Inserito il {formatInsertedAtIT(ev.created_at)}
+              </div>
+            ) : null}
           </div>
 
           <div className="mt-1 truncate text-sm font-semibold text-zinc-900">
             {ev.title}
-            {weight !== null ? <span className="ml-2 text-xs font-semibold text-zinc-700">⚖ {weight} kg</span> : null}
+
+            {weight !== null ? (
+              <span className="ml-2 text-xs font-semibold text-zinc-700">
+                ⚖ {weight} kg
+              </span>
+            ) : null}
           </div>
 
-          {ev.description ? <p className="mt-2 text-sm text-zinc-700 line-clamp-2">{ev.description}</p> : null}
+          {ev.description ? (
+            <p className="mt-2 text-sm text-zinc-700 line-clamp-2">
+              {ev.description}
+            </p>
+          ) : null}
+
+          {/* PATLOGIE CRONICHE */}
+          {ev.type === "chronic_condition" && chronicDiagnosis ? (
+            <div className="mt-2 text-xs font-semibold text-red-700">
+              🧬 Patologia cronica: {chronicDiagnosis}
+            </div>
+          ) : null}
+
+          {/* FOLLOW UP */}
+          {ev.type === "follow_up" && followUpType ? (
+            <div className="mt-2 text-xs font-semibold text-blue-700">
+              📅 Ricontrollo: {followUpType}
+              {followUpDate ? ` (${formatEventDateIT(followUpDate)})` : ""}
+            </div>
+          ) : null}
+
         </div>
 
         <div className="shrink-0 flex flex-col items-end gap-2">
+
           {ev.visibility ? (
             <span className="rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs text-zinc-600">
               {ev.visibility}
@@ -68,7 +111,10 @@ export function ClinicTimelineCard({
           ) : null}
 
           <div className="flex flex-col items-end gap-2">
-            <span className="text-xs text-zinc-600">{top}</span>
+
+            <span className="text-xs text-zinc-600">
+              {top}
+            </span>
 
             <span
               className={
@@ -79,8 +125,10 @@ export function ClinicTimelineCard({
             >
               {badge}
             </span>
+
           </div>
         </div>
+
       </div>
     </div>
   );
