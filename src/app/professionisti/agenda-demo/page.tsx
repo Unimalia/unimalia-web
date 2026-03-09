@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type VisitType = {
   id: string;
@@ -33,7 +33,30 @@ type Appointment = {
   visitTypeId: string;
 };
 
-const VISIT_TYPES: VisitType[] = [
+const STORAGE_KEY = "unimalia_agenda_settings_v1";
+
+type AgendaSettingsPayload = {
+  clinicStart: string;
+  clinicEnd: string;
+  lunchStart: string;
+  lunchEnd: string;
+  rooms: Room[];
+  visitSettings: VisitType[];
+};
+
+function loadAgendaSettings(): AgendaSettingsPayload | null {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as AgendaSettingsPayload;
+  } catch {
+    return null;
+  }
+}
+
+const DEFAULT_VISIT_TYPES: VisitType[] = [
   { id: "vaccine", label: "Vaccino", durationMin: 15, roomType: "visit", species: "all" },
   { id: "visit", label: "Visita base", durationMin: 20, roomType: "visit", species: "all" },
   {
@@ -43,8 +66,20 @@ const VISIT_TYPES: VisitType[] = [
     roomType: "visit",
     species: "all",
   },
-  { id: "cat_check", label: "Controllo gatto", durationMin: 20, roomType: "visit", species: "cat" },
-  { id: "dog_skin", label: "Controllo dermatologico cane", durationMin: 30, roomType: "visit", species: "dog" },
+  {
+    id: "cat_check",
+    label: "Controllo gatto",
+    durationMin: 20,
+    roomType: "visit",
+    species: "cat",
+  },
+  {
+    id: "dog_skin",
+    label: "Controllo dermatologico cane",
+    durationMin: 30,
+    roomType: "visit",
+    species: "dog",
+  },
   { id: "surgery", label: "Intervento", durationMin: 120, roomType: "surgery", species: "all" },
 ];
 
@@ -55,7 +90,7 @@ const VETS: Vet[] = [
   { id: "q", name: "Dr. Q", shiftStart: "10:00", shiftEnd: "19:00" },
 ];
 
-const ROOMS: Room[] = [
+const DEFAULT_ROOMS: Room[] = [
   { id: "visit-1", name: "Stanza Visite 1", type: "visit" },
   { id: "visit-2", name: "Stanza Visite 2", type: "visit" },
   { id: "surgery-1", name: "Sala Operatoria", type: "surgery" },
@@ -133,25 +168,44 @@ function overlaps(aStart: number, aEnd: number, bStart: number, bEnd: number) {
   return aStart < bEnd && bStart < aEnd;
 }
 
-function isInLunchBreak(start: number, end: number) {
-  const lunchStart = toMinutes("13:00");
-  const lunchEnd = toMinutes("14:00");
-  return overlaps(start, end, lunchStart, lunchEnd);
+function isInLunchBreak(start: number, end: number, lunchStart: string, lunchEnd: string) {
+  const lunchStartMin = toMinutes(lunchStart);
+  const lunchEndMin = toMinutes(lunchEnd);
+  return overlaps(start, end, lunchStartMin, lunchEndMin);
 }
 
-function getVisitTypeById(id: string) {
-  return VISIT_TYPES.find((v) => v.id === id) || null;
+function getVisitTypeById(id: string, visitTypes: VisitType[]) {
+  return visitTypes.find((v) => v.id === id) || null;
 }
 
 export default function AgendaDemoPage() {
+  const [clinicStart, setClinicStart] = useState("09:00");
+  const [clinicEnd, setClinicEnd] = useState("19:00");
+  const [lunchStart, setLunchStart] = useState("13:00");
+  const [lunchEnd, setLunchEnd] = useState("14:00");
+  const [visitTypes, setVisitTypes] = useState<VisitType[]>(DEFAULT_VISIT_TYPES);
+  const [rooms, setRooms] = useState<Room[]>(DEFAULT_ROOMS);
+
   const [animalName, setAnimalName] = useState("Luna");
   const [species, setSpecies] = useState<"dog" | "cat">("dog");
   const [vetId, setVetId] = useState("y");
   const [visitTypeId, setVisitTypeId] = useState("vaccine");
 
+  useEffect(() => {
+    const saved = loadAgendaSettings();
+    if (!saved) return;
+
+    setClinicStart(saved.clinicStart || "09:00");
+    setClinicEnd(saved.clinicEnd || "19:00");
+    setLunchStart(saved.lunchStart || "13:00");
+    setLunchEnd(saved.lunchEnd || "14:00");
+    setVisitTypes(Array.isArray(saved.visitSettings) ? saved.visitSettings : DEFAULT_VISIT_TYPES);
+    setRooms(Array.isArray(saved.rooms) ? saved.rooms : DEFAULT_ROOMS);
+  }, []);
+
   const filteredVisitTypes = useMemo(() => {
-    return VISIT_TYPES.filter((v) => v.species === "all" || v.species === species);
-  }, [species]);
+    return visitTypes.filter((v) => v.species === "all" || v.species === species);
+  }, [species, visitTypes]);
 
   const selectedVisitType = useMemo(() => {
     const match = filteredVisitTypes.find((v) => v.id === visitTypeId);
@@ -166,17 +220,17 @@ export default function AgendaDemoPage() {
     if (!selectedVisitType || !selectedVet) return [];
 
     const duration = selectedVisitType.durationMin;
-    const vetStart = toMinutes(selectedVet.shiftStart);
-    const vetEnd = toMinutes(selectedVet.shiftEnd);
+    const vetStart = Math.max(toMinutes(selectedVet.shiftStart), toMinutes(clinicStart));
+    const vetEnd = Math.min(toMinutes(selectedVet.shiftEnd), toMinutes(clinicEnd));
 
-    const candidateRooms = ROOMS.filter((r) => r.type === selectedVisitType.roomType);
+    const candidateRooms = rooms.filter((r) => r.type === selectedVisitType.roomType);
 
     const slots: Array<{ time: string; roomName: string }> = [];
 
     for (let t = vetStart; t + duration <= vetEnd; t += 15) {
       const slotEnd = t + duration;
 
-      if (isInLunchBreak(t, slotEnd)) continue;
+      if (isInLunchBreak(t, slotEnd, lunchStart, lunchEnd)) continue;
 
       const vetBusy = APPOINTMENTS.some((a) => {
         if (a.vetId !== selectedVet.id) return false;
@@ -207,13 +261,13 @@ export default function AgendaDemoPage() {
     }
 
     return slots.slice(0, 8);
-  }, [selectedVisitType, selectedVet]);
+  }, [selectedVisitType, selectedVet, rooms, clinicStart, clinicEnd, lunchStart, lunchEnd]);
 
   const todayAgenda = useMemo(() => {
     return APPOINTMENTS.map((a) => {
-      const vt = getVisitTypeById(a.visitTypeId);
+      const vt = getVisitTypeById(a.visitTypeId, visitTypes);
       const vet = VETS.find((v) => v.id === a.vetId);
-      const room = ROOMS.find((r) => r.id === a.roomId);
+      const room = rooms.find((r) => r.id === a.roomId);
 
       return {
         ...a,
@@ -222,7 +276,7 @@ export default function AgendaDemoPage() {
         roomName: room?.name || a.roomId,
       };
     }).sort((a, b) => toMinutes(a.time) - toMinutes(b.time));
-  }, []);
+  }, [visitTypes, rooms]);
 
   return (
     <div className="min-h-screen bg-zinc-50">
@@ -243,7 +297,7 @@ export default function AgendaDemoPage() {
             </div>
 
             <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
-              Pausa clinica automatica: 13:00–14:00
+              Pausa clinica automatica: {lunchStart}–{lunchEnd}
             </div>
           </div>
         </div>
@@ -276,7 +330,7 @@ export default function AgendaDemoPage() {
                   onChange={(e) => {
                     const next = e.target.value as "dog" | "cat";
                     setSpecies(next);
-                    const nextOptions = VISIT_TYPES.filter(
+                    const nextOptions = visitTypes.filter(
                       (v) => v.species === "all" || v.species === next
                     );
                     if (!nextOptions.some((v) => v.id === visitTypeId)) {
@@ -372,7 +426,7 @@ export default function AgendaDemoPage() {
           <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm lg:col-span-4">
             <h2 className="text-lg font-semibold text-zinc-900">Agenda di oggi</h2>
             <p className="mt-1 text-sm text-zinc-600">
-              Clinica medio-piccola con 2 stanze visite e 1 sala operatoria.
+              Configurazione reale caricata dalle impostazioni agenda della clinica.
             </p>
 
             <div className="mt-6 space-y-3">
