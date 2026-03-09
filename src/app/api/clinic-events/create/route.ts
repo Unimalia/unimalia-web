@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { requireOwnerOrGrant } from "@/lib/server/requireOwnerOrGrant";
 import { writeAudit } from "@/lib/server/audit";
+import { supabaseAdmin } from "@/lib/supabase/server";
 
 function getBearerToken(req: Request) {
   const h = req.headers.get("authorization") || req.headers.get("Authorization") || "";
@@ -205,6 +206,59 @@ export async function POST(req: Request) {
       next_data: data,
     });
 
+    if (type === "vaccine" && body.reminderEnabled && body.remindEmail !== false) {
+      try {
+        const admin = supabaseAdmin();
+
+        const { data: animalRow } = await admin
+          .from("animals")
+          .select("owner_id,name")
+          .eq("id", animalId)
+          .single();
+
+        const ownerId = (animalRow as any)?.owner_id as string | undefined;
+        const animalName = ((animalRow as any)?.name as string | undefined) || "il tuo animale";
+
+        let ownerEmail: string | null = null;
+
+        if (ownerId) {
+          const authResp = await admin.auth.admin.getUserById(ownerId);
+          ownerEmail = authResp?.data?.user?.email ?? null;
+        }
+
+        const nextDueDate =
+          typeof meta.next_due_date === "string" && meta.next_due_date.trim()
+            ? meta.next_due_date.trim()
+            : null;
+
+        const remindAt =
+          typeof body.remindAt === "string" && body.remindAt.trim()
+            ? body.remindAt.trim()
+            : null;
+
+        const isValidYmd = (v: string | null) => !!v && /^\d{4}-\d{2}-\d{2}$/.test(v);
+
+        if (ownerEmail && isValidYmd(nextDueDate) && isValidYmd(remindAt)) {
+          const due = new Date(`${nextDueDate}T00:00:00.000Z`);
+          const remind = new Date(`${remindAt}T00:00:00.000Z`);
+          const diffMs = due.getTime() - remind.getTime();
+          const diffDays = Math.max(0, Math.round(diffMs / 86400000));
+
+          await admin.from("animal_reminders").insert({
+            animal_id: animalId,
+            kind: "vaccine",
+            title: `Promemoria vaccino per ${animalName}`,
+            due_date: nextDueDate,
+            remind_days_before: diffDays,
+            recipient_email: ownerEmail,
+            status: "scheduled",
+          });
+        }
+      } catch (reminderError) {
+        console.error("Automatic vaccine reminder creation failed:", reminderError);
+      }
+    }
+
     await writeAudit(supabase, {
       req,
       actor_user_id: user.id,
@@ -215,28 +269,6 @@ export async function POST(req: Request) {
       animal_id: animalId,
       result: "success",
     });
-
-    // AUTO REMINDER VACCINI
-    try {
-      const nextDue = meta?.next_due_date;
-
-      if (type === "vaccine" && nextDue) {
-        const admin = createClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.SUPABASE_SERVICE_ROLE_KEY!
-        );
-
-        await admin.from("animal_reminders").insert({
-          animal_id: animalId,
-          type: "vaccine",
-          title: `Richiamo vaccino`,
-          due_date: nextDue,
-          status: "scheduled",
-        });
-      }
-    } catch (e) {
-      console.error("Reminder creation failed", e);
-    }
 
     return NextResponse.json({ ok: true, event: data }, { status: 200 });
   } catch {
