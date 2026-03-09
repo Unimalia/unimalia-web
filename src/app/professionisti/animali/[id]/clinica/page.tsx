@@ -104,6 +104,21 @@ function typeLabel(t: ClinicEventType) {
   }
 }
 
+const DOG_VACCINES = [
+  { value: "rabies", label: "Rabbia" },
+  { value: "dhpp", label: "Cimurro / Epatite / Parvo" },
+  { value: "leptospirosis", label: "Leptospirosi" },
+  { value: "bordetella", label: "Tosse dei canili" },
+  { value: "leishmania", label: "Leishmaniosi" },
+];
+
+const CAT_VACCINES = [
+  { value: "rcp", label: "Trivalente (RCP)" },
+  { value: "felv", label: "Leucemia felina" },
+  { value: "rabies", label: "Rabbia" },
+  { value: "chlamydia", label: "Clamidia" },
+];
+
 function visibilityLabel(value: "owner" | "professionals" | "emergency" | string) {
   switch (value) {
     case "owner":
@@ -247,6 +262,9 @@ export default function ClinicaPage() {
   const [selectedVetId, setSelectedVetId] = useState<string>("");
   const [therapyStartDate, setTherapyStartDate] = useState("");
   const [therapyEndDate, setTherapyEndDate] = useState("");
+  const [vaccineType, setVaccineType] = useState("");
+  const [vaccineBatch, setVaccineBatch] = useState("");
+  const [vaccineNextDue, setVaccineNextDue] = useState("");
 
   const [saving, setSaving] = useState(false);
   const [saveErr, setSaveErr] = useState<string | null>(null);
@@ -473,6 +491,14 @@ export default function ClinicaPage() {
         vetSignature: newVetSignature.trim() || null,
         therapyStartDate: newType === "therapy" ? therapyStartDate || null : null,
         therapyEndDate: newType === "therapy" ? therapyEndDate || null : null,
+        meta:
+          newType === "vaccine"
+            ? {
+                vaccine_type: vaccineType || null,
+                batch_number: vaccineBatch || null,
+                next_due_date: vaccineNextDue || null,
+              }
+            : undefined,
       };
 
       const res = await fetch("/api/clinic-events/create", {
@@ -522,6 +548,9 @@ export default function ClinicaPage() {
       setNewVetSignature("");
       setTherapyStartDate("");
       setTherapyEndDate("");
+      setVaccineType("");
+      setVaccineBatch("");
+      setVaccineNextDue("");
 
       setReminderEnabled(false);
       setRemindAt("");
@@ -1004,6 +1033,47 @@ export default function ClinicaPage() {
                 </div>
               ) : null}
             </label>
+
+            {newType === "vaccine" ? (
+              <div className="grid gap-4 md:col-span-12 md:grid-cols-12">
+                <label className="block md:col-span-4">
+                  <span className={FIELD_LABEL_CLASS}>Vaccino</span>
+                  <select
+                    className={FIELD_CLASS}
+                    value={vaccineType}
+                    onChange={(e) => setVaccineType(e.target.value)}
+                  >
+                    <option value="">Seleziona vaccino</option>
+                    {DOG_VACCINES.map((v) => (
+                      <option key={v.value} value={v.value}>
+                        {v.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="block md:col-span-4">
+                  <span className={FIELD_LABEL_CLASS}>Lotto vaccino</span>
+                  <input
+                    type="text"
+                    className={FIELD_CLASS}
+                    value={vaccineBatch}
+                    onChange={(e) => setVaccineBatch(e.target.value)}
+                    placeholder="Lotto"
+                  />
+                </label>
+
+                <label className="block md:col-span-4">
+                  <span className={FIELD_LABEL_CLASS}>Prossimo richiamo</span>
+                  <input
+                    type="date"
+                    className={FIELD_CLASS}
+                    value={vaccineNextDue}
+                    onChange={(e) => setVaccineNextDue(e.target.value)}
+                  />
+                </label>
+              </div>
+            ) : null}
 
             {newType === "therapy" ? (
               <div className="grid gap-4 md:col-span-12 md:grid-cols-12">
