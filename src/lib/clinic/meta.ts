@@ -64,3 +64,15 @@ export function extractFollowUpType(e: any): string | null {
 export function extractFollowUpDate(e: any): string | null {
   return e?.meta?.scheduled_date || null;
 }
+
+export function extractVaccineType(e: any): string | null {
+  return e?.meta?.vaccine_type || null;
+}
+
+export function extractNextDueDate(e: any): string | null {
+  return e?.meta?.next_due_date || null;
+}
+
+export function extractBatchNumber(e: any): string | null {
+  return e?.meta?.batch_number || null;
+}
