@@ -433,6 +433,13 @@ export default function ProAnimalPage() {
       .slice(0, 3);
   }, [events]);
 
+  const upcomingFollowUps = useMemo(() => {
+    return (events || [])
+      .filter((e) => e.type === "follow_up" && e.event_date)
+      .sort((a, b) => new Date(a.event_date).getTime() - new Date(b.event_date).getTime())
+      .slice(0, 3);
+  }, [events]);
+
   const activeTherapies = useMemo(() => {
     return (events || [])
       .filter((e) => e.type === "therapy" && isTherapyActive(e))
@@ -596,7 +603,7 @@ export default function ProAnimalPage() {
           {eventsErr ? <span className="text-xs text-amber-700">{eventsErr}</span> : null}
         </div>
 
-        <div className="mt-4 grid gap-3 text-sm md:grid-cols-6">
+        <div className="mt-4 grid gap-3 text-sm md:grid-cols-7">
           <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
             <div className="text-xs text-zinc-500">Allergie</div>
             {allergyItems.length === 0 ? (
@@ -657,6 +664,25 @@ export default function ProAnimalPage() {
                       {c.description || c.title || "Patologia"}
                     </span>
                     <span className="text-zinc-500"> • {formatEventDateIT(c.event_date)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
+            <div className="text-xs text-zinc-500">Ricontrolli programmati</div>
+
+            {upcomingFollowUps.length === 0 ? (
+              <div className="mt-1 font-semibold text-zinc-900">—</div>
+            ) : (
+              <ul className="mt-1 space-y-1 text-xs text-zinc-800">
+                {upcomingFollowUps.map((f) => (
+                  <li key={f.id} className="truncate">
+                    <span className="font-semibold">
+                      {f.description || f.title || "Ricontrollo"}
+                    </span>
+                    <span className="text-zinc-500"> • {formatEventDateIT(f.event_date)}</span>
                   </li>
                 ))}
               </ul>
