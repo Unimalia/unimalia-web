@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
 type VisitSetting = {
@@ -16,6 +16,35 @@ type RoomSetting = {
   name: string;
   type: "visit" | "surgery";
 };
+
+const STORAGE_KEY = "unimalia_agenda_settings_v1";
+
+type AgendaSettingsPayload = {
+  clinicStart: string;
+  clinicEnd: string;
+  lunchStart: string;
+  lunchEnd: string;
+  rooms: RoomSetting[];
+  visitSettings: VisitSetting[];
+};
+
+function loadAgendaSettings(): AgendaSettingsPayload | null {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as AgendaSettingsPayload;
+  } catch {
+    return null;
+  }
+}
+
+function saveAgendaSettings(payload: AgendaSettingsPayload) {
+  if (typeof window === "undefined") return;
+
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+}
 
 export default function AgendaSettingsPage() {
   const [clinicStart, setClinicStart] = useState("09:00");
@@ -53,25 +82,37 @@ export default function AgendaSettingsPage() {
       durationMin: 20,
       roomType: "visit",
     },
-    { id: "surgery", label: "Intervento", species: "all", durationMin: 120, roomType: "surgery" },
+    {
+      id: "surgery",
+      label: "Intervento",
+      species: "all",
+      durationMin: 120,
+      roomType: "surgery",
+    },
   ]);
 
-  function updateVisitSetting(
-    id: string,
-    patch: Partial<VisitSetting>
-  ) {
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const saved = loadAgendaSettings();
+    if (!saved) return;
+
+    setClinicStart(saved.clinicStart || "09:00");
+    setClinicEnd(saved.clinicEnd || "19:00");
+    setLunchStart(saved.lunchStart || "13:00");
+    setLunchEnd(saved.lunchEnd || "14:00");
+    setRooms(Array.isArray(saved.rooms) ? saved.rooms : []);
+    setVisitSettings(Array.isArray(saved.visitSettings) ? saved.visitSettings : []);
+  }, []);
+
+  function updateVisitSetting(id: string, patch: Partial<VisitSetting>) {
     setVisitSettings((prev) =>
       prev.map((item) => (item.id === id ? { ...item, ...patch } : item))
     );
   }
 
-  function updateRoom(
-    id: string,
-    patch: Partial<RoomSetting>
-  ) {
-    setRooms((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, ...patch } : item))
-    );
+  function updateRoom(id: string, patch: Partial<RoomSetting>) {
+    setRooms((prev) => prev.map((item) => (item.id === id ? { ...item, ...patch } : item)));
   }
 
   function addVisitSetting() {
@@ -106,10 +147,7 @@ export default function AgendaSettingsPage() {
     setRooms((prev) => prev.filter((item) => item.id !== id));
   }
 
-  const visitRoomsCount = useMemo(
-    () => rooms.filter((r) => r.type === "visit").length,
-    [rooms]
-  );
+  const visitRoomsCount = useMemo(() => rooms.filter((r) => r.type === "visit").length, [rooms]);
 
   const surgeryRoomsCount = useMemo(
     () => rooms.filter((r) => r.type === "surgery").length,
@@ -138,9 +176,8 @@ export default function AgendaSettingsPage() {
                 Agenda clinica su misura
               </h1>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-600">
-                Configura orari, pausa, stanze e durata delle prestazioni. L’agenda
-                userà queste regole per proporre slot realistici e adatti alla tua
-                clinica.
+                Configura orari, pausa, stanze e durata delle prestazioni. L’agenda userà queste
+                regole per proporre slot realistici e adatti alla tua clinica.
               </p>
             </div>
 
@@ -153,9 +190,7 @@ export default function AgendaSettingsPage() {
         <div className="grid gap-6 lg:grid-cols-12">
           <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm lg:col-span-4">
             <h2 className="text-lg font-semibold text-zinc-900">Orari clinica</h2>
-            <p className="mt-1 text-sm text-zinc-600">
-              Base operativa dell’agenda.
-            </p>
+            <p className="mt-1 text-sm text-zinc-600">Base operativa dell’agenda.</p>
 
             <div className="mt-6 grid gap-4">
               <label className="block">
@@ -279,9 +314,7 @@ export default function AgendaSettingsPage() {
 
           <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm lg:col-span-4">
             <h2 className="text-lg font-semibold text-zinc-900">Riepilogo clinica</h2>
-            <p className="mt-1 text-sm text-zinc-600">
-              Anteprima della configurazione attuale.
-            </p>
+            <p className="mt-1 text-sm text-zinc-600">Anteprima della configurazione attuale.</p>
 
             <div className="mt-6 space-y-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm">
               <div className="flex justify-between gap-4">
@@ -315,8 +348,8 @@ export default function AgendaSettingsPage() {
             </div>
 
             <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-              Questa configurazione sarà usata per proporre slot realistici in agenda
-              e, più avanti, per la prenotazione online.
+              Questa configurazione sarà usata per proporre slot realistici in agenda e, più
+              avanti, per la prenotazione online.
             </div>
           </section>
         </div>
@@ -352,9 +385,7 @@ export default function AgendaSettingsPage() {
                     </span>
                     <input
                       value={item.label}
-                      onChange={(e) =>
-                        updateVisitSetting(item.id, { label: e.target.value })
-                      }
+                      onChange={(e) => updateVisitSetting(item.id, { label: e.target.value })}
                       className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none focus:border-zinc-400"
                     />
                   </label>
@@ -433,6 +464,22 @@ export default function AgendaSettingsPage() {
           <button
             type="button"
             className="rounded-xl bg-black px-5 py-3 text-sm font-semibold text-white hover:bg-zinc-900"
+            onClick={() => {
+              saveAgendaSettings({
+                clinicStart,
+                clinicEnd,
+                lunchStart,
+                lunchEnd,
+                rooms,
+                visitSettings,
+              });
+
+              setSaveMessage("Impostazioni agenda salvate localmente ✅");
+
+              window.setTimeout(() => {
+                setSaveMessage(null);
+              }, 2500);
+            }}
           >
             Salva impostazioni
           </button>
@@ -444,6 +491,12 @@ export default function AgendaSettingsPage() {
             Apri demo agenda
           </Link>
         </div>
+
+        {saveMessage ? (
+          <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
+            {saveMessage}
+          </div>
+        ) : null}
       </div>
     </div>
   );
