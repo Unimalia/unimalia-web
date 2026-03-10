@@ -63,3 +63,89 @@ export async function GET(req: Request) {
 
   return NextResponse.json({ ok: true, animal });
 }
+
+export async function POST(req: Request) {
+  try {
+    const supabase = await createServerSupabaseClient();
+    const admin = supabaseAdmin();
+
+    const {
+      data: { user },
+      error: userErr,
+    } = await supabase.auth.getUser();
+
+    if (userErr) {
+      return NextResponse.json({ error: userErr.message }, { status: 401 });
+    }
+
+    if (!user) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
+
+    const orgId = await getProfessionalOrgId();
+    if (!orgId) {
+      return NextResponse.json({ error: "Missing org" }, { status: 400 });
+    }
+
+    const body = await req.json().catch(() => null);
+
+    const name = String(body?.name ?? "").trim();
+    const species = String(body?.species ?? "").trim();
+    const chip = String(body?.chip_number ?? "").replace(/\D+/g, "");
+
+    if (name.length < 2) {
+      return NextResponse.json({ error: "Nome animale non valido" }, { status: 400 });
+    }
+
+    if (species.length < 2) {
+      return NextResponse.json({ error: "Specie non valida" }, { status: 400 });
+    }
+
+    if (chip && chip.length !== 15 && chip.length !== 10) {
+      return NextResponse.json(
+        { error: "Microchip non valido (15 cifre attese)" },
+        { status: 400 }
+      );
+    }
+
+    const payload = {
+      owner_id: null,
+      name,
+      species,
+      breed: body?.breed ?? null,
+      color: body?.color ?? null,
+      size: body?.size ?? null,
+      chip_number: chip || null,
+      status: "active",
+
+      created_by_role: "professional",
+      created_by_org_id: orgId,
+      origin_org_id: orgId,
+      data_trust_level: "professional",
+
+      owner_claim_status: "pending",
+      owner_claimed_at: null,
+
+      microchip_verified: false,
+      birth_date: body?.birth_date ?? null,
+      birth_date_is_estimated: false,
+    };
+
+    const { data: animal, error: insertErr } = await admin
+      .from("animals")
+      .insert(payload)
+      .select("id,name,species,chip_number")
+      .single();
+
+    if (insertErr) {
+      return NextResponse.json({ error: insertErr.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ ok: true, animal });
+  } catch (e: any) {
+    return NextResponse.json(
+      { error: e?.message || "Unexpected error" },
+      { status: 500 }
+    );
+  }
+}
