@@ -62,9 +62,9 @@ export default function ProDashboardPage() {
         />
 
         <CardLink
-          href="/professionisti/richieste-accesso"
-          title="Richieste accesso"
-          desc="Invia nuove richieste e monitora lo stato."
+          href="/professionisti/richieste"
+          title="Consulti veterinari"
+          desc="Invia, ricevi e gestisci consulenze cliniche con altri veterinari, con condivisione della cartella animale."
         />
 
         <CardLink

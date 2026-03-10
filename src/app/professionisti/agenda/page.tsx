@@ -35,6 +35,7 @@ type AppointmentFormState = {
   date: string;
   startTime: string;
   vetId: string;
+  assignedVetIds: string[];
   roomId: string;
   animalId: string;
   animalName: string;
@@ -49,6 +50,7 @@ const EMPTY_FORM: AppointmentFormState = {
   date: todayIsoLocal(),
   startTime: "09:00",
   vetId: "",
+  assignedVetIds: [],
   roomId: "",
   animalId: "",
   animalName: "",
@@ -57,6 +59,30 @@ const EMPTY_FORM: AppointmentFormState = {
   notes: "",
   status: "confirmed",
 };
+
+function normalizeAppointment(item: AgendaAppointment): AgendaAppointment {
+  const assignedVetIds =
+    Array.isArray(item.assignedVetIds) && item.assignedVetIds.length > 0
+      ? item.assignedVetIds
+      : item.vetId
+      ? [item.vetId]
+      : [];
+
+  const assignedVetNames =
+    Array.isArray(item.assignedVetNames) && item.assignedVetNames.length > 0
+      ? item.assignedVetNames
+      : item.vetName
+      ? [item.vetName]
+      : [];
+
+  return {
+    ...item,
+    vetName: item.vetName || assignedVetNames[0] || "",
+    roomName: item.roomName || "",
+    assignedVetIds,
+    assignedVetNames,
+  };
+}
 
 export default function AgendaPage() {
   const [loaded, setLoaded] = useState(false);
@@ -72,7 +98,7 @@ export default function AgendaPage() {
   useEffect(() => {
     const loadedSettings = loadAgendaSettings();
     const loadedOverrides = loadAgendaOverrides();
-    const loadedAppointments = loadAgendaAppointments();
+    const loadedAppointments = loadAgendaAppointments().map(normalizeAppointment);
 
     setSettings(loadedSettings);
     setOverrides(loadedOverrides);
@@ -81,6 +107,7 @@ export default function AgendaPage() {
       ...EMPTY_FORM,
       date: todayIsoLocal(),
       vetId: loadedSettings.vets[0]?.id || "",
+      assignedVetIds: loadedSettings.vets[0]?.id ? [loadedSettings.vets[0].id] : [],
       roomId: loadedSettings.rooms[0]?.id || "",
       visitTypeId: loadedSettings.visitTypes[0]?.id || "",
     });
@@ -95,7 +122,8 @@ export default function AgendaPage() {
 
   const visibleAppointments = useMemo(() => {
     return dayAppointments.filter((item) => {
-      const vetOk = selectedVetFilter === "all" || item.vetId === selectedVetFilter;
+      const vetOk =
+        selectedVetFilter === "all" || item.assignedVetIds.includes(selectedVetFilter);
       const roomOk = selectedRoomFilter === "all" || item.roomId === selectedRoomFilter;
       return vetOk && roomOk;
     });
@@ -105,6 +133,65 @@ export default function AgendaPage() {
     if (!settings) return [];
     return settings.vets.filter((vet) => resolveVetShift(vet, selectedDate, overrides).enabled);
   }, [settings, selectedDate, overrides]);
+
+  function getRoomById(roomId: string) {
+    return settings?.rooms.find((room) => room.id === roomId) || null;
+  }
+
+  function isOperatingRoom(roomId: string) {
+    const room = getRoomById(roomId);
+    if (!room) return false;
+    const name = room.name.trim().toLowerCase();
+    return (
+      name.includes("operatoria") ||
+      name.includes("sala op") ||
+      name.includes("surgery") ||
+      name.includes("chirurgia")
+    );
+  }
+
+  function isVetAvailableForInterval(vetId: string, date: string, startTime: string, endTime: string, excludeAppointmentId?: string | null) {
+    if (!settings) return false;
+
+    const vet = settings.vets.find((item) => item.id === vetId);
+    if (!vet) return false;
+
+    const shift = resolveVetShift(vet, date, overrides);
+    if (!shift.enabled) return false;
+    if (startTime < shift.start || endTime > shift.end) return false;
+
+    if (
+      shift.breakStart !== "00:00" &&
+      shift.breakEnd !== "00:00" &&
+      doesIntervalOverlap(startTime, endTime, shift.breakStart, shift.breakEnd)
+    ) {
+      return false;
+    }
+
+    const hasVetConflict = appointments.some((item) => {
+      if (item.date !== date) return false;
+      if (!appointmentIsActive(item)) return false;
+      if (excludeAppointmentId && item.id === excludeAppointmentId) return false;
+      if (!item.assignedVetIds.includes(vetId)) return false;
+
+      return doesIntervalOverlap(startTime, endTime, item.startTime, item.endTime);
+    });
+
+    return !hasVetConflict;
+  }
+
+  function isRoomAvailableForInterval(roomId: string, date: string, startTime: string, endTime: string, excludeAppointmentId?: string | null) {
+    const hasRoomConflict = appointments.some((item) => {
+      if (item.date !== date) return false;
+      if (!appointmentIsActive(item)) return false;
+      if (excludeAppointmentId && item.id === excludeAppointmentId) return false;
+      if (item.roomId !== roomId) return false;
+
+      return doesIntervalOverlap(startTime, endTime, item.startTime, item.endTime);
+    });
+
+    return !hasRoomConflict;
+  }
 
   const slotsByVet = useMemo(() => {
     if (!settings) return [];
@@ -148,176 +235,81 @@ export default function AgendaPage() {
     };
   }, [dayAppointments]);
 
+  const selectedVisitType = useMemo(() => {
+    return settings?.visitTypes.find((item) => item.id === form.visitTypeId) || null;
+  }, [settings, form.visitTypeId]);
+
+  const formEndTime = useMemo(() => {
+    const duration = selectedVisitType?.duration || settings?.slotMinutes || 30;
+    return getEndTimeFromDuration(form.startTime, duration);
+  }, [selectedVisitType, settings, form.startTime]);
+
+  const isSurgeryRoomSelected = useMemo(() => {
+    return isOperatingRoom(form.roomId);
+  }, [form.roomId, settings]);
+
+  const availableExtraVets = useMemo(() => {
+    if (!settings || !isSurgeryRoomSelected) return [];
+
+    return settings.vets.filter((vet) => {
+      return isVetAvailableForInterval(
+        vet.id,
+        form.date,
+        form.startTime,
+        formEndTime,
+        form.id
+      );
+    });
+  }, [settings, isSurgeryRoomSelected, form.date, form.startTime, formEndTime, form.id, appointments, overrides]);
+
+  useEffect(() => {
+    if (!settings || !isModalOpen) return;
+
+    if (!isSurgeryRoomSelected) {
+      setForm((prev) => ({
+        ...prev,
+        assignedVetIds: prev.vetId ? [prev.vetId] : [],
+      }));
+      return;
+    }
+
+    const validIds = availableExtraVets.map((vet) => vet.id);
+    setForm((prev) => {
+      const cleaned = prev.assignedVetIds.filter((id) => validIds.includes(id));
+      const primaryIncluded = prev.vetId && validIds.includes(prev.vetId) ? [prev.vetId] : [];
+      const unique = Array.from(new Set([...primaryIncluded, ...cleaned]));
+      return {
+        ...prev,
+        assignedVetIds: unique,
+      };
+    });
+  }, [settings, isModalOpen, isSurgeryRoomSelected, availableExtraVets, form.vetId]);
+
   function persistAppointments(next: AgendaAppointment[]) {
     setAppointments(next);
     saveAgendaAppointments(next);
   }
-
-  function getAvailableVetsForSlot(date: string, startTime: string) {
-    if (!settings) return [];
-
-    return settings.vets.filter((vet) => {
-      const shift = resolveVetShift(vet, date, overrides);
-      if (!shift.enabled) return false;
-
-      const visitType = settings.visitTypes.find((item) => item.id === form.visitTypeId);
-      const duration = visitType?.duration || settings.slotMinutes;
-      const endTime = getEndTimeFromDuration(startTime, duration);
-
-      if (startTime < shift.start || endTime > shift.end) return false;
-
-      if (
-        doesIntervalOverlap(startTime, endTime, shift.breakStart, shift.breakEnd) &&
-        shift.breakStart !== "00:00" &&
-        shift.breakEnd !== "00:00"
-      ) {
-        return false;
-      }
-
-      const hasConflict = appointments.some((item) => {
-        if (item.date !== date) return false;
-        if (!appointmentIsActive(item)) return false;
-        if (form.id && item.id === form.id) return false;
-        if (item.vetId !== vet.id) return false;
-
-        return doesIntervalOverlap(startTime, endTime, item.startTime, item.endTime);
-      });
-
-      return !hasConflict;
-    });
-  }
-
-  function getAvailableRoomsForSlot(date: string, startTime: string) {
-    if (!settings) return [];
-
-    const visitType = settings.visitTypes.find((item) => item.id === form.visitTypeId);
-    const duration = visitType?.duration || settings.slotMinutes;
-    const endTime = getEndTimeFromDuration(startTime, duration);
-
-    return settings.rooms.filter((room) => {
-      const hasConflict = appointments.some((item) => {
-        if (item.date !== date) return false;
-        if (!appointmentIsActive(item)) return false;
-        if (form.id && item.id === form.id) return false;
-        if (item.roomId !== room.id) return false;
-
-        return doesIntervalOverlap(startTime, endTime, item.startTime, item.endTime);
-      });
-
-      return !hasConflict;
-    });
-  }
-
-  const availableVetsForForm = useMemo(() => {
-    return getAvailableVetsForSlot(form.date, form.startTime);
-  }, [form.date, form.startTime, form.visitTypeId, appointments, settings, overrides]);
-
-  const availableRoomsForForm = useMemo(() => {
-    return getAvailableRoomsForSlot(form.date, form.startTime);
-  }, [form.date, form.startTime, form.visitTypeId, appointments, settings]);
-
-  useEffect(() => {
-    if (!isModalOpen) return;
-
-    if (availableVetsForForm.length > 0) {
-      const stillValidVet = availableVetsForForm.some((vet) => vet.id === form.vetId);
-      if (!stillValidVet) {
-        setForm((prev) => ({
-          ...prev,
-          vetId: availableVetsForForm[0]?.id || "",
-        }));
-      }
-    }
-
-    if (availableRoomsForForm.length > 0) {
-      const stillValidRoom = availableRoomsForForm.some((room) => room.id === form.roomId);
-      if (!stillValidRoom) {
-        setForm((prev) => ({
-          ...prev,
-          roomId: availableRoomsForForm[0]?.id || "",
-        }));
-      }
-    }
-  }, [
-    isModalOpen,
-    availableVetsForForm,
-    availableRoomsForForm,
-    form.vetId,
-    form.roomId,
-  ]);
 
   function openCreateModal(startTime?: string, vetId?: string, roomId?: string) {
     if (!settings) return;
 
     const nextStartTime = startTime || "09:00";
     const nextDate = selectedDate;
-    const defaultVisitTypeId = settings.visitTypes[0]?.id || "";
-
-    const availableVets = settings.vets.filter((vet) => {
-      const shift = resolveVetShift(vet, nextDate, overrides);
-      if (!shift.enabled) return false;
-
-      const visitType = settings.visitTypes.find((item) => item.id === defaultVisitTypeId);
-      const duration = visitType?.duration || settings.slotMinutes;
-      const endTime = getEndTimeFromDuration(nextStartTime, duration);
-
-      if (nextStartTime < shift.start || endTime > shift.end) return false;
-
-      if (
-        doesIntervalOverlap(nextStartTime, endTime, shift.breakStart, shift.breakEnd) &&
-        shift.breakStart !== "00:00" &&
-        shift.breakEnd !== "00:00"
-      ) {
-        return false;
-      }
-
-      const hasConflict = appointments.some((item) => {
-        if (item.date !== nextDate) return false;
-        if (!appointmentIsActive(item)) return false;
-        if (item.vetId !== vet.id) return false;
-
-        return doesIntervalOverlap(nextStartTime, endTime, item.startTime, item.endTime);
-      });
-
-      return !hasConflict;
-    });
-
-    const availableRooms = settings.rooms.filter((room) => {
-      const visitType = settings.visitTypes.find((item) => item.id === defaultVisitTypeId);
-      const duration = visitType?.duration || settings.slotMinutes;
-      const endTime = getEndTimeFromDuration(nextStartTime, duration);
-
-      const hasConflict = appointments.some((item) => {
-        if (item.date !== nextDate) return false;
-        if (!appointmentIsActive(item)) return false;
-        if (item.roomId !== room.id) return false;
-
-        return doesIntervalOverlap(nextStartTime, endTime, item.startTime, item.endTime);
-      });
-
-      return !hasConflict;
-    });
-
-    const resolvedVetId =
-      vetId && availableVets.some((v) => v.id === vetId)
-        ? vetId
-        : availableVets[0]?.id || "";
-
-    const resolvedRoomId =
-      roomId && availableRooms.some((r) => r.id === roomId)
-        ? roomId
-        : availableRooms[0]?.id || "";
+    const nextVetId = vetId || settings.vets[0]?.id || "";
+    const nextRoomId = roomId || settings.rooms[0]?.id || "";
+    const firstVisitTypeId = settings.visitTypes[0]?.id || "";
 
     setForm({
       id: null,
       date: nextDate,
       startTime: nextStartTime,
-      vetId: resolvedVetId,
-      roomId: resolvedRoomId,
+      vetId: nextVetId,
+      assignedVetIds: nextVetId ? [nextVetId] : [],
+      roomId: nextRoomId,
       animalId: "",
       animalName: "",
       ownerName: "",
-      visitTypeId: defaultVisitTypeId,
+      visitTypeId: firstVisitTypeId,
       notes: "",
       status: "confirmed",
     });
@@ -331,6 +323,7 @@ export default function AgendaPage() {
       date: appointment.date,
       startTime: appointment.startTime,
       vetId: appointment.vetId,
+      assignedVetIds: appointment.assignedVetIds,
       roomId: appointment.roomId,
       animalId: appointment.animalId,
       animalName: appointment.animalName,
@@ -344,68 +337,108 @@ export default function AgendaPage() {
 
   function closeModal() {
     if (!settings) return;
+
     setIsModalOpen(false);
     setForm({
       ...EMPTY_FORM,
       date: selectedDate,
       vetId: settings.vets[0]?.id || "",
+      assignedVetIds: settings.vets[0]?.id ? [settings.vets[0].id] : [],
       roomId: settings.rooms[0]?.id || "",
       visitTypeId: settings.visitTypes[0]?.id || "",
+    });
+  }
+
+  function toggleAssignedVet(vetId: string) {
+    setForm((prev) => {
+      const exists = prev.assignedVetIds.includes(vetId);
+      const next = exists
+        ? prev.assignedVetIds.filter((id) => id !== vetId)
+        : [...prev.assignedVetIds, vetId];
+
+      const unique = Array.from(new Set(next));
+      return {
+        ...prev,
+        assignedVetIds: unique,
+        vetId: unique[0] || prev.vetId,
+      };
     });
   }
 
   function saveAppointment() {
     if (!settings) return;
 
-    const vet = settings.vets.find((item) => item.id === form.vetId);
     const room = settings.rooms.find((item) => item.id === form.roomId);
     const visitType = settings.visitTypes.find((item) => item.id === form.visitTypeId);
+    const primaryVet = settings.vets.find((item) => item.id === form.vetId);
 
-    if (!vet || !room || !visitType || !form.animalName.trim() || !form.ownerName.trim()) {
-      alert("Compila tutti i campi obbligatori.");
+    if (!room || !visitType || !primaryVet) {
+      alert("Controlla stanza, prestazione e veterinario principale.");
       return;
     }
 
-    const shift = resolveVetShift(vet, form.date, overrides);
-    if (!shift.enabled) {
-      alert("Il veterinario non è in turno in questa data.");
+    if (!form.animalName.trim() || !form.ownerName.trim()) {
+      alert("Inserisci nome animale e proprietario.");
       return;
     }
 
     const endTime = getEndTimeFromDuration(form.startTime, visitType.duration);
+    const surgeryRoom = isOperatingRoom(form.roomId);
 
-    if (form.startTime < shift.start || endTime > shift.end) {
-      alert("L'appuntamento esce dal turno del veterinario.");
+    const assignedVetIds = surgeryRoom
+      ? Array.from(new Set(form.assignedVetIds.filter(Boolean)))
+      : [form.vetId];
+
+    if (assignedVetIds.length === 0) {
+      alert("Seleziona almeno un veterinario.");
       return;
     }
 
-    if (
-      doesIntervalOverlap(form.startTime, endTime, shift.breakStart, shift.breakEnd) &&
-      shift.breakStart !== "00:00" &&
-      shift.breakEnd !== "00:00"
-    ) {
-      alert("L'appuntamento cade nella pausa del veterinario.");
+    if (surgeryRoom && assignedVetIds.length < 2) {
+      alert("In sala operatoria devi selezionare almeno due dottori.");
       return;
     }
 
-    const conflicting = appointments.some((item) => {
-      if (item.date !== form.date) return false;
-      if (!appointmentIsActive(item)) return false;
-      if (form.id && item.id === form.id) return false;
+    const unavailableVetNames: string[] = [];
+    for (const vetId of assignedVetIds) {
+      const ok = isVetAvailableForInterval(vetId, form.date, form.startTime, endTime, form.id);
+      if (!ok) {
+        const vet = settings.vets.find((item) => item.id === vetId);
+        unavailableVetNames.push(vet?.name || "Veterinario");
+      }
+    }
 
-      const sameVet = item.vetId === form.vetId;
-      const sameRoom = item.roomId === form.roomId;
+    const roomAvailable = isRoomAvailableForInterval(
+      form.roomId,
+      form.date,
+      form.startTime,
+      endTime,
+      form.id
+    );
 
-      if (!sameVet && !sameRoom) return false;
-
-      return doesIntervalOverlap(form.startTime, endTime, item.startTime, item.endTime);
-    });
-
-    if (conflicting) {
-      alert("C'è già un appuntamento sovrapposto su veterinario o stanza.");
+    if (unavailableVetNames.length > 0 && !roomAvailable) {
+      alert(
+        `Veterinario/i occupato/i o fuori turno: ${unavailableVetNames.join(
+          ", "
+        )}. Anche la stanza è già occupata in questo orario.`
+      );
       return;
     }
 
+    if (unavailableVetNames.length > 0) {
+      alert(
+        `Veterinario/i occupato/i o fuori turno: ${unavailableVetNames.join(", ")}.`
+      );
+      return;
+    }
+
+    if (!roomAvailable) {
+      alert("La stanza è già occupata in questo orario.");
+      return;
+    }
+
+    const assignedVets = settings.vets.filter((vet) => assignedVetIds.includes(vet.id));
+    const assignedVetNames = assignedVets.map((vet) => vet.name);
     const now = new Date().toISOString();
 
     if (form.id) {
@@ -416,8 +449,12 @@ export default function AgendaPage() {
               date: form.date,
               startTime: form.startTime,
               endTime,
-              vetId: form.vetId,
-              roomId: form.roomId,
+              vetId: assignedVetIds[0],
+              vetName: assignedVetNames[0] || "",
+              assignedVetIds,
+              assignedVetNames,
+              roomId: room.id,
+              roomName: room.name,
               animalId: form.animalId.trim(),
               animalName: form.animalName.trim(),
               ownerName: form.ownerName.trim(),
@@ -441,8 +478,12 @@ export default function AgendaPage() {
       date: form.date,
       startTime: form.startTime,
       endTime,
-      vetId: form.vetId,
-      roomId: form.roomId,
+      vetId: assignedVetIds[0],
+      vetName: assignedVetNames[0] || "",
+      assignedVetIds,
+      assignedVetNames,
+      roomId: room.id,
+      roomName: room.name,
       animalId: form.animalId.trim(),
       animalName: form.animalName.trim(),
       ownerName: form.ownerName.trim(),
@@ -473,7 +514,7 @@ export default function AgendaPage() {
   }
 
   function deleteAppointment(id: string) {
-    const confirmed = window.confirm("Eliminare definitivamente questo appuntamento?");
+    const confirmed = window.confirm("Vuoi eliminare definitivamente questo appuntamento?");
     if (!confirmed) return;
     persistAppointments(appointments.filter((item) => item.id !== id));
   }
@@ -494,8 +535,7 @@ export default function AgendaPage() {
               {settings.clinicName}
             </h1>
             <p className="mt-2 max-w-3xl text-sm text-neutral-600">
-              Agenda reale con turni settimanali, override per data, multi-slot per
-              durata e gestione completa appuntamenti.
+              Agenda clinica con turni, override, multi-slot e supporto sala operatoria con più dottori.
             </p>
           </div>
 
@@ -592,7 +632,7 @@ export default function AgendaPage() {
             </select>
           </div>
 
-          <div className="flex items-end gap-2">
+          <div className="flex items-end">
             <button
               onClick={() => setSelectedDate(addDays(selectedDate, -1))}
               className="w-full rounded-2xl border border-neutral-300 bg-white px-4 py-3 text-sm font-semibold text-neutral-700 hover:bg-neutral-50"
@@ -601,7 +641,7 @@ export default function AgendaPage() {
             </button>
           </div>
 
-          <div className="flex items-end gap-2">
+          <div className="flex items-end">
             <button
               onClick={() => setSelectedDate(addDays(selectedDate, 1))}
               className="w-full rounded-2xl border border-neutral-300 bg-white px-4 py-3 text-sm font-semibold text-neutral-700 hover:bg-neutral-50"
@@ -617,7 +657,6 @@ export default function AgendaPage() {
           </div>
           <div className="mt-3 grid gap-3 md:grid-cols-7">
             {weekDates.map((date) => {
-              const dayKey = DAY_LABELS.find((d) => d.key);
               const isSelected = date === selectedDate;
               return (
                 <button
@@ -682,8 +721,7 @@ export default function AgendaPage() {
                     <div>
                       <div className="text-lg font-bold text-neutral-900">{vet.name}</div>
                       <div className="text-sm text-neutral-600">
-                        Turno {shift.start} - {shift.end} · pausa {shift.breakStart} -{" "}
-                        {shift.breakEnd}
+                        Turno {shift.start} - {shift.end} · pausa {shift.breakStart} - {shift.breakEnd}
                       </div>
                     </div>
 
@@ -721,14 +759,14 @@ export default function AgendaPage() {
                           {roomsToShow.map((room) => {
                             const appointmentAtStart = visibleAppointments.find(
                               (item) =>
-                                item.vetId === vet.id &&
+                                item.assignedVetIds.includes(vet.id) &&
                                 item.roomId === room.id &&
                                 appointmentStartsAtSlot(item, slot)
                             );
 
                             const coveredByAppointment = visibleAppointments.find(
                               (item) =>
-                                item.vetId === vet.id &&
+                                item.assignedVetIds.includes(vet.id) &&
                                 item.roomId === room.id &&
                                 appointmentCoversSlot(item, slot)
                             );
@@ -762,8 +800,10 @@ export default function AgendaPage() {
                                       Proprietario: {appointmentAtStart.ownerName}
                                     </div>
                                     <div className="mt-1 text-xs text-neutral-600">
-                                      {appointmentAtStart.visitTypeLabel} ·{" "}
-                                      {appointmentAtStart.startTime} - {appointmentAtStart.endTime}
+                                      {appointmentAtStart.visitTypeLabel} · {appointmentAtStart.startTime} - {appointmentAtStart.endTime}
+                                    </div>
+                                    <div className="mt-1 text-xs text-neutral-600">
+                                      Medici: {appointmentAtStart.assignedVetNames.join(", ")}
                                     </div>
                                     <div className="mt-1 text-xs text-neutral-600">
                                       Stato: {appointmentAtStart.status}
@@ -897,14 +937,22 @@ export default function AgendaPage() {
 
               <div>
                 <label className="mb-2 block text-sm font-semibold text-neutral-800">
-                  Veterinario
+                  Veterinario principale
                 </label>
                 <select
                   value={form.vetId}
-                  onChange={(e) => setForm((prev) => ({ ...prev, vetId: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      vetId: e.target.value,
+                      assignedVetIds: isOperatingRoom(prev.roomId)
+                        ? Array.from(new Set([e.target.value, ...prev.assignedVetIds]))
+                        : [e.target.value],
+                    }))
+                  }
                   className="w-full rounded-2xl border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-emerald-500"
                 >
-                  {availableVetsForForm.map((vet) => (
+                  {settings.vets.map((vet) => (
                     <option key={vet.id} value={vet.id}>
                       {vet.name}
                     </option>
@@ -918,16 +966,56 @@ export default function AgendaPage() {
                 </label>
                 <select
                   value={form.roomId}
-                  onChange={(e) => setForm((prev) => ({ ...prev, roomId: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      roomId: e.target.value,
+                      assignedVetIds: isOperatingRoom(e.target.value)
+                        ? Array.from(new Set(prev.assignedVetIds.length > 0 ? prev.assignedVetIds : prev.vetId ? [prev.vetId] : []))
+                        : prev.vetId
+                        ? [prev.vetId]
+                        : [],
+                    }))
+                  }
                   className="w-full rounded-2xl border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-emerald-500"
                 >
-                  {availableRoomsForForm.map((room) => (
+                  {settings.rooms.map((room) => (
                     <option key={room.id} value={room.id}>
                       {room.name}
                     </option>
                   ))}
                 </select>
               </div>
+
+              {isSurgeryRoomSelected ? (
+                <div className="md:col-span-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                  <div className="text-sm font-bold text-neutral-900">
+                    Sala operatoria · selezione multipla dottori
+                  </div>
+                  <div className="mt-1 text-sm text-neutral-600">
+                    In questa stanza puoi assegnare più veterinari. Devono essere almeno due.
+                  </div>
+
+                  <div className="mt-4 grid gap-3 md:grid-cols-2">
+                    {availableExtraVets.map((vet) => {
+                      const checked = form.assignedVetIds.includes(vet.id);
+                      return (
+                        <label
+                          key={vet.id}
+                          className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm font-semibold text-neutral-800"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggleAssignedVet(vet.id)}
+                          />
+                          {vet.name}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
 
               <div>
                 <label className="mb-2 block text-sm font-semibold text-neutral-800">
@@ -1005,6 +1093,26 @@ export default function AgendaPage() {
                   }
                   className="w-full rounded-2xl border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-emerald-500"
                 />
+              </div>
+
+              <div className="md:col-span-2 rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
+                <div className="text-sm font-semibold text-neutral-900">
+                  Riepilogo slot
+                </div>
+                <div className="mt-2 text-sm text-neutral-700">
+                  {form.startTime} → {formEndTime} ·{" "}
+                  {selectedVisitType?.duration || settings.slotMinutes} min
+                </div>
+                <div className="mt-1 text-sm text-neutral-700">
+                  Stanza: {getRoomById(form.roomId)?.name || "-"}
+                </div>
+                <div className="mt-1 text-sm text-neutral-700">
+                  Dottori selezionati:{" "}
+                  {settings.vets
+                    .filter((vet) => form.assignedVetIds.includes(vet.id))
+                    .map((vet) => vet.name)
+                    .join(", ") || "-"}
+                </div>
               </div>
 
               <div className="md:col-span-2">
