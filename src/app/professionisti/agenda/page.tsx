@@ -16,16 +16,13 @@ import {
 } from "@/lib/agenda/storage";
 import {
   addDays,
-  appointmentCoversSlot,
   appointmentIsActive,
   appointmentStartsAtSlot,
-  DAY_LABELS,
   doesIntervalOverlap,
   formatDateLabel,
   generateSlots,
   getEndTimeFromDuration,
   getWeekDates,
-  isSlotInBreak,
   resolveVetShift,
   todayIsoLocal,
 } from "@/lib/agenda/utils";
@@ -215,6 +212,129 @@ export default function AgendaPage() {
     });
 
     return !hasRoomConflict;
+  }
+
+  function getSlotEndTime(slotTime: string) {
+    const minutes = settings?.slotMinutes || 30;
+    return getEndTimeFromDuration(slotTime, minutes);
+  }
+
+  function getActiveAppointmentForVetAtSlot(
+    vetId: string,
+    date: string,
+    slotTime: string
+  ) {
+    const slotEnd = getSlotEndTime(slotTime);
+
+    return appointments.find((item) => {
+      if (item.date !== date) return false;
+      if (!appointmentIsActive(item)) return false;
+      if (!item.assignedVetIds.includes(vetId)) return false;
+
+      return doesIntervalOverlap(slotTime, slotEnd, item.startTime, item.endTime);
+    });
+  }
+
+  function getActiveAppointmentForRoomAtSlot(
+    roomId: string,
+    date: string,
+    slotTime: string
+  ) {
+    const slotEnd = getSlotEndTime(slotTime);
+
+    return appointments.find((item) => {
+      if (item.date !== date) return false;
+      if (!appointmentIsActive(item)) return false;
+      if (item.roomId !== roomId) return false;
+
+      return doesIntervalOverlap(slotTime, slotEnd, item.startTime, item.endTime);
+    });
+  }
+
+  function isVetInShiftAtSlot(vetId: string, date: string, slotTime: string) {
+    if (!settings) return false;
+
+    const vet = settings.vets.find((item) => item.id === vetId);
+    if (!vet) return false;
+
+    const shift = resolveVetShift(vet, date, overrides);
+    if (!shift.enabled) return false;
+
+    const slotEnd = getSlotEndTime(slotTime);
+
+    if (slotTime < shift.start || slotEnd > shift.end) return false;
+
+    if (
+      shift.breakStart !== "00:00" &&
+      shift.breakEnd !== "00:00" &&
+      doesIntervalOverlap(slotTime, slotEnd, shift.breakStart, shift.breakEnd)
+    ) {
+      return false;
+    }
+
+    return true;
+  }
+
+  function getSlotState(vetId: string, roomId: string, date: string, slotTime: string) {
+    const vet = settings?.vets.find((item) => item.id === vetId);
+    if (!vet) {
+      return {
+        type: "disabled" as const,
+        label: "Non disponibile",
+        appointment: null as AgendaAppointment | null,
+      };
+    }
+
+    const shift = resolveVetShift(vet, date, overrides);
+    const slotEnd = getSlotEndTime(slotTime);
+
+    if (!shift.enabled || slotTime < shift.start || slotEnd > shift.end) {
+      return {
+        type: "offshift" as const,
+        label: "Fuori turno",
+        appointment: null as AgendaAppointment | null,
+      };
+    }
+
+    if (
+      shift.breakStart !== "00:00" &&
+      shift.breakEnd !== "00:00" &&
+      doesIntervalOverlap(slotTime, slotEnd, shift.breakStart, shift.breakEnd)
+    ) {
+      return {
+        type: "break" as const,
+        label: "Pausa",
+        appointment: null as AgendaAppointment | null,
+      };
+    }
+
+    const vetAppointment = getActiveAppointmentForVetAtSlot(vetId, date, slotTime);
+    const roomAppointment = getActiveAppointmentForRoomAtSlot(roomId, date, slotTime);
+
+    if (vetAppointment) {
+      return {
+        type: "busy-vet" as const,
+        label:
+          vetAppointment.roomId === roomId
+            ? "Occupato"
+            : `Occupato in ${vetAppointment.roomName || "altra stanza"}`,
+        appointment: vetAppointment,
+      };
+    }
+
+    if (roomAppointment) {
+      return {
+        type: "busy-room" as const,
+        label: "Stanza occupata",
+        appointment: roomAppointment,
+      };
+    }
+
+    return {
+      type: "available" as const,
+      label: "Prenota",
+      appointment: null as AgendaAppointment | null,
+    };
   }
 
   const slotsByVet = useMemo(() => {
@@ -462,7 +582,7 @@ export default function AgendaPage() {
 
     if (unavailableVetNames.length > 0 && !roomAvailable) {
       alert(
-        `Veterinario/i occupato/i o fuori turno: ${unavailableVetNames.join(
+        `I seguenti veterinari non sono disponibili in questa fascia: ${unavailableVetNames.join(
           ", "
         )}. Anche la stanza è già occupata in questo orario.`
       );
@@ -471,13 +591,15 @@ export default function AgendaPage() {
 
     if (unavailableVetNames.length > 0) {
       alert(
-        `Veterinario/i occupato/i o fuori turno: ${unavailableVetNames.join(", ")}.`
+        `I seguenti veterinari non sono disponibili in questa fascia: ${unavailableVetNames.join(
+          ", "
+        )}.`
       );
       return;
     }
 
     if (!roomAvailable) {
-      alert("La stanza è già occupata in questo orario.");
+      alert("La stanza è già occupata in questa fascia oraria.");
       return;
     }
 
@@ -765,7 +887,11 @@ export default function AgendaPage() {
                   <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
                     <div>
                       <div className="text-lg font-bold text-neutral-900">{vet.name}</div>
-                      <div className="text-sm text-neutral-600">
+                      <div className="mt-1 text-sm text-neutral-600">
+                        Può lavorare nelle stanze disponibili, ma con una sola prenotazione
+                        per fascia oraria.
+                      </div>
+                      <div className="mt-1 text-sm text-neutral-600">
                         Turno {shift.start} - {shift.end} · pausa {shift.breakStart} -{" "}
                         {shift.breakEnd}
                       </div>
@@ -803,34 +929,13 @@ export default function AgendaPage() {
                           </td>
 
                           {roomsToShow.map((room) => {
+                            const slotState = getSlotState(vet.id, room.id, selectedDate, slot);
                             const appointmentAtStart = visibleAppointments.find(
                               (item) =>
                                 item.assignedVetIds.includes(vet.id) &&
                                 item.roomId === room.id &&
                                 appointmentStartsAtSlot(item, slot)
                             );
-
-                            const coveredByAppointment = visibleAppointments.find(
-                              (item) =>
-                                item.assignedVetIds.includes(vet.id) &&
-                                item.roomId === room.id &&
-                                appointmentCoversSlot(item, slot)
-                            );
-
-                            const pause = isSlotInBreak(slot, shift);
-
-                            if (pause) {
-                              return (
-                                <td
-                                  key={`${vet.id}-${room.id}-${slot}`}
-                                  className="border-b border-neutral-100 px-4 py-4"
-                                >
-                                  <div className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-3 text-xs font-semibold text-amber-800">
-                                    Pausa
-                                  </div>
-                                </td>
-                              );
-                            }
 
                             if (appointmentAtStart) {
                               return (
@@ -901,14 +1006,53 @@ export default function AgendaPage() {
                               );
                             }
 
-                            if (coveredByAppointment) {
+                            if (slotState.type === "offshift") {
                               return (
                                 <td
                                   key={`${vet.id}-${room.id}-${slot}`}
                                   className="border-b border-neutral-100 px-4 py-4"
                                 >
-                                  <div className="rounded-2xl border border-neutral-200 bg-neutral-100 px-3 py-3 text-xs font-medium text-neutral-600">
-                                    Occupato fino alle {coveredByAppointment.endTime}
+                                  <div className="rounded-2xl border border-zinc-200 bg-zinc-100 px-3 py-3 text-xs font-semibold text-zinc-500">
+                                    Fuori turno
+                                  </div>
+                                </td>
+                              );
+                            }
+
+                            if (slotState.type === "break") {
+                              return (
+                                <td
+                                  key={`${vet.id}-${room.id}-${slot}`}
+                                  className="border-b border-neutral-100 px-4 py-4"
+                                >
+                                  <div className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-3 text-xs font-semibold text-amber-800">
+                                    Pausa
+                                  </div>
+                                </td>
+                              );
+                            }
+
+                            if (slotState.type === "busy-vet") {
+                              return (
+                                <td
+                                  key={`${vet.id}-${room.id}-${slot}`}
+                                  className="border-b border-neutral-100 px-4 py-4"
+                                >
+                                  <div className="rounded-2xl border border-blue-200 bg-blue-50 px-3 py-3 text-xs font-semibold text-blue-800">
+                                    {slotState.label}
+                                  </div>
+                                </td>
+                              );
+                            }
+
+                            if (slotState.type === "busy-room") {
+                              return (
+                                <td
+                                  key={`${vet.id}-${room.id}-${slot}`}
+                                  className="border-b border-neutral-100 px-4 py-4"
+                                >
+                                  <div className="rounded-2xl border border-rose-200 bg-rose-50 px-3 py-3 text-xs font-semibold text-rose-800">
+                                    Stanza occupata
                                   </div>
                                 </td>
                               );
