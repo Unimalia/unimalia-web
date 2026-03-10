@@ -44,7 +44,7 @@ export type AgendaSettings = {
 export type VetScheduleOverride = {
   id: string;
   vetId: string;
-  date: string; // YYYY-MM-DD
+  date: string;
   enabled: boolean;
   start: string;
   end: string;
@@ -61,19 +61,32 @@ export type AppointmentStatus =
 
 export type AgendaAppointment = {
   id: string;
-  date: string; // YYYY-MM-DD
-  startTime: string; // HH:mm
-  endTime: string; // HH:mm
+  date: string;
+  startTime: string;
+  endTime: string;
+
+  // Veterinario principale
   vetId: string;
+  vetName: string;
+
+  // Tutti i veterinari coinvolti
+  assignedVetIds: string[];
+  assignedVetNames: string[];
+
   roomId: string;
+  roomName: string;
+
   animalId: string;
   animalName: string;
   ownerName: string;
+
   visitTypeId: string;
   visitTypeLabel: string;
   duration: number;
+
   notes: string;
   status: AppointmentStatus;
+
   createdAt: string;
   updatedAt: string;
 };
