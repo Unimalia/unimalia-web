@@ -114,6 +114,17 @@ export default function AgendaPage() {
     setLoaded(true);
   }, []);
 
+  useEffect(() => {
+    if (!isModalOpen) return;
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [isModalOpen]);
+
   const weekDates = useMemo(() => getWeekDates(selectedDate), [selectedDate]);
 
   const dayAppointments = useMemo(() => {
@@ -141,16 +152,23 @@ export default function AgendaPage() {
   function isOperatingRoom(roomId: string) {
     const room = getRoomById(roomId);
     if (!room) return false;
+
     const name = room.name.trim().toLowerCase();
     return (
       name.includes("operatoria") ||
       name.includes("sala op") ||
-      name.includes("surgery") ||
-      name.includes("chirurgia")
+      name.includes("chirurgia") ||
+      name.includes("surgery")
     );
   }
 
-  function isVetAvailableForInterval(vetId: string, date: string, startTime: string, endTime: string, excludeAppointmentId?: string | null) {
+  function isVetAvailableForInterval(
+    vetId: string,
+    date: string,
+    startTime: string,
+    endTime: string,
+    excludeAppointmentId?: string | null
+  ) {
     if (!settings) return false;
 
     const vet = settings.vets.find((item) => item.id === vetId);
@@ -180,7 +198,13 @@ export default function AgendaPage() {
     return !hasVetConflict;
   }
 
-  function isRoomAvailableForInterval(roomId: string, date: string, startTime: string, endTime: string, excludeAppointmentId?: string | null) {
+  function isRoomAvailableForInterval(
+    roomId: string,
+    date: string,
+    startTime: string,
+    endTime: string,
+    excludeAppointmentId?: string | null
+  ) {
     const hasRoomConflict = appointments.some((item) => {
       if (item.date !== date) return false;
       if (!appointmentIsActive(item)) return false;
@@ -260,7 +284,16 @@ export default function AgendaPage() {
         form.id
       );
     });
-  }, [settings, isSurgeryRoomSelected, form.date, form.startTime, formEndTime, form.id, appointments, overrides]);
+  }, [
+    settings,
+    isSurgeryRoomSelected,
+    form.date,
+    form.startTime,
+    formEndTime,
+    form.id,
+    appointments,
+    overrides,
+  ]);
 
   useEffect(() => {
     if (!settings || !isModalOpen) return;
@@ -274,10 +307,13 @@ export default function AgendaPage() {
     }
 
     const validIds = availableExtraVets.map((vet) => vet.id);
+
     setForm((prev) => {
       const cleaned = prev.assignedVetIds.filter((id) => validIds.includes(id));
-      const primaryIncluded = prev.vetId && validIds.includes(prev.vetId) ? [prev.vetId] : [];
+      const primaryIncluded =
+        prev.vetId && validIds.includes(prev.vetId) ? [prev.vetId] : [];
       const unique = Array.from(new Set([...primaryIncluded, ...cleaned]));
+
       return {
         ...prev,
         assignedVetIds: unique,
@@ -357,6 +393,7 @@ export default function AgendaPage() {
         : [...prev.assignedVetIds, vetId];
 
       const unique = Array.from(new Set(next));
+
       return {
         ...prev,
         assignedVetIds: unique,
@@ -401,7 +438,14 @@ export default function AgendaPage() {
 
     const unavailableVetNames: string[] = [];
     for (const vetId of assignedVetIds) {
-      const ok = isVetAvailableForInterval(vetId, form.date, form.startTime, endTime, form.id);
+      const ok = isVetAvailableForInterval(
+        vetId,
+        form.date,
+        form.startTime,
+        endTime,
+        form.id
+      );
+
       if (!ok) {
         const vet = settings.vets.find((item) => item.id === vetId);
         unavailableVetNames.push(vet?.name || "Veterinario");
@@ -535,7 +579,8 @@ export default function AgendaPage() {
               {settings.clinicName}
             </h1>
             <p className="mt-2 max-w-3xl text-sm text-neutral-600">
-              Agenda clinica con turni, override, multi-slot e supporto sala operatoria con più dottori.
+              Agenda clinica con turni, override, multi-slot e supporto sala operatoria con
+              più dottori.
             </p>
           </div>
 
@@ -721,7 +766,8 @@ export default function AgendaPage() {
                     <div>
                       <div className="text-lg font-bold text-neutral-900">{vet.name}</div>
                       <div className="text-sm text-neutral-600">
-                        Turno {shift.start} - {shift.end} · pausa {shift.breakStart} - {shift.breakEnd}
+                        Turno {shift.start} - {shift.end} · pausa {shift.breakStart} -{" "}
+                        {shift.breakEnd}
                       </div>
                     </div>
 
@@ -796,15 +842,25 @@ export default function AgendaPage() {
                                     <div className="text-sm font-bold text-neutral-900">
                                       {appointmentAtStart.animalName}
                                     </div>
+
                                     <div className="mt-1 text-xs text-neutral-600">
                                       Proprietario: {appointmentAtStart.ownerName}
                                     </div>
+
                                     <div className="mt-1 text-xs text-neutral-600">
-                                      {appointmentAtStart.visitTypeLabel} · {appointmentAtStart.startTime} - {appointmentAtStart.endTime}
+                                      {appointmentAtStart.visitTypeLabel} ·{" "}
+                                      {appointmentAtStart.startTime} -{" "}
+                                      {appointmentAtStart.endTime}
                                     </div>
+
+                                    <div className="mt-1 text-xs text-neutral-600">
+                                      Durata: {appointmentAtStart.duration} min
+                                    </div>
+
                                     <div className="mt-1 text-xs text-neutral-600">
                                       Medici: {appointmentAtStart.assignedVetNames.join(", ")}
                                     </div>
+
                                     <div className="mt-1 text-xs text-neutral-600">
                                       Stato: {appointmentAtStart.status}
                                     </div>
@@ -890,258 +946,276 @@ export default function AgendaPage() {
       </div>
 
       {isModalOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-3xl rounded-3xl bg-white p-6 shadow-2xl">
-            <div className="mb-6 flex items-start justify-between gap-4">
-              <div>
-                <div className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
-                  {form.id ? "Modifica appuntamento" : "Nuovo appuntamento"}
+        <div className="fixed inset-0 z-50 bg-black/40">
+          <div className="flex h-full w-full items-start justify-center overflow-y-auto p-4 sm:items-center">
+            <div className="my-4 flex max-h-[90vh] w-full max-w-3xl flex-col rounded-3xl bg-white shadow-2xl">
+              <div className="flex items-start justify-between gap-4 border-b border-neutral-200 px-6 py-5">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                    {form.id ? "Modifica appuntamento" : "Nuovo appuntamento"}
+                  </div>
+                  <h2 className="mt-1 text-2xl font-bold text-neutral-900">
+                    {form.id ? "Aggiorna prenotazione" : "Crea prenotazione"}
+                  </h2>
                 </div>
-                <h2 className="mt-1 text-2xl font-bold text-neutral-900">
-                  {form.id ? "Aggiorna prenotazione" : "Crea prenotazione"}
-                </h2>
-              </div>
 
-              <button
-                onClick={closeModal}
-                className="rounded-2xl border border-neutral-300 px-4 py-3 text-sm font-semibold text-neutral-700 hover:bg-neutral-50"
-              >
-                Chiudi
-              </button>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-neutral-800">
-                  Data
-                </label>
-                <input
-                  type="date"
-                  value={form.date}
-                  onChange={(e) => setForm((prev) => ({ ...prev, date: e.target.value }))}
-                  className="w-full rounded-2xl border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-emerald-500"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-neutral-800">
-                  Ora inizio
-                </label>
-                <input
-                  type="time"
-                  value={form.startTime}
-                  onChange={(e) => setForm((prev) => ({ ...prev, startTime: e.target.value }))}
-                  className="w-full rounded-2xl border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-emerald-500"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-neutral-800">
-                  Veterinario principale
-                </label>
-                <select
-                  value={form.vetId}
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      vetId: e.target.value,
-                      assignedVetIds: isOperatingRoom(prev.roomId)
-                        ? Array.from(new Set([e.target.value, ...prev.assignedVetIds]))
-                        : [e.target.value],
-                    }))
-                  }
-                  className="w-full rounded-2xl border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-emerald-500"
+                <button
+                  onClick={closeModal}
+                  className="rounded-2xl border border-neutral-300 px-4 py-3 text-sm font-semibold text-neutral-700 hover:bg-neutral-50"
                 >
-                  {settings.vets.map((vet) => (
-                    <option key={vet.id} value={vet.id}>
-                      {vet.name}
-                    </option>
-                  ))}
-                </select>
+                  Chiudi
+                </button>
               </div>
 
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-neutral-800">
-                  Stanza
-                </label>
-                <select
-                  value={form.roomId}
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      roomId: e.target.value,
-                      assignedVetIds: isOperatingRoom(e.target.value)
-                        ? Array.from(new Set(prev.assignedVetIds.length > 0 ? prev.assignedVetIds : prev.vetId ? [prev.vetId] : []))
-                        : prev.vetId
-                        ? [prev.vetId]
-                        : [],
-                    }))
-                  }
-                  className="w-full rounded-2xl border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-emerald-500"
-                >
-                  {settings.rooms.map((room) => (
-                    <option key={room.id} value={room.id}>
-                      {room.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {isSurgeryRoomSelected ? (
-                <div className="md:col-span-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-                  <div className="text-sm font-bold text-neutral-900">
-                    Sala operatoria · selezione multipla dottori
-                  </div>
-                  <div className="mt-1 text-sm text-neutral-600">
-                    In questa stanza puoi assegnare più veterinari. Devono essere almeno due.
+              <div className="flex-1 overflow-y-auto px-6 py-5">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <label className="mb-2 block text-sm font-semibold text-neutral-800">
+                      Data
+                    </label>
+                    <input
+                      type="date"
+                      value={form.date}
+                      onChange={(e) => setForm((prev) => ({ ...prev, date: e.target.value }))}
+                      className="w-full rounded-2xl border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-emerald-500"
+                    />
                   </div>
 
-                  <div className="mt-4 grid gap-3 md:grid-cols-2">
-                    {availableExtraVets.map((vet) => {
-                      const checked = form.assignedVetIds.includes(vet.id);
-                      return (
-                        <label
-                          key={vet.id}
-                          className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm font-semibold text-neutral-800"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={() => toggleAssignedVet(vet.id)}
-                          />
+                  <div>
+                    <label className="mb-2 block text-sm font-semibold text-neutral-800">
+                      Ora inizio
+                    </label>
+                    <input
+                      type="time"
+                      value={form.startTime}
+                      onChange={(e) =>
+                        setForm((prev) => ({ ...prev, startTime: e.target.value }))
+                      }
+                      className="w-full rounded-2xl border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-emerald-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-semibold text-neutral-800">
+                      Veterinario principale
+                    </label>
+                    <select
+                      value={form.vetId}
+                      onChange={(e) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          vetId: e.target.value,
+                          assignedVetIds: isOperatingRoom(prev.roomId)
+                            ? Array.from(new Set([e.target.value, ...prev.assignedVetIds]))
+                            : [e.target.value],
+                        }))
+                      }
+                      className="w-full rounded-2xl border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-emerald-500"
+                    >
+                      {settings.vets.map((vet) => (
+                        <option key={vet.id} value={vet.id}>
                           {vet.name}
-                        </label>
-                      );
-                    })}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-semibold text-neutral-800">
+                      Stanza
+                    </label>
+                    <select
+                      value={form.roomId}
+                      onChange={(e) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          roomId: e.target.value,
+                          assignedVetIds: isOperatingRoom(e.target.value)
+                            ? Array.from(
+                                new Set(
+                                  prev.assignedVetIds.length > 0
+                                    ? prev.assignedVetIds
+                                    : prev.vetId
+                                    ? [prev.vetId]
+                                    : []
+                                )
+                              )
+                            : prev.vetId
+                            ? [prev.vetId]
+                            : [],
+                        }))
+                      }
+                      className="w-full rounded-2xl border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-emerald-500"
+                    >
+                      {settings.rooms.map((room) => (
+                        <option key={room.id} value={room.id}>
+                          {room.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {isSurgeryRoomSelected ? (
+                    <div className="md:col-span-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                      <div className="text-sm font-bold text-neutral-900">
+                        Sala operatoria · selezione multipla dottori
+                      </div>
+                      <div className="mt-1 text-sm text-neutral-600">
+                        In questa stanza puoi assegnare più veterinari. Devono essere almeno
+                        due.
+                      </div>
+
+                      <div className="mt-4 grid gap-3 md:grid-cols-2">
+                        {availableExtraVets.map((vet) => {
+                          const checked = form.assignedVetIds.includes(vet.id);
+
+                          return (
+                            <label
+                              key={vet.id}
+                              className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm font-semibold text-neutral-800"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() => toggleAssignedVet(vet.id)}
+                              />
+                              {vet.name}
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  <div>
+                    <label className="mb-2 block text-sm font-semibold text-neutral-800">
+                      Prestazione
+                    </label>
+                    <select
+                      value={form.visitTypeId}
+                      onChange={(e) =>
+                        setForm((prev) => ({ ...prev, visitTypeId: e.target.value }))
+                      }
+                      className="w-full rounded-2xl border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-emerald-500"
+                    >
+                      {settings.visitTypes.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.label} · {item.duration} min
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-semibold text-neutral-800">
+                      Stato
+                    </label>
+                    <select
+                      value={form.status}
+                      onChange={(e) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          status: e.target.value as AppointmentStatus,
+                        }))
+                      }
+                      className="w-full rounded-2xl border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-emerald-500"
+                    >
+                      <option value="confirmed">confirmed</option>
+                      <option value="pending">pending</option>
+                      <option value="completed">completed</option>
+                      <option value="cancelled">cancelled</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-semibold text-neutral-800">
+                      ID animale
+                    </label>
+                    <input
+                      value={form.animalId}
+                      onChange={(e) =>
+                        setForm((prev) => ({ ...prev, animalId: e.target.value }))
+                      }
+                      placeholder="Facoltativo"
+                      className="w-full rounded-2xl border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-emerald-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-semibold text-neutral-800">
+                      Nome animale
+                    </label>
+                    <input
+                      value={form.animalName}
+                      onChange={(e) =>
+                        setForm((prev) => ({ ...prev, animalName: e.target.value }))
+                      }
+                      className="w-full rounded-2xl border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-emerald-500"
+                    />
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="mb-2 block text-sm font-semibold text-neutral-800">
+                      Proprietario
+                    </label>
+                    <input
+                      value={form.ownerName}
+                      onChange={(e) =>
+                        setForm((prev) => ({ ...prev, ownerName: e.target.value }))
+                      }
+                      className="w-full rounded-2xl border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-emerald-500"
+                    />
+                  </div>
+
+                  <div className="md:col-span-2 rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
+                    <div className="text-sm font-semibold text-neutral-900">Riepilogo slot</div>
+                    <div className="mt-2 text-sm text-neutral-700">
+                      {form.startTime} → {formEndTime} ·{" "}
+                      {selectedVisitType?.duration || settings.slotMinutes} min
+                    </div>
+                    <div className="mt-1 text-sm text-neutral-700">
+                      Stanza: {getRoomById(form.roomId)?.name || "-"}
+                    </div>
+                    <div className="mt-1 text-sm text-neutral-700">
+                      Dottori selezionati:{" "}
+                      {settings.vets
+                        .filter((vet) => form.assignedVetIds.includes(vet.id))
+                        .map((vet) => vet.name)
+                        .join(", ") || "-"}
+                    </div>
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="mb-2 block text-sm font-semibold text-neutral-800">
+                      Note
+                    </label>
+                    <textarea
+                      rows={4}
+                      value={form.notes}
+                      onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
+                      className="w-full rounded-2xl border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-emerald-500"
+                    />
                   </div>
                 </div>
-              ) : null}
-
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-neutral-800">
-                  Prestazione
-                </label>
-                <select
-                  value={form.visitTypeId}
-                  onChange={(e) =>
-                    setForm((prev) => ({ ...prev, visitTypeId: e.target.value }))
-                  }
-                  className="w-full rounded-2xl border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-emerald-500"
-                >
-                  {settings.visitTypes.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.label} · {item.duration} min
-                    </option>
-                  ))}
-                </select>
               </div>
 
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-neutral-800">
-                  Stato
-                </label>
-                <select
-                  value={form.status}
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      status: e.target.value as AppointmentStatus,
-                    }))
-                  }
-                  className="w-full rounded-2xl border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-emerald-500"
-                >
-                  <option value="confirmed">confirmed</option>
-                  <option value="pending">pending</option>
-                  <option value="completed">completed</option>
-                  <option value="cancelled">cancelled</option>
-                </select>
-              </div>
+              <div className="border-t border-neutral-200 px-6 py-5">
+                <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                  <button
+                    onClick={closeModal}
+                    className="rounded-2xl border border-neutral-300 px-4 py-3 text-sm font-semibold text-neutral-700 hover:bg-neutral-50"
+                  >
+                    Annulla
+                  </button>
 
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-neutral-800">
-                  ID animale
-                </label>
-                <input
-                  value={form.animalId}
-                  onChange={(e) => setForm((prev) => ({ ...prev, animalId: e.target.value }))}
-                  placeholder="Facoltativo"
-                  className="w-full rounded-2xl border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-emerald-500"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-neutral-800">
-                  Nome animale
-                </label>
-                <input
-                  value={form.animalName}
-                  onChange={(e) =>
-                    setForm((prev) => ({ ...prev, animalName: e.target.value }))
-                  }
-                  className="w-full rounded-2xl border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-emerald-500"
-                />
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="mb-2 block text-sm font-semibold text-neutral-800">
-                  Proprietario
-                </label>
-                <input
-                  value={form.ownerName}
-                  onChange={(e) =>
-                    setForm((prev) => ({ ...prev, ownerName: e.target.value }))
-                  }
-                  className="w-full rounded-2xl border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-emerald-500"
-                />
-              </div>
-
-              <div className="md:col-span-2 rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
-                <div className="text-sm font-semibold text-neutral-900">
-                  Riepilogo slot
-                </div>
-                <div className="mt-2 text-sm text-neutral-700">
-                  {form.startTime} → {formEndTime} ·{" "}
-                  {selectedVisitType?.duration || settings.slotMinutes} min
-                </div>
-                <div className="mt-1 text-sm text-neutral-700">
-                  Stanza: {getRoomById(form.roomId)?.name || "-"}
-                </div>
-                <div className="mt-1 text-sm text-neutral-700">
-                  Dottori selezionati:{" "}
-                  {settings.vets
-                    .filter((vet) => form.assignedVetIds.includes(vet.id))
-                    .map((vet) => vet.name)
-                    .join(", ") || "-"}
+                  <button
+                    onClick={saveAppointment}
+                    className="rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-700"
+                  >
+                    {form.id ? "Salva modifiche" : "Conferma prenotazione"}
+                  </button>
                 </div>
               </div>
-
-              <div className="md:col-span-2">
-                <label className="mb-2 block text-sm font-semibold text-neutral-800">
-                  Note
-                </label>
-                <textarea
-                  rows={4}
-                  value={form.notes}
-                  onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
-                  className="w-full rounded-2xl border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-emerald-500"
-                />
-              </div>
-            </div>
-
-            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-              <button
-                onClick={closeModal}
-                className="rounded-2xl border border-neutral-300 px-4 py-3 text-sm font-semibold text-neutral-700 hover:bg-neutral-50"
-              >
-                Annulla
-              </button>
-
-              <button
-                onClick={saveAppointment}
-                className="rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-700"
-              >
-                {form.id ? "Salva modifiche" : "Conferma prenotazione"}
-              </button>
             </div>
           </div>
         </div>

@@ -133,7 +133,7 @@ export function doesIntervalOverlap(
   const bEnd = timeToMinutes(endB);
 
   // Intervalli [start, end)
-  // Quindi 09:00-09:30 NON si sovrappone a 09:30-10:00
+  // 09:00-09:30 NON si sovrappone a 09:30-10:00
   return aStart < bEnd && bStart < aEnd;
 }
 
