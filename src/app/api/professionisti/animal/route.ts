@@ -93,7 +93,7 @@ export async function POST(req: Request) {
 
     const { data: orgRow, error: orgErr } = await admin
       .from("organizations")
-      .select("id")
+      .select("id, name")
       .eq("id", orgId)
       .maybeSingle();
 
@@ -105,7 +105,7 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           error:
-            "Organizzazione professionale non valida o non trovata. Completa prima la configurazione della struttura.",
+            "Organizzazione professionale non trovata. Verifica il collegamento tra professional_profiles e organizations.",
         },
         { status: 400 }
       );
@@ -127,7 +127,7 @@ export async function POST(req: Request) {
 
     if (chip && chip.length !== 15 && chip.length !== 10) {
       return NextResponse.json(
-        { error: "Microchip non valido (15 cifre attese)" },
+        { error: "Microchip non valido: attese 15 cifre, opzionale 10." },
         { status: 400 }
       );
     }
