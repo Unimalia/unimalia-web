@@ -83,8 +83,32 @@ export async function POST(req: Request) {
     }
 
     const orgId = await getProfessionalOrgId();
+
     if (!orgId) {
-      return NextResponse.json({ error: "Missing org" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Nessuna organizzazione professionale collegata a questo account." },
+        { status: 400 }
+      );
+    }
+
+    const { data: orgRow, error: orgErr } = await admin
+      .from("organizations")
+      .select("id")
+      .eq("id", orgId)
+      .maybeSingle();
+
+    if (orgErr) {
+      return NextResponse.json({ error: orgErr.message }, { status: 500 });
+    }
+
+    if (!orgRow) {
+      return NextResponse.json(
+        {
+          error:
+            "Organizzazione professionale non valida o non trovata. Completa prima la configurazione della struttura.",
+        },
+        { status: 400 }
+      );
     }
 
     const body = await req.json().catch(() => null);
