@@ -66,7 +66,7 @@ export default function ManualScanHandlerPage() {
           type="button"
           className="w-full rounded-xl border px-3 py-2 text-sm"
           disabled={!chipLooksValid}
-          onClick={() => router.push(`/identita/nuovo?chip=${encodeURIComponent(chipDigits)}`)}
+          onClick={() => router.push(`/professionisti/scansiona/manuale/nuovo?chip=${encodeURIComponent(chipDigits)}`)}
         >
           ➕ Crea nuova identità con questo microchip
         </button>
