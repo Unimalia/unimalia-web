@@ -6,6 +6,7 @@ import {
   AgendaAppointment,
   AgendaSettings,
   AppointmentStatus,
+  Vet,
   VetScheduleOverride,
 } from "@/lib/agenda/types";
 import {
@@ -17,7 +18,6 @@ import {
 import {
   addDays,
   appointmentIsActive,
-  appointmentStartsAtSlot,
   doesIntervalOverlap,
   formatDateLabel,
   generateSlots,
@@ -31,9 +31,9 @@ type AppointmentFormState = {
   id: string | null;
   date: string;
   startTime: string;
+  roomId: string;
   vetId: string;
   assignedVetIds: string[];
-  roomId: string;
   animalId: string;
   animalName: string;
   ownerName: string;
@@ -46,9 +46,9 @@ const EMPTY_FORM: AppointmentFormState = {
   id: null,
   date: todayIsoLocal(),
   startTime: "09:00",
+  roomId: "",
   vetId: "",
   assignedVetIds: [],
-  roomId: "",
   animalId: "",
   animalName: "",
   ownerName: "",
@@ -74,12 +74,20 @@ function normalizeAppointment(item: AgendaAppointment): AgendaAppointment {
 
   return {
     ...item,
-    vetName: item.vetName || assignedVetNames[0] || "",
-    roomName: item.roomName || "",
     assignedVetIds,
     assignedVetNames,
+    vetName: item.vetName || assignedVetNames[0] || "",
+    roomName: item.roomName || "",
   };
 }
+
+type SlotState =
+  | { type: "available"; label: string }
+  | { type: "offshift"; label: string }
+  | { type: "break"; label: string }
+  | { type: "busy-room"; label: string; appointment: AgendaAppointment }
+  | { type: "busy-vet"; label: string; appointment: AgendaAppointment }
+  | { type: "busy-start"; label: string; appointment: AgendaAppointment };
 
 export default function AgendaPage() {
   const [loaded, setLoaded] = useState(false);
@@ -87,8 +95,8 @@ export default function AgendaPage() {
   const [overrides, setOverrides] = useState<VetScheduleOverride[]>([]);
   const [appointments, setAppointments] = useState<AgendaAppointment[]>([]);
   const [selectedDate, setSelectedDate] = useState(todayIsoLocal());
-  const [selectedVetFilter, setSelectedVetFilter] = useState("all");
   const [selectedRoomFilter, setSelectedRoomFilter] = useState("all");
+  const [selectedVetFilter, setSelectedVetFilter] = useState("all");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form, setForm] = useState<AppointmentFormState>(EMPTY_FORM);
 
@@ -103,9 +111,9 @@ export default function AgendaPage() {
     setForm({
       ...EMPTY_FORM,
       date: todayIsoLocal(),
+      roomId: loadedSettings.rooms[0]?.id || "",
       vetId: loadedSettings.vets[0]?.id || "",
       assignedVetIds: loadedSettings.vets[0]?.id ? [loadedSettings.vets[0].id] : [],
-      roomId: loadedSettings.rooms[0]?.id || "",
       visitTypeId: loadedSettings.visitTypes[0]?.id || "",
     });
     setLoaded(true);
@@ -124,26 +132,80 @@ export default function AgendaPage() {
 
   const weekDates = useMemo(() => getWeekDates(selectedDate), [selectedDate]);
 
-  const dayAppointments = useMemo(() => {
-    return appointments.filter((item) => item.date === selectedDate);
+  const activeAppointmentsForDay = useMemo(() => {
+    return appointments.filter(
+      (item) => item.date === selectedDate && appointmentIsActive(item)
+    );
   }, [appointments, selectedDate]);
 
-  const visibleAppointments = useMemo(() => {
-    return dayAppointments.filter((item) => {
-      const vetOk =
-        selectedVetFilter === "all" || item.assignedVetIds.includes(selectedVetFilter);
-      const roomOk = selectedRoomFilter === "all" || item.roomId === selectedRoomFilter;
-      return vetOk && roomOk;
-    });
-  }, [dayAppointments, selectedVetFilter, selectedRoomFilter]);
+  const selectedVisitType = useMemo(() => {
+    return settings?.visitTypes.find((item) => item.id === form.visitTypeId) || null;
+  }, [settings, form.visitTypeId]);
+
+  const formEndTime = useMemo(() => {
+    const duration = selectedVisitType?.duration || settings?.slotMinutes || 30;
+    return getEndTimeFromDuration(form.startTime, duration);
+  }, [selectedVisitType, settings, form.startTime]);
+
+  const visibleRooms = useMemo(() => {
+    if (!settings) return [];
+    return selectedRoomFilter === "all"
+      ? settings.rooms
+      : settings.rooms.filter((room) => room.id === selectedRoomFilter);
+  }, [settings, selectedRoomFilter]);
+
+  const visibleVets = useMemo(() => {
+    if (!settings) return [];
+    return selectedVetFilter === "all"
+      ? settings.vets
+      : settings.vets.filter((vet) => vet.id === selectedVetFilter);
+  }, [settings, selectedVetFilter]);
+
+  const timelineStart = useMemo(() => {
+    if (!settings || settings.vets.length === 0) return "08:00";
+
+    const starts = settings.vets
+      .map((vet) => resolveVetShift(vet, selectedDate, overrides))
+      .filter((shift) => shift.enabled)
+      .map((shift) => shift.start)
+      .sort();
+
+    return starts[0] || "08:00";
+  }, [settings, selectedDate, overrides]);
+
+  const timelineEnd = useMemo(() => {
+    if (!settings || settings.vets.length === 0) return "20:00";
+
+    const ends = settings.vets
+      .map((vet) => resolveVetShift(vet, selectedDate, overrides))
+      .filter((shift) => shift.enabled)
+      .map((shift) => shift.end)
+      .sort();
+
+    return ends[ends.length - 1] || "20:00";
+  }, [settings, selectedDate, overrides]);
+
+  const timeSlots = useMemo(() => {
+    if (!settings) return [];
+    return generateSlots(timelineStart, timelineEnd, settings.slotMinutes);
+  }, [settings, timelineStart, timelineEnd]);
 
   const activeVetsForDay = useMemo(() => {
     if (!settings) return [];
     return settings.vets.filter((vet) => resolveVetShift(vet, selectedDate, overrides).enabled);
   }, [settings, selectedDate, overrides]);
 
+  function persistAppointments(next: AgendaAppointment[]) {
+    setAppointments(next);
+    saveAgendaAppointments(next);
+  }
+
   function getRoomById(roomId: string) {
     return settings?.rooms.find((room) => room.id === roomId) || null;
+  }
+
+  function getVetById(vetId: string) {
+    return settings?.vets.find((vet) => vet.id === vetId) || null;
   }
 
   function isOperatingRoom(roomId: string) {
@@ -159,83 +221,24 @@ export default function AgendaPage() {
     );
   }
 
-  function isVetAvailableForInterval(
-    vetId: string,
-    date: string,
-    startTime: string,
-    endTime: string,
-    excludeAppointmentId?: string | null
-  ) {
-    if (!settings) return false;
-
-    const vet = settings.vets.find((item) => item.id === vetId);
-    if (!vet) return false;
-
-    const shift = resolveVetShift(vet, date, overrides);
-    if (!shift.enabled) return false;
-    if (startTime < shift.start || endTime > shift.end) return false;
-
-    if (
-      shift.breakStart !== "00:00" &&
-      shift.breakEnd !== "00:00" &&
-      doesIntervalOverlap(startTime, endTime, shift.breakStart, shift.breakEnd)
-    ) {
-      return false;
-    }
-
-    const hasVetConflict = appointments.some((item) => {
-      if (item.date !== date) return false;
-      if (!appointmentIsActive(item)) return false;
-      if (excludeAppointmentId && item.id === excludeAppointmentId) return false;
-      if (!item.assignedVetIds.includes(vetId)) return false;
-
-      return doesIntervalOverlap(startTime, endTime, item.startTime, item.endTime);
-    });
-
-    return !hasVetConflict;
-  }
-
-  function isRoomAvailableForInterval(
-    roomId: string,
-    date: string,
-    startTime: string,
-    endTime: string,
-    excludeAppointmentId?: string | null
-  ) {
-    const hasRoomConflict = appointments.some((item) => {
-      if (item.date !== date) return false;
-      if (!appointmentIsActive(item)) return false;
-      if (excludeAppointmentId && item.id === excludeAppointmentId) return false;
-      if (item.roomId !== roomId) return false;
-
-      return doesIntervalOverlap(startTime, endTime, item.startTime, item.endTime);
-    });
-
-    return !hasRoomConflict;
-  }
-
   function getSlotEndTime(slotTime: string) {
-    const minutes = settings?.slotMinutes || 30;
-    return getEndTimeFromDuration(slotTime, minutes);
+    return getEndTimeFromDuration(slotTime, settings?.slotMinutes || 30);
   }
 
-  function getActiveAppointmentForVetAtSlot(
-    vetId: string,
+  function getAppointmentStartingInRoomAtSlot(
+    roomId: string,
     date: string,
     slotTime: string
   ) {
-    const slotEnd = getSlotEndTime(slotTime);
-
     return appointments.find((item) => {
       if (item.date !== date) return false;
       if (!appointmentIsActive(item)) return false;
-      if (!item.assignedVetIds.includes(vetId)) return false;
-
-      return doesIntervalOverlap(slotTime, slotEnd, item.startTime, item.endTime);
+      if (item.roomId !== roomId) return false;
+      return item.startTime === slotTime;
     });
   }
 
-  function getActiveAppointmentForRoomAtSlot(
+  function getAppointmentCoveringRoomAtSlot(
     roomId: string,
     date: string,
     slotTime: string
@@ -251,49 +254,28 @@ export default function AgendaPage() {
     });
   }
 
-  function isVetInShiftAtSlot(vetId: string, date: string, slotTime: string) {
-    if (!settings) return false;
-
-    const vet = settings.vets.find((item) => item.id === vetId);
-    if (!vet) return false;
-
-    const shift = resolveVetShift(vet, date, overrides);
-    if (!shift.enabled) return false;
-
+  function getAppointmentCoveringVetAtSlot(
+    vetId: string,
+    date: string,
+    slotTime: string
+  ) {
     const slotEnd = getSlotEndTime(slotTime);
 
-    if (slotTime < shift.start || slotEnd > shift.end) return false;
+    return appointments.find((item) => {
+      if (item.date !== date) return false;
+      if (!appointmentIsActive(item)) return false;
+      if (!item.assignedVetIds.includes(vetId)) return false;
 
-    if (
-      shift.breakStart !== "00:00" &&
-      shift.breakEnd !== "00:00" &&
-      doesIntervalOverlap(slotTime, slotEnd, shift.breakStart, shift.breakEnd)
-    ) {
-      return false;
-    }
-
-    return true;
+      return doesIntervalOverlap(slotTime, slotEnd, item.startTime, item.endTime);
+    });
   }
 
-  function getSlotState(vetId: string, roomId: string, date: string, slotTime: string) {
-    const vet = settings?.vets.find((item) => item.id === vetId);
-    if (!vet) {
-      return {
-        type: "disabled" as const,
-        label: "Non disponibile",
-        appointment: null as AgendaAppointment | null,
-      };
-    }
-
-    const shift = resolveVetShift(vet, date, overrides);
+  function getShiftSlotStatus(vet: Vet, slotTime: string) {
+    const shift = resolveVetShift(vet, selectedDate, overrides);
     const slotEnd = getSlotEndTime(slotTime);
 
     if (!shift.enabled || slotTime < shift.start || slotEnd > shift.end) {
-      return {
-        type: "offshift" as const,
-        label: "Fuori turno",
-        appointment: null as AgendaAppointment | null,
-      };
+      return "offshift" as const;
     }
 
     if (
@@ -301,171 +283,96 @@ export default function AgendaPage() {
       shift.breakEnd !== "00:00" &&
       doesIntervalOverlap(slotTime, slotEnd, shift.breakStart, shift.breakEnd)
     ) {
+      return "break" as const;
+    }
+
+    return "inshift" as const;
+  }
+
+  function getAvailableVetsForRoomSlot(roomId: string, slotTime: string, excludeAppointmentId?: string | null) {
+    if (!settings) return [];
+
+    const slotEnd = getSlotEndTime(slotTime);
+
+    return visibleVets.filter((vet) => {
+      const shiftState = getShiftSlotStatus(vet, slotTime);
+      if (shiftState !== "inshift") return false;
+
+      const hasConflict = appointments.some((item) => {
+        if (item.date !== selectedDate) return false;
+        if (!appointmentIsActive(item)) return false;
+        if (excludeAppointmentId && item.id === excludeAppointmentId) return false;
+        if (!item.assignedVetIds.includes(vet.id)) return false;
+
+        return doesIntervalOverlap(slotTime, slotEnd, item.startTime, item.endTime);
+      });
+
+      return !hasConflict;
+    });
+  }
+
+  function getSlotState(roomId: string, slotTime: string): SlotState {
+    if (!settings) {
+      return { type: "offshift", label: "Non disponibile" };
+    }
+
+    const appointmentStart = getAppointmentStartingInRoomAtSlot(roomId, selectedDate, slotTime);
+    if (appointmentStart) {
       return {
-        type: "break" as const,
-        label: "Pausa",
-        appointment: null as AgendaAppointment | null,
+        type: "busy-start",
+        label: "Occupato",
+        appointment: appointmentStart,
       };
     }
 
-    const vetAppointment = getActiveAppointmentForVetAtSlot(vetId, date, slotTime);
-    const roomAppointment = getActiveAppointmentForRoomAtSlot(roomId, date, slotTime);
-
-    if (vetAppointment) {
-      return {
-        type: "busy-vet" as const,
-        label:
-          vetAppointment.roomId === roomId
-            ? "Occupato"
-            : `Occupato in ${vetAppointment.roomName || "altra stanza"}`,
-        appointment: vetAppointment,
-      };
-    }
-
+    const roomAppointment = getAppointmentCoveringRoomAtSlot(roomId, selectedDate, slotTime);
     if (roomAppointment) {
       return {
-        type: "busy-room" as const,
+        type: "busy-room",
         label: "Stanza occupata",
         appointment: roomAppointment,
       };
     }
 
-    return {
-      type: "available" as const,
-      label: "Prenota",
-      appointment: null as AgendaAppointment | null,
-    };
-  }
+    const availableVets = getAvailableVetsForRoomSlot(roomId, slotTime);
+    if (availableVets.length === 0) {
+      const anyInBreak = visibleVets.some((vet) => getShiftSlotStatus(vet, slotTime) === "break");
+      const anyInShift = visibleVets.some((vet) => getShiftSlotStatus(vet, slotTime) === "inshift");
 
-  const slotsByVet = useMemo(() => {
-    if (!settings) return [];
+      if (anyInBreak) {
+        return { type: "break", label: "Pausa" };
+      }
 
-    const vetsToShow =
-      selectedVetFilter === "all"
-        ? settings.vets
-        : settings.vets.filter((vet) => vet.id === selectedVetFilter);
+      if (!anyInShift) {
+        return { type: "offshift", label: "Fuori turno" };
+      }
 
-    return vetsToShow
-      .map((vet) => {
-        const shift = resolveVetShift(vet, selectedDate, overrides);
-        if (!shift.enabled) return null;
-
-        return {
-          vet,
-          shift,
-          slots: generateSlots(shift.start, shift.end, settings.slotMinutes),
-        };
-      })
-      .filter(Boolean) as Array<{
-      vet: AgendaSettings["vets"][number];
-      shift: {
-        enabled: boolean;
-        start: string;
-        end: string;
-        breakStart: string;
-        breakEnd: string;
-      };
-      slots: string[];
-    }>;
-  }, [settings, selectedDate, selectedVetFilter, overrides]);
-
-  const stats = useMemo(() => {
-    const active = dayAppointments.filter(appointmentIsActive);
-    return {
-      total: active.length,
-      pending: active.filter((item) => item.status === "pending").length,
-      confirmed: active.filter((item) => item.status === "confirmed").length,
-      completed: active.filter((item) => item.status === "completed").length,
-    };
-  }, [dayAppointments]);
-
-  const selectedVisitType = useMemo(() => {
-    return settings?.visitTypes.find((item) => item.id === form.visitTypeId) || null;
-  }, [settings, form.visitTypeId]);
-
-  const formEndTime = useMemo(() => {
-    const duration = selectedVisitType?.duration || settings?.slotMinutes || 30;
-    return getEndTimeFromDuration(form.startTime, duration);
-  }, [selectedVisitType, settings, form.startTime]);
-
-  const isSurgeryRoomSelected = useMemo(() => {
-    return isOperatingRoom(form.roomId);
-  }, [form.roomId, settings]);
-
-  const availableExtraVets = useMemo(() => {
-    if (!settings || !isSurgeryRoomSelected) return [];
-
-    return settings.vets.filter((vet) => {
-      return isVetAvailableForInterval(
-        vet.id,
-        form.date,
-        form.startTime,
-        formEndTime,
-        form.id
-      );
-    });
-  }, [
-    settings,
-    isSurgeryRoomSelected,
-    form.date,
-    form.startTime,
-    formEndTime,
-    form.id,
-    appointments,
-    overrides,
-  ]);
-
-  useEffect(() => {
-    if (!settings || !isModalOpen) return;
-
-    if (!isSurgeryRoomSelected) {
-      setForm((prev) => ({
-        ...prev,
-        assignedVetIds: prev.vetId ? [prev.vetId] : [],
-      }));
-      return;
+      return { type: "busy-vet", label: "Veterinari occupati", appointment: roomAppointment as any };
     }
 
-    const validIds = availableExtraVets.map((vet) => vet.id);
-
-    setForm((prev) => {
-      const cleaned = prev.assignedVetIds.filter((id) => validIds.includes(id));
-      const primaryIncluded =
-        prev.vetId && validIds.includes(prev.vetId) ? [prev.vetId] : [];
-      const unique = Array.from(new Set([...primaryIncluded, ...cleaned]));
-
-      return {
-        ...prev,
-        assignedVetIds: unique,
-      };
-    });
-  }, [settings, isModalOpen, isSurgeryRoomSelected, availableExtraVets, form.vetId]);
-
-  function persistAppointments(next: AgendaAppointment[]) {
-    setAppointments(next);
-    saveAgendaAppointments(next);
+    return { type: "available", label: "Prenota" };
   }
 
-  function openCreateModal(startTime?: string, vetId?: string, roomId?: string) {
+  function openCreateModal(startTime?: string, roomId?: string) {
     if (!settings) return;
 
-    const nextStartTime = startTime || "09:00";
     const nextDate = selectedDate;
-    const nextVetId = vetId || settings.vets[0]?.id || "";
+    const nextStartTime = startTime || timeSlots[0] || "09:00";
     const nextRoomId = roomId || settings.rooms[0]?.id || "";
-    const firstVisitTypeId = settings.visitTypes[0]?.id || "";
+    const nextVisitTypeId = settings.visitTypes[0]?.id || "";
+    const vets = getAvailableVetsForRoomSlot(nextRoomId, nextStartTime);
 
     setForm({
       id: null,
       date: nextDate,
       startTime: nextStartTime,
-      vetId: nextVetId,
-      assignedVetIds: nextVetId ? [nextVetId] : [],
       roomId: nextRoomId,
+      vetId: vets[0]?.id || "",
+      assignedVetIds: vets[0]?.id ? [vets[0].id] : [],
       animalId: "",
       animalName: "",
       ownerName: "",
-      visitTypeId: firstVisitTypeId,
+      visitTypeId: nextVisitTypeId,
       notes: "",
       status: "confirmed",
     });
@@ -478,9 +385,9 @@ export default function AgendaPage() {
       id: appointment.id,
       date: appointment.date,
       startTime: appointment.startTime,
+      roomId: appointment.roomId,
       vetId: appointment.vetId,
       assignedVetIds: appointment.assignedVetIds,
-      roomId: appointment.roomId,
       animalId: appointment.animalId,
       animalName: appointment.animalName,
       ownerName: appointment.ownerName,
@@ -498,12 +405,77 @@ export default function AgendaPage() {
     setForm({
       ...EMPTY_FORM,
       date: selectedDate,
+      roomId: settings.rooms[0]?.id || "",
       vetId: settings.vets[0]?.id || "",
       assignedVetIds: settings.vets[0]?.id ? [settings.vets[0].id] : [],
-      roomId: settings.rooms[0]?.id || "",
       visitTypeId: settings.visitTypes[0]?.id || "",
     });
   }
+
+  const availableVetsForForm = useMemo(() => {
+    if (!settings || !form.roomId || !form.startTime) return [];
+    return settings.vets.filter((vet) => {
+      const shift = resolveVetShift(vet, form.date, overrides);
+      if (!shift.enabled) return false;
+      if (form.startTime < shift.start || formEndTime > shift.end) return false;
+
+      if (
+        shift.breakStart !== "00:00" &&
+        shift.breakEnd !== "00:00" &&
+        doesIntervalOverlap(form.startTime, formEndTime, shift.breakStart, shift.breakEnd)
+      ) {
+        return false;
+      }
+
+      const hasConflict = appointments.some((item) => {
+        if (item.date !== form.date) return false;
+        if (!appointmentIsActive(item)) return false;
+        if (form.id && item.id === form.id) return false;
+        if (!item.assignedVetIds.includes(vet.id)) return false;
+
+        return doesIntervalOverlap(form.startTime, formEndTime, item.startTime, item.endTime);
+      });
+
+      return !hasConflict;
+    });
+  }, [settings, form.date, form.startTime, formEndTime, form.id, appointments, overrides, form.roomId]);
+
+  const isSurgeryRoomSelected = useMemo(() => {
+    return isOperatingRoom(form.roomId);
+  }, [form.roomId, settings]);
+
+  useEffect(() => {
+    if (!isModalOpen) return;
+
+    if (!isSurgeryRoomSelected) {
+      const stillValid = availableVetsForForm.some((vet) => vet.id === form.vetId);
+      const nextPrimary = stillValid ? form.vetId : availableVetsForForm[0]?.id || "";
+
+      setForm((prev) => ({
+        ...prev,
+        vetId: nextPrimary,
+        assignedVetIds: nextPrimary ? [nextPrimary] : [],
+      }));
+      return;
+    }
+
+    const validIds = availableVetsForForm.map((vet) => vet.id);
+    setForm((prev) => {
+      const cleaned = prev.assignedVetIds.filter((id) => validIds.includes(id));
+      const nextPrimary =
+        validIds.includes(prev.vetId) ? prev.vetId : cleaned[0] || validIds[0] || "";
+
+      const withPrimary = nextPrimary
+        ? Array.from(new Set([nextPrimary, ...cleaned]))
+        : cleaned;
+
+      return {
+        ...prev,
+        vetId: nextPrimary,
+        assignedVetIds: withPrimary,
+      };
+    });
+  }, [isModalOpen, isSurgeryRoomSelected, availableVetsForForm, form.vetId]);
 
   function toggleAssignedVet(vetId: string) {
     setForm((prev) => {
@@ -513,7 +485,6 @@ export default function AgendaPage() {
         : [...prev.assignedVetIds, vetId];
 
       const unique = Array.from(new Set(next));
-
       return {
         ...prev,
         assignedVetIds: unique,
@@ -525,12 +496,11 @@ export default function AgendaPage() {
   function saveAppointment() {
     if (!settings) return;
 
-    const room = settings.rooms.find((item) => item.id === form.roomId);
+    const room = getRoomById(form.roomId);
     const visitType = settings.visitTypes.find((item) => item.id === form.visitTypeId);
-    const primaryVet = settings.vets.find((item) => item.id === form.vetId);
 
-    if (!room || !visitType || !primaryVet) {
-      alert("Controlla stanza, prestazione e veterinario principale.");
+    if (!room || !visitType) {
+      alert("Controlla stanza e prestazione.");
       return;
     }
 
@@ -539,54 +509,71 @@ export default function AgendaPage() {
       return;
     }
 
-    const endTime = getEndTimeFromDuration(form.startTime, visitType.duration);
-    const surgeryRoom = isOperatingRoom(form.roomId);
-
-    const assignedVetIds = surgeryRoom
+    const isSurgery = isOperatingRoom(form.roomId);
+    const assignedVetIds = isSurgery
       ? Array.from(new Set(form.assignedVetIds.filter(Boolean)))
-      : [form.vetId];
+      : form.vetId
+      ? [form.vetId]
+      : [];
 
     if (assignedVetIds.length === 0) {
       alert("Seleziona almeno un veterinario.");
       return;
     }
 
-    if (surgeryRoom && assignedVetIds.length < 2) {
+    if (isSurgery && assignedVetIds.length < 2) {
       alert("In sala operatoria devi selezionare almeno due dottori.");
       return;
     }
 
-    const unavailableVetNames: string[] = [];
-    for (const vetId of assignedVetIds) {
-      const ok = isVetAvailableForInterval(
-        vetId,
-        form.date,
-        form.startTime,
-        endTime,
-        form.id
-      );
+    const roomConflict = appointments.some((item) => {
+      if (item.date !== form.date) return false;
+      if (!appointmentIsActive(item)) return false;
+      if (form.id && item.id === form.id) return false;
+      if (item.roomId !== form.roomId) return false;
 
-      if (!ok) {
-        const vet = settings.vets.find((item) => item.id === vetId);
-        unavailableVetNames.push(vet?.name || "Veterinario");
-      }
+      return doesIntervalOverlap(form.startTime, formEndTime, item.startTime, item.endTime);
+    });
+
+    if (roomConflict) {
+      alert("La stanza è già occupata in questa fascia oraria.");
+      return;
     }
 
-    const roomAvailable = isRoomAvailableForInterval(
-      form.roomId,
-      form.date,
-      form.startTime,
-      endTime,
-      form.id
-    );
+    const unavailableVetNames: string[] = [];
 
-    if (unavailableVetNames.length > 0 && !roomAvailable) {
-      alert(
-        `I seguenti veterinari non sono disponibili in questa fascia: ${unavailableVetNames.join(
-          ", "
-        )}. Anche la stanza è già occupata in questo orario.`
-      );
-      return;
+    for (const vetId of assignedVetIds) {
+      const vet = getVetById(vetId);
+      if (!vet) continue;
+
+      const shift = resolveVetShift(vet, form.date, overrides);
+
+      if (!shift.enabled || form.startTime < shift.start || formEndTime > shift.end) {
+        unavailableVetNames.push(vet.name);
+        continue;
+      }
+
+      if (
+        shift.breakStart !== "00:00" &&
+        shift.breakEnd !== "00:00" &&
+        doesIntervalOverlap(form.startTime, formEndTime, shift.breakStart, shift.breakEnd)
+      ) {
+        unavailableVetNames.push(vet.name);
+        continue;
+      }
+
+      const hasConflict = appointments.some((item) => {
+        if (item.date !== form.date) return false;
+        if (!appointmentIsActive(item)) return false;
+        if (form.id && item.id === form.id) return false;
+        if (!item.assignedVetIds.includes(vetId)) return false;
+
+        return doesIntervalOverlap(form.startTime, formEndTime, item.startTime, item.endTime);
+      });
+
+      if (hasConflict) {
+        unavailableVetNames.push(vet.name);
+      }
     }
 
     if (unavailableVetNames.length > 0) {
@@ -595,11 +582,6 @@ export default function AgendaPage() {
           ", "
         )}.`
       );
-      return;
-    }
-
-    if (!roomAvailable) {
-      alert("La stanza è già occupata in questa fascia oraria.");
       return;
     }
 
@@ -614,13 +596,13 @@ export default function AgendaPage() {
               ...item,
               date: form.date,
               startTime: form.startTime,
-              endTime,
+              endTime: formEndTime,
+              roomId: room.id,
+              roomName: room.name,
               vetId: assignedVetIds[0],
               vetName: assignedVetNames[0] || "",
               assignedVetIds,
               assignedVetNames,
-              roomId: room.id,
-              roomName: room.name,
               animalId: form.animalId.trim(),
               animalName: form.animalName.trim(),
               ownerName: form.ownerName.trim(),
@@ -643,13 +625,13 @@ export default function AgendaPage() {
       id: crypto.randomUUID(),
       date: form.date,
       startTime: form.startTime,
-      endTime,
+      endTime: formEndTime,
+      roomId: room.id,
+      roomName: room.name,
       vetId: assignedVetIds[0],
       vetName: assignedVetNames[0] || "",
       assignedVetIds,
       assignedVetNames,
-      roomId: room.id,
-      roomName: room.name,
       animalId: form.animalId.trim(),
       animalName: form.animalName.trim(),
       ownerName: form.ownerName.trim(),
@@ -685,6 +667,17 @@ export default function AgendaPage() {
     persistAppointments(appointments.filter((item) => item.id !== id));
   }
 
+  const stats = useMemo(() => {
+    return {
+      total: activeAppointmentsForDay.length,
+      rooms: visibleRooms.length,
+      vets: activeVetsForDay.length,
+      surgeries: activeAppointmentsForDay.filter((item) =>
+        isOperatingRoom(item.roomId)
+      ).length,
+    };
+  }, [activeAppointmentsForDay, visibleRooms.length, activeVetsForDay.length, settings]);
+
   if (!loaded || !settings) {
     return <div className="p-6 text-sm text-neutral-500">Caricamento agenda...</div>;
   }
@@ -695,14 +688,14 @@ export default function AgendaPage() {
         <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-sm font-semibold uppercase tracking-wide text-emerald-700">
-              UNIMALIA · Agenda
+              UNIMALIA · Agenda clinica
             </p>
             <h1 className="mt-1 text-3xl font-bold text-neutral-900">
               {settings.clinicName}
             </h1>
             <p className="mt-2 max-w-3xl text-sm text-neutral-600">
-              Agenda clinica con turni, override, multi-slot e supporto sala operatoria con
-              più dottori.
+              Agenda stanza-centrica con disponibilità veterinari, turni, pausa e
+              supporto sala operatoria multi-dottore.
             </p>
           </div>
 
@@ -711,7 +704,7 @@ export default function AgendaPage() {
               href="/professionisti/impostazioni/agenda"
               className="rounded-2xl border border-neutral-300 bg-white px-4 py-3 text-sm font-semibold text-neutral-700 hover:bg-neutral-50"
             >
-              Impostazioni agenda
+              Gestione turni e agenda
             </Link>
 
             <button
@@ -730,23 +723,26 @@ export default function AgendaPage() {
             </div>
             <div className="mt-2 text-3xl font-bold text-neutral-900">{stats.total}</div>
           </div>
+
           <div className="rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm">
             <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
-              Confermati
+              Stanze visibili
             </div>
-            <div className="mt-2 text-3xl font-bold text-neutral-900">{stats.confirmed}</div>
+            <div className="mt-2 text-3xl font-bold text-neutral-900">{stats.rooms}</div>
           </div>
+
           <div className="rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm">
             <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
-              In attesa
+              Veterinari in turno
             </div>
-            <div className="mt-2 text-3xl font-bold text-neutral-900">{stats.pending}</div>
+            <div className="mt-2 text-3xl font-bold text-neutral-900">{stats.vets}</div>
           </div>
+
           <div className="rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm">
             <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
-              Completati
+              Chirurgie del giorno
             </div>
-            <div className="mt-2 text-3xl font-bold text-neutral-900">{stats.completed}</div>
+            <div className="mt-2 text-3xl font-bold text-neutral-900">{stats.surgeries}</div>
           </div>
         </div>
 
@@ -765,24 +761,6 @@ export default function AgendaPage() {
 
           <div>
             <label className="mb-2 block text-sm font-semibold text-neutral-800">
-              Veterinario
-            </label>
-            <select
-              value={selectedVetFilter}
-              onChange={(e) => setSelectedVetFilter(e.target.value)}
-              className="w-full rounded-2xl border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-emerald-500"
-            >
-              <option value="all">Tutti i veterinari</option>
-              {settings.vets.map((vet) => (
-                <option key={vet.id} value={vet.id}>
-                  {vet.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="mb-2 block text-sm font-semibold text-neutral-800">
               Stanza
             </label>
             <select
@@ -794,6 +772,24 @@ export default function AgendaPage() {
               {settings.rooms.map((room) => (
                 <option key={room.id} value={room.id}>
                   {room.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-semibold text-neutral-800">
+              Veterinario
+            </label>
+            <select
+              value={selectedVetFilter}
+              onChange={(e) => setSelectedVetFilter(e.target.value)}
+              className="w-full rounded-2xl border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-emerald-500"
+            >
+              <option value="all">Tutti i veterinari</option>
+              {settings.vets.map((vet) => (
+                <option key={vet.id} value={vet.id}>
+                  {vet.name}
                 </option>
               ))}
             </select>
@@ -822,9 +818,11 @@ export default function AgendaPage() {
           <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
             Settimana corrente
           </div>
+
           <div className="mt-3 grid gap-3 md:grid-cols-7">
             {weekDates.map((date) => {
               const isSelected = date === selectedDate;
+
               return (
                 <button
                   key={date}
@@ -849,7 +847,7 @@ export default function AgendaPage() {
 
         <div className="mb-6 rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm">
           <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
-            Veterinari attivi il giorno selezionato
+            Disponibilità del giorno
           </div>
           <div className="mt-2 text-sm text-neutral-600">{formatDateLabel(selectedDate)}</div>
 
@@ -871,221 +869,187 @@ export default function AgendaPage() {
           </div>
         </div>
 
-        <div className="space-y-6">
-          {slotsByVet.map(({ vet, shift, slots }) => {
-            const roomsToShow =
-              selectedRoomFilter === "all"
-                ? settings.rooms
-                : settings.rooms.filter((room) => room.id === selectedRoomFilter);
-
-            return (
-              <div
-                key={vet.id}
-                className="overflow-hidden rounded-3xl border border-neutral-200 bg-white shadow-sm"
-              >
-                <div className="border-b border-neutral-200 bg-neutral-100 px-5 py-4">
-                  <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-                    <div>
-                      <div className="text-lg font-bold text-neutral-900">{vet.name}</div>
-                      <div className="mt-1 text-sm text-neutral-600">
-                        Può lavorare nelle stanze disponibili, ma con una sola prenotazione
-                        per fascia oraria.
+        <div className="overflow-hidden rounded-3xl border border-neutral-200 bg-white shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="min-w-full border-collapse">
+              <thead className="bg-neutral-100">
+                <tr>
+                  <th className="border-b border-neutral-200 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-neutral-600">
+                    Ora
+                  </th>
+                  {visibleRooms.map((room) => (
+                    <th
+                      key={room.id}
+                      className="border-b border-neutral-200 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-neutral-600"
+                    >
+                      <div>{room.name}</div>
+                      <div className="mt-1 text-[11px] font-medium normal-case tracking-normal text-neutral-500">
+                        {isOperatingRoom(room.id)
+                          ? "Multi-veterinario"
+                          : "1 veterinario per fascia"}
                       </div>
-                      <div className="mt-1 text-sm text-neutral-600">
-                        Turno {shift.start} - {shift.end} · pausa {shift.breakStart} -{" "}
-                        {shift.breakEnd}
-                      </div>
-                    </div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
 
-                    <div className="text-sm text-neutral-600">
-                      {formatDateLabel(selectedDate)}
-                    </div>
-                  </div>
-                </div>
+              <tbody>
+                {timeSlots.map((slot) => (
+                  <tr key={slot} className="align-top hover:bg-neutral-50">
+                    <td className="border-b border-neutral-100 px-4 py-4 text-sm font-semibold text-neutral-800">
+                      {slot}
+                    </td>
 
-                <div className="overflow-x-auto">
-                  <table className="min-w-full border-collapse">
-                    <thead className="bg-white">
-                      <tr>
-                        <th className="border-b border-neutral-200 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-neutral-600">
-                          Ora
-                        </th>
-                        {roomsToShow.map((room) => (
-                          <th
-                            key={room.id}
-                            className="border-b border-neutral-200 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-neutral-600"
+                    {visibleRooms.map((room) => {
+                      const slotState = getSlotState(room.id, slot);
+
+                      if (slotState.type === "busy-start") {
+                        const appointment = slotState.appointment;
+
+                        return (
+                          <td
+                            key={`${room.id}-${slot}`}
+                            className="border-b border-neutral-100 px-4 py-4"
                           >
-                            {room.name}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
+                            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3">
+                              <div className="text-sm font-bold text-neutral-900">
+                                {appointment.animalName}
+                              </div>
+                              <div className="mt-1 text-xs text-neutral-600">
+                                Proprietario: {appointment.ownerName}
+                              </div>
+                              <div className="mt-1 text-xs text-neutral-600">
+                                {appointment.visitTypeLabel} · {appointment.startTime} -{" "}
+                                {appointment.endTime}
+                              </div>
+                              <div className="mt-1 text-xs text-neutral-600">
+                                Durata: {appointment.duration} min
+                              </div>
+                              <div className="mt-1 text-xs text-neutral-600">
+                                Medici: {appointment.assignedVetNames.join(", ")}
+                              </div>
+                              <div className="mt-1 text-xs text-neutral-600">
+                                Stato: {appointment.status}
+                              </div>
 
-                    <tbody>
-                      {slots.map((slot) => (
-                        <tr key={`${vet.id}-${slot}`} className="align-top hover:bg-neutral-50">
-                          <td className="border-b border-neutral-100 px-4 py-4 text-sm font-semibold text-neutral-800">
-                            {slot}
-                          </td>
-
-                          {roomsToShow.map((room) => {
-                            const slotState = getSlotState(vet.id, room.id, selectedDate, slot);
-                            const appointmentAtStart = visibleAppointments.find(
-                              (item) =>
-                                item.assignedVetIds.includes(vet.id) &&
-                                item.roomId === room.id &&
-                                appointmentStartsAtSlot(item, slot)
-                            );
-
-                            if (appointmentAtStart) {
-                              return (
-                                <td
-                                  key={`${vet.id}-${room.id}-${slot}`}
-                                  className="border-b border-neutral-100 px-4 py-4"
-                                >
-                                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3">
-                                    <div className="text-sm font-bold text-neutral-900">
-                                      {appointmentAtStart.animalName}
-                                    </div>
-
-                                    <div className="mt-1 text-xs text-neutral-600">
-                                      Proprietario: {appointmentAtStart.ownerName}
-                                    </div>
-
-                                    <div className="mt-1 text-xs text-neutral-600">
-                                      {appointmentAtStart.visitTypeLabel} ·{" "}
-                                      {appointmentAtStart.startTime} -{" "}
-                                      {appointmentAtStart.endTime}
-                                    </div>
-
-                                    <div className="mt-1 text-xs text-neutral-600">
-                                      Durata: {appointmentAtStart.duration} min
-                                    </div>
-
-                                    <div className="mt-1 text-xs text-neutral-600">
-                                      Medici: {appointmentAtStart.assignedVetNames.join(", ")}
-                                    </div>
-
-                                    <div className="mt-1 text-xs text-neutral-600">
-                                      Stato: {appointmentAtStart.status}
-                                    </div>
-
-                                    <div className="mt-3 flex flex-wrap gap-2">
-                                      <button
-                                        onClick={() => openEditModal(appointmentAtStart)}
-                                        className="rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-50"
-                                      >
-                                        Modifica
-                                      </button>
-
-                                      <button
-                                        onClick={() => cancelAppointment(appointmentAtStart.id)}
-                                        className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700 hover:bg-amber-100"
-                                      >
-                                        Annulla
-                                      </button>
-
-                                      <button
-                                        onClick={() => deleteAppointment(appointmentAtStart.id)}
-                                        className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-100"
-                                      >
-                                        Elimina
-                                      </button>
-
-                                      {appointmentAtStart.animalId ? (
-                                        <Link
-                                          href={`/professionisti/animali/${appointmentAtStart.animalId}`}
-                                          className="rounded-xl border border-emerald-200 bg-white px-3 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
-                                        >
-                                          Scheda animale
-                                        </Link>
-                                      ) : null}
-                                    </div>
-                                  </div>
-                                </td>
-                              );
-                            }
-
-                            if (slotState.type === "offshift") {
-                              return (
-                                <td
-                                  key={`${vet.id}-${room.id}-${slot}`}
-                                  className="border-b border-neutral-100 px-4 py-4"
-                                >
-                                  <div className="rounded-2xl border border-zinc-200 bg-zinc-100 px-3 py-3 text-xs font-semibold text-zinc-500">
-                                    Fuori turno
-                                  </div>
-                                </td>
-                              );
-                            }
-
-                            if (slotState.type === "break") {
-                              return (
-                                <td
-                                  key={`${vet.id}-${room.id}-${slot}`}
-                                  className="border-b border-neutral-100 px-4 py-4"
-                                >
-                                  <div className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-3 text-xs font-semibold text-amber-800">
-                                    Pausa
-                                  </div>
-                                </td>
-                              );
-                            }
-
-                            if (slotState.type === "busy-vet") {
-                              return (
-                                <td
-                                  key={`${vet.id}-${room.id}-${slot}`}
-                                  className="border-b border-neutral-100 px-4 py-4"
-                                >
-                                  <div className="rounded-2xl border border-blue-200 bg-blue-50 px-3 py-3 text-xs font-semibold text-blue-800">
-                                    {slotState.label}
-                                  </div>
-                                </td>
-                              );
-                            }
-
-                            if (slotState.type === "busy-room") {
-                              return (
-                                <td
-                                  key={`${vet.id}-${room.id}-${slot}`}
-                                  className="border-b border-neutral-100 px-4 py-4"
-                                >
-                                  <div className="rounded-2xl border border-rose-200 bg-rose-50 px-3 py-3 text-xs font-semibold text-rose-800">
-                                    Stanza occupata
-                                  </div>
-                                </td>
-                              );
-                            }
-
-                            return (
-                              <td
-                                key={`${vet.id}-${room.id}-${slot}`}
-                                className="border-b border-neutral-100 px-4 py-4"
-                              >
+                              <div className="mt-3 flex flex-wrap gap-2">
                                 <button
-                                  onClick={() => openCreateModal(slot, vet.id, room.id)}
-                                  className="rounded-2xl bg-neutral-900 px-3 py-2 text-xs font-semibold text-white hover:opacity-90"
+                                  onClick={() => openEditModal(appointment)}
+                                  className="rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-50"
                                 >
-                                  Prenota
+                                  Modifica
                                 </button>
-                              </td>
-                            );
-                          })}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            );
-          })}
 
-          {slotsByVet.length === 0 ? (
-            <div className="rounded-3xl border border-neutral-200 bg-white p-10 text-center text-sm text-neutral-500 shadow-sm">
-              Nessun turno attivo per i filtri selezionati.
-            </div>
-          ) : null}
+                                <button
+                                  onClick={() => cancelAppointment(appointment.id)}
+                                  className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700 hover:bg-amber-100"
+                                >
+                                  Annulla
+                                </button>
+
+                                <button
+                                  onClick={() => deleteAppointment(appointment.id)}
+                                  className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-100"
+                                >
+                                  Elimina
+                                </button>
+
+                                {appointment.animalId ? (
+                                  <Link
+                                    href={`/professionisti/animali/${appointment.animalId}`}
+                                    className="rounded-xl border border-emerald-200 bg-white px-3 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
+                                  >
+                                    Scheda animale
+                                  </Link>
+                                ) : null}
+                              </div>
+                            </div>
+                          </td>
+                        );
+                      }
+
+                      if (slotState.type === "busy-room") {
+                        return (
+                          <td
+                            key={`${room.id}-${slot}`}
+                            className="border-b border-neutral-100 px-4 py-4"
+                          >
+                            <div className="rounded-2xl border border-blue-200 bg-blue-50 px-3 py-3 text-xs font-semibold text-blue-800">
+                              Stanza occupata
+                            </div>
+                          </td>
+                        );
+                      }
+
+                      if (slotState.type === "busy-vet") {
+                        return (
+                          <td
+                            key={`${room.id}-${slot}`}
+                            className="border-b border-neutral-100 px-4 py-4"
+                          >
+                            <div className="rounded-2xl border border-violet-200 bg-violet-50 px-3 py-3 text-xs font-semibold text-violet-800">
+                              Veterinari occupati
+                            </div>
+                          </td>
+                        );
+                      }
+
+                      if (slotState.type === "break") {
+                        return (
+                          <td
+                            key={`${room.id}-${slot}`}
+                            className="border-b border-neutral-100 px-4 py-4"
+                          >
+                            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-3 text-xs font-semibold text-amber-800">
+                              Pausa
+                            </div>
+                          </td>
+                        );
+                      }
+
+                      if (slotState.type === "offshift") {
+                        return (
+                          <td
+                            key={`${room.id}-${slot}`}
+                            className="border-b border-neutral-100 px-4 py-4"
+                          >
+                            <div className="rounded-2xl border border-zinc-200 bg-zinc-100 px-3 py-3 text-xs font-semibold text-zinc-500">
+                              Fuori turno
+                            </div>
+                          </td>
+                        );
+                      }
+
+                      const availableVets = getAvailableVetsForRoomSlot(room.id, slot);
+
+                      return (
+                        <td
+                          key={`${room.id}-${slot}`}
+                          className="border-b border-neutral-100 px-4 py-4"
+                        >
+                          <div className="space-y-2">
+                            <button
+                              onClick={() => openCreateModal(slot, room.id)}
+                              className="rounded-2xl bg-neutral-900 px-3 py-2 text-xs font-semibold text-white hover:opacity-90"
+                            >
+                              Prenota
+                            </button>
+
+                            <div className="text-[11px] text-neutral-500">
+                              Disponibili:{" "}
+                              {availableVets.length > 0
+                                ? availableVets.map((vet) => vet.name).join(", ")
+                                : "nessuno"}
+                            </div>
+                          </div>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -1120,7 +1084,9 @@ export default function AgendaPage() {
                     <input
                       type="date"
                       value={form.date}
-                      onChange={(e) => setForm((prev) => ({ ...prev, date: e.target.value }))}
+                      onChange={(e) =>
+                        setForm((prev) => ({ ...prev, date: e.target.value }))
+                      }
                       className="w-full rounded-2xl border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-emerald-500"
                     />
                   </div>
@@ -1141,6 +1107,23 @@ export default function AgendaPage() {
 
                   <div>
                     <label className="mb-2 block text-sm font-semibold text-neutral-800">
+                      Stanza
+                    </label>
+                    <select
+                      value={form.roomId}
+                      onChange={(e) => setForm((prev) => ({ ...prev, roomId: e.target.value }))}
+                      className="w-full rounded-2xl border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-emerald-500"
+                    >
+                      {settings.rooms.map((room) => (
+                        <option key={room.id} value={room.id}>
+                          {room.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-semibold text-neutral-800">
                       Veterinario principale
                     </label>
                     <select
@@ -1156,44 +1139,9 @@ export default function AgendaPage() {
                       }
                       className="w-full rounded-2xl border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-emerald-500"
                     >
-                      {settings.vets.map((vet) => (
+                      {availableVetsForForm.map((vet) => (
                         <option key={vet.id} value={vet.id}>
                           {vet.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="mb-2 block text-sm font-semibold text-neutral-800">
-                      Stanza
-                    </label>
-                    <select
-                      value={form.roomId}
-                      onChange={(e) =>
-                        setForm((prev) => ({
-                          ...prev,
-                          roomId: e.target.value,
-                          assignedVetIds: isOperatingRoom(e.target.value)
-                            ? Array.from(
-                                new Set(
-                                  prev.assignedVetIds.length > 0
-                                    ? prev.assignedVetIds
-                                    : prev.vetId
-                                    ? [prev.vetId]
-                                    : []
-                                )
-                              )
-                            : prev.vetId
-                            ? [prev.vetId]
-                            : [],
-                        }))
-                      }
-                      className="w-full rounded-2xl border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-emerald-500"
-                    >
-                      {settings.rooms.map((room) => (
-                        <option key={room.id} value={room.id}>
-                          {room.name}
                         </option>
                       ))}
                     </select>
@@ -1205,12 +1153,12 @@ export default function AgendaPage() {
                         Sala operatoria · selezione multipla dottori
                       </div>
                       <div className="mt-1 text-sm text-neutral-600">
-                        In questa stanza puoi assegnare più veterinari. Devono essere almeno
-                        due.
+                        In questa stanza puoi assegnare più veterinari. Devono essere
+                        almeno due.
                       </div>
 
                       <div className="mt-4 grid gap-3 md:grid-cols-2">
-                        {availableExtraVets.map((vet) => {
+                        {availableVetsForForm.map((vet) => {
                           const checked = form.assignedVetIds.includes(vet.id);
 
                           return (
@@ -1312,7 +1260,9 @@ export default function AgendaPage() {
                   </div>
 
                   <div className="md:col-span-2 rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
-                    <div className="text-sm font-semibold text-neutral-900">Riepilogo slot</div>
+                    <div className="text-sm font-semibold text-neutral-900">
+                      Riepilogo slot
+                    </div>
                     <div className="mt-2 text-sm text-neutral-700">
                       {form.startTime} → {formEndTime} ·{" "}
                       {selectedVisitType?.duration || settings.slotMinutes} min
@@ -1336,7 +1286,9 @@ export default function AgendaPage() {
                     <textarea
                       rows={4}
                       value={form.notes}
-                      onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
+                      onChange={(e) =>
+                        setForm((prev) => ({ ...prev, notes: e.target.value }))
+                      }
                       className="w-full rounded-2xl border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-emerald-500"
                     />
                   </div>

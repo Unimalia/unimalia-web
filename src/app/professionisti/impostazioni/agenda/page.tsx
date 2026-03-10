@@ -13,13 +13,22 @@ import {
 } from "@/lib/agenda/types";
 import {
   createDefaultAgendaSettings,
-  loadAgendaAppointments,
   loadAgendaOverrides,
   loadAgendaSettings,
   saveAgendaOverrides,
   saveAgendaSettings,
 } from "@/lib/agenda/storage";
 import { DAY_LABELS, todayIsoLocal } from "@/lib/agenda/utils";
+
+const DAY_KEYS: (keyof VetSchedule)[] = [
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+  "sunday",
+];
 
 function createDefaultShift(enabled = false): WeeklyShift {
   return {
@@ -43,25 +52,25 @@ function createDefaultSchedule(): VetSchedule {
   };
 }
 
-function createVet(index: number): Vet {
+function createVet(name: string): Vet {
   return {
     id: crypto.randomUUID(),
-    name: `Nuovo veterinario ${index}`,
+    name,
     schedule: createDefaultSchedule(),
   };
 }
 
-function createRoom(index: number): Room {
+function createRoom(name: string): Room {
   return {
     id: crypto.randomUUID(),
-    name: `Stanza ${index}`,
+    name,
   };
 }
 
-function createVisitType(index: number): VisitType {
+function createVisitType(label: string): VisitType {
   return {
-    id: `custom-${crypto.randomUUID()}`,
-    label: `Prestazione ${index}`,
+    id: crypto.randomUUID(),
+    label,
     duration: 30,
   };
 }
@@ -70,8 +79,7 @@ export default function AgendaSettingsPage() {
   const [loaded, setLoaded] = useState(false);
   const [settings, setSettings] = useState<AgendaSettings>(createDefaultAgendaSettings());
   const [overrides, setOverrides] = useState<VetScheduleOverride[]>([]);
-  const [appointmentsCount, setAppointmentsCount] = useState(0);
-
+  const [vetSearch, setVetSearch] = useState("");
   const [overrideVetId, setOverrideVetId] = useState("");
   const [overrideDate, setOverrideDate] = useState(todayIsoLocal());
   const [overrideEnabled, setOverrideEnabled] = useState(true);
@@ -84,11 +92,9 @@ export default function AgendaSettingsPage() {
   useEffect(() => {
     const loadedSettings = loadAgendaSettings();
     const loadedOverrides = loadAgendaOverrides();
-    const loadedAppointments = loadAgendaAppointments();
 
     setSettings(loadedSettings);
     setOverrides(loadedOverrides);
-    setAppointmentsCount(loadedAppointments.length);
     setOverrideVetId(loadedSettings.vets[0]?.id || "");
     setLoaded(true);
   }, []);
@@ -117,7 +123,7 @@ export default function AgendaSettingsPage() {
   function addVet() {
     persistSettings({
       ...settings,
-      vets: [...settings.vets, createVet(settings.vets.length + 1)],
+      vets: [...settings.vets, createVet(`Nuovo veterinario ${settings.vets.length + 1}`)],
     });
   }
 
@@ -145,7 +151,7 @@ export default function AgendaSettingsPage() {
     });
   }
 
-  function updateVetShift(
+  function updateShiftField(
     vetId: string,
     day: keyof VetSchedule,
     field: keyof WeeklyShift,
@@ -170,10 +176,51 @@ export default function AgendaSettingsPage() {
     });
   }
 
+  function copyDayToAll(vetId: string, day: keyof VetSchedule) {
+    const sourceVet = settings.vets.find((vet) => vet.id === vetId);
+    if (!sourceVet) return;
+
+    const sourceShift = sourceVet.schedule[day];
+
+    persistSettings({
+      ...settings,
+      vets: settings.vets.map((vet) => {
+        if (vet.id !== vetId) return vet;
+
+        const nextSchedule = { ...vet.schedule };
+        DAY_KEYS.forEach((key) => {
+          nextSchedule[key] = { ...sourceShift };
+        });
+
+        return {
+          ...vet,
+          schedule: nextSchedule,
+        };
+      }),
+    });
+  }
+
+  function copyVetScheduleToAll(vetId: string) {
+    const sourceVet = settings.vets.find((vet) => vet.id === vetId);
+    if (!sourceVet) return;
+
+    persistSettings({
+      ...settings,
+      vets: settings.vets.map((vet) =>
+        vet.id === vetId
+          ? vet
+          : {
+              ...vet,
+              schedule: structuredClone(sourceVet.schedule),
+            }
+      ),
+    });
+  }
+
   function addRoom() {
     persistSettings({
       ...settings,
-      rooms: [...settings.rooms, createRoom(settings.rooms.length + 1)],
+      rooms: [...settings.rooms, createRoom(`Stanza ${settings.rooms.length + 1}`)],
     });
   }
 
@@ -196,7 +243,10 @@ export default function AgendaSettingsPage() {
   function addVisitType() {
     persistSettings({
       ...settings,
-      visitTypes: [...settings.visitTypes, createVisitType(settings.visitTypes.length + 1)],
+      visitTypes: [
+        ...settings.visitTypes,
+        createVisitType(`Prestazione ${settings.visitTypes.length + 1}`),
+      ],
     });
   }
 
@@ -248,6 +298,13 @@ export default function AgendaSettingsPage() {
     persistOverrides(overrides.filter((item) => item.id !== id));
   }
 
+  const filteredVets = useMemo(() => {
+    const query = vetSearch.trim().toLowerCase();
+    if (!query) return settings.vets;
+
+    return settings.vets.filter((vet) => vet.name.toLowerCase().includes(query));
+  }, [settings.vets, vetSearch]);
+
   const overridesByVet = useMemo(() => {
     return settings.vets.map((vet) => ({
       vet,
@@ -265,18 +322,18 @@ export default function AgendaSettingsPage() {
 
   return (
     <div className="min-h-screen bg-neutral-50">
-      <div className="mx-auto max-w-7xl p-6">
+      <div className="mx-auto max-w-[1600px] p-6">
         <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-sm font-semibold uppercase tracking-wide text-emerald-700">
-              UNIMALIA · Impostazioni agenda
+              UNIMALIA · Gestione agenda
             </p>
             <h1 className="mt-1 text-3xl font-bold text-neutral-900">
-              Agenda clinica definitiva
+              Turni, stanze e prestazioni
             </h1>
             <p className="mt-2 max-w-3xl text-sm text-neutral-600">
-              Qui gestisci struttura clinica, veterinari, turni settimanali,
-              eccezioni mensili per data, stanze e prestazioni.
+              Struttura turni pensata per cliniche grandi: tabella compatta,
+              ricerca veterinario, copie rapide, stanze reali e override per data.
             </p>
           </div>
 
@@ -291,15 +348,6 @@ export default function AgendaSettingsPage() {
         </div>
 
         <div className="mb-6 grid gap-4 md:grid-cols-4">
-          <div className="rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm">
-            <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
-              Clinica
-            </div>
-            <div className="mt-2 text-lg font-bold text-neutral-900">
-              {settings.clinicName}
-            </div>
-          </div>
-
           <div className="rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm">
             <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
               Veterinari
@@ -320,15 +368,24 @@ export default function AgendaSettingsPage() {
 
           <div className="rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm">
             <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
-              Appuntamenti salvati
+              Prestazioni
             </div>
             <div className="mt-2 text-3xl font-bold text-neutral-900">
-              {appointmentsCount}
+              {settings.visitTypes.length}
+            </div>
+          </div>
+
+          <div className="rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm">
+            <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+              Override per data
+            </div>
+            <div className="mt-2 text-3xl font-bold text-neutral-900">
+              {overrides.length}
             </div>
           </div>
         </div>
 
-        <div className="mb-6 grid gap-6 lg:grid-cols-2">
+        <div className="mb-6 grid gap-6 xl:grid-cols-3">
           <div className="rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm">
             <h2 className="text-lg font-bold text-neutral-900">Impostazioni generali</h2>
 
@@ -346,7 +403,7 @@ export default function AgendaSettingsPage() {
 
               <div>
                 <label className="mb-2 block text-sm font-semibold text-neutral-800">
-                  Durata slot base (minuti)
+                  Slot base (minuti)
                 </label>
                 <input
                   type="number"
@@ -389,194 +446,224 @@ export default function AgendaSettingsPage() {
               ))}
             </div>
           </div>
-        </div>
 
-        <div className="mb-6 rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm">
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <h2 className="text-lg font-bold text-neutral-900">Prestazioni</h2>
-            <button
-              onClick={addVisitType}
-              className="rounded-2xl bg-neutral-900 px-4 py-3 text-sm font-semibold text-white hover:opacity-90"
-            >
-              Aggiungi prestazione
-            </button>
-          </div>
-
-          <div className="space-y-3">
-            {settings.visitTypes.map((item) => (
-              <div
-                key={item.id}
-                className="grid gap-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-4 md:grid-cols-[1fr_140px_120px]"
+          <div className="rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h2 className="text-lg font-bold text-neutral-900">Prestazioni</h2>
+              <button
+                onClick={addVisitType}
+                className="rounded-2xl bg-neutral-900 px-4 py-3 text-sm font-semibold text-white hover:opacity-90"
               >
-                <input
-                  value={item.label}
-                  onChange={(e) => updateVisitType(item.id, "label", e.target.value)}
-                  className="rounded-2xl border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-emerald-500"
-                />
-                <input
-                  type="number"
-                  min={5}
-                  step={5}
-                  value={item.duration}
-                  onChange={(e) =>
-                    updateVisitType(item.id, "duration", Number(e.target.value))
-                  }
-                  className="rounded-2xl border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-emerald-500"
-                />
-                <button
-                  onClick={() => removeVisitType(item.id)}
-                  className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 hover:bg-red-100"
+                Aggiungi prestazione
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {settings.visitTypes.map((item) => (
+                <div
+                  key={item.id}
+                  className="grid gap-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-4 md:grid-cols-[1fr_120px_120px]"
                 >
-                  Elimina
-                </button>
-              </div>
-            ))}
+                  <input
+                    value={item.label}
+                    onChange={(e) => updateVisitType(item.id, "label", e.target.value)}
+                    className="rounded-2xl border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-emerald-500"
+                  />
+                  <input
+                    type="number"
+                    min={5}
+                    step={5}
+                    value={item.duration}
+                    onChange={(e) =>
+                      updateVisitType(item.id, "duration", Number(e.target.value))
+                    }
+                    className="rounded-2xl border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-emerald-500"
+                  />
+                  <button
+                    onClick={() => removeVisitType(item.id)}
+                    className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 hover:bg-red-100"
+                  >
+                    Elimina
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
         <div className="mb-6 rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm">
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <h2 className="text-lg font-bold text-neutral-900">Veterinari</h2>
-            <button
-              onClick={addVet}
-              className="rounded-2xl bg-neutral-900 px-4 py-3 text-sm font-semibold text-white hover:opacity-90"
-            >
-              Aggiungi veterinario
-            </button>
+          <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-neutral-900">
+                Turni veterinari · tabella compatta
+              </h2>
+              <p className="mt-1 text-sm text-neutral-600">
+                Pensata per strutture grandi. Una riga per veterinario, colonne lun-dom.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              <input
+                value={vetSearch}
+                onChange={(e) => setVetSearch(e.target.value)}
+                placeholder="Cerca veterinario..."
+                className="rounded-2xl border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-emerald-500"
+              />
+              <button
+                onClick={addVet}
+                className="rounded-2xl bg-neutral-900 px-4 py-3 text-sm font-semibold text-white hover:opacity-90"
+              >
+                Aggiungi veterinario
+              </button>
+            </div>
           </div>
 
-          <div className="space-y-6">
-            {settings.vets.map((vet, index) => (
-              <div
-                key={vet.id}
-                className="rounded-3xl border border-neutral-200 bg-neutral-50 p-5"
-              >
-                <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                  <div className="flex-1">
-                    <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
-                      Veterinario {index + 1}
-                    </div>
-                    <input
-                      value={vet.name}
-                      onChange={(e) => updateVetName(vet.id, e.target.value)}
-                      className="w-full rounded-2xl border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-emerald-500"
-                    />
-                  </div>
-
-                  <div className="lg:pt-7">
-                    <button
-                      onClick={() => removeVet(vet.id)}
-                      className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 hover:bg-red-100"
+          <div className="overflow-x-auto">
+            <table className="min-w-[1400px] border-collapse">
+              <thead className="bg-neutral-100">
+                <tr>
+                  <th className="border-b border-neutral-200 px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-neutral-600">
+                    Veterinario
+                  </th>
+                  {DAY_LABELS.map((day) => (
+                    <th
+                      key={day.key}
+                      className="border-b border-neutral-200 px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-neutral-600"
                     >
-                      Elimina veterinario
-                    </button>
-                  </div>
-                </div>
+                      {day.label}
+                    </th>
+                  ))}
+                  <th className="border-b border-neutral-200 px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-neutral-600">
+                    Azioni
+                  </th>
+                </tr>
+              </thead>
 
-                <div className="overflow-x-auto">
-                  <table className="min-w-full border-collapse">
-                    <thead className="bg-white">
-                      <tr>
-                        <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-neutral-600">
-                          Giorno
-                        </th>
-                        <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-neutral-600">
-                          Attivo
-                        </th>
-                        <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-neutral-600">
-                          Inizio
-                        </th>
-                        <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-neutral-600">
-                          Fine
-                        </th>
-                        <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-neutral-600">
-                          Pausa inizio
-                        </th>
-                        <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-neutral-600">
-                          Pausa fine
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {DAY_LABELS.map((day) => {
-                        const shift = vet.schedule[day.key];
+              <tbody>
+                {filteredVets.map((vet) => (
+                  <tr key={vet.id} className="align-top">
+                    <td className="border-b border-neutral-100 px-3 py-3">
+                      <div className="space-y-3">
+                        <input
+                          value={vet.name}
+                          onChange={(e) => updateVetName(vet.id, e.target.value)}
+                          className="w-[220px] rounded-2xl border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-emerald-500"
+                        />
 
-                        return (
-                          <tr key={day.key} className="border-t border-neutral-200">
-                            <td className="px-3 py-3 text-sm font-semibold text-neutral-900">
-                              {day.label}
-                            </td>
-                            <td className="px-3 py-3">
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            onClick={() => copyDayToAll(vet.id, "monday")}
+                            className="rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-50"
+                          >
+                            Copia lun su tutti
+                          </button>
+
+                          <button
+                            onClick={() => copyVetScheduleToAll(vet.id)}
+                            className="rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-50"
+                          >
+                            Copia schema a tutti
+                          </button>
+                        </div>
+                      </div>
+                    </td>
+
+                    {DAY_LABELS.map((day) => {
+                      const shift = vet.schedule[day.key];
+
+                      return (
+                        <td
+                          key={`${vet.id}-${day.key}`}
+                          className="border-b border-neutral-100 px-3 py-3"
+                        >
+                          <div className="space-y-2 rounded-2xl border border-neutral-200 bg-neutral-50 p-3">
+                            <label className="flex items-center gap-2 text-xs font-semibold text-neutral-700">
                               <input
                                 type="checkbox"
                                 checked={shift.enabled}
                                 onChange={(e) =>
-                                  updateVetShift(vet.id, day.key, "enabled", e.target.checked)
+                                  updateShiftField(vet.id, day.key, "enabled", e.target.checked)
                                 }
                               />
-                            </td>
-                            <td className="px-3 py-3">
-                              <input
-                                type="time"
-                                value={shift.start}
-                                disabled={!shift.enabled}
-                                onChange={(e) =>
-                                  updateVetShift(vet.id, day.key, "start", e.target.value)
-                                }
-                                className="rounded-xl border border-neutral-300 px-3 py-2 text-sm disabled:bg-neutral-100"
-                              />
-                            </td>
-                            <td className="px-3 py-3">
-                              <input
-                                type="time"
-                                value={shift.end}
-                                disabled={!shift.enabled}
-                                onChange={(e) =>
-                                  updateVetShift(vet.id, day.key, "end", e.target.value)
-                                }
-                                className="rounded-xl border border-neutral-300 px-3 py-2 text-sm disabled:bg-neutral-100"
-                              />
-                            </td>
-                            <td className="px-3 py-3">
-                              <input
-                                type="time"
-                                value={shift.breakStart}
-                                disabled={!shift.enabled}
-                                onChange={(e) =>
-                                  updateVetShift(vet.id, day.key, "breakStart", e.target.value)
-                                }
-                                className="rounded-xl border border-neutral-300 px-3 py-2 text-sm disabled:bg-neutral-100"
-                              />
-                            </td>
-                            <td className="px-3 py-3">
-                              <input
-                                type="time"
-                                value={shift.breakEnd}
-                                disabled={!shift.enabled}
-                                onChange={(e) =>
-                                  updateVetShift(vet.id, day.key, "breakEnd", e.target.value)
-                                }
-                                className="rounded-xl border border-neutral-300 px-3 py-2 text-sm disabled:bg-neutral-100"
-                              />
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            ))}
+                              Attivo
+                            </label>
+
+                            <input
+                              type="time"
+                              value={shift.start}
+                              disabled={!shift.enabled}
+                              onChange={(e) =>
+                                updateShiftField(vet.id, day.key, "start", e.target.value)
+                              }
+                              className="w-full rounded-xl border border-neutral-300 px-3 py-2 text-sm disabled:bg-neutral-100"
+                            />
+
+                            <input
+                              type="time"
+                              value={shift.end}
+                              disabled={!shift.enabled}
+                              onChange={(e) =>
+                                updateShiftField(vet.id, day.key, "end", e.target.value)
+                              }
+                              className="w-full rounded-xl border border-neutral-300 px-3 py-2 text-sm disabled:bg-neutral-100"
+                            />
+
+                            <input
+                              type="time"
+                              value={shift.breakStart}
+                              disabled={!shift.enabled}
+                              onChange={(e) =>
+                                updateShiftField(vet.id, day.key, "breakStart", e.target.value)
+                              }
+                              className="w-full rounded-xl border border-neutral-300 px-3 py-2 text-sm disabled:bg-neutral-100"
+                            />
+
+                            <input
+                              type="time"
+                              value={shift.breakEnd}
+                              disabled={!shift.enabled}
+                              onChange={(e) =>
+                                updateShiftField(vet.id, day.key, "breakEnd", e.target.value)
+                              }
+                              className="w-full rounded-xl border border-neutral-300 px-3 py-2 text-sm disabled:bg-neutral-100"
+                            />
+                          </div>
+                        </td>
+                      );
+                    })}
+
+                    <td className="border-b border-neutral-100 px-3 py-3">
+                      <button
+                        onClick={() => removeVet(vet.id)}
+                        className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 hover:bg-red-100"
+                      >
+                        Elimina
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+
+                {filteredVets.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={9}
+                      className="px-4 py-10 text-center text-sm text-neutral-500"
+                    >
+                      Nessun veterinario trovato.
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
           </div>
         </div>
 
         <div className="rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm">
           <h2 className="text-lg font-bold text-neutral-900">
-            Eccezioni mensili per data
+            Override turni per data
           </h2>
           <p className="mt-1 text-sm text-neutral-600">
-            Qui imposti ferie, straordinari, chiusure o modifiche al turno di un giorno
-            preciso. L’override sostituisce il turno settimanale.
+            Per ferie, assenze, turni ridotti, straordinari, sostituzioni e chiusure.
           </p>
 
           <div className="mt-5 grid gap-4 rounded-3xl border border-neutral-200 bg-neutral-50 p-4 lg:grid-cols-4">
@@ -708,7 +795,7 @@ export default function AgendaSettingsPage() {
                     {items.map((item) => (
                       <div
                         key={item.id}
-                        className="grid gap-3 rounded-2xl border border-neutral-200 bg-white p-4 md:grid-cols-[180px_1fr_180px_120px]"
+                        className="grid gap-3 rounded-2xl border border-neutral-200 bg-white p-4 md:grid-cols-[180px_1fr_160px_120px]"
                       >
                         <div className="text-sm font-semibold text-neutral-900">
                           {item.date}
