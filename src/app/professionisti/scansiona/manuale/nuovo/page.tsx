@@ -67,12 +67,19 @@ export default function NuovoAnimaleProfessionistaPage() {
       const json = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        setError(json?.error || "Errore creazione animale.");
+        const message =
+          json?.error ||
+          json?.details ||
+          json?.hint ||
+          `Errore creazione animale (HTTP ${res.status})`;
+
+        setError(message);
         setSaving(false);
         return;
       }
 
       const animalId = json?.animal?.id;
+
       if (!animalId) {
         setError("Animale creato ma ID non ricevuto.");
         setSaving(false);
