@@ -630,7 +630,7 @@ export default function ProAnimalPage() {
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-base font-semibold text-zinc-900">Stato clinico rapido</h2>
 
-            <div className="text-sm text-zinc-600 flex items-center gap-3">
+            <div className="flex items-center gap-3 text-sm text-zinc-600">
               <span>Età: {formatAgeFromBirthDate(animal?.birth_date)}</span>
 
               {animal?.birth_date && animal?.birth_date_is_estimated ? (
