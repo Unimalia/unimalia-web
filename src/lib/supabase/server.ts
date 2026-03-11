@@ -1,7 +1,10 @@
 // src/lib/supabase/server.ts
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import {
+  createClient as createSupabaseClient,
+  type SupabaseClient,
+} from "@supabase/supabase-js";
 
 let _admin: SupabaseClient | null = null;
 
@@ -36,6 +39,13 @@ export async function createServerSupabaseClient() {
 }
 
 /**
+ * Alias compatibilità:
+ * permette di usare
+ * import { createClient } from "@/lib/supabase/server"
+ */
+export const createClient = createServerSupabaseClient;
+
+/**
  * Admin Supabase client (SERVICE ROLE) - server only.
  * ⚠️ Bypassa RLS: usalo solo per job/admin controllati.
  */
@@ -49,7 +59,7 @@ export function supabaseAdmin() {
     throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
   }
 
-  _admin = createClient(url, serviceKey, {
+  _admin = createSupabaseClient(url, serviceKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 

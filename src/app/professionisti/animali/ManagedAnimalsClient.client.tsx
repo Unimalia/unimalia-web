@@ -218,9 +218,9 @@ export default function ManagedAnimalsClient({
 
                 <td className="p-3">
                   {r.owner_name ? (
-                    r.owner_name
+                    <span className="text-sm text-neutral-700">{r.owner_name}</span>
                   ) : (
-                    <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-800">
+                    <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-800">
                       Proprietario non collegato
                     </span>
                   )}

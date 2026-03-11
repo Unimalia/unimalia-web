@@ -1,200 +1,337 @@
-import { NextResponse } from "next/server";
-import { createServerSupabaseClient, supabaseAdmin } from "@/lib/supabase/server";
-import { getProfessionalOrgId } from "@/lib/professionisti/org";
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 
-export const dynamic = "force-dynamic";
-
-function isUuid(v: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+type AnimalPayload = {
+  name: string
+  species: string
+  breed?: string | null
+  color?: string | null
+  size?: string | null
+  birth_date?: string | null
+  microchip?: string | null
+  photo_url?: string | null
+  sex?: string | null
 }
 
-export async function GET(req: Request) {
-  const url = new URL(req.url);
-  const animalId = String(url.searchParams.get("animalId") ?? "").trim();
-
-  if (!animalId || !isUuid(animalId)) {
-    return NextResponse.json({ error: "Missing/invalid animalId" }, { status: 400 });
-  }
-
-  const supabase = await createServerSupabaseClient();
-  const admin = supabaseAdmin();
-
-  const {
-    data: { user },
-    error: userErr,
-  } = await supabase.auth.getUser();
-
-  if (userErr) return NextResponse.json({ error: userErr.message }, { status: 401 });
-  if (!user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-
-  const orgId = await getProfessionalOrgId();
-  if (!orgId) return NextResponse.json({ error: "Missing org" }, { status: 400 });
-
-  // 1) accesso consentito se:
-  // - esiste grant attivo
-  // - oppure l'animale è stato creato dalla stessa org
-  // - oppure l'org di origine coincide con la org corrente
-
-  const nowIso = new Date().toISOString();
-
-  const { data: grants, error: grantErr } = await admin
-    .from("animal_access_grants")
-    .select("id")
-    .eq("animal_id", animalId)
-    .eq("grantee_type", "org")
-    .eq("grantee_id", orgId)
-    .eq("status", "active")
-    .is("revoked_at", null)
-    .or(`valid_to.is.null,valid_to.gt.${nowIso}`)
-    .limit(1);
-
-  if (grantErr) {
-    return NextResponse.json({ error: grantErr.message }, { status: 500 });
-  }
-
-  const { data: ownershipAnimal, error: ownershipErr } = await admin
-    .from("animals")
-    .select("id, created_by_org_id, origin_org_id")
-    .eq("id", animalId)
-    .single();
-
-  if (ownershipErr) {
-    return NextResponse.json({ error: ownershipErr.message }, { status: 500 });
-  }
-
-  const hasGrant = !!grants && grants.length > 0;
-  const belongsToCurrentOrg =
-    ownershipAnimal?.created_by_org_id === orgId ||
-    ownershipAnimal?.origin_org_id === orgId;
-
-  if (!hasGrant && !belongsToCurrentOrg) {
-    return NextResponse.json(
-      { error: "No active grant for this animal" },
-      { status: 403 }
-    );
-  }
-
-  // 2) carica animale (admin)
-  const { data: animal, error: aErr } = await admin
-    .from("animals")
-    .select(
-      "id,owner_id,created_at,name,species,breed,color,size,chip_number,microchip_verified,status,unimalia_code,photo_url,microchip_verified_at,microchip_verified_org_id,microchip_verified_by_label,birth_date,birth_date_is_estimated,owner_claim_status,created_by_role,created_by_org_id,origin_org_id"
-    )
-    .eq("id", animalId)
-    .single();
-
-  if (aErr) return NextResponse.json({ error: aErr.message }, { status: 500 });
-  if (!animal) return NextResponse.json({ error: "Animale non trovato" }, { status: 404 });
-
-  return NextResponse.json({ ok: true, animal });
+function normalizeMicrochip(value?: string | null) {
+  const v = (value ?? '').trim()
+  return v.length ? v : null
 }
 
-export async function POST(req: Request) {
+function isValidMicrochip(value: string) {
+  return /^\d{15}$/.test(value)
+}
+
+async function getProfessionalOrgId(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
+  const { data: profile, error } = await supabase
+    .from('professional_profiles')
+    .select('org_id')
+    .eq('user_id', userId)
+    .single()
+
+  if (error || !profile?.org_id) {
+    return null
+  }
+
+  return profile.org_id as string
+}
+
+export async function GET(req: NextRequest) {
   try {
-    const supabase = await createServerSupabaseClient();
-    const admin = supabaseAdmin();
+    const supabase = await createClient()
 
     const {
       data: { user },
-      error: userErr,
-    } = await supabase.auth.getUser();
+      error: authError,
+    } = await supabase.auth.getUser()
 
-    if (userErr) {
-      return NextResponse.json({ error: userErr.message }, { status: 401 });
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 })
     }
 
-    if (!user) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-    }
-
-    const orgId = await getProfessionalOrgId();
+    const orgId = await getProfessionalOrgId(supabase, user.id)
 
     if (!orgId) {
-      return NextResponse.json(
-        { error: "Nessuna organizzazione professionale collegata a questo account." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Profilo professionista non valido' }, { status: 403 })
     }
 
-    const { data: orgRow, error: orgErr } = await admin
-      .from("organizations")
-      .select("id, name")
-      .eq("id", orgId)
-      .maybeSingle();
+    const animalId = req.nextUrl.searchParams.get('animalId')
 
-    if (orgErr) {
-      return NextResponse.json({ error: orgErr.message }, { status: 500 });
+    if (!animalId) {
+      return NextResponse.json({ error: 'animalId mancante' }, { status: 400 })
     }
 
-    if (!orgRow) {
-      return NextResponse.json(
-        {
-          error:
-            "Organizzazione professionale non trovata. Verifica il collegamento tra professional_profiles e organizations.",
-        },
-        { status: 400 }
-      );
+    const { data: animal, error: animalError } = await supabase
+      .from('animals')
+      .select(`
+        id,
+        name,
+        species,
+        breed,
+        color,
+        size,
+        sex,
+        birth_date,
+        microchip,
+        unimalia_code,
+        photo_url,
+        owner_id,
+        owner_claim_status,
+        owner_claimed_at,
+        created_by_role,
+        created_by_org_id,
+        origin_org_id,
+        microchip_verified_by_label
+      `)
+      .eq('id', animalId)
+      .single()
+
+    if (animalError || !animal) {
+      return NextResponse.json({ error: 'Animale non trovato' }, { status: 404 })
     }
 
-    const body = await req.json().catch(() => null);
+    const { data: grant } = await supabase
+      .from('animal_access_grants')
+      .select('id')
+      .eq('animal_id', animalId)
+      .eq('grantee_id', orgId)
+      .eq('status', 'active')
+      .maybeSingle()
 
-    const name = String(body?.name ?? "").trim();
-    const species = String(body?.species ?? "").trim();
-    const chip = String(body?.chip_number ?? "").replace(/\D+/g, "");
+    const canAccess =
+      !!grant ||
+      animal.created_by_org_id === orgId ||
+      animal.origin_org_id === orgId
 
-    if (name.length < 2) {
-      return NextResponse.json({ error: "Nome animale non valido" }, { status: 400 });
+    if (!canAccess) {
+      return NextResponse.json({ error: 'Accesso negato' }, { status: 403 })
     }
 
-    if (species.length < 2) {
-      return NextResponse.json({ error: "Specie non valida" }, { status: 400 });
+    return NextResponse.json({ animal })
+  } catch (error) {
+    console.error('[PROF_ANIMAL_GET]', error)
+    return NextResponse.json({ error: 'Errore interno' }, { status: 500 })
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const supabase = await createClient()
+
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 })
     }
 
-    if (chip && chip.length !== 15 && chip.length !== 10) {
-      return NextResponse.json(
-        { error: "Microchip non valido: attese 15 cifre, opzionale 10." },
-        { status: 400 }
-      );
+    const orgId = await getProfessionalOrgId(supabase, user.id)
+
+    if (!orgId) {
+      return NextResponse.json({ error: 'Profilo professionista non valido' }, { status: 403 })
     }
 
-    const payload = {
-      owner_id: null,
+    const body = (await req.json()) as AnimalPayload
+
+    const name = body.name?.trim()
+    const species = body.species?.trim()
+    const microchip = normalizeMicrochip(body.microchip)
+
+    if (!name) {
+      return NextResponse.json({ error: 'Nome obbligatorio' }, { status: 400 })
+    }
+
+    if (!species) {
+      return NextResponse.json({ error: 'Specie obbligatoria' }, { status: 400 })
+    }
+
+    if (microchip && !isValidMicrochip(microchip)) {
+      return NextResponse.json({ error: 'Microchip non valido: servono 15 cifre' }, { status: 400 })
+    }
+
+    if (microchip) {
+      const { data: existingChip } = await supabase
+        .from('animals')
+        .select('id')
+        .eq('microchip', microchip)
+        .maybeSingle()
+
+      if (existingChip?.id) {
+        return NextResponse.json(
+          { error: 'Esiste già un animale con questo microchip', existingAnimalId: existingChip.id },
+          { status: 409 }
+        )
+      }
+    }
+
+    const insertPayload = {
       name,
       species,
-      breed: body?.breed ?? null,
-      color: body?.color ?? null,
-      size: body?.size ?? null,
-      chip_number: chip || null,
-      status: "active",
-
-      created_by_role: "professional",
+      breed: body.breed?.trim() || null,
+      color: body.color?.trim() || null,
+      size: body.size?.trim() || null,
+      sex: body.sex?.trim() || null,
+      birth_date: body.birth_date || null,
+      microchip,
+      photo_url: body.photo_url || null,
+      owner_id: null,
+      created_by_role: 'professional',
       created_by_org_id: orgId,
       origin_org_id: orgId,
-      data_trust_level: "professional",
-
-      owner_claim_status: "pending",
-      owner_claimed_at: null,
-
-      microchip_verified: false,
-      birth_date: body?.birth_date ?? null,
-      birth_date_is_estimated: false,
-    };
-
-    const { data: animal, error: insertErr } = await admin
-      .from("animals")
-      .insert(payload)
-      .select("id,name,species,chip_number")
-      .single();
-
-    if (insertErr) {
-      return NextResponse.json({ error: insertErr.message }, { status: 500 });
+      owner_claim_status: 'pending',
     }
 
-    return NextResponse.json({ ok: true, animal });
-  } catch (e: any) {
-    return NextResponse.json(
-      { error: e?.message || "Unexpected error" },
-      { status: 500 }
-    );
+    const { data: created, error: createError } = await supabase
+      .from('animals')
+      .insert(insertPayload)
+      .select(`
+        id,
+        name,
+        species,
+        breed,
+        color,
+        size,
+        sex,
+        birth_date,
+        microchip,
+        unimalia_code,
+        photo_url,
+        owner_id,
+        owner_claim_status,
+        owner_claimed_at,
+        created_by_role,
+        created_by_org_id,
+        origin_org_id,
+        microchip_verified_by_label
+      `)
+      .single()
+
+    if (createError) {
+      console.error('[PROF_ANIMAL_POST]', createError)
+      return NextResponse.json({ error: 'Errore creazione animale' }, { status: 500 })
+    }
+
+    return NextResponse.json({ animal: created }, { status: 201 })
+  } catch (error) {
+    console.error('[PROF_ANIMAL_POST]', error)
+    return NextResponse.json({ error: 'Errore interno' }, { status: 500 })
+  }
+}
+
+export async function PATCH(req: NextRequest) {
+  try {
+    const supabase = await createClient()
+
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 })
+    }
+
+    const orgId = await getProfessionalOrgId(supabase, user.id)
+
+    if (!orgId) {
+      return NextResponse.json({ error: 'Profilo professionista non valido' }, { status: 403 })
+    }
+
+    const body = await req.json()
+    const animalId = body.animalId as string | undefined
+
+    if (!animalId) {
+      return NextResponse.json({ error: 'animalId mancante' }, { status: 400 })
+    }
+
+    const { data: existingAnimal, error: animalError } = await supabase
+      .from('animals')
+      .select('id, created_by_org_id, origin_org_id, microchip')
+      .eq('id', animalId)
+      .single()
+
+    if (animalError || !existingAnimal) {
+      return NextResponse.json({ error: 'Animale non trovato' }, { status: 404 })
+    }
+
+    const canAccess =
+      existingAnimal.created_by_org_id === orgId ||
+      existingAnimal.origin_org_id === orgId
+
+    if (!canAccess) {
+      return NextResponse.json({ error: 'Accesso negato' }, { status: 403 })
+    }
+
+    const microchip = normalizeMicrochip(body.microchip)
+
+    if (microchip && !isValidMicrochip(microchip)) {
+      return NextResponse.json({ error: 'Microchip non valido: servono 15 cifre' }, { status: 400 })
+    }
+
+    if (microchip) {
+      const { data: duplicateChip } = await supabase
+        .from('animals')
+        .select('id')
+        .eq('microchip', microchip)
+        .neq('id', animalId)
+        .maybeSingle()
+
+      if (duplicateChip?.id) {
+        return NextResponse.json(
+          { error: 'Microchip già associato a un altro animale', existingAnimalId: duplicateChip.id },
+          { status: 409 }
+        )
+      }
+    }
+
+    const patchPayload = {
+      name: body.name?.trim() || null,
+      species: body.species?.trim() || null,
+      breed: body.breed?.trim() || null,
+      color: body.color?.trim() || null,
+      size: body.size?.trim() || null,
+      sex: body.sex?.trim() || null,
+      birth_date: body.birth_date || null,
+      microchip,
+      photo_url: body.photo_url || null,
+    }
+
+    const { data: updated, error: updateError } = await supabase
+      .from('animals')
+      .update(patchPayload)
+      .eq('id', animalId)
+      .select(`
+        id,
+        name,
+        species,
+        breed,
+        color,
+        size,
+        sex,
+        birth_date,
+        microchip,
+        unimalia_code,
+        photo_url,
+        owner_id,
+        owner_claim_status,
+        owner_claimed_at,
+        created_by_role,
+        created_by_org_id,
+        origin_org_id,
+        microchip_verified_by_label
+      `)
+      .single()
+
+    if (updateError) {
+      console.error('[PROF_ANIMAL_PATCH]', updateError)
+      return NextResponse.json({ error: 'Errore aggiornamento animale' }, { status: 500 })
+    }
+
+    return NextResponse.json({ animal: updated })
+  } catch (error) {
+    console.error('[PROF_ANIMAL_PATCH]', error)
+    return NextResponse.json({ error: 'Errore interno' }, { status: 500 })
   }
 }

@@ -592,6 +592,50 @@ export default function ProAnimalPage() {
           </div>
         </div>
 
+        <div className="mt-4 rounded-2xl border p-5">
+          <div className="flex flex-wrap items-center gap-2">
+            {animal.owner_id ? (
+              <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-800">
+                Proprietario collegato
+              </span>
+            ) : (
+              <span className="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-800">
+                Proprietario non collegato
+              </span>
+            )}
+
+            {animal.created_by_org_id && (
+              <span className="inline-flex items-center rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-800">
+                Creato dalla clinica
+              </span>
+            )}
+
+            {animal.unimalia_code && (
+              <span className="inline-flex items-center rounded-full bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-800">
+                UNIMALIA: {animal.unimalia_code}
+              </span>
+            )}
+          </div>
+
+          {!animal.owner_id && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Link
+                href={`/professionisti/animali/${animal.id}/collega-proprietario`}
+                className="rounded-xl border px-4 py-2"
+              >
+                Collega proprietario
+              </Link>
+
+              <Link
+                href={`/identita/nuovo?animalId=${animal.id}`}
+                className="rounded-xl bg-black px-4 py-2 text-white"
+              >
+                Crea identità dalla cartella
+              </Link>
+            </div>
+          )}
+        </div>
+
         <div className="mt-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-700">
           <div className="font-semibold">Privacy</div>
           <div className="mt-1 text-sm text-zinc-600">
