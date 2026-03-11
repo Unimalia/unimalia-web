@@ -1,20 +1,38 @@
-// src/app/professionisti/animali/page.tsx
 import Link from "next/link";
 import { getManagedAnimals } from "@/lib/professionisti/getManagedAnimals";
 import ManagedAnimalsClient from "./ManagedAnimalsClient.client";
+import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
 export default async function ProfessionistiAnimaliPage({
   searchParams,
 }: {
-  searchParams: { q?: string };
+  searchParams: Promise<{ q?: string }>;
 }) {
-  const q = (searchParams?.q || "").trim();
+  const resolvedSearchParams = await searchParams;
+  const q = (resolvedSearchParams?.q || "").trim();
+
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return (
+      <div className="mx-auto max-w-6xl p-6">
+        <div className="rounded-2xl border p-4 text-sm text-red-700">
+          Sessione non valida. Effettua di nuovo il login come professionista.
+        </div>
+      </div>
+    );
+  }
 
   let rows: Awaited<ReturnType<typeof getManagedAnimals>> = [];
+
   try {
-    rows = await getManagedAnimals(q);
+    rows = await getManagedAnimals(user.id);
   } catch (e) {
     console.error("[professionisti/animali] getManagedAnimals failed", e);
     rows = [];
@@ -48,15 +66,9 @@ export default async function ProfessionistiAnimaliPage({
         </div>
       </div>
 
-      {rows.length === 0 ? (
-        <div className="mt-4 rounded-2xl border p-4 text-sm text-neutral-700">
-          Nessun animale disponibile al momento (oppure si è verificato un errore nel caricamento).
-          Se hai appena ottenuto un accesso o creato un nuovo animale dalla tua struttura, ricarica
-          la pagina.
-        </div>
-      ) : null}
-
-      <ManagedAnimalsClient initialRows={rows} initialQuery={q} />
+      <div className="mt-6">
+        <ManagedAnimalsClient initialRows={rows} initialQuery={q} />
+      </div>
     </div>
   );
 }

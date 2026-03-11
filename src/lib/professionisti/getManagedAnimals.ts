@@ -14,21 +14,44 @@ export type ManagedAnimalRow = {
   owner_name: string | null;
 };
 
-export async function getManagedAnimals(userId: string): Promise<ManagedAnimalRow[]> {
-  const supabase = await createClient();
-
-  const { data: profile, error: profileError } = await supabase
+async function getProfessionalOrgId(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
+  const byUserId = await supabase
     .from("professional_profiles")
     .select("org_id")
     .eq("user_id", userId)
-    .single();
+    .maybeSingle();
 
-  if (profileError || !profile?.org_id) {
-    console.error("[GET_MANAGED_ANIMALS] professional profile/org missing", profileError);
-    return [];
+  if (byUserId.data?.org_id) {
+    return byUserId.data.org_id as string;
   }
 
-  const orgId = profile.org_id as string;
+  const byId = await supabase
+    .from("professional_profiles")
+    .select("org_id")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (byId.data?.org_id) {
+    return byId.data.org_id as string;
+  }
+
+  console.error("[GET_MANAGED_ANIMALS] org not found", {
+    userId,
+    byUserIdError: byUserId.error,
+    byIdError: byId.error,
+  });
+
+  return null;
+}
+
+export async function getManagedAnimals(userId: string): Promise<ManagedAnimalRow[]> {
+  const supabase = await createClient();
+
+  const orgId = await getProfessionalOrgId(supabase, userId);
+
+  if (!orgId) {
+    return [];
+  }
 
   const { data: grantRows, error: grantsError } = await supabase
     .from("animal_access_grants")
