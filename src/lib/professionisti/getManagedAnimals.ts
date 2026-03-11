@@ -14,88 +14,98 @@ export type ManagedAnimalRow = {
   owner_name: string | null;
 };
 
-async function getProfessionalOrgId(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
+async function getProfessionalRefs(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string
+) {
+  const refs = new Set<string>();
+  refs.add(userId);
+
   const byUserId = await supabase
     .from("professional_profiles")
-    .select("org_id")
+    .select("id, org_id")
     .eq("user_id", userId)
     .maybeSingle();
 
-  if (byUserId.data?.org_id) {
-    return byUserId.data.org_id as string;
-  }
+  if (byUserId.data?.id) refs.add(byUserId.data.id);
+  if (byUserId.data?.org_id) refs.add(byUserId.data.org_id);
 
   const byId = await supabase
     .from("professional_profiles")
-    .select("org_id")
+    .select("id, org_id, user_id")
     .eq("id", userId)
     .maybeSingle();
 
-  if (byId.data?.org_id) {
-    return byId.data.org_id as string;
-  }
+  if (byId.data?.id) refs.add(byId.data.id);
+  if (byId.data?.org_id) refs.add(byId.data.org_id);
+  if ((byId.data as any)?.user_id) refs.add((byId.data as any).user_id);
 
-  console.error("[GET_MANAGED_ANIMALS] org not found", {
-    userId,
-    byUserIdError: byUserId.error,
-    byIdError: byId.error,
-  });
-
-  return null;
+  return Array.from(refs).filter(Boolean);
 }
 
 export async function getManagedAnimals(userId: string): Promise<ManagedAnimalRow[]> {
   const supabase = await createClient();
 
-  const orgId = await getProfessionalOrgId(supabase, userId);
+  const refs = await getProfessionalRefs(supabase, userId);
 
-  if (!orgId) {
+  if (refs.length === 0) {
+    console.error("[GET_MANAGED_ANIMALS] no professional refs found", { userId });
     return [];
   }
 
-  const { data: grantRows, error: grantsError } = await supabase
-    .from("animal_access_grants")
-    .select("animal_id")
-    .eq("grantee_id", orgId)
-    .eq("status", "active");
+  const allAnimalIds = new Set<string>();
+  const directAnimals = new Map<string, Omit<ManagedAnimalRow, "owner_name">>();
 
-  if (grantsError) {
-    console.error("[GET_MANAGED_ANIMALS] grants error", grantsError);
+  for (const ref of refs) {
+    const { data: grantRows, error: grantsError } = await supabase
+      .from("animal_access_grants")
+      .select("animal_id")
+      .eq("grantee_id", ref)
+      .eq("status", "active");
+
+    if (grantsError) {
+      console.error("[GET_MANAGED_ANIMALS] grants error", { ref, grantsError });
+    }
+
+    for (const row of grantRows ?? []) {
+      if ((row as any).animal_id) {
+        allAnimalIds.add((row as any).animal_id);
+      }
+    }
+
+    const { data: orgAnimals, error: orgAnimalsError } = await supabase
+      .from("animals")
+      .select(`
+        id,
+        name,
+        species,
+        breed,
+        microchip,
+        unimalia_code,
+        owner_id,
+        owner_claim_status,
+        created_by_org_id,
+        origin_org_id
+      `)
+      .or(`created_by_org_id.eq.${ref},origin_org_id.eq.${ref}`);
+
+    if (orgAnimalsError) {
+      console.error("[GET_MANAGED_ANIMALS] org animals error", { ref, orgAnimalsError });
+    }
+
+    for (const animal of orgAnimals ?? []) {
+      if ((animal as any).id) {
+        allAnimalIds.add((animal as any).id);
+        directAnimals.set((animal as any).id, animal as Omit<ManagedAnimalRow, "owner_name">);
+      }
+    }
   }
 
-  const grantAnimalIds = (grantRows ?? [])
-    .map((row: { animal_id: string | null }) => row.animal_id)
-    .filter((id): id is string => !!id);
-
-  const { data: orgAnimals, error: orgAnimalsError } = await supabase
-    .from("animals")
-    .select(`
-      id,
-      name,
-      species,
-      breed,
-      microchip,
-      unimalia_code,
-      owner_id,
-      owner_claim_status,
-      created_by_org_id,
-      origin_org_id
-    `)
-    .or(`created_by_org_id.eq.${orgId},origin_org_id.eq.${orgId}`);
-
-  if (orgAnimalsError) {
-    console.error("[GET_MANAGED_ANIMALS] org animals error", orgAnimalsError);
-  }
-
-  const orgAnimalIds = (orgAnimals ?? [])
-    .map((a: { id: string | null }) => a.id)
-    .filter((id): id is string => !!id);
-
-  const mergedIds = Array.from(new Set([...grantAnimalIds, ...orgAnimalIds]));
-
-  if (mergedIds.length === 0) {
+  if (allAnimalIds.size === 0) {
     return [];
   }
+
+  const ids = Array.from(allAnimalIds);
 
   const { data: animals, error: animalsError } = await supabase
     .from("animals")
@@ -111,14 +121,23 @@ export async function getManagedAnimals(userId: string): Promise<ManagedAnimalRo
       created_by_org_id,
       origin_org_id
     `)
-    .in("id", mergedIds);
+    .in("id", ids);
 
   if (animalsError) {
     console.error("[GET_MANAGED_ANIMALS] animals error", animalsError);
-    return [];
+
+    const fallbackRows = Array.from(directAnimals.values());
+    return fallbackRows
+      .map((row) => ({
+        ...row,
+        owner_name: null,
+      }))
+      .sort((a, b) => (a.name ?? "").localeCompare(b.name ?? "", "it"));
   }
 
-  const rows = (animals ?? []) as Omit<ManagedAnimalRow, "owner_name">[];
+  const rows = ((animals ?? []).length
+    ? animals
+    : Array.from(directAnimals.values())) as Omit<ManagedAnimalRow, "owner_name">[];
 
   const ownerIds = Array.from(
     new Set(rows.map((row) => row.owner_id).filter((id): id is string => !!id))
