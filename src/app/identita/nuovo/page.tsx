@@ -129,6 +129,12 @@ function clearDraft() {
 export default function NuovoProfiloAnimalePage() {
   const router = useRouter();
 
+  const existingAnimalId = useMemo(() => {
+    if (typeof window === "undefined") return "";
+    const params = new URLSearchParams(window.location.search);
+    return (params.get("animalId") || "").trim();
+  }, []);
+
   const fileRef = useRef<HTMLInputElement | null>(null);
 
   const [checkingProfile, setCheckingProfile] = useState(true);
@@ -220,6 +226,48 @@ export default function NuovoProfiloAnimalePage() {
   useEffect(() => {
     let alive = true;
 
+    async function loadExistingAnimal() {
+      if (!existingAnimalId) return;
+
+      const { data, error } = await supabase
+        .from("animals")
+        .select(
+          "id,name,species,breed,color,size,chip_number,photo_url,birth_date,birth_date_is_estimated"
+        )
+        .eq("id", existingAnimalId)
+        .single();
+
+      if (!alive) return;
+      if (error || !data) return;
+
+      setName(data.name || "");
+      setSpecies(data.species || "");
+      setBreed(data.breed || "");
+      setColor(data.color || "");
+      setSize(data.size || "");
+      setPhotoUrl(data.photo_url || "");
+      setBirthDate(data.birth_date || "");
+      setBirthDateEstimated(!!data.birth_date_is_estimated);
+
+      if (data.chip_number) {
+        setHasChip("yes");
+        setChipNumber(data.chip_number);
+      } else {
+        setHasChip("no");
+        setChipNumber("");
+      }
+    }
+
+    void loadExistingAnimal();
+
+    return () => {
+      alive = false;
+    };
+  }, [existingAnimalId]);
+
+  useEffect(() => {
+    let alive = true;
+
     async function checkProfile() {
       const { data: authData } = await supabase.auth.getUser();
       const user = authData.user;
@@ -254,7 +302,9 @@ export default function NuovoProfiloAnimalePage() {
   if (checkingProfile) {
     return (
       <main className="max-w-2xl">
-        <h1 className="text-3xl font-bold tracking-tight">Crea profilo animale</h1>
+        <h1 className="text-3xl font-bold tracking-tight">
+          {existingAnimalId ? "Completa identità animale" : "Crea profilo animale"}
+        </h1>
         <p className="mt-4 text-zinc-700">Controllo profilo in corso…</p>
       </main>
     );
@@ -318,7 +368,9 @@ export default function NuovoProfiloAnimalePage() {
       }
 
       setPhotoUrl(publicUrl);
-      setNotice(wasAlreadySet ? "Foto aggiornata correttamente ✅" : "Foto caricata correttamente ✅");
+      setNotice(
+        wasAlreadySet ? "Foto aggiornata correttamente ✅" : "Foto caricata correttamente ✅"
+      );
     } catch (e: any) {
       setError(e?.message || "Errore durante l’upload foto.");
       setNotice(null);
@@ -367,8 +419,22 @@ export default function NuovoProfiloAnimalePage() {
         birth_date_is_estimated: birthDate ? birthDateEstimated : false,
       };
 
-      const { error } = await supabase.from("animals").insert(payload);
-      if (error) throw error;
+      if (existingAnimalId) {
+        const { error } = await supabase
+          .from("animals")
+          .update({
+            ...payload,
+            owner_id: user.id,
+            owner_claim_status: "claimed",
+            owner_claimed_at: new Date().toISOString(),
+          })
+          .eq("id", existingAnimalId);
+
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("animals").insert(payload);
+        if (error) throw error;
+      }
 
       clearDraft();
 
@@ -388,7 +454,9 @@ export default function NuovoProfiloAnimalePage() {
   return (
     <main className="max-w-2xl">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">Crea profilo animale</h1>
+        <h1 className="text-3xl font-bold tracking-tight">
+          {existingAnimalId ? "Completa identità animale" : "Crea profilo animale"}
+        </h1>
         <Link href="/identita" className="text-sm text-zinc-600 hover:underline">
           ← Torna
         </Link>
@@ -442,10 +510,12 @@ export default function NuovoProfiloAnimalePage() {
 
           <div className="mt-2 flex gap-4 text-sm">
             <label>
-              <input type="radio" checked={hasChip === "yes"} onChange={() => setHasChip("yes")} /> Sì
+              <input type="radio" checked={hasChip === "yes"} onChange={() => setHasChip("yes")} />{" "}
+              Sì
             </label>
             <label>
-              <input type="radio" checked={hasChip === "no"} onChange={() => setHasChip("no")} /> No
+              <input type="radio" checked={hasChip === "no"} onChange={() => setHasChip("no")} />{" "}
+              No
             </label>
           </div>
 
@@ -500,7 +570,7 @@ export default function NuovoProfiloAnimalePage() {
             </button>
 
             {selectedFileName ? (
-              <span className="text-xs text-zinc-600 truncate">{selectedFileName}</span>
+              <span className="truncate text-xs text-zinc-600">{selectedFileName}</span>
             ) : null}
           </div>
 
@@ -522,7 +592,7 @@ export default function NuovoProfiloAnimalePage() {
             disabled={saving}
             className="rounded-lg bg-black px-5 py-3 text-white"
           >
-            {saving ? "Salvataggio…" : "Crea profilo"}
+            {saving ? "Salvataggio…" : existingAnimalId ? "Completa identità" : "Crea profilo"}
           </button>
         </div>
       </div>
