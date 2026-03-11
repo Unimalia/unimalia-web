@@ -50,9 +50,9 @@ export async function getManagedAnimals(userId: string): Promise<ManagedAnimalRo
   for (const ref of refs) {
     const { data: grantRows, error: grantsError } = await supabase
       .from("animal_access_grants")
-      .select("animal_id")
+      .select("animal_id, status")
       .eq("grantee_id", ref)
-      .eq("status", "active");
+      .in("status", ["active", "approved"]);
 
     if (grantsError) {
       console.error("[GET_MANAGED_ANIMALS] grants error", { ref, grantsError });
