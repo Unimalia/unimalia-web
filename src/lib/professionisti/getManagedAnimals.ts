@@ -1,9 +1,6 @@
-"use client";
+import { createClient } from "@/lib/supabase/server";
 
-import Link from "next/link";
-import React from "react";
-
-type ManagedAnimalRow = {
+export type ManagedAnimalRow = {
   id: string;
   name: string | null;
   species: string | null;
@@ -17,101 +14,117 @@ type ManagedAnimalRow = {
   owner_name: string | null;
 };
 
-export default function ManagedAnimalsClient({
-  initialRows,
-  initialQuery,
-}: {
-  initialRows: ManagedAnimalRow[];
-  initialQuery: string;
-}) {
-  const [query, setQuery] = React.useState(initialQuery ?? "");
+export async function getManagedAnimals(userId: string): Promise<ManagedAnimalRow[]> {
+  const supabase = await createClient();
 
-  const rows = React.useMemo(() => {
-    const q = query.trim().toLowerCase();
+  const { data: profile, error: profileError } = await supabase
+    .from("professional_profiles")
+    .select("org_id")
+    .eq("user_id", userId)
+    .single();
 
-    if (!q) return initialRows;
-
-    return initialRows.filter((row) => {
-      return (
-        (row.name ?? "").toLowerCase().includes(q) ||
-        (row.species ?? "").toLowerCase().includes(q) ||
-        (row.breed ?? "").toLowerCase().includes(q) ||
-        (row.microchip ?? "").toLowerCase().includes(q) ||
-        (row.unimalia_code ?? "").toLowerCase().includes(q) ||
-        (row.owner_name ?? "").toLowerCase().includes(q)
-      );
-    });
-  }, [initialRows, query]);
-
-  if (initialRows.length === 0) {
-    return (
-      <div className="rounded-2xl border border-zinc-200 bg-white p-6 text-sm text-zinc-600">
-        Nessun animale in gestione al momento.
-      </div>
-    );
+  if (profileError || !profile?.org_id) {
+    console.error("[GET_MANAGED_ANIMALS] professional profile/org missing", profileError);
+    return [];
   }
 
-  return (
-    <div className="space-y-4">
-      <div>
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Cerca per nome, specie, razza, microchip, codice UNIMALIA o proprietario"
-          className="w-full rounded-xl border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
-        />
-      </div>
+  const orgId = profile.org_id as string;
 
-      {rows.length === 0 ? (
-        <div className="rounded-2xl border border-zinc-200 bg-white p-6 text-sm text-zinc-600">
-          Nessun animale trovato con questa ricerca.
-        </div>
-      ) : (
-        <div className="grid gap-3">
-          {rows.map((row) => (
-            <Link
-              key={row.id}
-              href={`/professionisti/animali/${row.id}`}
-              className="rounded-2xl border border-zinc-200 bg-white p-4 hover:bg-zinc-50"
-            >
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div className="min-w-0">
-                  <div className="text-base font-semibold text-zinc-900">
-                    {row.name || "Animale senza nome"}
-                  </div>
+  const { data: grantRows, error: grantsError } = await supabase
+    .from("animal_access_grants")
+    .select("animal_id")
+    .eq("grantee_id", orgId)
+    .eq("status", "active");
 
-                  <div className="mt-1 text-sm text-zinc-600">
-                    {[row.species, row.breed].filter(Boolean).join(" • ") || "—"}
-                  </div>
+  if (grantsError) {
+    console.error("[GET_MANAGED_ANIMALS] grants error", grantsError);
+  }
 
-                  <div className="mt-2 space-y-1 text-sm text-zinc-500">
-                    <div>Microchip: {row.microchip || "—"}</div>
-                    {row.unimalia_code ? <div>UNIMALIA: {row.unimalia_code}</div> : null}
-                  </div>
-                </div>
+  const grantAnimalIds = (grantRows ?? [])
+    .map((row: { animal_id: string | null }) => row.animal_id)
+    .filter((id): id is string => !!id);
 
-                <div className="flex flex-wrap items-center gap-2">
-                  {row.owner_name ? (
-                    <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-800">
-                      {row.owner_name}
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-800">
-                      Proprietario non collegato
-                    </span>
-                  )}
+  const { data: orgAnimals, error: orgAnimalsError } = await supabase
+    .from("animals")
+    .select(`
+      id,
+      name,
+      species,
+      breed,
+      microchip,
+      unimalia_code,
+      owner_id,
+      owner_claim_status,
+      created_by_org_id,
+      origin_org_id
+    `)
+    .or(`created_by_org_id.eq.${orgId},origin_org_id.eq.${orgId}`);
 
-                  {row.created_by_org_id || row.origin_org_id ? (
-                    <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-1 text-xs font-medium text-blue-800">
-                      Clinica
-                    </span>
-                  ) : null}
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
-      )}
-    </div>
+  if (orgAnimalsError) {
+    console.error("[GET_MANAGED_ANIMALS] org animals error", orgAnimalsError);
+  }
+
+  const orgAnimalIds = (orgAnimals ?? [])
+    .map((a: { id: string | null }) => a.id)
+    .filter((id): id is string => !!id);
+
+  const mergedIds = Array.from(new Set([...grantAnimalIds, ...orgAnimalIds]));
+
+  if (mergedIds.length === 0) {
+    return [];
+  }
+
+  const { data: animals, error: animalsError } = await supabase
+    .from("animals")
+    .select(`
+      id,
+      name,
+      species,
+      breed,
+      microchip,
+      unimalia_code,
+      owner_id,
+      owner_claim_status,
+      created_by_org_id,
+      origin_org_id
+    `)
+    .in("id", mergedIds);
+
+  if (animalsError) {
+    console.error("[GET_MANAGED_ANIMALS] animals error", animalsError);
+    return [];
+  }
+
+  const rows = (animals ?? []) as Omit<ManagedAnimalRow, "owner_name">[];
+
+  const ownerIds = Array.from(
+    new Set(rows.map((row) => row.owner_id).filter((id): id is string => !!id))
   );
+
+  let ownerMap = new Map<string, string>();
+
+  if (ownerIds.length > 0) {
+    const { data: owners, error: ownersError } = await supabase
+      .from("profiles")
+      .select("id, full_name")
+      .in("id", ownerIds);
+
+    if (ownersError) {
+      console.error("[GET_MANAGED_ANIMALS] owners error", ownersError);
+    } else {
+      ownerMap = new Map(
+        (owners ?? []).map((owner: { id: string; full_name: string | null }) => [
+          owner.id,
+          owner.full_name ?? "",
+        ])
+      );
+    }
+  }
+
+  return rows
+    .map((row) => ({
+      ...row,
+      owner_name: row.owner_id ? ownerMap.get(row.owner_id) ?? null : null,
+    }))
+    .sort((a, b) => (a.name ?? "").localeCompare(b.name ?? "", "it"));
 }
