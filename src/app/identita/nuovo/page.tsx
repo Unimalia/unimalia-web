@@ -2,7 +2,7 @@
 
 export const dynamic = "force-dynamic";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
@@ -126,7 +126,7 @@ function clearDraft() {
   } catch {}
 }
 
-export default function NuovoProfiloAnimalePage() {
+function NuovoProfiloAnimalePageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const animalId = searchParams.get("animalId");
@@ -227,9 +227,12 @@ export default function NuovoProfiloAnimalePage() {
       if (!animalId) return;
 
       try {
-        const res = await fetch(`/api/professionisti/animal?animalId=${encodeURIComponent(animalId)}`, {
-          cache: "no-store",
-        });
+        const res = await fetch(
+          `/api/professionisti/animal?animalId=${encodeURIComponent(animalId)}`,
+          {
+            cache: "no-store",
+          }
+        );
 
         const json = await res.json().catch(() => ({}));
 
@@ -669,5 +672,20 @@ export default function NuovoProfiloAnimalePage() {
         </div>
       </form>
     </main>
+  );
+}
+
+export default function NuovoProfiloAnimalePage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="max-w-2xl">
+          <h1 className="text-3xl font-bold tracking-tight">Crea profilo animale</h1>
+          <p className="mt-4 text-zinc-700">Caricamento…</p>
+        </main>
+      }
+    >
+      <NuovoProfiloAnimalePageInner />
+    </Suspense>
   );
 }
