@@ -9,48 +9,71 @@ type AnimalPayload = {
   size?: string | null;
   birth_date?: string | null;
   microchip?: string | null;
-  chip_number?: string | null; // compat legacy
+  chip_number?: string | null;
   photo_url?: string | null;
   sex?: string | null;
 };
 
-function normalizeMicrochip(value?: string | null) {
+function normalizeChip(value?: string | null) {
   const digits = String(value ?? "").replace(/\D+/g, "").trim();
   return digits.length ? digits : null;
 }
 
-function isValidMicrochip(value: string) {
+function isValidChip(value: string) {
   return /^\d{15}$/.test(value);
 }
 
-async function getProfessionalOrgId(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
+async function getProfessionalOrgId(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string
+) {
   const byUserId = await supabase
     .from("professional_profiles")
-    .select("org_id")
+    .select("id, user_id, org_id")
     .eq("user_id", userId)
     .maybeSingle();
 
   if (byUserId.data?.org_id) {
-    return byUserId.data.org_id as string;
+    return {
+      orgId: byUserId.data.org_id as string,
+      source: "professional_profiles.user_id",
+      profile: byUserId.data,
+    };
   }
 
   const byId = await supabase
     .from("professional_profiles")
-    .select("org_id")
+    .select("id, user_id, org_id")
     .eq("id", userId)
     .maybeSingle();
 
   if (byId.data?.org_id) {
-    return byId.data.org_id as string;
+    return {
+      orgId: byId.data.org_id as string,
+      source: "professional_profiles.id",
+      profile: byId.data,
+    };
   }
 
-  console.error("[PROF_ORG_NOT_FOUND]", {
-    userId,
-    byUserIdError: byUserId.error,
-    byIdError: byId.error,
-  });
-
-  return null;
+  return {
+    orgId: null,
+    source: null,
+    profile: null,
+    errors: {
+      byUserId: byUserId.error
+        ? {
+            message: byUserId.error.message,
+            code: byUserId.error.code,
+          }
+        : null,
+      byId: byId.error
+        ? {
+            message: byId.error.message,
+            code: byId.error.code,
+          }
+        : null,
+    },
+  };
 }
 
 export async function GET(req: NextRequest) {
@@ -63,14 +86,33 @@ export async function GET(req: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return NextResponse.json({ error: "Non autorizzato" }, { status: 401 });
+      return NextResponse.json(
+        {
+          error: "Non autorizzato",
+          debug: {
+            authError: authError
+              ? {
+                  message: authError.message,
+                  code: authError.code,
+                }
+              : null,
+          },
+        },
+        { status: 401 }
+      );
     }
 
-    const orgId = await getProfessionalOrgId(supabase, user.id);
+    const orgLookup = await getProfessionalOrgId(supabase, user.id);
 
-    if (!orgId) {
+    if (!orgLookup.orgId) {
       return NextResponse.json(
-        { error: "Profilo professionista non valido o organizzazione non trovata" },
+        {
+          error: "Profilo professionista non valido o organizzazione non trovata",
+          debug: {
+            userId: user.id,
+            orgLookup,
+          },
+        },
         { status: 403 }
       );
     }
@@ -81,7 +123,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "animalId mancante" }, { status: 400 });
     }
 
-    const { data: animal, error: animalError } = await supabase
+    const animalResult = await supabase
       .from("animals")
       .select(`
         id,
@@ -92,7 +134,7 @@ export async function GET(req: NextRequest) {
         size,
         sex,
         birth_date,
-        microchip,
+        chip_number,
         unimalia_code,
         photo_url,
         owner_id,
@@ -100,38 +142,45 @@ export async function GET(req: NextRequest) {
         owner_claimed_at,
         created_by_role,
         created_by_org_id,
-        origin_org_id,
-        microchip_verified_by_label
+        origin_org_id
       `)
       .eq("id", animalId)
       .single();
 
-    if (animalError || !animal) {
+    if (animalResult.error || !animalResult.data) {
       return NextResponse.json({ error: "Animale non trovato" }, { status: 404 });
     }
 
-    const { data: grant } = await supabase
+    const animal = animalResult.data;
+
+    const grant = await supabase
       .from("animal_access_grants")
       .select("id")
       .eq("animal_id", animalId)
-      .eq("grantee_id", orgId)
+      .eq("grantee_id", orgLookup.orgId)
       .eq("status", "active")
       .maybeSingle();
 
     const canAccess =
-      !!grant ||
-      animal.created_by_org_id === orgId ||
-      animal.origin_org_id === orgId;
+      !!grant.data ||
+      animal.created_by_org_id === orgLookup.orgId ||
+      animal.origin_org_id === orgLookup.orgId;
 
     if (!canAccess) {
       return NextResponse.json({ error: "Accesso negato" }, { status: 403 });
     }
 
-    return NextResponse.json({ animal });
+    return NextResponse.json({
+      animal: {
+        ...animal,
+        microchip: animal.chip_number ?? null,
+      },
+    });
   } catch (error: any) {
-    console.error("[PROF_ANIMAL_GET]", error);
     return NextResponse.json(
-      { error: error?.message || "Errore interno" },
+      {
+        error: error?.message || "Errore interno",
+      },
       { status: 500 }
     );
   }
@@ -147,14 +196,33 @@ export async function POST(req: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return NextResponse.json({ error: "Non autorizzato" }, { status: 401 });
+      return NextResponse.json(
+        {
+          error: "Non autorizzato",
+          debug: {
+            authError: authError
+              ? {
+                  message: authError.message,
+                  code: authError.code,
+                }
+              : null,
+          },
+        },
+        { status: 401 }
+      );
     }
 
-    const orgId = await getProfessionalOrgId(supabase, user.id);
+    const orgLookup = await getProfessionalOrgId(supabase, user.id);
 
-    if (!orgId) {
+    if (!orgLookup.orgId) {
       return NextResponse.json(
-        { error: "Profilo professionista non valido o organizzazione non trovata" },
+        {
+          error: "Profilo professionista non valido o organizzazione non trovata",
+          debug: {
+            userId: user.id,
+            orgLookup,
+          },
+        },
         { status: 403 }
       );
     }
@@ -163,7 +231,7 @@ export async function POST(req: NextRequest) {
 
     const name = body.name?.trim() ?? "";
     const species = body.species?.trim() ?? "";
-    const microchip = normalizeMicrochip(body.microchip ?? body.chip_number ?? null);
+    const chipNumber = normalizeChip(body.microchip ?? body.chip_number ?? null);
 
     if (!name) {
       return NextResponse.json({ error: "Nome obbligatorio" }, { status: 400 });
@@ -173,31 +241,46 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Specie obbligatoria" }, { status: 400 });
     }
 
-    if (microchip && !isValidMicrochip(microchip)) {
+    if (chipNumber && !isValidChip(chipNumber)) {
       return NextResponse.json(
         { error: "Microchip non valido: servono 15 cifre" },
         { status: 400 }
       );
     }
 
-    if (microchip) {
-      const { data: existingChip, error: chipCheckError } = await supabase
+    if (chipNumber) {
+      const chipCheck = await supabase
         .from("animals")
-        .select("id")
-        .eq("microchip", microchip)
+        .select("id, name, chip_number")
+        .eq("chip_number", chipNumber)
         .maybeSingle();
 
-      if (chipCheckError) {
-        console.error("[PROF_ANIMAL_POST_CHIP_CHECK]", chipCheckError);
-      }
-
-      if (existingChip?.id) {
+      if (chipCheck.data?.id) {
         return NextResponse.json(
           {
             error: "Esiste già un animale con questo microchip",
-            existingAnimalId: existingChip.id,
+            debug: {
+              existingAnimal: chipCheck.data,
+            },
           },
           { status: 409 }
+        );
+      }
+
+      if (chipCheck.error) {
+        return NextResponse.json(
+          {
+            error: "Errore controllo microchip",
+            debug: {
+              chipCheckError: {
+                message: chipCheck.error.message,
+                details: chipCheck.error.details,
+                hint: chipCheck.error.hint,
+                code: chipCheck.error.code,
+              },
+            },
+          },
+          { status: 500 }
         );
       }
     }
@@ -210,16 +293,16 @@ export async function POST(req: NextRequest) {
       size: body.size?.trim() || null,
       sex: body.sex?.trim() || null,
       birth_date: body.birth_date || null,
-      microchip,
+      chip_number: chipNumber,
       photo_url: body.photo_url || null,
       owner_id: null,
       created_by_role: "professional",
-      created_by_org_id: orgId,
-      origin_org_id: orgId,
+      created_by_org_id: orgLookup.orgId,
+      origin_org_id: orgLookup.orgId,
       owner_claim_status: "pending",
     };
 
-    const { data: created, error: createError } = await supabase
+    const created = await supabase
       .from("animals")
       .insert(insertPayload)
       .select(`
@@ -231,7 +314,7 @@ export async function POST(req: NextRequest) {
         size,
         sex,
         birth_date,
-        microchip,
+        chip_number,
         unimalia_code,
         photo_url,
         owner_id,
@@ -239,29 +322,46 @@ export async function POST(req: NextRequest) {
         owner_claimed_at,
         created_by_role,
         created_by_org_id,
-        origin_org_id,
-        microchip_verified_by_label
+        origin_org_id
       `)
       .single();
 
-    if (createError) {
-      console.error("[PROF_ANIMAL_POST_CREATE]", createError);
+    if (created.error || !created.data) {
       return NextResponse.json(
         {
-          error: createError.message || "Errore creazione animale",
-          details: createError.details || null,
-          hint: createError.hint || null,
-          code: createError.code || null,
+          error: created.error?.message || "Errore creazione animale",
+          debug: {
+            userId: user.id,
+            orgLookup,
+            insertPayload,
+            createError: created.error
+              ? {
+                  message: created.error.message,
+                  details: created.error.details,
+                  hint: created.error.hint,
+                  code: created.error.code,
+                }
+              : null,
+          },
         },
         { status: 500 }
       );
     }
 
-    return NextResponse.json({ animal: created }, { status: 201 });
-  } catch (error: any) {
-    console.error("[PROF_ANIMAL_POST]", error);
     return NextResponse.json(
-      { error: error?.message || "Errore interno" },
+      {
+        animal: {
+          ...created.data,
+          microchip: created.data.chip_number ?? null,
+        },
+      },
+      { status: 201 }
+    );
+  } catch (error: any) {
+    return NextResponse.json(
+      {
+        error: error?.message || "Errore interno",
+      },
       { status: 500 }
     );
   }
