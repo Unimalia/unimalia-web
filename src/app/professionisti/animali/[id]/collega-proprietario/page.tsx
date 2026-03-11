@@ -3,14 +3,13 @@
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { authHeaders } from "@/lib/client/authHeaders";
 
 type Animal = {
   id: string;
   name: string;
   species: string;
   breed: string | null;
-  chip_number: string | null;
+  microchip: string | null;
   owner_id: string | null;
   owner_claim_status?: "none" | "pending" | "claimed" | null;
   unimalia_code?: string | null;
@@ -40,12 +39,12 @@ export default function CollegaProprietarioPage() {
       setErr(null);
 
       try {
-        const res = await fetch(`/api/professionisti/animal?animalId=${encodeURIComponent(animalId)}`, {
-          cache: "no-store",
-          headers: {
-            ...(await authHeaders()),
-          },
-        });
+        const res = await fetch(
+          `/api/professionisti/animal?animalId=${encodeURIComponent(animalId)}`,
+          {
+            cache: "no-store",
+          }
+        );
 
         const json = await res.json().catch(() => ({}));
 
@@ -113,6 +112,7 @@ export default function CollegaProprietarioPage() {
   }
 
   const alreadyLinked = !!animal.owner_id;
+  const identityPath = `/identita/nuovo?animalId=${encodeURIComponent(animal.id)}`;
 
   return (
     <main className="max-w-3xl mx-auto p-6 space-y-6">
@@ -142,14 +142,15 @@ export default function CollegaProprietarioPage() {
           <div>
             <div className="text-zinc-500">Specie</div>
             <div className="font-semibold text-zinc-900">
-              {animal.species}{animal.breed ? ` • ${animal.breed}` : ""}
+              {animal.species}
+              {animal.breed ? ` • ${animal.breed}` : ""}
             </div>
           </div>
 
           <div>
             <div className="text-zinc-500">Microchip</div>
             <div className="font-semibold text-zinc-900">
-              {animal.chip_number ? normalizeChip(animal.chip_number) : "—"}
+              {animal.microchip ? normalizeChip(animal.microchip) : "—"}
             </div>
           </div>
 
@@ -163,7 +164,12 @@ export default function CollegaProprietarioPage() {
       </div>
 
       <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm space-y-4">
-        <h2 className="text-base font-semibold text-zinc-900">Dati utili da condividere</h2>
+        <h2 className="text-base font-semibold text-zinc-900">Passaggio operativo</h2>
+
+        <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-700">
+          In questa fase il proprietario va indirizzato alla stessa logica identità owner,
+          ma sullo stesso animale già creato dalla clinica.
+        </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
           <button
@@ -177,14 +183,16 @@ export default function CollegaProprietarioPage() {
 
           <button
             type="button"
-            onClick={() => copyValue("Codice UNIMALIA", String(animal.unimalia_code || ""))}
-            disabled={!animal.unimalia_code}
-            className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-left text-sm font-semibold text-zinc-800 hover:bg-zinc-50 disabled:opacity-50"
+            onClick={() =>
+              copyValue(
+                "Link identità",
+                `${window.location.origin}${identityPath}`
+              )
+            }
+            className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-left text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
           >
-            Copia codice UNIMALIA
-            <div className="mt-1 font-mono text-xs text-zinc-500 break-all">
-              {animal.unimalia_code || "Non disponibile"}
-            </div>
+            Copia link identità
+            <div className="mt-1 text-xs text-zinc-500 break-all">{identityPath}</div>
           </button>
         </div>
 
@@ -194,22 +202,12 @@ export default function CollegaProprietarioPage() {
           </div>
         ) : null}
 
-        <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-700">
-          Prima versione operativa:
-          <br />
-          - l’animale resta lo stesso record già creato dalla clinica
-          <br />
-          - non devi creare un secondo animale
-          <br />
-          - il passo successivo sarà l’attivazione guidata del proprietario
-        </div>
-
         <div className="flex flex-wrap gap-2">
           <Link
-            href={`/professionisti/animali/${animal.id}/crea-identita`}
+            href={identityPath}
             className="rounded-2xl bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-900"
           >
-            Continua: crea identità dalla cartella
+            Apri flusso identità owner
           </Link>
 
           <Link

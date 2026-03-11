@@ -3,7 +3,7 @@
 export const dynamic = "force-dynamic";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -128,12 +128,8 @@ function clearDraft() {
 
 export default function NuovoProfiloAnimalePage() {
   const router = useRouter();
-
-  const existingAnimalId = useMemo(() => {
-    if (typeof window === "undefined") return "";
-    const params = new URLSearchParams(window.location.search);
-    return (params.get("animalId") || "").trim();
-  }, []);
+  const searchParams = useSearchParams();
+  const animalId = searchParams.get("animalId");
 
   const fileRef = useRef<HTMLInputElement | null>(null);
 
@@ -145,11 +141,11 @@ export default function NuovoProfiloAnimalePage() {
   const [color, setColor] = useState("");
   const [size, setSize] = useState("");
 
-  const [birthDate, setBirthDate] = useState(""); // YYYY-MM-DD
+  const [birthDate, setBirthDate] = useState("");
   const [birthDateEstimated, setBirthDateEstimated] = useState(false);
 
   const [hasChip, setHasChip] = useState<"yes" | "no">("no");
-  const [chipNumber, setChipNumber] = useState("");
+  const [microchip, setMicrochip] = useState("");
 
   const [photoUrl, setPhotoUrl] = useState<string>("");
   const [selectedFileName, setSelectedFileName] = useState<string>("");
@@ -160,11 +156,12 @@ export default function NuovoProfiloAnimalePage() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  const cleanedChip = useMemo(() => normalizeChip(chipNumber), [chipNumber]);
+  const cleanedChip = useMemo(() => normalizeChip(microchip), [microchip]);
 
   useEffect(() => {
     const d = loadDraft();
     if (!d) return;
+    if (animalId) return;
 
     if (typeof d.name === "string") setName(d.name);
     if (typeof d.species === "string") setSpecies(d.species);
@@ -173,17 +170,18 @@ export default function NuovoProfiloAnimalePage() {
     if (typeof d.size === "string") setSize(d.size);
 
     if (d.hasChip === "yes" || d.hasChip === "no") setHasChip(d.hasChip);
-    if (typeof d.chipNumber === "string") setChipNumber(d.chipNumber);
+    if (typeof d.microchip === "string") setMicrochip(d.microchip);
+    if (typeof d.chipNumber === "string") setMicrochip(d.chipNumber);
 
     if (typeof d.photoUrl === "string") setPhotoUrl(d.photoUrl);
     if (typeof d.selectedFileName === "string") setSelectedFileName(d.selectedFileName);
 
     if (typeof d.birthDate === "string") setBirthDate(d.birthDate);
     if (typeof d.birthDateEstimated === "boolean") setBirthDateEstimated(d.birthDateEstimated);
-  }, []);
+  }, [animalId]);
 
   useEffect(() => {
-    if (existingAnimalId) return;
+    if (animalId) return;
 
     saveDraft({
       name,
@@ -192,7 +190,7 @@ export default function NuovoProfiloAnimalePage() {
       color,
       size,
       hasChip,
-      chipNumber,
+      microchip,
       photoUrl,
       selectedFileName,
       birthDate,
@@ -200,14 +198,14 @@ export default function NuovoProfiloAnimalePage() {
       ts: Date.now(),
     });
   }, [
-    existingAnimalId,
+    animalId,
     name,
     species,
     breed,
     color,
     size,
     hasChip,
-    chipNumber,
+    microchip,
     photoUrl,
     selectedFileName,
     birthDate,
@@ -215,57 +213,61 @@ export default function NuovoProfiloAnimalePage() {
   ]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const params = new URLSearchParams(window.location.search);
-    const chipFromUrl = (params.get("chip") || params.get("microchip") || "").trim();
+    const chipFromUrl = (searchParams.get("chip") || searchParams.get("microchip") || "").trim();
     if (!chipFromUrl) return;
 
     setHasChip("yes");
-    setChipNumber(chipFromUrl);
-  }, []);
+    setMicrochip(chipFromUrl);
+  }, [searchParams]);
 
   useEffect(() => {
     let alive = true;
 
-    async function loadExistingAnimal() {
-      if (!existingAnimalId) return;
+    async function loadAnimalForClaim() {
+      if (!animalId) return;
 
-      const { data, error } = await supabase
-        .from("animals")
-        .select(
-          "id,name,species,breed,color,size,chip_number,photo_url,birth_date,birth_date_is_estimated"
-        )
-        .eq("id", existingAnimalId)
-        .single();
+      try {
+        const res = await fetch(`/api/professionisti/animal?animalId=${encodeURIComponent(animalId)}`, {
+          cache: "no-store",
+        });
 
-      if (!alive) return;
-      if (error || !data) return;
+        const json = await res.json().catch(() => ({}));
 
-      setName(data.name || "");
-      setSpecies(data.species || "");
-      setBreed(data.breed || "");
-      setColor(data.color || "");
-      setSize(data.size || "");
-      setPhotoUrl(data.photo_url || "");
-      setBirthDate(data.birth_date || "");
-      setBirthDateEstimated(!!data.birth_date_is_estimated);
+        if (!alive) return;
 
-      if (data.chip_number) {
-        setHasChip("yes");
-        setChipNumber(data.chip_number);
-      } else {
-        setHasChip("no");
-        setChipNumber("");
+        if (!res.ok) {
+          setError(json?.error || "Impossibile caricare animale");
+          return;
+        }
+
+        const animal = json?.animal;
+        if (!animal) {
+          setError("Impossibile caricare animale");
+          return;
+        }
+
+        setName(animal.name || "");
+        setSpecies(animal.species || "");
+        setBreed(animal.breed || "");
+        setColor(animal.color || "");
+        setSize(animal.size || "");
+        setBirthDate(animal.birth_date || "");
+        setBirthDateEstimated(!!animal.birth_date_is_estimated);
+        setMicrochip(animal.microchip || animal.chip_number || "");
+        setHasChip(animal.microchip || animal.chip_number ? "yes" : "no");
+        setPhotoUrl(animal.photo_url || "");
+      } catch {
+        if (!alive) return;
+        setError("Impossibile caricare animale");
       }
     }
 
-    void loadExistingAnimal();
+    void loadAnimalForClaim();
 
     return () => {
       alive = false;
     };
-  }, [existingAnimalId]);
+  }, [animalId]);
 
   useEffect(() => {
     let alive = true;
@@ -275,8 +277,8 @@ export default function NuovoProfiloAnimalePage() {
       const user = authData.user;
 
       if (!user) {
-        const nextPath = existingAnimalId
-          ? `/identita/nuovo?animalId=${encodeURIComponent(existingAnimalId)}`
+        const nextPath = animalId
+          ? `/identita/nuovo?animalId=${encodeURIComponent(animalId)}`
           : "/identita/nuovo";
 
         router.replace("/login?next=" + encodeURIComponent(nextPath));
@@ -292,8 +294,8 @@ export default function NuovoProfiloAnimalePage() {
       if (!alive) return;
 
       if (!isProfileComplete(data)) {
-        const returnTo = existingAnimalId
-          ? `/identita/nuovo?animalId=${encodeURIComponent(existingAnimalId)}`
+        const returnTo = animalId
+          ? `/identita/nuovo?animalId=${encodeURIComponent(animalId)}`
           : "/identita/nuovo";
 
         router.replace("/profilo?returnTo=" + encodeURIComponent(returnTo));
@@ -308,13 +310,13 @@ export default function NuovoProfiloAnimalePage() {
     return () => {
       alive = false;
     };
-  }, [router, existingAnimalId]);
+  }, [router, animalId]);
 
   if (checkingProfile) {
     return (
       <main className="max-w-2xl">
         <h1 className="text-3xl font-bold tracking-tight">
-          {existingAnimalId ? "Completa identità animale" : "Crea profilo animale"}
+          {animalId ? "Completa identità animale" : "Crea profilo animale"}
         </h1>
         <p className="mt-4 text-zinc-700">Controllo profilo in corso…</p>
       </main>
@@ -338,8 +340,8 @@ export default function NuovoProfiloAnimalePage() {
       const { data: authData } = await supabase.auth.getUser();
       const user = authData.user;
       if (!user) {
-        const nextPath = existingAnimalId
-          ? `/identita/nuovo?animalId=${encodeURIComponent(existingAnimalId)}`
+        const nextPath = animalId
+          ? `/identita/nuovo?animalId=${encodeURIComponent(animalId)}`
           : "/identita/nuovo";
 
         router.replace("/login?next=" + encodeURIComponent(nextPath));
@@ -394,27 +396,69 @@ export default function NuovoProfiloAnimalePage() {
     }
   }
 
-  async function submit() {
-    setError(null);
-    setNotice(null);
-
-    if (!name.trim()) return setError("Inserisci il nome.");
-    if (!species.trim()) return setError("Seleziona il tipo animale.");
-
-    if (hasChip === "yes") {
-      if (!cleanedChip) return setError("Inserisci il microchip.");
-      if (cleanedChip.length < 10) return setError("Numero microchip non valido.");
-    }
-
-    setSaving(true);
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
 
     try {
+      setSaving(true);
+      setError(null);
+      setNotice(null);
+
+      if (!name.trim()) {
+        setError("Inserisci il nome.");
+        return;
+      }
+
+      if (!species.trim()) {
+        setError("Seleziona il tipo animale.");
+        return;
+      }
+
+      if (hasChip === "yes") {
+        if (!cleanedChip) {
+          setError("Inserisci il microchip.");
+          return;
+        }
+        if (cleanedChip.length < 10) {
+          setError("Numero microchip non valido.");
+          return;
+        }
+      }
+
       const { data: authData } = await supabase.auth.getUser();
       const user = authData.user;
 
       if (!user) {
         setError("Sessione scaduta. Effettua di nuovo il login.");
-        setSaving(false);
+        return;
+      }
+
+      if (animalId) {
+        const res = await fetch("/api/owner/claim-animal", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            animalId,
+            name: name.trim(),
+            species: species.trim(),
+            breed: breed.trim() || null,
+            color: color.trim() || null,
+            size: size.trim() || null,
+            birth_date: birthDate || null,
+            microchip: hasChip === "yes" ? cleanedChip : null,
+            photo_url: photoUrl || null,
+          }),
+        });
+
+        const json = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+          setError(json?.error || "Errore nel collegamento animale");
+          return;
+        }
+
+        clearDraft();
+        router.push(`/animali/${animalId}`);
         return;
       }
 
@@ -433,28 +477,14 @@ export default function NuovoProfiloAnimalePage() {
         birth_date_is_estimated: birthDate ? birthDateEstimated : false,
       };
 
-      if (existingAnimalId) {
-        const { error } = await supabase
-          .from("animals")
-          .update({
-            ...payload,
-            owner_id: user.id,
-            owner_claim_status: "claimed",
-            owner_claimed_at: new Date().toISOString(),
-          })
-          .eq("id", existingAnimalId);
-
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from("animals").insert(payload);
-        if (error) throw error;
-      }
+      const { error } = await supabase.from("animals").insert(payload);
+      if (error) throw error;
 
       clearDraft();
       router.push("/identita");
     } catch (e: any) {
       console.error(e);
-      setError(e?.message || "Errore nel salvataggio.");
+      setError("Errore imprevisto");
     } finally {
       setSaving(false);
     }
@@ -468,14 +498,17 @@ export default function NuovoProfiloAnimalePage() {
     <main className="max-w-2xl">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight">
-          {existingAnimalId ? "Completa identità animale" : "Crea profilo animale"}
+          {animalId ? "Completa identità animale" : "Crea profilo animale"}
         </h1>
         <Link href="/identita" className="text-sm text-zinc-600 hover:underline">
           ← Torna
         </Link>
       </div>
 
-      <div className="mt-6 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+      <form
+        onSubmit={onSubmit}
+        className="mt-6 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm"
+      >
         <div className="grid gap-4 sm:grid-cols-2">
           <input
             placeholder="Nome *"
@@ -558,8 +591,8 @@ export default function NuovoProfiloAnimalePage() {
             <div className="mt-3 space-y-2">
               <input
                 placeholder="Numero microchip *"
-                value={chipNumber}
-                onChange={(e) => setChipNumber(e.target.value)}
+                value={microchip}
+                onChange={(e) => setMicrochip(e.target.value)}
                 className="w-full rounded-lg border border-zinc-300 px-3 py-2"
               />
 
@@ -569,9 +602,7 @@ export default function NuovoProfiloAnimalePage() {
                   router.push(
                     "/professionisti/scansiona?returnTo=" +
                       encodeURIComponent(
-                        existingAnimalId
-                          ? `/identita/nuovo?animalId=${existingAnimalId}`
-                          : "/identita/nuovo"
+                        animalId ? `/identita/nuovo?animalId=${animalId}` : "/identita/nuovo"
                       )
                   )
                 }
@@ -629,14 +660,14 @@ export default function NuovoProfiloAnimalePage() {
 
         <div className="mt-6 flex justify-end">
           <button
-            onClick={submit}
+            type="submit"
             disabled={saving}
             className="rounded-lg bg-black px-5 py-3 text-white"
           >
-            {saving ? "Salvataggio…" : existingAnimalId ? "Completa identità" : "Crea profilo"}
+            {saving ? "Salvataggio…" : animalId ? "Completa identità" : "Crea profilo"}
           </button>
         </div>
-      </div>
+      </form>
     </main>
   );
 }

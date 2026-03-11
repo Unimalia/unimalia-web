@@ -1,15 +1,15 @@
 // src/lib/professionisti/getManagedAnimals.ts
 import "server-only";
-import { createServerSupabaseClient, supabaseAdmin } from "@/lib/supabase/server";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 export type ManagedAnimalRow = {
   animal_id: string;
   animal_name: string;
   species: string | null;
-  microchip: string | null; // maps to animals.chip_number
+  microchip: string | null;
   owner_name: string | null;
-  last_visit_at: string | null; // temporarily null
-  next_reminder_at: string | null; // temporarily null
+  last_visit_at: string | null;
+  next_reminder_at: string | null;
   status: "active" | "inactive" | string;
 };
 
@@ -31,96 +31,117 @@ export async function getManagedAnimals(q?: string): Promise<ManagedAnimalRow[]>
 
   if (!user) return [];
 
-  // org_id del professionista
-  const { data: proProfile, error: proErr } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from("professional_profiles")
     .select("org_id")
     .eq("user_id", user.id)
-    .maybeSingle();
+    .single();
 
-  if (proErr) throw proErr;
+  if (profileError || !profile?.org_id) {
+    return [];
+  }
 
-  const orgId = (proProfile as any)?.org_id as string | undefined;
-  if (!orgId) return [];
+  const orgId = profile.org_id;
 
-  const nowIso = new Date().toISOString();
-
-  // 1) Animali con GRANT ATTIVO
-  const { data: grants, error: grantsErr } = await supabase
+  const { data: grantedRows, error: grantedError } = await supabase
     .from("animal_access_grants")
-    .select("animal_id, valid_to, revoked_at, status, grantee_type, grantee_id")
-    .eq("grantee_type", "org")
-    .eq("grantee_id", orgId)
-    .eq("status", "active")
-    .is("revoked_at", null)
-    .or(`valid_to.is.null,valid_to.gt.${nowIso}`);
-
-  if (grantsErr) throw grantsErr;
-
-  const grantAnimalIds = Array.from(
-    new Set((grants ?? []).map((g: any) => g.animal_id).filter(Boolean))
-  );
-
-  // 2) Animali creati / originati dalla ORG corrente (vet-first)
-  const admin = supabaseAdmin();
-
-  const { data: orgAnimals, error: orgAnimalsErr } = await admin
-    .from("animals")
-    .select("id")
-    .or(`created_by_org_id.eq.${orgId},origin_org_id.eq.${orgId}`);
-
-  if (orgAnimalsErr) throw orgAnimalsErr;
-
-  const ownedAnimalIds = Array.from(
-    new Set((orgAnimals ?? []).map((a: any) => a.id).filter(Boolean))
-  );
-
-  // 3) Unione dei due insiemi
-  const animalIds = Array.from(new Set([...grantAnimalIds, ...ownedAnimalIds]));
-
-  if (animalIds.length === 0) return [];
-
-  // 4) Carica gli animali finali
-  let animalsQuery = admin
-    .from("animals")
-    .select(
-      `
+    .select(`
+      animal_id,
+      animals!inner(
         id,
         name,
         species,
-        chip_number,
-        status,
+        breed,
+        microchip,
+        unimalia_code,
         owner_id,
         owner_claim_status,
-        created_by_role,
         created_by_org_id,
         origin_org_id,
-        owner:profiles!animals_owner_id_fkey(full_name)
-      `
-    )
-    .in("id", animalIds);
+        status
+      )
+    `)
+    .eq("grantee_id", orgId)
+    .eq("status", "active");
+
+  if (grantedError) throw grantedError;
+
+  const grantedAnimals =
+    grantedRows?.map((row: any) => row.animals).filter(Boolean) ?? [];
+
+  const { data: orgAnimals, error: orgAnimalsError } = await supabase
+    .from("animals")
+    .select(`
+      id,
+      name,
+      species,
+      breed,
+      microchip,
+      unimalia_code,
+      owner_id,
+      owner_claim_status,
+      created_by_org_id,
+      origin_org_id,
+      status
+    `)
+    .or(`created_by_org_id.eq.${orgId},origin_org_id.eq.${orgId}`);
+
+  if (orgAnimalsError) throw orgAnimalsError;
+
+  const map = new Map<string, any>();
+
+  for (const animal of grantedAnimals) {
+    map.set(animal.id, animal);
+  }
+
+  for (const animal of orgAnimals ?? []) {
+    map.set(animal.id, animal);
+  }
+
+  let animals = Array.from(map.values());
 
   // Ricerca server-side SOLO nel subset visibile
   if (q && q.trim().length >= 2) {
-    const qq = q.trim();
-    animalsQuery = animalsQuery.or(`name.ilike.%${qq}%,chip_number.ilike.%${qq}%`);
+    const qq = normalizeForSearch(q);
+
+    animals = animals.filter((animal: any) => {
+      const byName = normalizeForSearch(animal.name).includes(qq);
+      const byChip = normalizeForSearch(animal.microchip).includes(qq);
+      return byName || byChip;
+    });
   }
 
-  const { data: animals, error: animalsErr } = await animalsQuery;
-  if (animalsErr) throw animalsErr;
+  const ownerIds = Array.from(
+    new Set(
+      animals
+        .map((a: any) => a.owner_id)
+        .filter(Boolean)
+    )
+  );
 
-  return (animals ?? []).map((a: any) => {
-    const ownerName = a.owner?.full_name ?? null;
+  let ownersMap = new Map<string, string>();
 
-    return {
-      animal_id: a.id,
-      animal_name: a.name ?? "",
-      species: a.species ?? null,
-      microchip: a.chip_number ?? null,
-      owner_name: ownerName,
+  if (ownerIds.length) {
+    const { data: owners, error: ownersError } = await supabase
+      .from("profiles")
+      .select("id, full_name")
+      .in("id", ownerIds);
+
+    if (ownersError) throw ownersError;
+
+    ownersMap = new Map((owners ?? []).map((o: any) => [o.id, o.full_name]));
+  }
+
+  return animals
+    .map((animal: any) => ({
+      animal_id: animal.id,
+      animal_name: animal.name ?? "",
+      species: animal.species ?? null,
+      microchip: animal.microchip ?? null,
+      owner_name: animal.owner_id ? ownersMap.get(animal.owner_id) ?? null : null,
       last_visit_at: null,
       next_reminder_at: null,
-      status: a.status ?? "active",
-    };
-  });
+      status: animal.status ?? "active",
+    }))
+    .sort((a, b) => a.animal_name.localeCompare(b.animal_name));
 }
