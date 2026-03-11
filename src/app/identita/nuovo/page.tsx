@@ -183,6 +183,8 @@ export default function NuovoProfiloAnimalePage() {
   }, []);
 
   useEffect(() => {
+    if (existingAnimalId) return;
+
     saveDraft({
       name,
       species,
@@ -198,6 +200,7 @@ export default function NuovoProfiloAnimalePage() {
       ts: Date.now(),
     });
   }, [
+    existingAnimalId,
     name,
     species,
     breed,
@@ -212,7 +215,6 @@ export default function NuovoProfiloAnimalePage() {
   ]);
 
   useEffect(() => {
-    // Leggiamo i query params in modo "client-only" (no useSearchParams => no Suspense)
     if (typeof window === "undefined") return;
 
     const params = new URLSearchParams(window.location.search);
@@ -273,7 +275,11 @@ export default function NuovoProfiloAnimalePage() {
       const user = authData.user;
 
       if (!user) {
-        router.replace("/login?next=/identita/nuovo");
+        const nextPath = existingAnimalId
+          ? `/identita/nuovo?animalId=${encodeURIComponent(existingAnimalId)}`
+          : "/identita/nuovo";
+
+        router.replace("/login?next=" + encodeURIComponent(nextPath));
         return;
       }
 
@@ -286,18 +292,23 @@ export default function NuovoProfiloAnimalePage() {
       if (!alive) return;
 
       if (!isProfileComplete(data)) {
-        router.replace("/profilo?returnTo=/identita/nuovo");
+        const returnTo = existingAnimalId
+          ? `/identita/nuovo?animalId=${encodeURIComponent(existingAnimalId)}`
+          : "/identita/nuovo";
+
+        router.replace("/profilo?returnTo=" + encodeURIComponent(returnTo));
         return;
       }
 
       setCheckingProfile(false);
     }
 
-    checkProfile();
+    void checkProfile();
+
     return () => {
       alive = false;
     };
-  }, [router]);
+  }, [router, existingAnimalId]);
 
   if (checkingProfile) {
     return (
@@ -327,7 +338,11 @@ export default function NuovoProfiloAnimalePage() {
       const { data: authData } = await supabase.auth.getUser();
       const user = authData.user;
       if (!user) {
-        router.replace("/login?next=/identita/nuovo");
+        const nextPath = existingAnimalId
+          ? `/identita/nuovo?animalId=${encodeURIComponent(existingAnimalId)}`
+          : "/identita/nuovo";
+
+        router.replace("/login?next=" + encodeURIComponent(nextPath));
         return;
       }
 
@@ -414,7 +429,6 @@ export default function NuovoProfiloAnimalePage() {
         status: "home",
         chip_number: hasChip === "yes" ? cleanedChip : null,
         microchip_verified: false,
-
         birth_date: birthDate || null,
         birth_date_is_estimated: birthDate ? birthDateEstimated : false,
       };
@@ -437,7 +451,6 @@ export default function NuovoProfiloAnimalePage() {
       }
 
       clearDraft();
-
       router.push("/identita");
     } catch (e: any) {
       console.error(e);
@@ -482,6 +495,27 @@ export default function NuovoProfiloAnimalePage() {
             <option value="Altro">Altro</option>
           </select>
 
+          <input
+            placeholder="Razza (facoltativa)"
+            value={breed}
+            onChange={(e) => setBreed(e.target.value)}
+            className="rounded-lg border border-zinc-300 px-3 py-2"
+          />
+
+          <input
+            placeholder="Colore / segni (facoltativo)"
+            value={color}
+            onChange={(e) => setColor(e.target.value)}
+            className="rounded-lg border border-zinc-300 px-3 py-2"
+          />
+
+          <input
+            placeholder="Taglia (facoltativa)"
+            value={size}
+            onChange={(e) => setSize(e.target.value)}
+            className="rounded-lg border border-zinc-300 px-3 py-2"
+          />
+
           <div>
             <label className="block text-sm font-medium">Data di nascita</label>
             <input
@@ -495,6 +529,7 @@ export default function NuovoProfiloAnimalePage() {
                 type="checkbox"
                 checked={birthDateEstimated}
                 onChange={(e) => setBirthDateEstimated(e.target.checked)}
+                disabled={!birthDate}
               />
               Data presunta
             </label>
@@ -532,7 +567,12 @@ export default function NuovoProfiloAnimalePage() {
                 type="button"
                 onClick={() =>
                   router.push(
-                    "/professionisti/scansiona?returnTo=" + encodeURIComponent("/identita/nuovo")
+                    "/professionisti/scansiona?returnTo=" +
+                      encodeURIComponent(
+                        existingAnimalId
+                          ? `/identita/nuovo?animalId=${existingAnimalId}`
+                          : "/identita/nuovo"
+                      )
                   )
                 }
                 className="rounded-lg border border-zinc-300 px-3 py-2 text-sm hover:bg-zinc-50"
@@ -555,7 +595,7 @@ export default function NuovoProfiloAnimalePage() {
             className="hidden"
             onChange={(e) => {
               const f = e.target.files?.[0] ?? null;
-              uploadPhoto(f);
+              void uploadPhoto(f);
               e.currentTarget.value = "";
             }}
           />
@@ -575,6 +615,7 @@ export default function NuovoProfiloAnimalePage() {
           </div>
 
           {notice ? <p className="text-xs text-emerald-700">{notice}</p> : null}
+
           <p className="text-xs text-zinc-500">
             La foto è facoltativa. Puoi aggiungerla anche più avanti dalla scheda animale.
           </p>
