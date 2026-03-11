@@ -129,7 +129,8 @@ function clearDraft() {
 function NuovoProfiloAnimalePageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const animalId = searchParams.get("animalId");
+  const animalId = (searchParams.get("animalId") || "").trim();
+  const backHref = animalId ? `/professionisti/animali/${animalId}` : "/identita";
 
   const fileRef = useRef<HTMLInputElement | null>(null);
 
@@ -503,7 +504,7 @@ function NuovoProfiloAnimalePageInner() {
         <h1 className="text-3xl font-bold tracking-tight">
           {animalId ? "Completa identità animale" : "Crea profilo animale"}
         </h1>
-        <Link href="/identita" className="text-sm text-zinc-600 hover:underline">
+        <Link href={backHref} className="text-sm text-zinc-600 hover:underline">
           ← Torna
         </Link>
       </div>
