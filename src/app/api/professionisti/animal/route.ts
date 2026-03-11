@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, supabaseAdmin } from "@/lib/supabase/server";
 
 type AnimalPayload = {
   name?: string;
@@ -22,11 +22,10 @@ function isValidChip(value: string) {
   return /^\d{15}$/.test(value);
 }
 
-async function getProfessionalOrgId(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  userId: string
-) {
-  const profileResult = await supabase
+async function getProfessionalOrgId(userId: string) {
+  const admin = supabaseAdmin();
+
+  const profileResult = await admin
     .from("professional_profiles")
     .select("user_id, org_id")
     .eq("user_id", userId)
@@ -58,6 +57,7 @@ async function getProfessionalOrgId(
 export async function GET(req: NextRequest) {
   try {
     const supabase = await createClient();
+    const admin = supabaseAdmin();
 
     const {
       data: { user },
@@ -79,7 +79,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const orgLookup = await getProfessionalOrgId(supabase, user.id);
+    const orgLookup = await getProfessionalOrgId(user.id);
 
     if (!orgLookup.orgId) {
       return NextResponse.json(
@@ -100,7 +100,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "animalId mancante" }, { status: 400 });
     }
 
-    const animalResult = await supabase
+    const animalResult = await admin
       .from("animals")
       .select(`
         id,
@@ -129,7 +129,7 @@ export async function GET(req: NextRequest) {
 
     const animal = animalResult.data;
 
-    const grantResult = await supabase
+    const grantResult = await admin
       .from("animal_access_grants")
       .select("id, status")
       .eq("animal_id", animalId)
@@ -165,6 +165,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const supabase = await createClient();
+    const admin = supabaseAdmin();
 
     const {
       data: { user },
@@ -186,7 +187,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const orgLookup = await getProfessionalOrgId(supabase, user.id);
+    const orgLookup = await getProfessionalOrgId(user.id);
 
     if (!orgLookup.orgId) {
       return NextResponse.json(
@@ -223,7 +224,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (chipNumber) {
-      const chipCheck = await supabase
+      const chipCheck = await admin
         .from("animals")
         .select("id, name, chip_number")
         .eq("chip_number", chipNumber)
@@ -273,7 +274,7 @@ export async function POST(req: NextRequest) {
       owner_claim_status: "pending",
     };
 
-    const created = await supabase
+    const created = await admin
       .from("animals")
       .insert(insertPayload)
       .select(`
