@@ -28,8 +28,10 @@ export default function CollegaProprietarioPage() {
   const [animal, setAnimal] = useState<Animal | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+
   const [email, setEmail] = useState("");
-  const [success, setSuccess] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [inviteOk, setInviteOk] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -43,9 +45,7 @@ export default function CollegaProprietarioPage() {
       try {
         const res = await fetch(
           `/api/professionisti/animal?animalId=${encodeURIComponent(animalId)}`,
-          {
-            cache: "no-store",
-          }
+          { cache: "no-store" }
         );
 
         const json = await res.json().catch(() => ({}));
@@ -54,7 +54,6 @@ export default function CollegaProprietarioPage() {
           if (!alive) return;
           setErr(json?.error || "Impossibile caricare l’animale.");
           setAnimal(null);
-          setLoading(false);
           return;
         }
 
@@ -86,6 +85,51 @@ export default function CollegaProprietarioPage() {
     }
   }
 
+  async function handleInviteSubmit(e: React.FormEvent) {
+    e.preventDefault();
+
+    if (!animal?.id) {
+      setErr("Animale non disponibile.");
+      return;
+    }
+
+    if (!email.trim()) {
+      setErr("Inserisci l’email del proprietario.");
+      return;
+    }
+
+    setSending(true);
+    setErr(null);
+    setInviteOk(false);
+
+    try {
+      const res = await fetch("/api/professionisti/invite-owner", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          animalId: animal.id,
+          email: email.trim(),
+        }),
+      });
+
+      const json = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setErr(json?.error || "Errore invio invito proprietario.");
+        return;
+      }
+
+      setInviteOk(true);
+      setEmail("");
+    } catch (error: any) {
+      setErr(error?.message || "Errore invio invito proprietario.");
+    } finally {
+      setSending(false);
+    }
+  }
+
   if (loading) {
     return (
       <main className="max-w-3xl mx-auto p-6">
@@ -96,7 +140,7 @@ export default function CollegaProprietarioPage() {
     );
   }
 
-  if (err || !animal) {
+  if (err && !animal) {
     return (
       <main className="max-w-3xl mx-auto p-6 space-y-4">
         <Link
@@ -107,7 +151,24 @@ export default function CollegaProprietarioPage() {
         </Link>
 
         <div className="rounded-3xl border border-red-200 bg-white p-6 shadow-sm text-sm text-red-700">
-          {err || "Animale non disponibile."}
+          {err}
+        </div>
+      </main>
+    );
+  }
+
+  if (!animal) {
+    return (
+      <main className="max-w-3xl mx-auto p-6 space-y-4">
+        <Link
+          href={`/professionisti/animali/${animalId}`}
+          className="text-sm font-semibold text-zinc-700 hover:text-zinc-900"
+        >
+          ← Torna alla scheda animale
+        </Link>
+
+        <div className="rounded-3xl border border-red-200 bg-white p-6 shadow-sm text-sm text-red-700">
+          Animale non disponibile.
         </div>
       </main>
     );
@@ -165,63 +226,47 @@ export default function CollegaProprietarioPage() {
         </div>
       </div>
 
-      <form
-        className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm space-y-4"
-        onSubmit={async (e) => {
-          e.preventDefault();
-
-          setErr(null);
-          setSuccess(false);
-
-          const res = await fetch("/api/professionisti/invite-owner", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              animalId: animal.id,
-              email,
-            }),
-          });
-
-          const json = await res.json();
-
-          if (!res.ok) {
-            setErr(json.error || "Errore invio invito");
-            return;
-          }
-
-          setSuccess(true);
-        }}
-      >
-        <h2 className="text-base font-semibold text-zinc-900">Invia invito proprietario</h2>
-
-        <input
-          type="email"
-          placeholder="Email proprietario"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="border rounded-lg px-3 py-2 w-full"
-        />
-
-        <button className="bg-black text-white px-4 py-2 rounded-xl">
-          Invia invito proprietario
-        </button>
-
-        {success ? (
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-            Invito inviato correttamente.
-          </div>
-        ) : null}
-      </form>
-
       <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm space-y-4">
         <h2 className="text-base font-semibold text-zinc-900">Passaggio operativo</h2>
 
         <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-700">
-          In questa fase il proprietario va indirizzato alla stessa logica identità owner,
-          ma sullo stesso animale già creato dalla clinica.
+          In questa fase puoi inviare al proprietario un’email per collegare lo stesso animale al suo account.
         </div>
+
+        <form onSubmit={handleInviteSubmit} className="space-y-3">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-zinc-800">
+              Email proprietario
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="nome@email.it"
+              className="w-full rounded-xl border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={sending}
+            className="rounded-2xl bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-900 disabled:opacity-60"
+          >
+            {sending ? "Invio..." : "Invia invito proprietario"}
+          </button>
+        </form>
+
+        {inviteOk ? (
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+            Invito inviato correttamente.
+          </div>
+        ) : null}
+
+        {err ? (
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+            {err}
+          </div>
+        ) : null}
 
         <div className="grid gap-3 sm:grid-cols-2">
           <button
