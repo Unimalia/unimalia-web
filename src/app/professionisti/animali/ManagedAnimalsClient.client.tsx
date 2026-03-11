@@ -215,7 +215,17 @@ export default function ManagedAnimalsClient({
               <tr key={r.animal_id} className="border-t">
                 <td className="p-3 font-medium">{r.animal_name}</td>
                 <td className="p-3">{r.species ?? "—"}</td>
-                <td className="p-3">{r.owner_name ?? "—"}</td>
+
+                <td className="p-3">
+                  {r.owner_name ? (
+                    r.owner_name
+                  ) : (
+                    <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-800">
+                      Proprietario non collegato
+                    </span>
+                  )}
+                </td>
+
                 <td className="p-3">{renderMicrochip(r.microchip)}</td>
 
                 <td className="p-3">
