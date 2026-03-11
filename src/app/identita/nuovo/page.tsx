@@ -333,9 +333,6 @@ export default function NuovoProfiloAnimalePage() {
 
     if (!name.trim()) return setError("Inserisci il nome.");
     if (!species.trim()) return setError("Seleziona il tipo animale.");
-    if (!photoUrl) return setError("Carica una foto.");
-
-    if (!birthDate.trim()) return setError("Inserisci la data di nascita (anche presunta).");
 
     if (hasChip === "yes") {
       if (!cleanedChip) return setError("Inserisci il microchip.");
@@ -361,13 +358,13 @@ export default function NuovoProfiloAnimalePage() {
         breed: breed.trim() || null,
         color: color.trim() || null,
         size: size.trim() || null,
-        photo_url: photoUrl,
+        photo_url: photoUrl || null,
         status: "home",
         chip_number: hasChip === "yes" ? cleanedChip : null,
         microchip_verified: false,
 
-        birth_date: birthDate,
-        birth_date_is_estimated: birthDateEstimated,
+        birth_date: birthDate || null,
+        birth_date_is_estimated: birthDate ? birthDateEstimated : false,
       };
 
       const { error } = await supabase.from("animals").insert(payload);
@@ -418,7 +415,7 @@ export default function NuovoProfiloAnimalePage() {
           </select>
 
           <div>
-            <label className="block text-sm font-medium">Data di nascita *</label>
+            <label className="block text-sm font-medium">Data di nascita</label>
             <input
               type="date"
               value={birthDate}
@@ -434,7 +431,8 @@ export default function NuovoProfiloAnimalePage() {
               Data presunta
             </label>
             <p className="mt-1 text-xs text-zinc-500">
-              Se non conosci la data esatta, inserisci una data indicativa e spunta “presunta”.
+              Facoltativa. Se non conosci la data esatta, puoi inserirne una indicativa e spuntare
+              “presunta”.
             </p>
           </div>
         </div>
@@ -507,6 +505,9 @@ export default function NuovoProfiloAnimalePage() {
           </div>
 
           {notice ? <p className="text-xs text-emerald-700">{notice}</p> : null}
+          <p className="text-xs text-zinc-500">
+            La foto è facoltativa. Puoi aggiungerla anche più avanti dalla scheda animale.
+          </p>
         </div>
 
         {error ? (
