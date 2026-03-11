@@ -563,7 +563,7 @@ export default function ProAnimalPage() {
                 </Link>
 
                 <Link
-                  href={`/professionisti/animali/${animal.id}/crea-identita`}
+                  href={`/identita/nuovo?animalId=${encodeURIComponent(animal.id)}`}
                   className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
                 >
                   Crea identità dalla cartella
