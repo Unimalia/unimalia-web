@@ -28,6 +28,8 @@ export default function CollegaProprietarioPage() {
   const [animal, setAnimal] = useState<Animal | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const [email, setEmail] = useState("");
+  const [success, setSuccess] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -163,6 +165,56 @@ export default function CollegaProprietarioPage() {
         </div>
       </div>
 
+      <form
+        className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm space-y-4"
+        onSubmit={async (e) => {
+          e.preventDefault();
+
+          setErr(null);
+          setSuccess(false);
+
+          const res = await fetch("/api/professionisti/invite-owner", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              animalId: animal.id,
+              email,
+            }),
+          });
+
+          const json = await res.json();
+
+          if (!res.ok) {
+            setErr(json.error || "Errore invio invito");
+            return;
+          }
+
+          setSuccess(true);
+        }}
+      >
+        <h2 className="text-base font-semibold text-zinc-900">Invia invito proprietario</h2>
+
+        <input
+          type="email"
+          placeholder="Email proprietario"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="border rounded-lg px-3 py-2 w-full"
+        />
+
+        <button className="bg-black text-white px-4 py-2 rounded-xl">
+          Invia invito proprietario
+        </button>
+
+        {success ? (
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+            Invito inviato correttamente.
+          </div>
+        ) : null}
+      </form>
+
       <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm space-y-4">
         <h2 className="text-base font-semibold text-zinc-900">Passaggio operativo</h2>
 
@@ -184,10 +236,7 @@ export default function CollegaProprietarioPage() {
           <button
             type="button"
             onClick={() =>
-              copyValue(
-                "Link identità",
-                `${window.location.origin}${identityPath}`
-              )
+              copyValue("Link identità", `${window.location.origin}${identityPath}`)
             }
             className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-left text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
           >
