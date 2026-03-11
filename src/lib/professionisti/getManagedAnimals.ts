@@ -1,147 +1,117 @@
-// src/lib/professionisti/getManagedAnimals.ts
-import "server-only";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+"use client";
 
-export type ManagedAnimalRow = {
-  animal_id: string;
-  animal_name: string;
+import Link from "next/link";
+import React from "react";
+
+type ManagedAnimalRow = {
+  id: string;
+  name: string | null;
   species: string | null;
+  breed: string | null;
   microchip: string | null;
+  unimalia_code: string | null;
+  owner_id: string | null;
+  owner_claim_status: "none" | "pending" | "claimed" | null;
+  created_by_org_id: string | null;
+  origin_org_id: string | null;
   owner_name: string | null;
-  last_visit_at: string | null;
-  next_reminder_at: string | null;
-  status: "active" | "inactive" | string;
 };
 
-export function normalizeForSearch(v: unknown) {
-  return String(v ?? "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
-    .trim();
-}
+export default function ManagedAnimalsClient({
+  initialRows,
+  initialQuery,
+}: {
+  initialRows: ManagedAnimalRow[];
+  initialQuery: string;
+}) {
+  const [query, setQuery] = React.useState(initialQuery ?? "");
 
-// q facoltativo (ricerca SOLO nel subset visibile al professionista)
-export async function getManagedAnimals(q?: string): Promise<ManagedAnimalRow[]> {
-  const supabase = await createServerSupabaseClient();
+  const rows = React.useMemo(() => {
+    const q = query.trim().toLowerCase();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    if (!q) return initialRows;
 
-  if (!user) return [];
-
-  const { data: profile, error: profileError } = await supabase
-    .from("professional_profiles")
-    .select("org_id")
-    .eq("user_id", user.id)
-    .single();
-
-  if (profileError || !profile?.org_id) {
-    return [];
-  }
-
-  const orgId = profile.org_id;
-
-  const { data: grantedRows, error: grantedError } = await supabase
-    .from("animal_access_grants")
-    .select(`
-      animal_id,
-      animals!inner(
-        id,
-        name,
-        species,
-        breed,
-        microchip,
-        unimalia_code,
-        owner_id,
-        owner_claim_status,
-        created_by_org_id,
-        origin_org_id,
-        status
-      )
-    `)
-    .eq("grantee_id", orgId)
-    .eq("status", "active");
-
-  if (grantedError) throw grantedError;
-
-  const grantedAnimals =
-    grantedRows?.map((row: any) => row.animals).filter(Boolean) ?? [];
-
-  const { data: orgAnimals, error: orgAnimalsError } = await supabase
-    .from("animals")
-    .select(`
-      id,
-      name,
-      species,
-      breed,
-      microchip,
-      unimalia_code,
-      owner_id,
-      owner_claim_status,
-      created_by_org_id,
-      origin_org_id,
-      status
-    `)
-    .or(`created_by_org_id.eq.${orgId},origin_org_id.eq.${orgId}`);
-
-  if (orgAnimalsError) throw orgAnimalsError;
-
-  const map = new Map<string, any>();
-
-  for (const animal of grantedAnimals) {
-    map.set(animal.id, animal);
-  }
-
-  for (const animal of orgAnimals ?? []) {
-    map.set(animal.id, animal);
-  }
-
-  let animals = Array.from(map.values());
-
-  // Ricerca server-side SOLO nel subset visibile
-  if (q && q.trim().length >= 2) {
-    const qq = normalizeForSearch(q);
-
-    animals = animals.filter((animal: any) => {
-      const byName = normalizeForSearch(animal.name).includes(qq);
-      const byChip = normalizeForSearch(animal.microchip).includes(qq);
-      return byName || byChip;
+    return initialRows.filter((row) => {
+      return (
+        (row.name ?? "").toLowerCase().includes(q) ||
+        (row.species ?? "").toLowerCase().includes(q) ||
+        (row.breed ?? "").toLowerCase().includes(q) ||
+        (row.microchip ?? "").toLowerCase().includes(q) ||
+        (row.unimalia_code ?? "").toLowerCase().includes(q) ||
+        (row.owner_name ?? "").toLowerCase().includes(q)
+      );
     });
+  }, [initialRows, query]);
+
+  if (initialRows.length === 0) {
+    return (
+      <div className="rounded-2xl border border-zinc-200 bg-white p-6 text-sm text-zinc-600">
+        Nessun animale in gestione al momento.
+      </div>
+    );
   }
 
-  const ownerIds = Array.from(
-    new Set(
-      animals
-        .map((a: any) => a.owner_id)
-        .filter(Boolean)
-    )
+  return (
+    <div className="space-y-4">
+      <div>
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Cerca per nome, specie, razza, microchip, codice UNIMALIA o proprietario"
+          className="w-full rounded-xl border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
+        />
+      </div>
+
+      {rows.length === 0 ? (
+        <div className="rounded-2xl border border-zinc-200 bg-white p-6 text-sm text-zinc-600">
+          Nessun animale trovato con questa ricerca.
+        </div>
+      ) : (
+        <div className="grid gap-3">
+          {rows.map((row) => (
+            <Link
+              key={row.id}
+              href={`/professionisti/animali/${row.id}`}
+              className="rounded-2xl border border-zinc-200 bg-white p-4 hover:bg-zinc-50"
+            >
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
+                  <div className="text-base font-semibold text-zinc-900">
+                    {row.name || "Animale senza nome"}
+                  </div>
+
+                  <div className="mt-1 text-sm text-zinc-600">
+                    {[row.species, row.breed].filter(Boolean).join(" • ") || "—"}
+                  </div>
+
+                  <div className="mt-2 space-y-1 text-sm text-zinc-500">
+                    <div>Microchip: {row.microchip || "—"}</div>
+                    {row.unimalia_code ? <div>UNIMALIA: {row.unimalia_code}</div> : null}
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  {row.owner_name ? (
+                    <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-800">
+                      {row.owner_name}
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-800">
+                      Proprietario non collegato
+                    </span>
+                  )}
+
+                  {row.created_by_org_id || row.origin_org_id ? (
+                    <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-1 text-xs font-medium text-blue-800">
+                      Clinica
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
   );
-
-  let ownersMap = new Map<string, string>();
-
-  if (ownerIds.length) {
-    const { data: owners, error: ownersError } = await supabase
-      .from("profiles")
-      .select("id, full_name")
-      .in("id", ownerIds);
-
-    if (ownersError) throw ownersError;
-
-    ownersMap = new Map((owners ?? []).map((o: any) => [o.id, o.full_name]));
-  }
-
-  return animals
-    .map((animal: any) => ({
-      animal_id: animal.id,
-      animal_name: animal.name ?? "",
-      species: animal.species ?? null,
-      microchip: animal.microchip ?? null,
-      owner_name: animal.owner_id ? ownersMap.get(animal.owner_id) ?? null : null,
-      last_visit_at: null,
-      next_reminder_at: null,
-      status: animal.status ?? "active",
-    }))
-    .sort((a, b) => a.animal_name.localeCompare(b.animal_name));
 }
