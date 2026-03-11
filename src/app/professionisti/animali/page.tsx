@@ -26,7 +26,8 @@ export default async function ProfessionistiAnimaliPage({
         <div>
           <h1 className="text-2xl font-semibold">Animali gestiti</h1>
           <p className="mt-1 text-sm text-neutral-600">
-            Qui vedi sia gli animali con grant attivo sia quelli creati o originati dalla tua clinica.
+            Qui vedi sia gli animali con grant attivo sia quelli creati o originati dalla tua
+            clinica.
           </p>
         </div>
 

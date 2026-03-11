@@ -39,8 +39,9 @@ export default function NuovoAnimaleProfessionistaPage() {
     }
 
     const normalizedChip = digitsOnly(chipNumber);
-    if (normalizedChip && normalizedChip.length !== 15 && normalizedChip.length !== 10) {
-      setError("Microchip non valido: attese 15 cifre, opzionale 10.");
+
+    if (normalizedChip && normalizedChip.length !== 15) {
+      setError("Microchip non valido: servono 15 cifre.");
       return;
     }
 
@@ -55,11 +56,11 @@ export default function NuovoAnimaleProfessionistaPage() {
         body: JSON.stringify({
           name: name.trim(),
           species: species.trim(),
-          breed: breed.trim(),
-          color: color.trim(),
-          size: size.trim(),
+          breed: breed.trim() || null,
+          color: color.trim() || null,
+          size: size.trim() || null,
           birth_date: birthDate || null,
-          chip_number: normalizedChip || null,
+          microchip: normalizedChip || null,
         }),
       });
 
@@ -169,7 +170,7 @@ export default function NuovoAnimaleProfessionistaPage() {
             />
           </div>
 
-          <div>
+          <div className="sm:col-span-2">
             <label className="block text-sm font-medium">Microchip</label>
             <input
               className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
@@ -178,6 +179,35 @@ export default function NuovoAnimaleProfessionistaPage() {
               placeholder="15 cifre"
               inputMode="numeric"
             />
+
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() =>
+                  router.push(
+                    "/professionisti/scansiona?returnTo=" +
+                      encodeURIComponent("/professionisti/scansiona/manuale/nuovo")
+                  )
+                }
+                className="rounded-xl border px-3 py-2 text-sm"
+              >
+                Scansiona microchip
+              </button>
+
+              {chipNumber ? (
+                <button
+                  type="button"
+                  onClick={() => setChipNumber("")}
+                  className="rounded-xl border px-3 py-2 text-sm"
+                >
+                  Pulisci microchip
+                </button>
+              ) : null}
+            </div>
+
+            <p className="mt-2 text-xs text-zinc-500">
+              Il microchip è facoltativo, ma se presente puoi inserirlo manualmente oppure scansionarlo.
+            </p>
           </div>
         </div>
 
