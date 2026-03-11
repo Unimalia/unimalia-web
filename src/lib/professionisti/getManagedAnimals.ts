@@ -8,8 +8,8 @@ export type ManagedAnimalRow = {
   species: string | null;
   microchip: string | null; // maps to animals.chip_number
   owner_name: string | null;
-  last_visit_at: string | null; // temporarily null (clinic events schema mismatch)
-  next_reminder_at: string | null; // temporarily null (clinic events schema mismatch)
+  last_visit_at: string | null; // temporarily null
+  next_reminder_at: string | null; // temporarily null
   status: "active" | "inactive" | string;
 };
 
@@ -21,13 +21,14 @@ export function normalizeForSearch(v: unknown) {
     .trim();
 }
 
-// q facoltativo (ricerca SOLO nel subset autorizzato)
+// q facoltativo (ricerca SOLO nel subset visibile al professionista)
 export async function getManagedAnimals(q?: string): Promise<ManagedAnimalRow[]> {
   const supabase = await createServerSupabaseClient();
 
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
   if (!user) return [];
 
   // org_id del professionista
@@ -44,7 +45,7 @@ export async function getManagedAnimals(q?: string): Promise<ManagedAnimalRow[]>
 
   const nowIso = new Date().toISOString();
 
-  // Grants ATTIVI (schema corretto: grantee_type/grantee_id + valid_to)
+  // 1) Animali con GRANT ATTIVO
   const { data: grants, error: grantsErr } = await supabase
     .from("animal_access_grants")
     .select("animal_id, valid_to, revoked_at, status, grantee_type, grantee_id")
@@ -56,15 +57,30 @@ export async function getManagedAnimals(q?: string): Promise<ManagedAnimalRow[]>
 
   if (grantsErr) throw grantsErr;
 
-  const animalIds = Array.from(
+  const grantAnimalIds = Array.from(
     new Set((grants ?? []).map((g: any) => g.animal_id).filter(Boolean))
   );
 
-  if (animalIds.length === 0) return [];
-
-  // Query animals (admin: evita problemi RLS durante demo / superaccount)
+  // 2) Animali creati / originati dalla ORG corrente (vet-first)
   const admin = supabaseAdmin();
 
+  const { data: orgAnimals, error: orgAnimalsErr } = await admin
+    .from("animals")
+    .select("id")
+    .or(`created_by_org_id.eq.${orgId},origin_org_id.eq.${orgId}`);
+
+  if (orgAnimalsErr) throw orgAnimalsErr;
+
+  const ownedAnimalIds = Array.from(
+    new Set((orgAnimals ?? []).map((a: any) => a.id).filter(Boolean))
+  );
+
+  // 3) Unione dei due insiemi
+  const animalIds = Array.from(new Set([...grantAnimalIds, ...ownedAnimalIds]));
+
+  if (animalIds.length === 0) return [];
+
+  // 4) Carica gli animali finali
   let animalsQuery = admin
     .from("animals")
     .select(
@@ -75,12 +91,16 @@ export async function getManagedAnimals(q?: string): Promise<ManagedAnimalRow[]>
         chip_number,
         status,
         owner_id,
+        owner_claim_status,
+        created_by_role,
+        created_by_org_id,
+        origin_org_id,
         owner:profiles!animals_owner_id_fkey(full_name)
       `
     )
     .in("id", animalIds);
 
-  // Search server-side SOLO sul subset autorizzato
+  // Ricerca server-side SOLO nel subset visibile
   if (q && q.trim().length >= 2) {
     const qq = q.trim();
     animalsQuery = animalsQuery.or(`name.ilike.%${qq}%,chip_number.ilike.%${qq}%`);
@@ -89,16 +109,15 @@ export async function getManagedAnimals(q?: string): Promise<ManagedAnimalRow[]>
   const { data: animals, error: animalsErr } = await animalsQuery;
   if (animalsErr) throw animalsErr;
 
-  // ✅ TEMP: niente eventi clinici (il tuo schema non ha occurred_at)
-  // last_visit_at / next_reminder_at rimangono null finché non allineiamo i nomi colonne reali
-
   return (animals ?? []).map((a: any) => {
+    const ownerName = a.owner?.full_name ?? null;
+
     return {
       animal_id: a.id,
       animal_name: a.name ?? "",
       species: a.species ?? null,
       microchip: a.chip_number ?? null,
-      owner_name: a.owner?.full_name ?? null,
+      owner_name: ownerName,
       last_visit_at: null,
       next_reminder_at: null,
       status: a.status ?? "active",
