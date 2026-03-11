@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { supabaseAdmin } from "@/lib/supabase/server";
 
 export type ManagedAnimalRow = {
   id: string;
@@ -14,14 +14,12 @@ export type ManagedAnimalRow = {
   owner_name: string | null;
 };
 
-async function getProfessionalRefs(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  userId: string
-) {
+async function getProfessionalRefs(userId: string) {
+  const admin = supabaseAdmin();
   const refs = new Set<string>();
   refs.add(userId);
 
-  const profileResult = await supabase
+  const profileResult = await admin
     .from("professional_profiles")
     .select("user_id, org_id")
     .eq("user_id", userId)
@@ -35,9 +33,9 @@ async function getProfessionalRefs(
 }
 
 export async function getManagedAnimals(userId: string): Promise<ManagedAnimalRow[]> {
-  const supabase = await createClient();
+  const admin = supabaseAdmin();
 
-  const refs = await getProfessionalRefs(supabase, userId);
+  const refs = await getProfessionalRefs(userId);
 
   if (refs.length === 0) {
     console.error("[GET_MANAGED_ANIMALS] no professional refs found", { userId });
@@ -48,7 +46,7 @@ export async function getManagedAnimals(userId: string): Promise<ManagedAnimalRo
   const directAnimals = new Map<string, Omit<ManagedAnimalRow, "owner_name">>();
 
   for (const ref of refs) {
-    const { data: grantRows, error: grantsError } = await supabase
+    const { data: grantRows, error: grantsError } = await admin
       .from("animal_access_grants")
       .select("animal_id, status")
       .eq("grantee_id", ref)
@@ -64,7 +62,7 @@ export async function getManagedAnimals(userId: string): Promise<ManagedAnimalRo
       }
     }
 
-    const { data: orgAnimals, error: orgAnimalsError } = await supabase
+    const { data: orgAnimals, error: orgAnimalsError } = await admin
       .from("animals")
       .select(`
         id,
@@ -101,7 +99,7 @@ export async function getManagedAnimals(userId: string): Promise<ManagedAnimalRo
 
   const ids = Array.from(allAnimalIds);
 
-  const { data: animals, error: animalsError } = await supabase
+  const { data: animals, error: animalsError } = await admin
     .from("animals")
     .select(`
       id,
@@ -143,7 +141,7 @@ export async function getManagedAnimals(userId: string): Promise<ManagedAnimalRo
   let ownerMap = new Map<string, string>();
 
   if (ownerIds.length > 0) {
-    const { data: owners, error: ownersError } = await supabase
+    const { data: owners, error: ownersError } = await admin
       .from("profiles")
       .select("id, full_name")
       .in("id", ownerIds);
