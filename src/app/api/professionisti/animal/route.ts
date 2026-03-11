@@ -11,7 +11,6 @@ type AnimalPayload = {
   microchip?: string | null;
   chip_number?: string | null;
   photo_url?: string | null;
-  sex?: string | null;
 };
 
 function normalizeChip(value?: string | null) {
@@ -110,7 +109,6 @@ export async function GET(req: NextRequest) {
         breed,
         color,
         size,
-        sex,
         birth_date,
         chip_number,
         unimalia_code,
@@ -133,10 +131,10 @@ export async function GET(req: NextRequest) {
 
     const grantResult = await supabase
       .from("animal_access_grants")
-      .select("id")
+      .select("id, status")
       .eq("animal_id", animalId)
       .eq("grantee_id", orgLookup.orgId)
-      .eq("status", "active")
+      .in("status", ["active", "approved"])
       .maybeSingle();
 
     const canAccess =
@@ -265,7 +263,6 @@ export async function POST(req: NextRequest) {
       breed: body.breed?.trim() || null,
       color: body.color?.trim() || null,
       size: body.size?.trim() || null,
-      sex: body.sex?.trim() || null,
       birth_date: body.birth_date || null,
       chip_number: chipNumber,
       photo_url: body.photo_url || null,
@@ -286,7 +283,6 @@ export async function POST(req: NextRequest) {
         breed,
         color,
         size,
-        sex,
         birth_date,
         chip_number,
         unimalia_code,
