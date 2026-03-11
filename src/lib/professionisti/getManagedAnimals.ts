@@ -80,7 +80,7 @@ export async function getManagedAnimals(userId: string): Promise<ManagedAnimalRo
         name,
         species,
         breed,
-        microchip,
+        chip_number,
         unimalia_code,
         owner_id,
         owner_claim_status,
@@ -96,7 +96,10 @@ export async function getManagedAnimals(userId: string): Promise<ManagedAnimalRo
     for (const animal of orgAnimals ?? []) {
       if ((animal as any).id) {
         allAnimalIds.add((animal as any).id);
-        directAnimals.set((animal as any).id, animal as Omit<ManagedAnimalRow, "owner_name">);
+        directAnimals.set((animal as any).id, {
+          ...(animal as any),
+          microchip: (animal as any).chip_number ?? null,
+        });
       }
     }
   }
@@ -114,7 +117,7 @@ export async function getManagedAnimals(userId: string): Promise<ManagedAnimalRo
       name,
       species,
       breed,
-      microchip,
+      chip_number,
       unimalia_code,
       owner_id,
       owner_claim_status,
@@ -136,7 +139,10 @@ export async function getManagedAnimals(userId: string): Promise<ManagedAnimalRo
   }
 
   const rows = ((animals ?? []).length
-    ? animals
+    ? animals.map((animal: any) => ({
+        ...animal,
+        microchip: animal.chip_number ?? null,
+      }))
     : Array.from(directAnimals.values())) as Omit<ManagedAnimalRow, "owner_name">[];
 
   const ownerIds = Array.from(
