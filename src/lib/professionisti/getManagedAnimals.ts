@@ -21,24 +21,15 @@ async function getProfessionalRefs(
   const refs = new Set<string>();
   refs.add(userId);
 
-  const byUserId = await supabase
+  const profileResult = await supabase
     .from("professional_profiles")
-    .select("id, org_id")
+    .select("user_id, org_id")
     .eq("user_id", userId)
     .maybeSingle();
 
-  if (byUserId.data?.id) refs.add(byUserId.data.id);
-  if (byUserId.data?.org_id) refs.add(byUserId.data.org_id);
-
-  const byId = await supabase
-    .from("professional_profiles")
-    .select("id, org_id, user_id")
-    .eq("id", userId)
-    .maybeSingle();
-
-  if (byId.data?.id) refs.add(byId.data.id);
-  if (byId.data?.org_id) refs.add(byId.data.org_id);
-  if ((byId.data as any)?.user_id) refs.add((byId.data as any).user_id);
+  if (profileResult.data?.org_id) {
+    refs.add(profileResult.data.org_id);
+  }
 
   return Array.from(refs).filter(Boolean);
 }

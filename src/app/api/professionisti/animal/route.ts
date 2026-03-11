@@ -27,31 +27,17 @@ async function getProfessionalOrgId(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string
 ) {
-  const byUserId = await supabase
+  const profileResult = await supabase
     .from("professional_profiles")
-    .select("id, user_id, org_id")
+    .select("user_id, org_id")
     .eq("user_id", userId)
     .maybeSingle();
 
-  if (byUserId.data?.org_id) {
+  if (profileResult.data?.org_id) {
     return {
-      orgId: byUserId.data.org_id as string,
+      orgId: profileResult.data.org_id as string,
       source: "professional_profiles.user_id",
-      profile: byUserId.data,
-    };
-  }
-
-  const byId = await supabase
-    .from("professional_profiles")
-    .select("id, user_id, org_id")
-    .eq("id", userId)
-    .maybeSingle();
-
-  if (byId.data?.org_id) {
-    return {
-      orgId: byId.data.org_id as string,
-      source: "professional_profiles.id",
-      profile: byId.data,
+      profile: profileResult.data,
     };
   }
 
@@ -59,20 +45,14 @@ async function getProfessionalOrgId(
     orgId: null,
     source: null,
     profile: null,
-    errors: {
-      byUserId: byUserId.error
-        ? {
-            message: byUserId.error.message,
-            code: byUserId.error.code,
-          }
-        : null,
-      byId: byId.error
-        ? {
-            message: byId.error.message,
-            code: byId.error.code,
-          }
-        : null,
-    },
+    error: profileResult.error
+      ? {
+          message: profileResult.error.message,
+          details: profileResult.error.details,
+          hint: profileResult.error.hint,
+          code: profileResult.error.code,
+        }
+      : null,
   };
 }
 
@@ -89,14 +69,12 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(
         {
           error: "Non autorizzato",
-          debug: {
-            authError: authError
-              ? {
-                  message: authError.message,
-                  code: authError.code,
-                }
-              : null,
-          },
+          debug: authError
+            ? {
+                message: authError.message,
+                code: authError.code,
+              }
+            : null,
         },
         { status: 401 }
       );
@@ -153,7 +131,7 @@ export async function GET(req: NextRequest) {
 
     const animal = animalResult.data;
 
-    const grant = await supabase
+    const grantResult = await supabase
       .from("animal_access_grants")
       .select("id")
       .eq("animal_id", animalId)
@@ -162,7 +140,7 @@ export async function GET(req: NextRequest) {
       .maybeSingle();
 
     const canAccess =
-      !!grant.data ||
+      !!grantResult.data ||
       animal.created_by_org_id === orgLookup.orgId ||
       animal.origin_org_id === orgLookup.orgId;
 
@@ -199,14 +177,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           error: "Non autorizzato",
-          debug: {
-            authError: authError
-              ? {
-                  message: authError.message,
-                  code: authError.code,
-                }
-              : null,
-          },
+          debug: authError
+            ? {
+                message: authError.message,
+                code: authError.code,
+              }
+            : null,
         },
         { status: 401 }
       );
@@ -272,12 +248,10 @@ export async function POST(req: NextRequest) {
           {
             error: "Errore controllo microchip",
             debug: {
-              chipCheckError: {
-                message: chipCheck.error.message,
-                details: chipCheck.error.details,
-                hint: chipCheck.error.hint,
-                code: chipCheck.error.code,
-              },
+              message: chipCheck.error.message,
+              details: chipCheck.error.details,
+              hint: chipCheck.error.hint,
+              code: chipCheck.error.code,
             },
           },
           { status: 500 }

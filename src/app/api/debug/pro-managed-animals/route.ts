@@ -12,24 +12,12 @@ async function getProfessionalRefs(
 
   const byUserId = await supabase
     .from("professional_profiles")
-    .select("id, user_id, org_id")
+    .select("user_id, org_id")
     .eq("user_id", userId);
 
-  const byId = await supabase
-    .from("professional_profiles")
-    .select("id, user_id, org_id")
-    .eq("id", userId);
-
   for (const row of byUserId.data ?? []) {
-    if (row.id) refs.add(row.id);
     if ((row as any).user_id) refs.add((row as any).user_id);
-    if (row.org_id) refs.add(row.org_id);
-  }
-
-  for (const row of byId.data ?? []) {
-    if (row.id) refs.add(row.id);
-    if ((row as any).user_id) refs.add((row as any).user_id);
-    if (row.org_id) refs.add(row.org_id);
+    if ((row as any).org_id) refs.add((row as any).org_id);
   }
 
   return {
@@ -42,17 +30,6 @@ async function getProfessionalRefs(
             details: byUserId.error.details,
             hint: byUserId.error.hint,
             code: byUserId.error.code,
-          }
-        : null,
-    },
-    byId: {
-      data: byId.data ?? [],
-      error: byId.error
-        ? {
-            message: byId.error.message,
-            details: byId.error.details,
-            hint: byId.error.hint,
-            code: byId.error.code,
           }
         : null,
     },
@@ -111,7 +88,7 @@ export async function GET() {
           id,
           name,
           species,
-          microchip,
+          chip_number,
           owner_id,
           owner_claim_status,
           created_by_org_id,
