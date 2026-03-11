@@ -30,8 +30,13 @@ export async function GET(req: Request) {
   const orgId = await getProfessionalOrgId();
   if (!orgId) return NextResponse.json({ error: "Missing org" }, { status: 400 });
 
-  // 1) check grant attivo (org -> animal)
+  // 1) accesso consentito se:
+  // - esiste grant attivo
+  // - oppure l'animale è stato creato dalla stessa org
+  // - oppure l'org di origine coincide con la org corrente
+
   const nowIso = new Date().toISOString();
+
   const { data: grants, error: grantErr } = await admin
     .from("animal_access_grants")
     .select("id")
@@ -43,10 +48,30 @@ export async function GET(req: Request) {
     .or(`valid_to.is.null,valid_to.gt.${nowIso}`)
     .limit(1);
 
-  if (grantErr) return NextResponse.json({ error: grantErr.message }, { status: 500 });
+  if (grantErr) {
+    return NextResponse.json({ error: grantErr.message }, { status: 500 });
+  }
 
-  if (!grants || grants.length === 0) {
-    return NextResponse.json({ error: "No active grant for this animal" }, { status: 403 });
+  const { data: ownershipAnimal, error: ownershipErr } = await admin
+    .from("animals")
+    .select("id, created_by_org_id, origin_org_id")
+    .eq("id", animalId)
+    .single();
+
+  if (ownershipErr) {
+    return NextResponse.json({ error: ownershipErr.message }, { status: 500 });
+  }
+
+  const hasGrant = !!grants && grants.length > 0;
+  const belongsToCurrentOrg =
+    ownershipAnimal?.created_by_org_id === orgId ||
+    ownershipAnimal?.origin_org_id === orgId;
+
+  if (!hasGrant && !belongsToCurrentOrg) {
+    return NextResponse.json(
+      { error: "No active grant for this animal" },
+      { status: 403 }
+    );
   }
 
   // 2) carica animale (admin)
