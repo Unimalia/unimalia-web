@@ -13,7 +13,7 @@ import { getBarcodeValue, getQrValue } from "@/lib/animalCodes";
 
 type Animal = {
   id: string;
-  owner_id: string;
+  owner_id: string | null;
   created_at: string;
   name: string;
   species: string;
@@ -32,6 +32,11 @@ type Animal = {
 
   birth_date?: string | null;
   birth_date_is_estimated?: boolean | null;
+
+  owner_claim_status?: "none" | "pending" | "claimed" | null;
+  created_by_role?: string | null;
+  created_by_org_id?: string | null;
+  origin_org_id?: string | null;
 };
 
 type ClinicEventType =
@@ -252,6 +257,12 @@ function isTherapyActive(e: any) {
 
 function formatWeightLabel(kg: number) {
   return Number.isInteger(kg) ? `${kg} kg` : `${kg} kg`;
+}
+
+function ownerConnectionLabel(animal: Animal) {
+  if (animal.owner_id) return "Proprietario collegato";
+  if (animal.owner_claim_status === "pending") return "Proprietario non collegato";
+  return "Proprietario non collegato";
 }
 
 export default function ProAnimalPage() {
@@ -542,6 +553,24 @@ export default function ProAnimalPage() {
               Richiedi accesso (se non autorizzato)
             </Link>
 
+            {!animal.owner_id ? (
+              <>
+                <Link
+                  href={`/professionisti/animali/${animal.id}/collega-proprietario`}
+                  className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-800 hover:bg-amber-100"
+                >
+                  Collega proprietario
+                </Link>
+
+                <Link
+                  href={`/professionisti/animali/${animal.id}/crea-identita`}
+                  className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+                >
+                  Crea identità dalla cartella
+                </Link>
+              </>
+            ) : null}
+
             {isVet ? (
               animal.microchip_verified ? (
                 <span className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">
@@ -568,6 +597,30 @@ export default function ProAnimalPage() {
           <div className="mt-1 text-sm text-zinc-600">
             Le identità NON sono pubbliche. Questa scheda è visibile solo a professionisti
             autorizzati e al proprietario.
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <span
+              className={
+                animal.owner_id
+                  ? "rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700"
+                  : "rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700"
+              }
+            >
+              {ownerConnectionLabel(animal)}
+            </span>
+
+            {animal.created_by_role === "professional" ? (
+              <span className="rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-semibold text-zinc-700">
+                Creato dalla clinica
+              </span>
+            ) : null}
+
+            {animal.unimalia_code ? (
+              <span className="rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-mono text-zinc-700">
+                UNIMALIA: {animal.unimalia_code}
+              </span>
+            ) : null}
           </div>
         </div>
       </div>

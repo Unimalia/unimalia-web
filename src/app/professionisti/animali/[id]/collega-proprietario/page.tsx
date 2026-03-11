@@ -1,0 +1,225 @@
+"use client";
+
+import Link from "next/link";
+import React, { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
+import { authHeaders } from "@/lib/client/authHeaders";
+
+type Animal = {
+  id: string;
+  name: string;
+  species: string;
+  breed: string | null;
+  chip_number: string | null;
+  owner_id: string | null;
+  owner_claim_status?: "none" | "pending" | "claimed" | null;
+  unimalia_code?: string | null;
+  created_by_role?: string | null;
+};
+
+function normalizeChip(raw: string | null) {
+  return (raw || "").replace(/\s+/g, "").trim();
+}
+
+export default function CollegaProprietarioPage() {
+  const params = useParams<{ id: string }>();
+  const animalId = params?.id;
+
+  const [loading, setLoading] = useState(true);
+  const [animal, setAnimal] = useState<Animal | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [copied, setCopied] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+
+    async function load() {
+      if (!animalId) return;
+
+      setLoading(true);
+      setErr(null);
+
+      try {
+        const res = await fetch(`/api/professionisti/animal?animalId=${encodeURIComponent(animalId)}`, {
+          cache: "no-store",
+          headers: {
+            ...(await authHeaders()),
+          },
+        });
+
+        const json = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+          if (!alive) return;
+          setErr(json?.error || "Impossibile caricare l’animale.");
+          setAnimal(null);
+          setLoading(false);
+          return;
+        }
+
+        if (!alive) return;
+        setAnimal((json?.animal as Animal) ?? null);
+      } catch {
+        if (!alive) return;
+        setErr("Errore di rete durante il caricamento.");
+        setAnimal(null);
+      } finally {
+        if (alive) setLoading(false);
+      }
+    }
+
+    void load();
+
+    return () => {
+      alive = false;
+    };
+  }, [animalId]);
+
+  async function copyValue(label: string, value: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(label);
+      window.setTimeout(() => setCopied(null), 1500);
+    } catch {
+      setCopied(null);
+    }
+  }
+
+  if (loading) {
+    return (
+      <main className="max-w-3xl mx-auto p-6">
+        <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm text-sm text-zinc-600">
+          Caricamento…
+        </div>
+      </main>
+    );
+  }
+
+  if (err || !animal) {
+    return (
+      <main className="max-w-3xl mx-auto p-6 space-y-4">
+        <Link
+          href={`/professionisti/animali/${animalId}`}
+          className="text-sm font-semibold text-zinc-700 hover:text-zinc-900"
+        >
+          ← Torna alla scheda animale
+        </Link>
+
+        <div className="rounded-3xl border border-red-200 bg-white p-6 shadow-sm text-sm text-red-700">
+          {err || "Animale non disponibile."}
+        </div>
+      </main>
+    );
+  }
+
+  const alreadyLinked = !!animal.owner_id;
+
+  return (
+    <main className="max-w-3xl mx-auto p-6 space-y-6">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold text-zinc-900">Collega proprietario</h1>
+          <p className="mt-1 text-sm text-zinc-600">
+            Usa lo stesso animale già creato dalla clinica, senza duplicare la scheda.
+          </p>
+        </div>
+
+        <Link
+          href={`/professionisti/animali/${animal.id}`}
+          className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+        >
+          Torna alla scheda
+        </Link>
+      </div>
+
+      <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
+        <div className="grid gap-3 sm:grid-cols-2 text-sm">
+          <div>
+            <div className="text-zinc-500">Animale</div>
+            <div className="font-semibold text-zinc-900">{animal.name}</div>
+          </div>
+
+          <div>
+            <div className="text-zinc-500">Specie</div>
+            <div className="font-semibold text-zinc-900">
+              {animal.species}{animal.breed ? ` • ${animal.breed}` : ""}
+            </div>
+          </div>
+
+          <div>
+            <div className="text-zinc-500">Microchip</div>
+            <div className="font-semibold text-zinc-900">
+              {animal.chip_number ? normalizeChip(animal.chip_number) : "—"}
+            </div>
+          </div>
+
+          <div>
+            <div className="text-zinc-500">Stato proprietario</div>
+            <div className="font-semibold text-zinc-900">
+              {alreadyLinked ? "Proprietario collegato" : "Proprietario non collegato"}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm space-y-4">
+        <h2 className="text-base font-semibold text-zinc-900">Dati utili da condividere</h2>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <button
+            type="button"
+            onClick={() => copyValue("ID animale", animal.id)}
+            className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-left text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+          >
+            Copia ID animale
+            <div className="mt-1 font-mono text-xs text-zinc-500 break-all">{animal.id}</div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => copyValue("Codice UNIMALIA", String(animal.unimalia_code || ""))}
+            disabled={!animal.unimalia_code}
+            className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-left text-sm font-semibold text-zinc-800 hover:bg-zinc-50 disabled:opacity-50"
+          >
+            Copia codice UNIMALIA
+            <div className="mt-1 font-mono text-xs text-zinc-500 break-all">
+              {animal.unimalia_code || "Non disponibile"}
+            </div>
+          </button>
+        </div>
+
+        {copied ? (
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+            Copiato: {copied}
+          </div>
+        ) : null}
+
+        <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-700">
+          Prima versione operativa:
+          <br />
+          - l’animale resta lo stesso record già creato dalla clinica
+          <br />
+          - non devi creare un secondo animale
+          <br />
+          - il passo successivo sarà l’attivazione guidata del proprietario
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href={`/professionisti/animali/${animal.id}/crea-identita`}
+            className="rounded-2xl bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-900"
+          >
+            Continua: crea identità dalla cartella
+          </Link>
+
+          <Link
+            href={`/professionisti/animali/${animal.id}`}
+            className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+          >
+            Torna alla scheda
+          </Link>
+        </div>
+      </div>
+    </main>
+  );
+}

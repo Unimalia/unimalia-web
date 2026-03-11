@@ -78,7 +78,7 @@ export async function GET(req: Request) {
   const { data: animal, error: aErr } = await admin
     .from("animals")
     .select(
-      "id,owner_id,created_at,name,species,breed,color,size,chip_number,microchip_verified,status,unimalia_code,photo_url,microchip_verified_at,microchip_verified_org_id,birth_date,birth_date_is_estimated"
+      "id,owner_id,created_at,name,species,breed,color,size,chip_number,microchip_verified,status,unimalia_code,photo_url,microchip_verified_at,microchip_verified_org_id,microchip_verified_by_label,birth_date,birth_date_is_estimated,owner_claim_status,created_by_role,created_by_org_id,origin_org_id"
     )
     .eq("id", animalId)
     .single();
