@@ -7,6 +7,10 @@ export async function GET(
 ) {
   const { animalId } = await ctx.params;
 
+  if (!animalId || animalId === "undefined") {
+    return NextResponse.json({ error: "animalId mancante" }, { status: 400 });
+  }
+
   const supabase = await createServerSupabaseClient();
 
   const {
@@ -14,8 +18,13 @@ export async function GET(
     error: authErr,
   } = await supabase.auth.getUser();
 
-  if (authErr) return NextResponse.json({ error: authErr.message }, { status: 401 });
-  if (!user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  if (authErr) {
+    return NextResponse.json({ error: authErr.message }, { status: 401 });
+  }
+
+  if (!user) {
+    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  }
 
   const { data: animal, error: animalErr } = await supabase
     .from("animals")
@@ -23,8 +32,21 @@ export async function GET(
     .eq("id", animalId)
     .maybeSingle();
 
-  if (animalErr) return NextResponse.json({ error: animalErr.message }, { status: 500 });
-  if (!animal) return NextResponse.json({ error: "Animal not found" }, { status: 404 });
+  if (animalErr) {
+    return NextResponse.json({ error: animalErr.message }, { status: 500 });
+  }
+
+  if (!animal) {
+    return NextResponse.json({ error: "Animal not found" }, { status: 404 });
+  }
+
+  if (!animal.owner_id) {
+    return NextResponse.json({
+      requests: [],
+      grants: [],
+    });
+  }
+
   if (animal.owner_id !== user.id) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
@@ -48,24 +70,40 @@ export async function GET(
   const [{ data: requests, error: reqErr }, { data: grants, error: grantErr }] =
     await Promise.all([requestsQ, grantsQ]);
 
-  if (reqErr) return NextResponse.json({ error: reqErr.message }, { status: 500 });
-  if (grantErr) return NextResponse.json({ error: grantErr.message }, { status: 500 });
+  if (reqErr) {
+    return NextResponse.json({ error: reqErr.message }, { status: 500 });
+  }
+
+  if (grantErr) {
+    return NextResponse.json({ error: grantErr.message }, { status: 500 });
+  }
 
   const requestRows = requests ?? [];
   const grantRows = grants ?? [];
 
-  const orgIdsFromRequests = requestRows.map((r: any) => r.org_id).filter(Boolean);
-  const orgIdsFromGrants = grantRows.map((g: any) => g.grantee_id).filter(Boolean);
+  const orgIdsFromRequests = requestRows
+    .map((r: any) => r.org_id)
+    .filter((v: unknown): v is string => typeof v === "string" && v.length > 0);
+
+  const orgIdsFromGrants = grantRows
+    .map((g: any) => g.grantee_id)
+    .filter((v: unknown): v is string => typeof v === "string" && v.length > 0);
+
   const orgIds = Array.from(new Set([...orgIdsFromRequests, ...orgIdsFromGrants]));
 
-  const { data: orgs } = orgIds.length
+  const { data: orgs, error: orgErr } = orgIds.length
     ? await admin
         .from("organizations")
         .select("id, name, display_name, ragione_sociale")
         .in("id", orgIds)
-    : { data: [] as any[] };
+    : { data: [], error: null };
+
+  if (orgErr) {
+    return NextResponse.json({ error: orgErr.message }, { status: 500 });
+  }
 
   const orgNameById = new Map<string, string>();
+
   for (const o of orgs ?? []) {
     orgNameById.set(o.id, o.name ?? o.display_name ?? o.ragione_sociale ?? o.id);
   }
