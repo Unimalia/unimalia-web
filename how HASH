@@ -1,0 +1,31 @@
+[33m683f302[m clinic: fix species detection for vaccine list
+[33m43787f0[m clinic: support multi-select vaccines in clinical event form
+[33m037755e[m clinic: vaccine list now adapts to animal species
+[33ma0b664c[m clinic: add vaccine fields vaccine_type batch_number next_due_date
+[33m35c2cf3[m descrizione modifica
+[33m5432ccd[m clinic: add chronic_condition and follow_up event types
+[33mef1dd44[m refine professionals clinic UX and modal behavior
+[33m117652b[m improve clinic UX and readability for owner and professionals
+[33m14b1ed6[m clinic UX improvements: surgery event, upload button UI, modal actions labels
+[33me7ceb0b[m align owner clinic page with surgery event type
+[33mef401d3[m Complete quick clinical status with allergies and active therapies
+[33m4bb3840[m Update owner and professional clinic pages
+[33mb256e07[m Update owner and professional clinic flows
+[33md2a16a9[m Clinic: filters + load more (50) + weight filter by meta + fix date-only rendering
+[33m8613401[m Clinic: add weight event type + show weight in timeline and details (PRO)
+[33m239c098[m Compact clinic form + weight field (PRO)
+[33m86e01a7[m Fix Next 16 params typing in clinica layout
+[33ma4dc967[m Access requests: lookup chip_number/unimalia_code + grant guard clinica
+[33m59da0fa[m Show attachment indicator in timeline using bulk counts
+[33ma7ad37f[m Make clinic event attachments clickable and show paperclip indicator
+[33m71dca06[m Clamp owner clinic preview and add multi-file attachments on event creation
+[33mf5ce3ee[m Fix modal scrolling and clamp clinic event preview text
+[33m33a59e6[m Enable clinic event update/delete with per-source permissions
+[33me696a66[m Add edit and delete confirmation UI in clinic event modal
+[33mebc5cb9[m Add clinic event detail modal UI
+[33m8559c7a[m Add bulk selection and validate selected/all in pro clinic timeline
+[33me0662a9[m Add inline vet validation in pro clinic timeline
+[33mfe54eba[m Show clinic event title and optimistically prepend new event
+[33maad9c63[m Enable pro clinic event creation
+[33m2039689[m Add reminder UI to pro clinic new event form
+[33m7775457[m Add reminder UI to pro clinic new event form
