@@ -42,7 +42,23 @@ export async function POST(req: NextRequest) {
     }
 
     if (claim.used_at) {
-      return NextResponse.json({ error: "Invito già utilizzato" }, { status: 409 });
+      const existingAnimal = await admin
+        .from("animals")
+        .select("id, owner_id")
+        .eq("id", claim.animal_id)
+        .maybeSingle();
+
+      if (existingAnimal.data?.id && existingAnimal.data.owner_id === user.id) {
+        return NextResponse.json({
+          ok: true,
+          animalId: existingAnimal.data.id,
+        });
+      }
+
+      return NextResponse.json(
+        { error: "Invito già utilizzato" },
+        { status: 409 }
+      );
     }
 
     if (claim.expires_at && new Date(claim.expires_at).getTime() < Date.now()) {
