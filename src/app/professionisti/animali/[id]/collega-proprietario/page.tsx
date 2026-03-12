@@ -117,7 +117,12 @@ export default function CollegaProprietarioPage() {
       const json = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        setErr(json?.error || "Errore invio invito proprietario.");
+        const message =
+          json?.error ||
+          json?.message ||
+          `Errore invio invito proprietario (HTTP ${res.status})`;
+
+        setErr(message);
         return;
       }
 
