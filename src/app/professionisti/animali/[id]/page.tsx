@@ -20,6 +20,8 @@ type Animal = {
   breed: string | null;
   color: string | null;
   size: string | null;
+  sex?: string | null;
+  sterilized?: boolean | null;
   chip_number: string | null;
   microchip_verified: boolean;
   status: string;
@@ -858,6 +860,22 @@ export default function ProAnimalPage() {
               <dd className="font-medium text-zinc-900">{animal.size || "—"}</dd>
             </div>
           </dl>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 text-sm">
+            <div>
+              <div className="text-zinc-500">Sesso</div>
+              <div className="font-semibold text-zinc-900">
+                {animal.sex === "M" ? "Maschio" : animal.sex === "F" ? "Femmina" : "—"}
+              </div>
+            </div>
+
+            <div>
+              <div className="text-zinc-500">Sterilizzato</div>
+              <div className="font-semibold text-zinc-900">
+                {animal.sterilized === true ? "Sì" : animal.sterilized === false ? "No" : "—"}
+              </div>
+            </div>
+          </div>
 
           <div className="mt-4 flex flex-wrap gap-2">
             {isVet ? (
