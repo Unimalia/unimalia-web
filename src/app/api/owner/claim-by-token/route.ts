@@ -12,14 +12,20 @@ export async function POST(req: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return NextResponse.json({ error: "Non autorizzato" }, { status: 401 });
+      return NextResponse.json(
+        { error: "Non autorizzato" },
+        { status: 401 }
+      );
     }
 
     const body = await req.json().catch(() => null);
     const token = String(body?.token ?? "").trim();
 
     if (!token) {
-      return NextResponse.json({ error: "Token mancante" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Token mancante" },
+        { status: 400 }
+      );
     }
 
     const claimResult = await admin
@@ -29,17 +35,59 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (claimResult.error || !claimResult.data) {
-      return NextResponse.json({ error: "Invito non valido" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Invito non valido" },
+        { status: 404 }
+      );
     }
 
     const claim = claimResult.data;
 
-    if (claim.used_at) {
-      return NextResponse.json({ error: "Invito già utilizzato" }, { status: 409 });
+    if (!claim.animal_id) {
+      return NextResponse.json(
+        { error: "animal_id mancante nel claim" },
+        { status: 500 }
+      );
     }
 
-    if (claim.expires_at && new Date(claim.expires_at).getTime() < Date.now()) {
-      return NextResponse.json({ error: "Invito scaduto" }, { status: 410 });
+    if (claim.used_at) {
+      return NextResponse.json(
+        { error: "Invito già utilizzato" },
+        { status: 409 }
+      );
+    }
+
+    if (
+      claim.expires_at &&
+      new Date(claim.expires_at).getTime() < Date.now()
+    ) {
+      return NextResponse.json(
+        { error: "Invito scaduto" },
+        { status: 410 }
+      );
+    }
+
+    const animalCheck = await admin
+      .from("animals")
+      .select("id, owner_id")
+      .eq("id", claim.animal_id)
+      .single();
+
+    if (animalCheck.error || !animalCheck.data) {
+      return NextResponse.json(
+        { error: "Animale non trovato" },
+        { status: 404 }
+      );
+    }
+
+    if (
+      animalCheck.data.owner_id &&
+      animalCheck.data.owner_id !== user.id
+    ) {
+      return NextResponse.json(
+        { error: "Animale già collegato a un altro proprietario" },
+        { status: 409 }
+      );
     }
 
     const animalUpdate = await admin
@@ -55,7 +103,11 @@ export async function POST(req: NextRequest) {
 
     if (animalUpdate.error || !animalUpdate.data) {
       return NextResponse.json(
-        { error: animalUpdate.error?.message || "Errore collegamento animale" },
+        {
+          error:
+            animalUpdate.error?.message ||
+            "Errore collegamento animale",
+        },
         { status: 500 }
       );
     }
@@ -70,7 +122,11 @@ export async function POST(req: NextRequest) {
 
     if (claimUpdate.error) {
       return NextResponse.json(
-        { error: claimUpdate.error.message || "Errore aggiornamento invito" },
+        {
+          error:
+            claimUpdate.error.message ||
+            "Errore aggiornamento invito",
+        },
         { status: 500 }
       );
     }
