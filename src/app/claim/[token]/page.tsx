@@ -15,7 +15,10 @@ export default function ClaimAnimalPage() {
     let active = true;
 
     async function run() {
-      if (!token) return;
+      if (!token) {
+        setMessage("Token invito mancante.");
+        return;
+      }
 
       const { data } = await supabase.auth.getUser();
 
@@ -38,6 +41,11 @@ export default function ClaimAnimalPage() {
 
       if (!res.ok) {
         setMessage(json?.error || "Errore durante il collegamento animale.");
+        return;
+      }
+
+      if (!json?.animalId) {
+        setMessage("Collegamento completato ma ID animale mancante.");
         return;
       }
 
