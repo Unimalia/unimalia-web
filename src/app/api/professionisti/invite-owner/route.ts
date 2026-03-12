@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { createClient, supabaseAdmin } from "@/lib/supabase/server";
+import { Resend } from "resend";
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 async function getProfessionalOrgId(userId: string) {
   const admin = supabaseAdmin();
@@ -68,7 +71,7 @@ export async function POST(req: NextRequest) {
 
     const animalResult = await admin
       .from("animals")
-      .select("id, created_by_org_id, origin_org_id")
+      .select("id, name, created_by_org_id, origin_org_id")
       .eq("id", animalId)
       .single();
 
@@ -107,36 +110,26 @@ export async function POST(req: NextRequest) {
     }
 
     const baseUrl =
-      process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || req.nextUrl.origin;
+      process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ||
+      req.nextUrl.origin;
 
-    const claimLink = `${baseUrl}/a/${token}`;
+    const claimLink = `${baseUrl}/claim/${token}`;
 
-    const emailResponse = await fetch(`${baseUrl}/api/test-email`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        to: email,
-        subject: "Collega il tuo animale su UNIMALIA",
-        html: `
-          <p>Una clinica ha creato la scheda del tuo animale.</p>
-          <p>Clicca qui per collegarlo:</p>
-          <p><a href="${claimLink}">${claimLink}</a></p>
-        `,
-      }),
+    const emailResult = await resend.emails.send({
+      from: "UNIMALIA <onboarding@resend.dev>",
+      to: email,
+      subject: "Collega il tuo animale su UNIMALIA",
+      html: `
+        <p>Una clinica ha creato la scheda del tuo animale su UNIMALIA.</p>
+        <p><strong>${animal.name ?? "Il tuo animale"}</strong></p>
+        <p>Clicca qui per collegarlo al tuo account:</p>
+        <p><a href="${claimLink}">${claimLink}</a></p>
+      `,
     });
 
-    const emailJson = await emailResponse.json().catch(() => null);
-
-    if (!emailResponse.ok) {
+    if ((emailResult as any)?.error) {
       return NextResponse.json(
-        {
-          error:
-            emailJson?.error ||
-            emailJson?.message ||
-            `Errore invio email (HTTP ${emailResponse.status})`,
-        },
+        { error: (emailResult as any).error.message || "Errore invio email" },
         { status: 500 }
       );
     }
