@@ -18,6 +18,8 @@ export default function NuovoAnimaleProfessionistaPage() {
   const [breed, setBreed] = React.useState("");
   const [color, setColor] = React.useState("");
   const [size, setSize] = React.useState("");
+  const [sex, setSex] = React.useState("");
+  const [sterilized, setSterilized] = React.useState<"" | "yes" | "no">("");
   const [birthDate, setBirthDate] = React.useState("");
   const [chipNumber, setChipNumber] = React.useState(chipFromQuery);
 
@@ -59,6 +61,9 @@ export default function NuovoAnimaleProfessionistaPage() {
           breed: breed.trim() || null,
           color: color.trim() || null,
           size: size.trim() || null,
+          sex: sex || null,
+          sterilized:
+            sterilized === "yes" ? true : sterilized === "no" ? false : null,
           birth_date: birthDate || null,
           microchip: normalizedChip || null,
         }),
@@ -79,7 +84,6 @@ export default function NuovoAnimaleProfessionistaPage() {
       }
 
       const animalId = json?.animal?.id;
-
       if (!animalId) {
         setError("Animale creato ma ID non ricevuto.");
         setSaving(false);
@@ -165,6 +169,32 @@ export default function NuovoAnimaleProfessionistaPage() {
               onChange={(e) => setSize(e.target.value)}
               placeholder="Es. Media"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium">Sesso</label>
+            <select
+              className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 outline-none focus:border-zinc-900"
+              value={sex}
+              onChange={(e) => setSex(e.target.value)}
+            >
+              <option value="">Seleziona</option>
+              <option value="M">Maschio</option>
+              <option value="F">Femmina</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium">Sterilizzato</label>
+            <select
+              className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 outline-none focus:border-zinc-900"
+              value={sterilized}
+              onChange={(e) => setSterilized(e.target.value as "" | "yes" | "no")}
+            >
+              <option value="">Non specificato</option>
+              <option value="yes">Sì</option>
+              <option value="no">No</option>
+            </select>
           </div>
 
           <div>
