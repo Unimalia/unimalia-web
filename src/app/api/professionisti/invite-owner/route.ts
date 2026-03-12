@@ -43,10 +43,7 @@ export async function POST(req: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return NextResponse.json(
-        { error: "Non autorizzato" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Non autorizzato" }, { status: 401 });
     }
 
     const body = await req.json().catch(() => null);
@@ -76,10 +73,7 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (animalResult.error || !animalResult.data) {
-      return NextResponse.json(
-        { error: "Animale non trovato" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Animale non trovato" }, { status: 404 });
     }
 
     const animal = animalResult.data;
@@ -89,10 +83,7 @@ export async function POST(req: NextRequest) {
       animal.origin_org_id === orgLookup.orgId;
 
     if (!canAccess) {
-      return NextResponse.json(
-        { error: "Accesso negato" },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: "Accesso negato" }, { status: 403 });
     }
 
     const token = crypto.randomUUID();
@@ -116,8 +107,7 @@ export async function POST(req: NextRequest) {
     }
 
     const baseUrl =
-      process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ||
-      req.nextUrl.origin;
+      process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || req.nextUrl.origin;
 
     const claimLink = `${baseUrl}/a/${token}`;
 
@@ -137,9 +127,16 @@ export async function POST(req: NextRequest) {
       }),
     });
 
+    const emailJson = await emailResponse.json().catch(() => null);
+
     if (!emailResponse.ok) {
       return NextResponse.json(
-        { error: "Errore invio email" },
+        {
+          error:
+            emailJson?.error ||
+            emailJson?.message ||
+            `Errore invio email (HTTP ${emailResponse.status})`,
+        },
         { status: 500 }
       );
     }
