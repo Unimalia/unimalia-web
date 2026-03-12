@@ -7,9 +7,6 @@ import { supabase } from "@/lib/supabaseClient";
 import { isVetUser } from "@/app/professionisti/_components/ProShell";
 import { authHeaders } from "@/lib/client/authHeaders";
 
-// NOTA: il blocco grant-first è nel layout server:
-// src/app/professionisti/animali/[id]/clinica/layout.tsx
-
 type ClinicEventType =
   | "visit"
   | "vaccine"
@@ -48,6 +45,16 @@ type VetOption = {
   label: string;
 };
 
+type AnimalSummary = {
+  id: string;
+  name: string | null;
+  species: string | null;
+  breed: string | null;
+  chip_number?: string | null;
+  owner_name?: string | null;
+  owner_email?: string | null;
+};
+
 type FilterKey =
   | "all"
   | "visit"
@@ -72,7 +79,7 @@ const FILTERS: Array<{ key: FilterKey; label: string }> = [
   { key: "therapy", label: "Terapie" },
   { key: "chronic_condition", label: "Patologie croniche" },
   { key: "follow_up", label: "Ricontrolli" },
-  { key: "surgery", label: "Intervento chirurgico" },
+  { key: "surgery", label: "Chirurgia" },
   { key: "allergy", label: "Allergie" },
   { key: "feeding", label: "Alimentazione" },
   { key: "note", label: "Note" },
@@ -102,6 +109,33 @@ function typeLabel(t: ClinicEventType) {
     default:
       return t;
   }
+}
+
+function typeIcon(t: ClinicEventType | string) {
+  switch (t) {
+    case "visit":
+      return "🩺";
+    case "vaccine":
+      return "💉";
+    case "exam":
+      return "🔬";
+    case "therapy":
+      return "💊";
+    case "surgery":
+      return "🏥";
+    case "note":
+      return "📝";
+    case "chronic_condition":
+      return "📌";
+    case "follow_up":
+      return "🔁";
+    default:
+      return "📄";
+  }
+}
+
+function eventTypeDisplay(t: ClinicEventType | string) {
+  return `${typeIcon(t)} ${typeLabel(t as ClinicEventType)}`;
 }
 
 const DOG_VACCINES = [
@@ -193,6 +227,37 @@ function formatInsertedAtIT(iso?: string | null) {
   });
 }
 
+function formatDayGroupLabel(dateStr?: string | null) {
+  if (!dateStr) return "Data non disponibile";
+  const s = String(dateStr).trim();
+
+  try {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+      const [y, m, d] = s.split("-").map(Number);
+      const dt = new Date(y, m - 1, d);
+      return dt.toLocaleDateString("it-IT", {
+        weekday: "long",
+        day: "2-digit",
+        month: "long",
+        year: "numeric",
+      });
+    }
+
+    return new Date(s).toLocaleDateString("it-IT", {
+      weekday: "long",
+      day: "2-digit",
+      month: "long",
+      year: "numeric",
+    });
+  } catch {
+    return s;
+  }
+}
+
+function normalizeChip(raw?: string | null) {
+  return String(raw || "").replace(/\s+/g, "").trim();
+}
+
 function extractWeightKg(e: any): number | null {
   if (!e) return null;
 
@@ -226,6 +291,26 @@ function formatWeightLabel(kg: number) {
   return Number.isInteger(kg) ? `${kg} kg` : `${kg} kg`;
 }
 
+function getEventAuthorLabel(ev: ClinicEventRow) {
+  const vet =
+    ev?.meta?.created_by_member_label ||
+    ev.created_by_label ||
+    ev.verified_by_label ||
+    "";
+
+  const clinic =
+    ev?.meta?.created_by_org_name ||
+    ev?.meta?.org_name ||
+    "";
+
+  if (vet && clinic) return `${vet} – ${clinic}`;
+  if (vet) return vet;
+  if (clinic) return clinic;
+  if (ev.source === "owner") return "Proprietario";
+  if (ev.source === "veterinarian") return "Veterinario";
+  return "Clinica";
+}
+
 const FIELD_LABEL_CLASS =
   "mb-1.5 block text-xs font-semibold uppercase tracking-wide text-zinc-700";
 const FIELD_CLASS =
@@ -243,12 +328,16 @@ export default function ClinicaPage() {
   const [isVet, setIsVet] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
+  const [animal, setAnimal] = useState<AnimalSummary | null>(null);
+  const [animalSpecies, setAnimalSpecies] = useState<string | null>(null);
+
   const [eventsLoading, setEventsLoading] = useState(false);
   const [events, setEvents] = useState<ClinicEventRow[]>([]);
   const [eventsErr, setEventsErr] = useState<string | null>(null);
 
   const [filter, setFilter] = useState<FilterKey>("all");
   const [search, setSearch] = useState("");
+  const [vetFilter, setVetFilter] = useState("all");
 
   const PAGE_SIZE = 50;
   const [visibleCount, setVisibleCount] = useState<number>(PAGE_SIZE);
@@ -263,14 +352,13 @@ export default function ClinicaPage() {
   const [newNotes, setNewNotes] = useState<string>("");
   const [newFiles, setNewFiles] = useState<File[]>([]);
   const [newVetSignature, setNewVetSignature] = useState<string>("");
-  const [vetOptions, setVetOptions] = useState<VetOption[]>([]);
-  const [selectedVetId, setSelectedVetId] = useState<string>("");
+  const [vetOptions] = useState<VetOption[]>([]);
+  const [selectedVetId] = useState<string>("");
   const [therapyStartDate, setTherapyStartDate] = useState("");
   const [therapyEndDate, setTherapyEndDate] = useState("");
   const [selectedVaccines, setSelectedVaccines] = useState<string[]>([]);
   const [vaccineBatch, setVaccineBatch] = useState("");
   const [vaccineNextDue, setVaccineNextDue] = useState("");
-  const [animalSpecies, setAnimalSpecies] = useState<string | null>(null);
 
   const [saving, setSaving] = useState(false);
   const [saveErr, setSaveErr] = useState<string | null>(null);
@@ -306,7 +394,6 @@ export default function ClinicaPage() {
   const [reminderEnabled, setReminderEnabled] = useState(false);
   const [remindAt, setRemindAt] = useState<string>("");
   const [remindEmail, setRemindEmail] = useState(true);
-
   const [reminderPresetDays, setReminderPresetDays] = useState<number | null>(null);
 
   function toggleSelectedVaccine(value: string) {
@@ -331,8 +418,7 @@ export default function ClinicaPage() {
       setIsVet(isVetUser(user));
       setCurrentUserId(user.id);
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+  }, [id, router]);
 
   async function loadClinicEvents() {
     if (!id) return;
@@ -385,7 +471,23 @@ export default function ClinicaPage() {
       if (!res.ok) return;
 
       const json = await res.json().catch(() => ({}));
-      setAnimalSpecies(json?.animal?.species || null);
+      const a = json?.animal || null;
+
+      setAnimal(
+        a
+          ? {
+              id: a.id,
+              name: a.name ?? null,
+              species: a.species ?? null,
+              breed: a.breed ?? null,
+              chip_number: a.chip_number ?? a.chip_code ?? null,
+              owner_name: a.owner_name ?? null,
+              owner_email: a.owner_email ?? null,
+            }
+          : null
+      );
+
+      setAnimalSpecies(a?.species || null);
     } catch {
       // ignore
     }
@@ -420,12 +522,11 @@ export default function ClinicaPage() {
       await loadClinicEvents();
       await loadFilesCount();
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
-  }, [filter, events.length, search]);
+  }, [filter, events.length, search, vetFilter]);
 
   useEffect(() => {
     if (!detailEvent) return;
@@ -460,7 +561,6 @@ export default function ClinicaPage() {
 
         const j = await res.json().catch(() => ({}));
         setDetailFiles((j?.files as any[]) ?? []);
-
         setFilesCountByEventId((prev) => ({ ...prev, [eventId]: j?.files?.length ?? 0 }));
       } catch {
         setDetailFiles([]);
@@ -590,7 +690,6 @@ export default function ClinicaPage() {
       setSelectedVaccines([]);
       setVaccineBatch("");
       setVaccineNextDue("");
-
       setReminderEnabled(false);
       setRemindAt("");
       setReminderPresetDays(null);
@@ -657,7 +756,18 @@ export default function ClinicaPage() {
 
   const pendingIds = useMemo(() => {
     return events.filter((e) => !isEventVerified(e)).map((e) => e.id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [events]);
+
+  const vetFilterOptions = useMemo(() => {
+    const names = Array.from(
+      new Set(
+        events
+          .map((ev) => getEventAuthorLabel(ev))
+          .filter((v) => typeof v === "string" && v.trim().length > 0)
+      )
+    ).sort((a, b) => a.localeCompare(b, "it"));
+
+    return names;
   }, [events]);
 
   function toggleSelect(id: string) {
@@ -678,8 +788,7 @@ export default function ClinicaPage() {
   }
 
   async function verifyMany(idsToVerify: string[]) {
-    if (!id) return;
-    if (idsToVerify.length === 0) return;
+    if (!id || idsToVerify.length === 0) return;
 
     setBulkVerifying(true);
     setVerifyErr(null);
@@ -821,7 +930,7 @@ export default function ClinicaPage() {
   const filteredEvents = useMemo(() => {
     const q = search.trim().toLowerCase();
 
-    const base = (() => {
+    let base = (() => {
       if (filter === "all") return events;
       if (filter === "weight") return (events || []).filter((e) => extractWeightKg(e) !== null);
       if (filter === "document") {
@@ -833,23 +942,68 @@ export default function ClinicaPage() {
       return (events || []).filter((e) => e.type === filter);
     })();
 
+    if (vetFilter !== "all") {
+      base = base.filter((e) => getEventAuthorLabel(e) === vetFilter);
+    }
+
     if (!q) return base;
 
     return base.filter((e) => {
-      const hay = [e.title, e.description, e.type, e?.meta?.created_by_member_label]
+      const hay = [
+        e.title,
+        e.description,
+        e.type,
+        e?.meta?.created_by_member_label,
+        e?.meta?.created_by_org_name,
+        e?.meta?.org_name,
+        getEventAuthorLabel(e),
+      ]
         .filter(Boolean)
         .join(" ")
         .toLowerCase();
+
       return hay.includes(q);
     });
-  }, [events, filter, filesCountByEventId, search]);
+  }, [events, filter, filesCountByEventId, search, vetFilter]);
 
-  const shownEvents = useMemo(() => {
+  const groupedEvents = useMemo(() => {
+    const groups: Array<{ key: string; label: string; events: ClinicEventRow[] }> = [];
+    const map = new Map<string, ClinicEventRow[]>();
+
+    for (const ev of filteredEvents) {
+      const key = (ev.event_date || "").slice(0, 10) || "unknown";
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(ev);
+    }
+
+    for (const [key, rows] of map.entries()) {
+      groups.push({
+        key,
+        label: formatDayGroupLabel(key),
+        events: rows,
+      });
+    }
+
+    groups.sort((a, b) => (a.key < b.key ? 1 : -1));
+    return groups;
+  }, [filteredEvents]);
+
+  const flattenedShownEvents = useMemo(() => {
     return filteredEvents.slice(0, visibleCount);
   }, [filteredEvents, visibleCount]);
 
-  const hasMore = shownEvents.length < filteredEvents.length;
+  const shownEventIds = useMemo(() => new Set(flattenedShownEvents.map((e) => e.id)), [flattenedShownEvents]);
 
+  const shownGroupedEvents = useMemo(() => {
+    return groupedEvents
+      .map((g) => ({
+        ...g,
+        events: g.events.filter((e) => shownEventIds.has(e.id)),
+      }))
+      .filter((g) => g.events.length > 0);
+  }, [groupedEvents, shownEventIds]);
+
+  const hasMore = flattenedShownEvents.length < filteredEvents.length;
   const canSave = !saving && !!newDate && !!newType;
 
   const detailInitialSnapshot = useMemo(() => {
@@ -904,29 +1058,95 @@ export default function ClinicaPage() {
         </Link>
       </div>
 
-      <section className="space-y-4 rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h1 className="text-base font-semibold text-zinc-900">Cartella clinica</h1>
-            <p className="mt-1 text-sm leading-6 text-zinc-600">
-              Timeline eventi (owner + pro) e stato validazione.
-            </p>
-          </div>
+      <section className="overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm">
+        <div className="border-b border-zinc-200 bg-gradient-to-r from-zinc-50 to-white px-5 py-5 md:px-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0">
+              <div className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
+                Cartella clinica professionale
+              </div>
 
-          {isVet ? (
-            <Link
-              href={`/professionisti/animali/${id}/verifica`}
-              className="rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800 shadow-sm transition hover:bg-zinc-50"
-            >
-              Validazione (vet)
-            </Link>
-          ) : (
-            <span className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm font-semibold text-zinc-600">
-              Validazione riservata ai vet
-            </span>
-          )}
+              <h1 className="mt-3 text-xl font-semibold tracking-tight text-zinc-900 md:text-2xl">
+                {animal?.name || "Animale"}{" "}
+                <span className="text-zinc-400">•</span>{" "}
+                <span className="text-zinc-700">
+                  {animal?.species || "Specie non disponibile"}
+                  {animal?.breed ? ` • ${animal.breed}` : ""}
+                </span>
+              </h1>
+
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-600">
+                Timeline cronologica, validazione eventi, allegati, promemoria e collaborazione tra
+                professionisti.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className="rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800 shadow-sm transition hover:bg-zinc-50"
+                onClick={() => {
+                  alert("Condivisione cartella con professionista: step successivo da collegare.");
+                }}
+              >
+                Condividi cartella
+              </button>
+
+              {isVet ? (
+                <Link
+                  href={`/professionisti/animali/${id}/verifica`}
+                  className="rounded-xl bg-black px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-900"
+                >
+                  Validazione (vet)
+                </Link>
+              ) : (
+                <span className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm font-semibold text-zinc-600">
+                  Validazione riservata ai vet
+                </span>
+              )}
+            </div>
+          </div>
         </div>
 
+        <div className="grid gap-4 px-5 py-5 md:grid-cols-3 md:px-6">
+          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+            <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+              Animale
+            </div>
+            <div className="mt-2 text-sm font-semibold text-zinc-900">
+              {animal?.name || "—"}
+            </div>
+            <div className="mt-1 text-sm text-zinc-600">
+              {animal?.species || "—"}
+              {animal?.breed ? ` • ${animal.breed}` : ""}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+            <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+              Microchip / Codice
+            </div>
+            <div className="mt-2 break-all text-sm font-semibold text-zinc-900">
+              {normalizeChip(animal?.chip_number) || "Non disponibile"}
+            </div>
+            <div className="mt-1 text-xs text-zinc-500">
+              Identificazione rapida per accesso clinico e verifica.
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+            <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+              Proprietario
+            </div>
+            <div className="mt-2 text-sm font-semibold text-zinc-900">
+              {animal?.owner_name || "Non disponibile"}
+            </div>
+            <div className="mt-1 text-sm text-zinc-600">{animal?.owner_email || "—"}</div>
+          </div>
+        </div>
+      </section>
+
+      <section className="space-y-4 rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
         {isVet && pendingIds.length > 0 ? (
           <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -983,8 +1203,7 @@ export default function ClinicaPage() {
             </div>
 
             <p className="mt-2 text-xs leading-5 text-zinc-600">
-              Suggerimento: puoi selezionare i singoli eventi “⏳ da validare” direttamente dalla
-              timeline.
+              Puoi selezionare i singoli eventi “⏳ da validare” direttamente dalla timeline.
             </p>
           </div>
         ) : null}
@@ -992,10 +1211,15 @@ export default function ClinicaPage() {
         <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <h2 className="text-sm font-semibold text-zinc-900">Nuovo evento (PRO)</h2>
-              <p className="mt-1.5 text-xs leading-5 text-zinc-600">
-                L’owner riceve il promemoria via email (push: in arrivo quando UNIMALIA sarà web
-                app).
+              <div className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
+                Inserimento rapido
+              </div>
+
+              <h2 className="mt-3 text-base font-semibold text-zinc-900">Nuovo evento clinico</h2>
+
+              <p className="mt-1.5 text-sm leading-6 text-zinc-600">
+                Registra subito visite, vaccini, esami, terapie e documenti. Dopo il salvataggio
+                l’evento resta in questa pagina e compare subito nella timeline.
               </p>
             </div>
           </div>
@@ -1020,14 +1244,14 @@ export default function ClinicaPage() {
                 value={newType}
                 onChange={(e) => setNewType(e.target.value as ClinicEventType)}
               >
-                <option value="visit">Visita</option>
-                <option value="vaccine">Vaccinazione</option>
-                <option value="exam">Esame</option>
-                <option value="therapy">Terapia</option>
-                <option value="chronic_condition">Patologia cronica</option>
-                <option value="follow_up">Prossimo ricontrollo</option>
-                <option value="surgery">Intervento chirurgico</option>
-                <option value="note">Nota</option>
+                <option value="visit">🩺 Visita</option>
+                <option value="vaccine">💉 Vaccinazione</option>
+                <option value="exam">🔬 Esame</option>
+                <option value="therapy">💊 Terapia</option>
+                <option value="chronic_condition">📌 Patologia cronica</option>
+                <option value="follow_up">🔁 Prossimo ricontrollo</option>
+                <option value="surgery">🏥 Intervento chirurgico</option>
+                <option value="note">📝 Nota</option>
               </select>
             </label>
 
@@ -1190,7 +1414,7 @@ export default function ClinicaPage() {
                 disabled={!canSave}
                 onClick={() => void saveClinicEvent()}
               >
-                {saving ? "Salvataggio…" : "Salva evento"}
+                {saving ? "Salvataggio…" : "Salva evento e aggiorna timeline"}
               </button>
             </div>
           </div>
@@ -1262,53 +1486,24 @@ export default function ClinicaPage() {
                   <div className="md:col-span-2">
                     <div className="text-xs font-semibold text-zinc-700">Suggerisci richiamo</div>
                     <div className="mt-2 flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        className={
-                          reminderPresetDays === 15
-                            ? "rounded-2xl border border-black bg-black px-3 py-2 text-sm font-semibold text-white"
-                            : "rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
-                        }
-                        onClick={() => onSuggestRecall(15)}
-                      >
-                        +15 giorni
-                      </button>
-
-                      <button
-                        type="button"
-                        className={
-                          reminderPresetDays === 30
-                            ? "rounded-2xl border border-black bg-black px-3 py-2 text-sm font-semibold text-white"
-                            : "rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
-                        }
-                        onClick={() => onSuggestRecall(30)}
-                      >
-                        +30 giorni
-                      </button>
-
-                      <button
-                        type="button"
-                        className={
-                          reminderPresetDays === 180
-                            ? "rounded-2xl border border-black bg-black px-3 py-2 text-sm font-semibold text-white"
-                            : "rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
-                        }
-                        onClick={() => onSuggestRecall(180)}
-                      >
-                        +6 mesi
-                      </button>
-
-                      <button
-                        type="button"
-                        className={
-                          reminderPresetDays === 365
-                            ? "rounded-2xl border border-black bg-black px-3 py-2 text-sm font-semibold text-white"
-                            : "rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
-                        }
-                        onClick={() => onSuggestRecall(365)}
-                      >
-                        +12 mesi
-                      </button>
+                      {[15, 30, 180, 365].map((days) => (
+                        <button
+                          key={days}
+                          type="button"
+                          className={
+                            reminderPresetDays === days
+                              ? "rounded-2xl border border-black bg-black px-3 py-2 text-sm font-semibold text-white"
+                              : "rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+                          }
+                          onClick={() => onSuggestRecall(days)}
+                        >
+                          {days === 180
+                            ? "+6 mesi"
+                            : days === 365
+                              ? "+12 mesi"
+                              : `+${days} giorni`}
+                        </button>
+                      ))}
                     </div>
                   </div>
                 ) : null}
@@ -1321,8 +1516,7 @@ export default function ClinicaPage() {
                 ) : null}
 
                 <p className="text-xs leading-5 text-zinc-600 md:col-span-2">
-                  Nota: il promemoria verrà inviato{" "}
-                  <span className="font-semibold">solo al proprietario</span>.
+                  Il promemoria verrà inviato <span className="font-semibold">solo al proprietario</span>.
                 </p>
               </div>
             ) : null}
@@ -1344,8 +1538,8 @@ export default function ClinicaPage() {
         <div>
           <h2 className="text-base font-semibold text-zinc-900">Timeline clinica</h2>
           <p className="mt-1 text-sm leading-6 text-zinc-600">
-            Eventi clinici in ordine cronologico, con stato validazione e dettagli principali
-            subito visibili.
+            Eventi cronologici, professionista visibile subito, stato validazione chiaro e dettaglio
+            completo al click.
           </p>
         </div>
 
@@ -1354,7 +1548,7 @@ export default function ClinicaPage() {
             <div className="text-sm text-zinc-700">
               Eventi totali: <span className="font-semibold">{events.length}</span> • Filtrati:{" "}
               <span className="font-semibold">{filteredEvents.length}</span> • Mostrati:{" "}
-              <span className="font-semibold">{shownEvents.length}</span>
+              <span className="font-semibold">{flattenedShownEvents.length}</span>
             </div>
 
             <div className="flex flex-wrap gap-2">
@@ -1378,13 +1572,32 @@ export default function ClinicaPage() {
             </div>
           </div>
 
-          <input
-            type="text"
-            className={FIELD_CLASS}
-            placeholder="Cerca in note, descrizione, tipo evento..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+          <div className="grid gap-3 md:grid-cols-3">
+            <input
+              type="text"
+              className={FIELD_CLASS}
+              placeholder="Cerca in note, descrizione, tipo evento..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+
+            <select
+              className={FIELD_CLASS}
+              value={vetFilter}
+              onChange={(e) => setVetFilter(e.target.value)}
+            >
+              <option value="all">Tutti i professionisti</option>
+              {vetFilterOptions.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+
+            <div className="flex items-center rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-medium text-zinc-600">
+              Filtra rapidamente per tipo, testo e professionista.
+            </div>
+          </div>
         </div>
 
         {eventsLoading ? (
@@ -1394,130 +1607,135 @@ export default function ClinicaPage() {
             Nessun evento per questo filtro.
           </div>
         ) : (
-          <div className="flex flex-col gap-2">
-            {shownEvents.map((ev) => {
-              const isVerified =
-                ev.source === "professional" || ev.source === "veterinarian" || !!ev.verified_at;
+          <div className="space-y-5">
+            {shownGroupedEvents.map((group) => (
+              <div key={group.key} className="space-y-2">
+                <div className="sticky top-0 z-10 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2 text-sm font-semibold text-zinc-800">
+                  {group.label}
+                </div>
 
-              const isSelected = selectedIds.has(ev.id);
-              const evKg = extractWeightKg(ev);
+                <div className="flex flex-col gap-2">
+                  {group.events.map((ev) => {
+                    const isVerified = isEventVerified(ev);
+                    const isSelected = selectedIds.has(ev.id);
+                    const evKg = extractWeightKg(ev);
 
-              return (
-                <div
-                  key={ev.id}
-                  className="cursor-pointer rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-zinc-300 hover:shadow-md"
-                  onClick={() => {
-                    setDetailEvent(ev);
-                    setIsEditing(false);
-                    setDeleteConfirm(false);
-                    setModalErr(null);
-                    resetEditStateFromEvent(ev);
-                  }}
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <div className="flex items-start gap-2">
-                        {!isVerified && isVet ? (
-                          <input
-                            type="checkbox"
-                            className="mt-0.5 h-4 w-4"
-                            checked={isSelected}
-                            onChange={() => toggleSelect(ev.id)}
-                            title="Seleziona per validazione"
-                          />
-                        ) : null}
+                    return (
+                      <div
+                        key={ev.id}
+                        className="cursor-pointer rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-zinc-300 hover:shadow-md"
+                        onClick={() => {
+                          setDetailEvent(ev);
+                          setIsEditing(false);
+                          setDeleteConfirm(false);
+                          setModalErr(null);
+                          resetEditStateFromEvent(ev);
+                        }}
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-start gap-3">
+                              {!isVerified && isVet ? (
+                                <input
+                                  type="checkbox"
+                                  className="mt-1 h-4 w-4"
+                                  checked={isSelected}
+                                  onChange={() => toggleSelect(ev.id)}
+                                  title="Seleziona per validazione"
+                                />
+                              ) : null}
 
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-500">
-                            <span className="rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 font-medium text-zinc-700">
-                              {typeLabel(ev.type)}
-                            </span>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-500">
+                                  <span className="rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 font-medium text-zinc-700">
+                                    {eventTypeDisplay(ev.type)}
+                                  </span>
 
-                            <span>{formatEventDateIT(ev.event_date)}</span>
+                                  <span className="font-medium text-zinc-700">
+                                    {formatEventDateIT(ev.event_date)}
+                                  </span>
 
-                            {ev.created_at ? (
-                              <span className="text-zinc-400">
-                                • Inserito il {formatInsertedAtIT(ev.created_at)}
-                              </span>
-                            ) : null}
+                                  {ev.created_at ? (
+                                    <span className="text-zinc-400">
+                                      • Inserito il {formatInsertedAtIT(ev.created_at)}
+                                    </span>
+                                  ) : null}
+                                </div>
+
+                                <div className="mt-3 flex flex-wrap items-center gap-2">
+                                  {evKg !== null ? (
+                                    <span
+                                      className="inline-flex items-center rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-xs font-semibold text-zinc-700"
+                                      title="Peso registrato"
+                                    >
+                                      ⚖ {formatWeightLabel(evKg)}
+                                    </span>
+                                  ) : null}
+
+                                  {(filesCountByEventId[ev.id] ?? 0) > 0 ? (
+                                    <span
+                                      className="inline-flex items-center rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-xs font-semibold text-zinc-700"
+                                      title={`Allegati: ${filesCountByEventId[ev.id]}`}
+                                    >
+                                      📎 {filesCountByEventId[ev.id]}
+                                    </span>
+                                  ) : null}
+
+                                  <span className="inline-flex items-center rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-xs font-medium text-zinc-700">
+                                    {visibilityLabel(ev.visibility)}
+                                  </span>
+                                </div>
+
+                                <div className="mt-3 text-sm font-semibold leading-6 text-zinc-900">
+                                  {ev.title || typeLabel(ev.type)}
+                                </div>
+
+                                <div className="mt-1 text-xs font-medium text-zinc-500">
+                                  {getEventAuthorLabel(ev)}
+                                </div>
+
+                                {ev.description ? (
+                                  <p className="mt-2 line-clamp-2 text-sm leading-6 text-zinc-700">
+                                    {ev.description}
+                                  </p>
+                                ) : null}
+                              </div>
+                            </div>
                           </div>
 
-                          <div className="mt-3 text-sm font-semibold leading-5 text-zinc-900">
-                            {ev.title || typeLabel(ev.type)}
-                            {evKg !== null ? (
-                              <span
-                                className="ml-2 inline-flex items-center rounded-full border border-zinc-200 bg-white px-2 py-0.5 text-xs font-semibold text-zinc-700"
-                                title="Peso registrato"
-                              >
-                                ⚖ {formatWeightLabel(evKg)}
+                          <div className="flex shrink-0 flex-col items-end gap-2">
+                            {isVerified ? (
+                              <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-700">
+                                ✓ Validato
                               </span>
-                            ) : null}
-                            {(filesCountByEventId[ev.id] ?? 0) > 0 ? (
-                              <span
-                                className="ml-2 inline-flex items-center rounded-full border border-zinc-200 bg-white px-2 py-0.5 text-xs font-semibold text-zinc-700"
-                                title={`Allegati: ${filesCountByEventId[ev.id]}`}
-                              >
-                                📎 {filesCountByEventId[ev.id]}
+                            ) : (
+                              <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[11px] font-semibold text-amber-700">
+                                ⏳ Da validare
                               </span>
+                            )}
+
+                            {!isVerified && isVet ? (
+                              <button
+                                type="button"
+                                className="rounded-xl bg-black px-3 py-2 text-[11px] font-semibold text-white shadow-sm transition hover:bg-zinc-900 disabled:opacity-50"
+                                disabled={verifyingId === ev.id}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  void verifyEvent(ev.id);
+                                }}
+                                title="Valida questo evento"
+                              >
+                                {verifyingId === ev.id ? "Validazione…" : "Valida"}
+                              </button>
                             ) : null}
                           </div>
-
-                          {ev.description ? (
-                            <p className="mt-2 line-clamp-3 text-sm leading-6 text-zinc-700">
-                              {ev.description}
-                            </p>
-                          ) : null}
                         </div>
                       </div>
-                    </div>
-
-                    <div className="flex shrink-0 flex-col items-end gap-2">
-                      <span className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-medium text-zinc-700">
-                        {visibilityLabel(ev.visibility)}
-                      </span>
-
-                      <div className="flex flex-col items-end gap-2">
-                        {ev.source === "owner" ? (
-                          <span className="text-xs font-medium text-zinc-600">
-                            Creato da proprietario
-                          </span>
-                        ) : (
-                          <span className="text-xs font-medium text-zinc-600">
-                            Registrato da{" "}
-                            {ev?.meta?.created_by_member_label || ev.created_by_label || "Clinica"}
-                          </span>
-                        )}
-
-                        {isVerified ? (
-                          <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-700">
-                            ✓ Validato
-                          </span>
-                        ) : (
-                          <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[11px] font-semibold text-amber-700">
-                            ⏳ Da validare
-                          </span>
-                        )}
-                      </div>
-
-                      {!isVerified && isVet ? (
-                        <button
-                          type="button"
-                          className="rounded-xl bg-black px-3 py-2 text-[11px] font-semibold text-white shadow-sm transition hover:bg-zinc-900 disabled:opacity-50"
-                          disabled={verifyingId === ev.id}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            void verifyEvent(ev.id);
-                          }}
-                          title="Valida questo evento"
-                        >
-                          {verifyingId === ev.id ? "Validazione…" : "Valida"}
-                        </button>
-                      ) : null}
-                    </div>
-                  </div>
+                    );
+                  })}
                 </div>
-              );
-            })}
+              </div>
+            ))}
 
             {hasMore ? (
               <div className="flex justify-center pt-2">
@@ -1552,9 +1770,13 @@ export default function ClinicaPage() {
 
                         <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-zinc-600">
                           <span className="rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-xs font-semibold text-zinc-700">
-                            {typeLabel(detailEvent.type)}
+                            {eventTypeDisplay(detailEvent.type)}
                           </span>
                           <span>{formatEventDateIT(detailEvent.event_date)}</span>
+                        </div>
+
+                        <div className="mt-2 text-sm font-medium text-zinc-600">
+                          {getEventAuthorLabel(detailEvent)}
                         </div>
 
                         <div className="mt-2 text-xs text-zinc-400">
@@ -1747,9 +1969,7 @@ export default function ClinicaPage() {
                               </div>
                               <div>Visibilità: {visibilityLabel(detailEvent.visibility)}</div>
                               <div>Fonte: {detailEvent.source}</div>
-                              {detailEvent.created_by_label ? (
-                                <div>Creato da: {detailEvent.created_by_label}</div>
-                              ) : null}
+                              <div>Registrato da: {getEventAuthorLabel(detailEvent)}</div>
                               {detailEvent.verified_at ? (
                                 <div>Validato il: {formatDateIT(detailEvent.verified_at)}</div>
                               ) : null}
@@ -1757,90 +1977,87 @@ export default function ClinicaPage() {
                           </div>
                         </>
                       ) : (
-                        <>
-                          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-                            <div className="text-xs font-semibold text-zinc-700">Modifica evento</div>
+                        <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+                          <div className="text-xs font-semibold text-zinc-700">Modifica evento</div>
 
-                            <div className="mt-5 grid gap-4 md:grid-cols-2">
-                              <label className="block md:col-span-2">
-                                <span className={FIELD_LABEL_CLASS}>Titolo</span>
-                                <input
-                                  type="text"
-                                  className={FIELD_CLASS}
-                                  value={editTitle}
-                                  onChange={(e) => setEditTitle(e.target.value)}
-                                />
-                              </label>
+                          <div className="mt-5 grid gap-4 md:grid-cols-2">
+                            <label className="block md:col-span-2">
+                              <span className={FIELD_LABEL_CLASS}>Titolo</span>
+                              <input
+                                type="text"
+                                className={FIELD_CLASS}
+                                value={editTitle}
+                                onChange={(e) => setEditTitle(e.target.value)}
+                              />
+                            </label>
 
-                              <label className="block">
-                                <span className={FIELD_LABEL_CLASS}>Tipo</span>
-                                <select
-                                  className={FIELD_CLASS}
-                                  value={editType}
-                                  onChange={(e) => setEditType(e.target.value as ClinicEventType)}
-                                >
-                                  <option value="visit">Visita</option>
-                                  <option value="vaccine">Vaccinazione</option>
-                                  <option value="exam">Esame</option>
-                                  <option value="therapy">Terapia</option>
-                                  <option value="chronic_condition">Patologia cronica</option>
-                                  <option value="follow_up">Prossimo ricontrollo</option>
-                                  <option value="surgery">Intervento chirurgico</option>
-                                  <option value="note">Nota</option>
-                                </select>
-                              </label>
+                            <label className="block">
+                              <span className={FIELD_LABEL_CLASS}>Tipo</span>
+                              <select
+                                className={FIELD_CLASS}
+                                value={editType}
+                                onChange={(e) => setEditType(e.target.value as ClinicEventType)}
+                              >
+                                <option value="visit">🩺 Visita</option>
+                                <option value="vaccine">💉 Vaccinazione</option>
+                                <option value="exam">🔬 Esame</option>
+                                <option value="therapy">💊 Terapia</option>
+                                <option value="chronic_condition">📌 Patologia cronica</option>
+                                <option value="follow_up">🔁 Prossimo ricontrollo</option>
+                                <option value="surgery">🏥 Intervento chirurgico</option>
+                                <option value="note">📝 Nota</option>
+                              </select>
+                            </label>
 
-                              <label className="block">
-                                <span className={FIELD_LABEL_CLASS}>Data</span>
-                                <input
-                                  type="date"
-                                  className={FIELD_CLASS}
-                                  value={editDate}
-                                  onChange={(e) => setEditDate(e.target.value)}
-                                />
-                              </label>
+                            <label className="block">
+                              <span className={FIELD_LABEL_CLASS}>Data</span>
+                              <input
+                                type="date"
+                                className={FIELD_CLASS}
+                                value={editDate}
+                                onChange={(e) => setEditDate(e.target.value)}
+                              />
+                            </label>
 
-                              {editType === "therapy" ? (
-                                <>
-                                  <label className="block">
-                                    <span className={FIELD_LABEL_CLASS}>Inizio terapia</span>
-                                    <input
-                                      type="date"
-                                      className={FIELD_CLASS}
-                                      value={editTherapyStartDate}
-                                      onChange={(e) => setEditTherapyStartDate(e.target.value)}
-                                    />
-                                  </label>
+                            {editType === "therapy" ? (
+                              <>
+                                <label className="block">
+                                  <span className={FIELD_LABEL_CLASS}>Inizio terapia</span>
+                                  <input
+                                    type="date"
+                                    className={FIELD_CLASS}
+                                    value={editTherapyStartDate}
+                                    onChange={(e) => setEditTherapyStartDate(e.target.value)}
+                                  />
+                                </label>
 
-                                  <label className="block">
-                                    <span className={FIELD_LABEL_CLASS}>Fine terapia</span>
-                                    <input
-                                      type="date"
-                                      className={FIELD_CLASS}
-                                      value={editTherapyEndDate}
-                                      onChange={(e) => setEditTherapyEndDate(e.target.value)}
-                                    />
-                                  </label>
-                                </>
-                              ) : null}
+                                <label className="block">
+                                  <span className={FIELD_LABEL_CLASS}>Fine terapia</span>
+                                  <input
+                                    type="date"
+                                    className={FIELD_CLASS}
+                                    value={editTherapyEndDate}
+                                    onChange={(e) => setEditTherapyEndDate(e.target.value)}
+                                  />
+                                </label>
+                              </>
+                            ) : null}
 
-                              <label className="block md:col-span-2">
-                                <span className={FIELD_LABEL_CLASS}>Descrizione</span>
-                                <textarea
-                                  className={TEXTAREA_CLASS}
-                                  rows={4}
-                                  value={editDesc}
-                                  onChange={(e) => setEditDesc(e.target.value)}
-                                />
-                              </label>
-                            </div>
-
-                            <p className="mt-3 text-xs leading-5 text-zinc-600">
-                              Nota: il peso è salvato in “meta” e non è ancora modificabile da
-                              questa schermata.
-                            </p>
+                            <label className="block md:col-span-2">
+                              <span className={FIELD_LABEL_CLASS}>Descrizione</span>
+                              <textarea
+                                className={TEXTAREA_CLASS}
+                                rows={4}
+                                value={editDesc}
+                                onChange={(e) => setEditDesc(e.target.value)}
+                              />
+                            </label>
                           </div>
-                        </>
+
+                          <p className="mt-3 text-xs leading-5 text-zinc-600">
+                            Nota: il peso è salvato in “meta” e non è ancora modificabile da questa schermata.
+                          </p>
+                        </div>
                       )}
 
                       {deleteConfirm ? (
@@ -1849,8 +2066,7 @@ export default function ClinicaPage() {
                             Conferma eliminazione
                           </div>
                           <p className="mt-1 text-sm leading-6 text-red-800">
-                            Vuoi eliminare questo evento? L’azione sarà tracciata nello storico
-                            (quando attiviamo l’audit log).
+                            Vuoi eliminare questo evento? L’azione sarà tracciata nello storico.
                           </p>
 
                           <div className="mt-3 flex flex-wrap gap-2">
