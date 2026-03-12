@@ -17,13 +17,16 @@ type AnimalEmailRow = {
   owner_id: string | null;
   owner_claim_status: "none" | "pending" | "claimed" | null;
   pending_owner_email: string | null;
+  invite_email_count: number | null;
 };
 
 type OwnerProfileRow = {
   id: string;
   email?: string | null;
-  full_name?: string | null;
 };
+
+const LOGO_URL =
+  "https://unimalia.it/logo-unimalia.png"; // metti qui il path reale del logo
 
 export async function sendOwnerAnimalUpdateEmail(
   input: SendOwnerAnimalUpdateEmailInput
@@ -39,7 +42,8 @@ export async function sendOwnerAnimalUpdateEmail(
       name,
       owner_id,
       owner_claim_status,
-      pending_owner_email
+      pending_owner_email,
+      invite_email_count
     `)
     .eq("id", animalId)
     .single();
@@ -52,11 +56,13 @@ export async function sendOwnerAnimalUpdateEmail(
 
   let destinationEmail: string | null = null;
   let claimLink: string | null = null;
+  let inviteBlock = "";
+  const inviteCount = animal.invite_email_count ?? 0;
 
   if (animal.owner_id) {
     const ownerProfileResult = await admin
       .from("profiles")
-      .select("id, email, full_name")
+      .select("id, email")
       .eq("id", animal.owner_id)
       .maybeSingle();
 
@@ -65,27 +71,54 @@ export async function sendOwnerAnimalUpdateEmail(
   } else if (animal.pending_owner_email) {
     destinationEmail = animal.pending_owner_email;
 
-    const token = crypto.randomUUID();
+    if (inviteCount < 3) {
+      const token = crypto.randomUUID();
 
-    const claimInsert = await admin
-      .from("animal_owner_claims")
-      .insert({
-        animal_id: animal.id,
-        email: destinationEmail,
-        claim_token: token,
-        created_by: null,
-      })
-      .select("id")
-      .single();
+      const claimInsert = await admin
+        .from("animal_owner_claims")
+        .insert({
+          animal_id: animal.id,
+          email: destinationEmail,
+          claim_token: token,
+          created_by: null,
+        })
+        .select("id")
+        .single();
 
-    if (claimInsert.error) {
-      throw new Error(
-        claimInsert.error.message || "Errore creazione claim token"
-      );
+      if (claimInsert.error) {
+        throw new Error(
+          claimInsert.error.message || "Errore creazione claim token"
+        );
+      }
+
+      const baseUrl = (process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "");
+      claimLink = `${baseUrl}/claim/${token}`;
+
+      if (inviteCount === 0) {
+        inviteBlock = `
+          <p>La cartella sanitaria dell’animale è gestita tramite UNIMALIA.</p>
+          <p>Puoi registrarti per consultare la scheda completa e gestire i promemoria sanitari.</p>
+          <p><a href="${claimLink}">${claimLink}</a></p>
+        `;
+      } else if (inviteCount === 1) {
+        inviteBlock = `
+          <p>Puoi collegare l’animale al tuo account UNIMALIA da qui:</p>
+          <p><a href="${claimLink}">${claimLink}</a></p>
+        `;
+      } else if (inviteCount === 2) {
+        inviteBlock = `
+          <p>Ultimo invito per collegare l’animale al tuo account UNIMALIA:</p>
+          <p><a href="${claimLink}">${claimLink}</a></p>
+        `;
+      }
+
+      await admin
+        .from("animals")
+        .update({
+          invite_email_count: inviteCount + 1,
+        })
+        .eq("id", animal.id);
     }
-
-    const baseUrl = (process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "");
-    claimLink = `${baseUrl}/claim/${token}`;
   }
 
   if (!destinationEmail) {
@@ -93,21 +126,24 @@ export async function sendOwnerAnimalUpdateEmail(
   }
 
   const html = `
-    <p>La scheda clinica del tuo animale è stata aggiornata su UNIMALIA.</p>
-    <p><strong>Animale:</strong> ${animal.name ?? "Animale"}</p>
-    <p><strong>Evento:</strong> ${eventTitle}</p>
-    ${eventDate ? `<p><strong>Data:</strong> ${eventDate}</p>` : ""}
-    ${eventNotes ? `<p><strong>Note:</strong> ${eventNotes}</p>` : ""}
-    ${
-      claimLink
-        ? `
-      <hr />
-      <p>Non hai ancora collegato questo animale al tuo account UNIMALIA.</p>
-      <p>Puoi farlo da qui:</p>
-      <p><a href="${claimLink}">${claimLink}</a></p>
-    `
-        : ""
-    }
+    <div style="font-family: Arial, sans-serif; color: #222; line-height: 1.5;">
+      <div style="margin-bottom: 24px;">
+        <img src="${LOGO_URL}" alt="UNIMALIA" style="max-height: 56px;" />
+      </div>
+
+      <p>La clinica veterinaria ha registrato un nuovo evento sanitario per <strong>${animal.name ?? "il tuo animale"}</strong>.</p>
+      <p><strong>Evento:</strong> ${eventTitle}</p>
+      ${eventDate ? `<p><strong>Data:</strong> ${eventDate}</p>` : ""}
+      ${eventNotes ? `<p><strong>Note:</strong> ${eventNotes}</p>` : ""}
+
+      ${inviteBlock}
+
+      <hr style="margin: 24px 0; border: 0; border-top: 1px solid #ddd;" />
+
+      <p style="font-size: 12px; color: #666;">
+        Questa è una comunicazione di servizio relativa alla scheda sanitaria dell’animale.
+      </p>
+    </div>
   `;
 
   const emailResult = await resend.emails.send({
