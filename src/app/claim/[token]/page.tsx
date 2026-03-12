@@ -1,13 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+
+const CLAIM_TOKEN_STORAGE_KEY = "unimalia:pending-claim-token";
 
 export default function ClaimAnimalPage() {
   const router = useRouter();
   const params = useParams<{ token: string }>();
-  const token = params?.token;
+  const searchParams = useSearchParams();
+
+  const tokenFromParams = params?.token;
+  const tokenFromQuery = searchParams.get("token") || "";
+  const token =
+    (tokenFromParams && String(tokenFromParams).trim()) ||
+    tokenFromQuery.trim() ||
+    "";
 
   const [message, setMessage] = useState("Verifica invito in corso...");
 
@@ -15,15 +24,28 @@ export default function ClaimAnimalPage() {
     let active = true;
 
     async function run() {
-      if (!token) {
+      const storedToken =
+        typeof window !== "undefined"
+          ? sessionStorage.getItem(CLAIM_TOKEN_STORAGE_KEY) || ""
+          : "";
+
+      const effectiveToken = token || storedToken;
+
+      if (!effectiveToken) {
         setMessage("Token invito mancante.");
         return;
+      }
+
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem(CLAIM_TOKEN_STORAGE_KEY, effectiveToken);
       }
 
       const { data } = await supabase.auth.getUser();
 
       if (!data.user) {
-        router.replace(`/login?next=${encodeURIComponent(`/claim/${token}`)}`);
+        router.replace(
+          `/login?next=${encodeURIComponent(`/claim/${effectiveToken}`)}`
+        );
         return;
       }
 
@@ -32,7 +54,7 @@ export default function ClaimAnimalPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ token }),
+        body: JSON.stringify({ token: effectiveToken }),
       });
 
       const json = await res.json().catch(() => ({}));
@@ -47,6 +69,10 @@ export default function ClaimAnimalPage() {
       if (!json?.animalId) {
         setMessage("Collegamento completato ma ID animale mancante.");
         return;
+      }
+
+      if (typeof window !== "undefined") {
+        sessionStorage.removeItem(CLAIM_TOKEN_STORAGE_KEY);
       }
 
       router.replace(`/animali/${json.animalId}`);
