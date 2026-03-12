@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { requireOwnerOrGrant } from "@/lib/server/requireOwnerOrGrant";
 import { writeAudit } from "@/lib/server/audit";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { sendOwnerAnimalUpdateEmail } from "@/lib/email/sendOwnerAnimalUpdateEmail";
 
 function getBearerToken(req: Request) {
   const h = req.headers.get("authorization") || req.headers.get("Authorization") || "";
@@ -87,7 +88,6 @@ export async function POST(req: Request) {
   const animalId = (body.animalId || "").trim();
   if (!animalId) return NextResponse.json({ error: "animalId required" }, { status: 400 });
 
-  // ✅ GRANT CHECK (WRITE)
   const grant = await requireOwnerOrGrant(supabase, user.id, animalId, "write");
   if (!grant.ok) {
     await writeAudit(supabase, {
@@ -205,6 +205,17 @@ export async function POST(req: Request) {
       previous_data: null,
       next_data: data,
     });
+
+    try {
+      await sendOwnerAnimalUpdateEmail({
+        animalId,
+        eventTitle: title || "Nuovo evento clinico",
+        eventDate: dateStr || null,
+        eventNotes: description || null,
+      });
+    } catch (emailError) {
+      console.error("[CLINIC_EVENT_OWNER_EMAIL]", emailError);
+    }
 
     if (type === "vaccine" && body.reminderEnabled && body.remindEmail !== false) {
       try {

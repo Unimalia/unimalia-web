@@ -24,14 +24,6 @@ async function getProfessionalOrgId(userId: string) {
   return {
     orgId: null,
     profile: null,
-    error: profileResult.error
-      ? {
-          message: profileResult.error.message,
-          details: profileResult.error.details,
-          hint: profileResult.error.hint,
-          code: profileResult.error.code,
-        }
-      : null,
   };
 }
 
@@ -71,7 +63,7 @@ export async function POST(req: NextRequest) {
 
     const animalResult = await admin
       .from("animals")
-      .select("id, name, created_by_org_id, origin_org_id")
+      .select("id, name, created_by_org_id, origin_org_id, owner_id")
       .eq("id", animalId)
       .single();
 
@@ -89,25 +81,32 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Accesso negato" }, { status: 403 });
     }
 
+    if (animal.owner_id) {
+      return NextResponse.json(
+        { error: "Questo animale ha già un proprietario collegato" },
+        { status: 409 }
+      );
+    }
+
     const token = crypto.randomUUID();
 
-    const claimInsert = await admin
+    await admin
+      .from("animals")
+      .update({
+        pending_owner_email: email,
+        pending_owner_invited_at: new Date().toISOString(),
+        owner_claim_status: "pending",
+      })
+      .eq("id", animalId);
+
+    await admin
       .from("animal_owner_claims")
       .insert({
         animal_id: animalId,
         email,
         claim_token: token,
         created_by: user.id,
-      })
-      .select("id")
-      .single();
-
-    if (claimInsert.error) {
-      return NextResponse.json(
-        { error: claimInsert.error.message },
-        { status: 500 }
-      );
-    }
+      });
 
     const baseUrl =
       process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ||
@@ -115,7 +114,7 @@ export async function POST(req: NextRequest) {
 
     const claimLink = `${baseUrl}/claim/${token}`;
 
-    const emailResult = await resend.emails.send({
+    await resend.emails.send({
       from: "UNIMALIA <onboarding@resend.dev>",
       to: email,
       subject: "Collega il tuo animale su UNIMALIA",
@@ -127,17 +126,11 @@ export async function POST(req: NextRequest) {
       `,
     });
 
-    if ((emailResult as any)?.error) {
-      return NextResponse.json(
-        { error: (emailResult as any).error.message || "Errore invio email" },
-        { status: 500 }
-      );
-    }
-
     return NextResponse.json({
       ok: true,
       claimLink,
     });
+
   } catch (error: any) {
     return NextResponse.json(
       { error: error?.message || "Errore interno" },
