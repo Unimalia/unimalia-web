@@ -9,6 +9,12 @@ function getBearerToken(req: Request) {
   return m?.[1] || null;
 }
 
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value
+  );
+}
+
 type Body = {
   id: string;
   title?: string;
@@ -63,6 +69,11 @@ export async function POST(req: Request) {
   const description = (body.description ?? "").toString().trim() || null;
 
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
+
+  if (!isUuid(id)) {
+    return NextResponse.json({ error: "id invalid" }, { status: 400 });
+  }
+
   if (!title) return NextResponse.json({ error: "title required" }, { status: 400 });
   if (!type) return NextResponse.json({ error: "type required" }, { status: 400 });
   if (!eventDate || !isValidDateYYYYMMDD(eventDate)) {
@@ -173,16 +184,6 @@ export async function POST(req: Request) {
     updateData.verified_by = null;
   }
 
-  await supabase.from("animal_clinic_event_audit").insert({
-    event_id: (current as any).id,
-    animal_id: animalId,
-    actor_user_id: user.id,
-    actor_org_id: grant.actor_org_id,
-    action: "update",
-    previous_data: current,
-    next_data: { ...current, ...updateData },
-  });
-
   const { data: updated, error } = await supabase
     .from("animal_clinic_events")
     .update(updateData)
@@ -204,6 +205,16 @@ export async function POST(req: Request) {
     });
     return NextResponse.json({ error: error?.message || "Update failed" }, { status: 400 });
   }
+
+  await supabase.from("animal_clinic_event_audit").insert({
+    event_id: (current as any).id,
+    animal_id: animalId,
+    actor_user_id: user.id,
+    actor_org_id: grant.actor_org_id,
+    action: "update",
+    previous_data: current,
+    next_data: { ...current, ...updateData },
+  });
 
   const after = {
     title: (updated as any).title,
