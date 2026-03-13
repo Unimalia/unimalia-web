@@ -45,6 +45,12 @@ function normalizeStatus<T extends { status: string; expires_at: string | null }
   return item;
 }
 
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value
+  );
+}
+
 async function getAuthenticatedUserId() {
   const supabase = await createServerSupabaseClient();
   const {
@@ -194,6 +200,10 @@ export async function searchRecipientProfessionals(params: { q?: string; tagId?:
 }
 
 export async function getComposeData(animalId: string) {
+  if (!isUuid(animalId)) {
+    throw new Error("animalId non valido");
+  }
+
   const admin = supabaseAdmin();
 
   const allowed = await hasActiveGrantForAnimal(animalId);
@@ -239,6 +249,14 @@ export async function createProfessionalConsult(input: {
   priority: ConsultPriority;
   selectedEventIds?: string[];
 }) {
+  if (!isUuid(input.animalId)) {
+    throw new Error("animalId non valido");
+  }
+
+  if (!isUuid(input.receiverProfessionalId)) {
+    throw new Error("receiverProfessionalId non valido");
+  }
+
   const admin = supabaseAdmin();
   const ctx = await getCurrentProfessionalContext();
 
@@ -289,7 +307,13 @@ export async function createProfessionalConsult(input: {
   const eventIds =
     input.shareMode === "full_record"
       ? allEventIds
-      : Array.from(new Set((input.selectedEventIds ?? []).filter(Boolean)));
+      : Array.from(
+          new Set(
+            (input.selectedEventIds ?? [])
+              .map((id) => String(id).trim())
+              .filter((id) => isUuid(id))
+          )
+        );
 
   if (eventIds.length === 0) {
     throw new Error("Seleziona almeno un evento clinico");
@@ -376,7 +400,9 @@ export async function listProfessionalConsults(params: {
 
   let query = admin
     .from("professional_consult_requests")
-    .select("*")
+    .select(
+      "id,animal_id,animal_name,sender_professional_id,sender_display_name,receiver_professional_id,receiver_display_name,subject,initial_message,share_mode,priority,status,expires_at,last_message_at,accepted_at,rejected_at,replied_at,closed_at,created_at"
+    )
     .order("priority", { ascending: false })
     .order("last_message_at", { ascending: false })
     .limit(100);
@@ -433,6 +459,10 @@ export async function listProfessionalConsults(params: {
 }
 
 export async function getProfessionalConsultDetail(id: string) {
+  if (!isUuid(id)) {
+    throw new Error("id consulto non valido");
+  }
+
   const admin = supabaseAdmin();
   const ctx = await getCurrentProfessionalContext();
 
@@ -445,7 +475,9 @@ export async function getProfessionalConsultDetail(id: string) {
 
   const { data: consult, error: consultError } = await admin
     .from("professional_consult_requests")
-    .select("*")
+    .select(
+      "id,animal_id,animal_name,sender_user_id,sender_org_id,sender_professional_id,sender_display_name,receiver_professional_id,receiver_display_name,subject,initial_message,share_mode,priority,status,expires_at,last_message_at,accepted_at,rejected_at,replied_at,closed_at,created_at"
+    )
     .eq("id", id)
     .maybeSingle();
 
@@ -480,7 +512,7 @@ export async function getProfessionalConsultDetail(id: string) {
 
   const { data: files, error: filesError } = await admin
     .from("animal_clinic_event_files")
-    .select("id,event_id,filename,path,mime,size,created_at")
+    .select("id,event_id,filename,mime,size,created_at")
     .in("event_id", eventIds.length ? eventIds : ["00000000-0000-0000-0000-000000000000"])
     .order("created_at", { ascending: true });
 
@@ -494,7 +526,9 @@ export async function getProfessionalConsultDetail(id: string) {
 
   const { data: messages, error: messagesError } = await admin
     .from("professional_consult_messages")
-    .select("*")
+    .select(
+      "id,consult_id,sender_user_id,sender_professional_id,sender_display_name,message_type,message,created_at"
+    )
     .eq("consult_id", id)
     .order("created_at", { ascending: true });
 
@@ -516,6 +550,10 @@ export async function updateProfessionalConsult(input: {
   action: "accept" | "reject" | "reply" | "close";
   message?: string;
 }) {
+  if (!isUuid(input.id)) {
+    throw new Error("id consulto non valido");
+  }
+
   const admin = supabaseAdmin();
   const ctx = await getCurrentProfessionalContext();
 
