@@ -139,6 +139,7 @@ export default function RequestAccessClient() {
         animal_id: resolvedAnimalId,
         chip: resolvedChip,
         microchip: resolvedChip,
+        permissions: selectedScopes,
         requestedScope: selectedScopes,
         requested_scope: selectedScopes,
       };
