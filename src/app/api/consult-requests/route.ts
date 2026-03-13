@@ -16,6 +16,12 @@ function supabaseAnon(authHeader: string | null) {
   });
 }
 
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value
+  );
+}
+
 async function requireUser(authHeader: string | null) {
   const sb = supabaseAnon(authHeader);
   const { data, error } = await sb.auth.getUser();
@@ -29,7 +35,10 @@ export async function GET(req: Request) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
-  const status = searchParams.get("status") || "pending";
+  const rawStatus = (searchParams.get("status") || "pending").trim();
+  const status = ["pending", "accepted", "rejected", "expired", "cancelled"].includes(rawStatus)
+    ? rawStatus
+    : "pending";
   const q = (searchParams.get("q") || "").trim();
 
   // lista per professionista = auth.uid()
@@ -81,7 +90,29 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Missing professionalId/animalId" }, { status: 400 });
   }
 
+  if (!isUuid(professionalId) || !isUuid(animalId)) {
+    return NextResponse.json({ error: "Invalid professionalId/animalId" }, { status: 400 });
+  }
+
   const admin = supabaseAdmin();
+
+  const { data: animalRow, error: animalErr } = await admin
+    .from("animals")
+    .select("id, owner_id, name")
+    .eq("id", animalId)
+    .maybeSingle();
+
+  if (animalErr) {
+    return NextResponse.json({ error: animalErr.message }, { status: 400 });
+  }
+
+  if (!animalRow) {
+    return NextResponse.json({ error: "Animal not found" }, { status: 404 });
+  }
+
+  if (animalRow.owner_id !== user.id) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   // 1) controlla impostazioni professionista (cap + blocco)
   const { data: settings } = await admin
@@ -130,14 +161,14 @@ export async function POST(req: Request) {
   }
 
   // 5) crea richiesta
-  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // es. scade in 24h (modificabile)
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
   const { data: inserted, error: insErr } = await admin
     .from("consult_requests")
     .insert({
       owner_id: user.id,
       professional_id: professionalId,
       animal_id: animalId,
-      animal_name: animalName ?? null,
+      animal_name: animalRow.name ?? animalName ?? null,
       owner_name: ownerName ?? null,
       message: message ?? null,
       status: "pending",
