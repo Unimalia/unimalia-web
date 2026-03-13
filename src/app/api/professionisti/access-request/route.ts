@@ -103,7 +103,7 @@ export async function POST(req: NextRequest) {
       .select("id, status")
       .eq("animal_id", animalId)
       .eq("owner_id", animal.owner_id)
-      .eq("requester_id", orgId)
+      .eq("org_id", orgId)
       .in("status", ["pending"])
       .maybeSingle();
 
@@ -119,7 +119,7 @@ export async function POST(req: NextRequest) {
       .insert({
         animal_id: animalId,
         owner_id: animal.owner_id,
-        requester_id: orgId,
+        org_id: orgId,
         requested_scope: permissions,
         status: "pending",
       })
