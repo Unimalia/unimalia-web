@@ -24,6 +24,12 @@ function isValidChip(value: string) {
   return /^\d{15}$/.test(value);
 }
 
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value
+  );
+}
+
 async function getProfessionalRefs(userId: string) {
   const admin = supabaseAdmin();
   const refs = new Set<string>();
@@ -96,10 +102,14 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const animalId = req.nextUrl.searchParams.get("animalId");
+    const animalId = (req.nextUrl.searchParams.get("animalId") || "").trim();
 
     if (!animalId) {
       return NextResponse.json({ error: "animalId mancante" }, { status: 400 });
+    }
+
+    if (!isUuid(animalId)) {
+      return NextResponse.json({ error: "animalId non valido" }, { status: 400 });
     }
 
     const animalResult = await admin
