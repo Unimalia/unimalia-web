@@ -9,6 +9,12 @@ function getBearerToken(req: Request) {
   return m?.[1] || null;
 }
 
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value
+  );
+}
+
 type Body = {
   animalId: string;
   eventIds?: string[];
@@ -39,6 +45,10 @@ export async function POST(req: Request) {
   const animalId = (body.animalId || "").trim();
   if (!animalId) return NextResponse.json({ error: "animalId required" }, { status: 400 });
 
+  if (!isUuid(animalId)) {
+    return NextResponse.json({ error: "animalId invalid" }, { status: 400 });
+  }
+
   // ✅ GRANT CHECK (WRITE) per validare
   const grant = await requireOwnerOrGrant(supabase, user.id, animalId, "write");
   if (!grant.ok) {
@@ -56,7 +66,11 @@ export async function POST(req: Request) {
   }
 
   const verifyAll = !!body.verifyAll;
-  const eventIds = (body.eventIds || []).filter(Boolean);
+  const eventIds = Array.isArray(body.eventIds)
+    ? body.eventIds
+        .map((id) => String(id).trim())
+        .filter((id) => isUuid(id))
+    : [];
 
   try {
     // selezione target
