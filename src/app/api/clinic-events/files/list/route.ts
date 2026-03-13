@@ -9,6 +9,12 @@ function getBearerToken(req: Request) {
   return m?.[1] || null;
 }
 
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value
+  );
+}
+
 export async function GET(req: Request) {
   const token = getBearerToken(req);
   if (!token) return NextResponse.json({ error: "Missing Bearer token" }, { status: 401 });
@@ -31,11 +37,16 @@ export async function GET(req: Request) {
   const eventId = (url.searchParams.get("eventId") || "").trim();
   if (!eventId) return NextResponse.json({ error: "eventId required" }, { status: 400 });
 
+  if (!isUuid(eventId)) {
+    return NextResponse.json({ error: "eventId invalid" }, { status: 400 });
+  }
+
   // Ricava animal_id dall'evento
   const { data: ev, error: evErr } = await supabase
     .from("animal_clinic_events")
-    .select("id, animal_id")
+    .select("id, animal_id, status")
     .eq("id", eventId)
+    .neq("status", "void")
     .single();
 
   if (evErr || !ev) return NextResponse.json({ error: "Event not found" }, { status: 404 });
@@ -59,7 +70,7 @@ export async function GET(req: Request) {
 
   const { data, error } = await supabase
     .from("animal_clinic_event_files")
-    .select("*")
+    .select("id, event_id, filename, mime_type, size_bytes, created_at")
     .eq("event_id", eventId)
     .order("created_at", { ascending: true });
 
