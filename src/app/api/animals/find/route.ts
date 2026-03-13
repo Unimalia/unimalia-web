@@ -74,7 +74,7 @@ export async function GET(req: Request) {
 
       const { data: animal, error } = await admin
         .from("animals")
-        .select("id, name, species, chip_number, owner_id, status, unimalia_code")
+        .select("id, name, species, chip_number")
         .eq("id", id)
         .maybeSingle();
 
@@ -88,7 +88,7 @@ export async function GET(req: Request) {
     if (chip) {
       const { data: animal, error } = await admin
         .from("animals")
-        .select("id, name, species, chip_number, owner_id, status, unimalia_code")
+        .select("id, name, species, chip_number")
         .eq("chip_number", chip)
         .maybeSingle();
 
@@ -108,7 +108,7 @@ export async function GET(req: Request) {
     if (dq.length === 15 || dq.length === 10) {
       const { data: animal, error } = await admin
         .from("animals")
-        .select("id, name, species, chip_number, owner_id, status, unimalia_code")
+        .select("id, name, species, chip_number")
         .eq("chip_number", dq)
         .maybeSingle();
 
@@ -124,7 +124,7 @@ export async function GET(req: Request) {
       {
         const { data: animal, error } = await admin
           .from("animals")
-          .select("id, name, species, chip_number, owner_id, status, unimalia_code")
+          .select("id, name, species, chip_number")
           .eq("id", q)
           .maybeSingle();
 
@@ -136,7 +136,7 @@ export async function GET(req: Request) {
       {
         const { data: animal, error } = await admin
           .from("animals")
-          .select("id, name, species, chip_number, owner_id, status, unimalia_code")
+          .select("id, name, species, chip_number")
           .eq("unimalia_code", q)
           .maybeSingle();
 
