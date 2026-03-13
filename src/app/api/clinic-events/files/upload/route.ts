@@ -9,6 +9,21 @@ function getBearerToken(req: Request) {
   return m?.[1] || null;
 }
 
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value
+  );
+}
+
+const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
+
+const ALLOWED_MIME_TYPES = new Set([
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+]);
+
 export async function POST(req: Request) {
   const token = getBearerToken(req);
   if (!token) return NextResponse.json({ error: "Missing Bearer token" }, { status: 401 });
@@ -33,6 +48,9 @@ export async function POST(req: Request) {
   const files = form.getAll("files");
 
   if (!eventId) return NextResponse.json({ error: "eventId required" }, { status: 400 });
+  if (!isUuid(eventId)) {
+    return NextResponse.json({ error: "eventId invalid" }, { status: 400 });
+  }
   if (!files.length) return NextResponse.json({ error: "files required" }, { status: 400 });
 
   // ✅ ricava animalId dall'evento (robusto, non dipende dal client)
@@ -67,6 +85,20 @@ export async function POST(req: Request) {
 
   for (const f of files) {
     if (!(f instanceof File)) continue;
+
+    if (f.size <= 0 || f.size > MAX_FILE_SIZE_BYTES) {
+      return NextResponse.json(
+        { error: "File non valido o troppo grande (max 10 MB)" },
+        { status: 400 }
+      );
+    }
+
+    if (f.type && !ALLOWED_MIME_TYPES.has(f.type)) {
+      return NextResponse.json(
+        { error: "Tipo file non consentito" },
+        { status: 400 }
+      );
+    }
 
     const safeName = (f.name || "documento").replace(/[^\w.\-() ]+/g, "_").slice(0, 120);
     const path = `${animalId}/${eventId}/${Date.now()}_${safeName}`;
@@ -104,7 +136,7 @@ export async function POST(req: Request) {
           created_by: user.id,
         },
       ])
-      .select("*")
+      .select("id, event_id, animal_id, filename, mime, size, created_by, created_at")
       .single();
 
     if (insErr) {
