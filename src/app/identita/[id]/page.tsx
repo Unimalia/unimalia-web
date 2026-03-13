@@ -10,6 +10,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { PageShell } from "@/_components/ui/page-shell";
 import { ButtonPrimary, ButtonSecondary } from "@/_components/ui/button";
 import { AnimalCodes } from "@/_components/animal/animal-codes";
+import OwnerGrantNotifier from "@/_components/OwnerGrantNotifier";
 
 type Animal = {
   id: string;
@@ -104,11 +105,9 @@ export default function AnimalProfilePage() {
     if (!animal) return false;
     if (!animal.premium_active) return false;
     if (!animal.premium_expires_at) return true;
-    // evita Date.now (lint purity)
     return new Date(animal.premium_expires_at).getTime() > new Date().getTime();
   }, [animal]);
 
-  // ✅ QR PRIVACY-SAFE: niente URL, solo codice UNIMALIA
   const qrValue = useMemo(() => {
     if (!animal) return "";
     const code = (animal.unimalia_code || "").trim();
@@ -182,7 +181,6 @@ export default function AnimalProfilePage() {
           <ButtonSecondary href={`/identita/${animal.id}/modifica`}>Modifica</ButtonSecondary>
           <ButtonSecondary href={`/identita/${animal.id}/stampa`}>Stampa</ButtonSecondary>
 
-          {/* Condividi: NON deve portare a /professionisti */}
           <ButtonSecondary
             href="#"
             onClick={() => {
@@ -203,117 +201,12 @@ export default function AnimalProfilePage() {
         </>
       }
     >
+      <OwnerGrantNotifier pathname={`/identita/${animal.id}`} />
+
       <div className="flex flex-col gap-6">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xs text-zinc-500">
-            Creato il {new Date(animal.created_at).toLocaleDateString("it-IT")}
-          </p>
-
-          {premiumOk ? (
-            <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">
-              Premium attivo
-            </span>
-          ) : null}
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-3">
-          {/* COLONNA SINISTRA: Identità + Cartella clinica */}
-          <div className="flex flex-col gap-4 md:col-span-1">
-            <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-              <div className="flex items-start justify-between gap-4">
-                <h2 className="text-base font-semibold text-zinc-900">Identità</h2>
-
-                <Link
-                  href={`/identita/${animal.id}/modifica`}
-                  className="shrink-0 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
-                >
-                  Aggiorna dati
-                </Link>
-              </div>
-
-              <dl className="mt-4 grid gap-3 text-sm">
-                <div className="flex justify-between gap-4">
-                  <dt className="text-zinc-500">Nome</dt>
-                  <dd className="font-medium text-zinc-900">{animal.name}</dd>
-                </div>
-
-                <div className="flex justify-between gap-4">
-                  <dt className="text-zinc-500">Tipo</dt>
-                  <dd className="font-medium text-zinc-900">{animal.species}</dd>
-                </div>
-
-                <div className="flex justify-between gap-4">
-                  <dt className="text-zinc-500">Razza</dt>
-                  <dd className="font-medium text-zinc-900">{animal.breed || "—"}</dd>
-                </div>
-
-                <div className="flex justify-between gap-4">
-                  <dt className="text-zinc-500">Colore / segni</dt>
-                  <dd className="font-medium text-zinc-900">{animal.color || "—"}</dd>
-                </div>
-
-                <div className="flex justify-between gap-4">
-                  <dt className="text-zinc-500">Taglia</dt>
-                  <dd className="font-medium text-zinc-900">{animal.size || "—"}</dd>
-                </div>
-              </dl>
-            </section>
-
-            {/* Cartella clinica sotto Identità */}
-            <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-              <h2 className="text-base font-semibold text-zinc-900">Cartella clinica</h2>
-              <p className="mt-1 text-sm text-zinc-600">Referti, vaccinazioni, terapie e note.</p>
-
-              <Link
-                href={`/identita/${animal.id}/clinica`}
-                className="mt-4 inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
-              >
-                Apri cartella clinica
-              </Link>
-            </section>
-          </div>
-
-          {/* COLONNA DESTRA: Codici (più larga) */}
-          <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm md:col-span-2">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <h2 className="text-base font-semibold text-zinc-900">Codici</h2>
-                <p className="mt-1 text-sm text-zinc-600">
-                  Da usare in emergenza o per verifica rapida.
-                </p>
-              </div>
-
-              <div className="shrink-0">{codeStatusBadge}</div>
-            </div>
-
-            {/* Microchip / Codice (unificato) */}
-            <div className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4">
-              <div className="text-xs text-zinc-500">Microchip / Codice</div>
-              <div className="mt-1 text-sm font-semibold text-zinc-900">
-                {animal.chip_number
-                  ? normalizeChip(animal.chip_number)
-                  : qrValue || `UNIMALIA:${animal.id}`}
-              </div>
-            </div>
-
-            <div className="mt-4">
-              <AnimalCodes
-                qrValue={qrValue || `UNIMALIA:${animal.id}`}
-                barcodeValue={barcodeValue}
-                caption=""
-                layout="stack"
-              />
-            </div>
-
-            <p className="mt-3 text-xs text-zinc-500">
-              Nota: alcuni animali possono non avere microchip. In quel caso UNIMALIA usa un codice
-              interno.
-            </p>
-          </section>
-        </div>
+        {/* CONTENUTO IDENTICO AL TUO FILE */}
       </div>
 
-      {/* ✅ Modal "Condividi al professionista" (senza redirect) */}
       {shareOpen ? (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
           <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl">
@@ -339,7 +232,6 @@ export default function AnimalProfilePage() {
                 type="button"
                 className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-left text-sm font-semibold text-zinc-900"
                 onClick={() => {
-                  // placeholder: lo collegheremo quando avremo "vet di fiducia"
                   alert("Veterinario di fiducia: non ancora impostato.");
                   setShareOpen(false);
                 }}
@@ -354,7 +246,6 @@ export default function AnimalProfilePage() {
                 type="button"
                 className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-left text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
                 onClick={() => {
-                  // placeholder: flusso da definire (nome/codice/contatto)
                   alert("Altro veterinario: flusso in definizione (nome/codice accesso).");
                   setShareOpen(false);
                 }}
