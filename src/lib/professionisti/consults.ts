@@ -116,13 +116,21 @@ export async function searchRecipientProfessionals(params: { q?: string; tagId?:
 
     idsFromTag = (links ?? []).map((x) => x.professional_id);
     if (idsFromTag.length === 0) {
-      return { professionals: [], tagsByProfessional: {} as Record<string, { id: string; label: string; key: string }[]> };
+      return {
+        professionals: [],
+        tagsByProfessional: {} as Record<
+          string,
+          { id: string; label: string; key: string }[]
+        >,
+      };
     }
   }
 
   let query = admin
     .from("professionals")
-    .select("id,owner_id,display_name,category,city,province,approved,is_vet,public_visible,business_name,first_name,last_name")
+    .select(
+      "id,owner_id,display_name,category,city,province,approved,is_vet,public_visible,business_name,first_name,last_name"
+    )
     .eq("approved", true)
     .eq("is_vet", true)
     .neq("owner_id", userId)
@@ -145,7 +153,13 @@ export async function searchRecipientProfessionals(params: { q?: string; tagId?:
 
   const proIds = (professionals ?? []).map((x) => x.id);
   if (proIds.length === 0) {
-    return { professionals: [], tagsByProfessional: {} as Record<string, { id: string; label: string; key: string }[]> };
+    return {
+      professionals: [],
+      tagsByProfessional: {} as Record<
+        string,
+        { id: string; label: string; key: string }[]
+      >,
+    };
   }
 
   const { data: links, error: linkError } = await admin
@@ -187,14 +201,19 @@ export async function getComposeData(animalId: string) {
     throw new Error("Grant attivo mancante per questo animale");
   }
 
-  const { data: animal, error: animalError } = await admin
+  const { data: animalRow, error: animalError } = await admin
     .from("animals")
-    .select("id,name,species,breed,sex,microchip")
+    .select("id,name,species,breed,sex")
     .eq("id", animalId)
     .maybeSingle();
 
   if (animalError) throw new Error(animalError.message);
-  if (!animal) throw new Error("Animale non trovato");
+  if (!animalRow) throw new Error("Animale non trovato");
+
+  const animal = {
+    ...animalRow,
+    microchip: null,
+  };
 
   const { data: events, error: eventsError } = await admin
     .from("animal_clinic_events")
@@ -283,10 +302,8 @@ export async function createProfessionalConsult(input: {
 
   const expiresAt = input.priority === "emergency" ? hoursFromNow(24) : hoursFromNow(24 * 7);
 
-  const senderName =
-    ctx.professional.display_name?.trim() || "Professionista mittente";
-  const receiverName =
-    receiver.display_name?.trim() || "Professionista destinatario";
+  const senderName = ctx.professional.display_name?.trim() || "Professionista mittente";
+  const receiverName = receiver.display_name?.trim() || "Professionista destinatario";
 
   const { data: inserted, error: insertError } = await admin
     .from("professional_consult_requests")
@@ -519,8 +536,7 @@ export async function updateProfessionalConsult(input: {
 
   if (!isParticipant) throw new Error("Non autorizzato");
 
-  const senderName =
-    ctx.professional.display_name?.trim() || "Professionista";
+  const senderName = ctx.professional.display_name?.trim() || "Professionista";
 
   if (input.action === "accept") {
     if (!isReceiver) throw new Error("Solo il destinatario può accettare");
