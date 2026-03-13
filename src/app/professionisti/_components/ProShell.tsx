@@ -84,12 +84,15 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
     async function hardRedirectToLogin() {
       try {
         await supabase.auth.signOut();
-      } catch {}
+      } catch {
+        // ignore
+      }
 
       if (!alive) return;
 
       router.replace(
-        "/professionisti/login?next=" + encodeURIComponent(pathname || "/professionisti/dashboard")
+        "/professionisti/login?next=" +
+          encodeURIComponent(pathname || "/professionisti/dashboard")
       );
     }
 
@@ -123,6 +126,7 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
     }
 
     check();
+
     return () => {
       alive = false;
     };
@@ -132,14 +136,17 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") setOpen(false);
     }
+
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
   useEffect(() => {
     if (!open) return;
+
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+
     return () => {
       document.body.style.overflow = prev;
     };
@@ -258,7 +265,9 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
       <div className="container-page grid grid-cols-1 gap-6 px-3 py-6 sm:px-0 sm:py-8 lg:grid-cols-[320px_1fr]">
         <aside className="hidden lg:block">
           <div className="rounded-2xl border border-zinc-200 bg-white p-2 shadow-sm">
-            <div className="px-3 py-2 text-xs font-semibold tracking-wide text-zinc-500">MENU</div>
+            <div className="px-3 py-2 text-xs font-semibold tracking-wide text-zinc-500">
+              MENU
+            </div>
 
             <div className="flex flex-col gap-1">
               {items.map((it, index) => (
