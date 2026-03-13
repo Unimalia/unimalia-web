@@ -154,7 +154,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               width={120}
               height={110}
               priority
-              className="h-11 w-auto sm:h-12"
+              className="h-11 w-[48px] sm:h-12 sm:w-[52px]"
             />
           </Link>
 
@@ -167,7 +167,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
             <Link
               href={proHref}
-              className="inline-flex items-center justify-center rounded-xl bg-black px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-900"
+              className="inline-flex min-w-[124px] items-center justify-center rounded-xl bg-black px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-900"
             >
               Professionisti
             </Link>
@@ -178,7 +178,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-2 md:hidden">
             <Link
               href={proHref}
-              className="inline-flex items-center justify-center rounded-xl bg-black px-3 py-2 text-sm font-semibold text-white transition hover:bg-zinc-900"
+              className="inline-flex min-w-[124px] items-center justify-center rounded-xl bg-black px-3 py-2 text-sm font-semibold text-white transition hover:bg-zinc-900"
             >
               Professionisti
             </Link>
