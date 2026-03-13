@@ -9,13 +9,26 @@ function getBearerToken(req: Request) {
   return m?.[1] || null;
 }
 
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value
+  );
+}
+
 export async function GET(req: Request) {
   const token = getBearerToken(req);
   if (!token) return NextResponse.json({ error: "Missing Bearer token" }, { status: 401 });
 
   const url = new URL(req.url);
+
   const animalId = String(url.searchParams.get("animalId") ?? "").trim();
-  if (!animalId) return NextResponse.json({ error: "animalId required" }, { status: 400 });
+  if (!animalId) {
+    return NextResponse.json({ error: "animalId required" }, { status: 400 });
+  }
+
+  if (!isUuid(animalId)) {
+    return NextResponse.json({ error: "animalId invalid" }, { status: 400 });
+  }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;

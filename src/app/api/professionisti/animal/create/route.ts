@@ -61,9 +61,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Specie non valida" }, { status: 400 });
     }
 
-    if (chipRaw && chipRaw.length !== 15 && chipRaw.length !== 10) {
+    if (chipRaw && chipRaw.length !== 15) {
       return NextResponse.json(
-        { error: "Microchip non valido: attese 15 cifre, opzionale 10" },
+        { error: "Microchip non valido: servono 15 cifre" },
         { status: 400 }
       );
     }
