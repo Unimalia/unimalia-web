@@ -992,7 +992,10 @@ export default function ClinicaPage() {
     return filteredEvents.slice(0, visibleCount);
   }, [filteredEvents, visibleCount]);
 
-  const shownEventIds = useMemo(() => new Set(flattenedShownEvents.map((e) => e.id)), [flattenedShownEvents]);
+  const shownEventIds = useMemo(
+    () => new Set(flattenedShownEvents.map((e) => e.id)),
+    [flattenedShownEvents]
+  );
 
   const shownGroupedEvents = useMemo(() => {
     return groupedEvents
@@ -1067,8 +1070,7 @@ export default function ClinicaPage() {
               </div>
 
               <h1 className="mt-3 text-xl font-semibold tracking-tight text-zinc-900 md:text-2xl">
-                {animal?.name || "Animale"}{" "}
-                <span className="text-zinc-400">•</span>{" "}
+                {animal?.name || "Animale"} <span className="text-zinc-400">•</span>{" "}
                 <span className="text-zinc-700">
                   {animal?.species || "Specie non disponibile"}
                   {animal?.breed ? ` • ${animal.breed}` : ""}
@@ -1086,7 +1088,8 @@ export default function ClinicaPage() {
                 type="button"
                 className="rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800 shadow-sm transition hover:bg-zinc-50"
                 onClick={() => {
-                  alert("Condivisione cartella con professionista: step successivo da collegare.");
+                  if (!animal?.id) return;
+                  router.push(`/professionisti/animali/${animal.id}/consulto`);
                 }}
               >
                 Condividi cartella
