@@ -1,29 +1,37 @@
-// app/page.tsx
-import Link from "next/link";
+import type { Metadata } from "next";
 import Image from "next/image";
+import Link from "next/link";
+
+export const metadata: Metadata = {
+  title: "UNIMALIA | Identità animale digitale, dati clinici e smarrimenti",
+  description:
+    "UNIMALIA aiuta proprietari e professionisti a gestire identità animale, accessi clinici controllati, consulti e smarrimenti in modo semplice e affidabile.",
+  openGraph: {
+    title: "UNIMALIA | Identità animale digitale, dati clinici e smarrimenti",
+    description:
+      "Identità animale, accessi clinici controllati, consulti e smarrimenti: tutto in un unico ecosistema digitale.",
+    url: "https://www.unimalia.it/",
+    siteName: "UNIMALIA",
+    images: ["/logo-512.png"],
+    locale: "it_IT",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "UNIMALIA | Identità animale digitale, dati clinici e smarrimenti",
+    description:
+      "Identità animale, accessi clinici controllati, consulti e smarrimenti: tutto in un unico ecosistema digitale.",
+    images: ["/logo-512.png"],
+  },
+};
 
 function Container({ children }: { children: React.ReactNode }) {
-  return <div className="mx-auto w-full max-w-7xl px-4 sm:px-8">{children}</div>;
+  return <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">{children}</div>;
 }
 
-function Pill({
-  children,
-  tone = "zinc",
-}: {
-  children: React.ReactNode;
-  tone?: "zinc" | "amber" | "teal";
-}) {
-  const cls =
-    tone === "amber"
-      ? "border-amber-200/80 bg-amber-50 text-amber-900"
-      : tone === "teal"
-        ? "border-teal-200/80 bg-teal-50 text-teal-900"
-        : "border-zinc-200 bg-white/80 text-zinc-700";
-
+function Badge({ children }: { children: React.ReactNode }) {
   return (
-    <span
-      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold shadow-sm ${cls}`}
-    >
+    <span className="inline-flex items-center rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-semibold text-zinc-700 shadow-sm">
       {children}
     </span>
   );
@@ -33,7 +41,7 @@ function PrimaryCTA({ href, children }: { href: string; children: React.ReactNod
   return (
     <Link
       href={href}
-      className="inline-flex items-center justify-center rounded-2xl bg-zinc-900 px-6 py-3.5 text-sm font-semibold text-white shadow-sm hover:bg-zinc-800"
+      className="inline-flex items-center justify-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-800"
     >
       {children}
     </Link>
@@ -44,117 +52,113 @@ function SecondaryCTA({ href, children }: { href: string; children: React.ReactN
   return (
     <Link
       href={href}
-      className="inline-flex items-center justify-center rounded-2xl border border-zinc-200 bg-white px-6 py-3.5 text-sm font-semibold text-zinc-800 shadow-sm hover:bg-zinc-50"
+      className="inline-flex items-center justify-center rounded-2xl border border-zinc-200 bg-white px-5 py-3 text-sm font-semibold text-zinc-900 shadow-sm transition hover:bg-zinc-50"
     >
       {children}
     </Link>
   );
 }
 
+function SectionTitle({
+  eyebrow,
+  title,
+  description,
+}: {
+  eyebrow?: string;
+  title: string;
+  description?: string;
+}) {
+  return (
+    <div className="max-w-3xl">
+      {eyebrow ? <p className="text-sm font-semibold text-teal-700">{eyebrow}</p> : null}
+      <h2 className="mt-2 text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl">{title}</h2>
+      {description ? (
+        <p className="mt-4 text-base leading-relaxed text-zinc-600">{description}</p>
+      ) : null}
+    </div>
+  );
+}
+
 function FeatureCard({
   title,
-  desc,
-  icon,
-  hrefPrimary,
-  labelPrimary,
-  hrefSecondary,
-  labelSecondary,
-  tone,
+  description,
+  href,
+  cta,
 }: {
   title: string;
-  desc: string;
-  icon: string;
-  hrefPrimary: string;
-  labelPrimary: string;
-  hrefSecondary?: string;
-  labelSecondary?: string;
-  tone: "amber" | "teal" | "zinc";
+  description: string;
+  href: string;
+  cta: string;
 }) {
-  const accent =
-    tone === "amber"
-      ? "from-amber-300/70 to-amber-500/40"
-      : tone === "teal"
-        ? "from-teal-300/70 to-teal-500/40"
-        : "from-zinc-300/70 to-zinc-500/30";
-
-  const pillTone = tone === "zinc" ? "zinc" : tone;
-
   return (
-    <div className="group relative flex h-full flex-col overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-      <div aria-hidden="true" className={`h-1 w-full bg-gradient-to-r ${accent}`} />
-      <div className="p-7">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <Pill tone={pillTone}>
-              <span aria-hidden="true">
-                {tone === "amber" ? "❤️" : tone === "teal" ? "🛡️" : "🔷"}
-              </span>
-              {tone === "amber" ? "Essenziale" : tone === "teal" ? "Fiducia" : "Sezione"}
-            </Pill>
-
-            <h3 className="mt-3 text-xl font-semibold text-zinc-900">{title}</h3>
-            <p className="mt-2 text-sm leading-relaxed text-zinc-600">{desc}</p>
-          </div>
-
-          <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-zinc-200 bg-white shadow-sm">
-            <span className="text-lg" aria-hidden="true">
-              {icon}
-            </span>
-          </span>
-        </div>
-
-        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-          <Link
-            href={hrefPrimary}
-            className="rounded-2xl bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-zinc-800"
-          >
-            {labelPrimary}
-          </Link>
-
-          {hrefSecondary && labelSecondary ? (
-            <Link
-              href={hrefSecondary}
-              className="rounded-2xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800 shadow-sm hover:bg-zinc-50"
-            >
-              {labelSecondary}
-            </Link>
-          ) : null}
-        </div>
-      </div>
-
-      <div className="mt-auto px-7 pb-7">
-        <div className="h-px w-full bg-zinc-200/70" />
-        <p className="mt-3 text-xs text-zinc-500">Poche cose, fatte bene. E veloci quando serve.</p>
+    <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
+      <h3 className="text-lg font-semibold text-zinc-900">{title}</h3>
+      <p className="mt-3 text-sm leading-relaxed text-zinc-600">{description}</p>
+      <div className="mt-5">
+        <Link
+          href={href}
+          className="inline-flex items-center text-sm font-semibold text-zinc-900 transition hover:text-teal-700"
+        >
+          {cta} →
+        </Link>
       </div>
     </div>
   );
 }
 
 function Step({
-  n,
+  number,
   title,
-  desc,
-  tone,
+  description,
 }: {
-  n: string;
+  number: string;
   title: string;
-  desc: string;
-  tone: "amber" | "teal" | "zinc";
+  description: string;
 }) {
-  const badge =
-    tone === "amber"
-      ? "bg-amber-50 text-amber-900 border-amber-200"
-      : tone === "teal"
-        ? "bg-teal-50 text-teal-900 border-teal-200"
-        : "bg-white text-zinc-800 border-zinc-200";
-
   return (
-    <div className="rounded-3xl border border-zinc-200 bg-white p-7 shadow-sm">
-      <div className={`inline-flex items-center gap-2 rounded-2xl border px-3 py-1 text-xs font-semibold ${badge}`}>
-        <span aria-hidden="true">✨</span> Step {n}
+    <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
+      <div className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-zinc-900 text-sm font-bold text-white">
+        {number}
       </div>
-      <h3 className="mt-3 text-lg font-semibold text-zinc-900">{title}</h3>
-      <p className="mt-2 text-sm leading-relaxed text-zinc-600">{desc}</p>
+      <h3 className="mt-4 text-lg font-semibold text-zinc-900">{title}</h3>
+      <p className="mt-2 text-sm leading-relaxed text-zinc-600">{description}</p>
+    </div>
+  );
+}
+
+function AudienceCard({
+  title,
+  description,
+  bullets,
+  href,
+  cta,
+}: {
+  title: string;
+  description: string;
+  bullets: string[];
+  href: string;
+  cta: string;
+}) {
+  return (
+    <div className="rounded-[2rem] border border-zinc-200 bg-white p-7 shadow-sm">
+      <h3 className="text-xl font-semibold text-zinc-900">{title}</h3>
+      <p className="mt-3 text-sm leading-relaxed text-zinc-600">{description}</p>
+      <ul className="mt-5 space-y-3 text-sm text-zinc-700">
+        {bullets.map((bullet) => (
+          <li key={bullet} className="flex gap-3">
+            <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-teal-600" />
+            <span>{bullet}</span>
+          </li>
+        ))}
+      </ul>
+      <div className="mt-6">
+        <Link
+          href={href}
+          className="inline-flex items-center text-sm font-semibold text-zinc-900 transition hover:text-teal-700"
+        >
+          {cta} →
+        </Link>
+      </div>
     </div>
   );
 }
@@ -162,201 +166,241 @@ function Step({
 export default function HomePage() {
   return (
     <main className="bg-zinc-50">
-      {/* HERO */}
-      <section className="relative overflow-hidden border-b border-zinc-200">
-        <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-b from-amber-50 via-zinc-50 to-zinc-50" />
-        <div aria-hidden="true" className="pointer-events-none absolute -top-32 -right-24 h-96 w-96 rounded-full bg-amber-300/25 blur-3xl" />
-        <div aria-hidden="true" className="pointer-events-none absolute -bottom-40 -left-28 h-[28rem] w-[28rem] rounded-full bg-teal-300/20 blur-3xl" />
-
+      <section className="relative overflow-hidden border-b border-zinc-200 bg-white">
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(20,184,166,0.10),transparent_28%),radial-gradient(circle_at_top_right,rgba(245,158,11,0.12),transparent_30%),linear-gradient(to_bottom,white,rgba(250,250,250,1))]"
+        />
         <Container>
-          <div className="relative py-14 sm:py-20">
-            <div className="flex flex-wrap items-center gap-2">
-              <Pill tone="amber">
-                <span aria-hidden="true">❤️</span> Serio ma umano
-              </Pill>
-              <Pill>
-                <span aria-hidden="true">🪪</span> Identità digitale
-              </Pill>
-              <Pill>
-                <span aria-hidden="true">🔎</span> Smarrimenti
-              </Pill>
-              <Pill>
-                <span aria-hidden="true">👨‍⚕️</span> Professionisti
-              </Pill>
-            </div>
-
-            <div className="mt-10 grid gap-10 lg:grid-cols-12 lg:items-start">
-              {/* LEFT */}
-              <div className="lg:col-span-7">
-
-                {/* Wordmark brand forte */}
-                <div className="max-w-4xl">
-                  <h1 className="relative text-5xl sm:text-7xl font-bold tracking-tight">
-                    <span className="bg-gradient-to-r from-teal-600 via-emerald-500 to-lime-500 bg-clip-text text-transparent">
-                      UNIMALIA
-                    </span>
-
-                    {/* Swoosh sotto */}
-                    <span className="absolute left-0 right-0 -bottom-6 flex justify-center">
-                      <span className="h-3 w-2/3 rounded-full bg-gradient-to-r from-yellow-400 via-lime-400 to-teal-500 blur-[0.3px]" />
-                    </span>
-                  </h1>
-
-                  <p className="mt-10 max-w-2xl text-base leading-relaxed text-zinc-700">
-                    Un ecosistema digitale per proteggere la vita dell’animale.
-                    <span className="block mt-1 text-zinc-600">
-                      Poche cose, fatte bene: identità, codici, smarrimenti e strumenti per i professionisti.
-                    </span>
-                  </p>
-                </div>
-
-                <div className="mt-7 rounded-3xl border border-amber-200 bg-amber-50 p-6 shadow-sm">
-                  <p className="text-sm font-semibold text-amber-900">In emergenza conta la semplicità.</p>
-                  <p className="mt-2 text-sm leading-relaxed text-amber-800">
-                    Apri la scheda dell’animale e hai QR/Barcode pronti per condivisione o verifica.
-                  </p>
-                </div>
-
-                <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
-                  <PrimaryCTA href="/identita/nuovo">Crea identità animale</PrimaryCTA>
-                  <SecondaryCTA href="/smarrimenti/nuovo">Pubblica smarrimento</SecondaryCTA>
-                  <Link href="/login" className="text-sm font-semibold text-zinc-700 hover:text-zinc-900">
-                    Accedi →
-                  </Link>
-                </div>
-
-                <p className="mt-8 text-xs text-zinc-500">“Si diventa enormi facendo benissimo una cosa minuscola.”</p>
+          <div className="relative grid gap-12 py-14 sm:py-18 lg:grid-cols-12 lg:items-center lg:py-24">
+            <div className="lg:col-span-7">
+              <div className="flex flex-wrap gap-2">
+                <Badge>Identità animale</Badge>
+                <Badge>Dati clinici controllati</Badge>
+                <Badge>Smarrimenti</Badge>
+                <Badge>Professionisti</Badge>
               </div>
 
-              {/* RIGHT */}
-              <div className="lg:col-span-5">
-                <div className="rounded-3xl border border-zinc-200 bg-white p-7 shadow-sm">
-                  <p className="text-sm font-semibold text-zinc-900">Azioni rapide</p>
-                  <p className="mt-1 text-sm text-zinc-600">Vai dritto al punto.</p>
+              <h1 className="mt-6 max-w-4xl text-4xl font-bold tracking-tight text-zinc-900 sm:text-5xl lg:text-6xl">
+                La piattaforma per{" "}
+                <span className="text-teal-700">identità animale, accessi clinici e smarrimenti</span>.
+              </h1>
 
-                  <div className="mt-5 grid gap-3">
-                    <Link
-                      href="/identita"
-                      className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm font-semibold text-zinc-800 shadow-sm hover:bg-zinc-50"
-                    >
-                      Le mie identità
-                    </Link>
-                    <Link
-                      href="/smarrimenti"
-                      className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm font-semibold text-zinc-800 shadow-sm hover:bg-zinc-50"
-                    >
-                      Smarrimenti
-                    </Link>
-                    <Link
-                      href="/professionisti"
-                      className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm font-semibold text-zinc-800 shadow-sm hover:bg-zinc-50"
-                    >
-                      Portale professionisti
-                    </Link>
-                  </div>
-
-                  <div className="mt-7 grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-3xl border border-teal-200 bg-teal-50 p-5">
-                      <p className="text-xs font-semibold text-teal-900">Fiducia</p>
-                      <p className="mt-2 text-sm font-semibold text-zinc-900">Dati essenziali</p>
-                      <p className="mt-1 text-xs leading-relaxed text-teal-800">Solo ciò che serve, in modo leggibile.</p>
-                    </div>
-                    <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5">
-                      <p className="text-xs font-semibold text-amber-900">Velocità</p>
-                      <p className="mt-2 text-sm font-semibold text-zinc-900">QR pronto</p>
-                      <p className="mt-1 text-xs leading-relaxed text-amber-800">Condivisione immediata quando conta.</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-6 h-px w-full bg-gradient-to-r from-transparent via-zinc-200 to-transparent" />
-              </div>
-            </div>
-          </div>
-        </Container>
-      </section>
-
-      {/* HOW IT WORKS */}
-      <section className="bg-white">
-        <Container>
-          <div className="py-14 sm:py-16">
-            <h2 className="text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl">Come funziona</h2>
-            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-zinc-600">
-              Pensato per essere utile in due momenti: prevenzione e emergenza.
-            </p>
-
-            <div className="mt-8 grid gap-6 lg:grid-cols-3">
-              <Step n="1" title="Crea l’identità" desc="Inserisci i dati essenziali. Ottieni QR/Barcode pronti." tone="amber" />
-              <Step n="2" title="Condividi e proteggi" desc="Stampa, salva, condividi. L’identità è sempre accessibile." tone="teal" />
-              <Step n="3" title="In emergenza: agisci subito" desc="Pubblica smarrimento e fai girare l’informazione in modo pulito." tone="zinc" />
-            </div>
-          </div>
-        </Container>
-      </section>
-
-      {/* FEATURES */}
-      <section className="bg-zinc-50">
-        <Container>
-          <div className="py-14 sm:py-16">
-            <h2 className="sr-only">Sezioni principali</h2>
-
-            <div className="grid gap-6 md:grid-cols-2">
-              <FeatureCard
-                title="Smarrimenti"
-                desc="Pubblica o consulta annunci con informazioni essenziali e flusso rapido."
-                hrefPrimary="/smarrimenti/nuovo"
-                labelPrimary="Pubblica"
-                hrefSecondary="/smarrimenti"
-                labelSecondary="Consulta"
-                icon="📍"
-                tone="teal"
-              />
-              <FeatureCard
-                title="Identità animale"
-                desc="Scheda completa con microchip e codici (QR + barcode) pronti."
-                hrefPrimary="/identita/nuovo"
-                labelPrimary="Crea scheda"
-                hrefSecondary="/identita"
-                labelSecondary="Apri identità"
-                icon="🪪"
-                tone="amber"
-              />
-              <FeatureCard
-                title="Servizi"
-                desc="Trova professionisti e strutture. Sezione in crescita."
-                hrefPrimary="/servizi"
-                labelPrimary="Cerca servizi"
-                icon="🩺"
-                tone="zinc"
-              />
-              <FeatureCard
-                title="Adotta"
-                desc="Annunci e filtri (in arrivo). Prima pulito, poi potente."
-                hrefPrimary="/adotta"
-                labelPrimary="Vai ad adotta"
-                icon="🏡"
-                tone="zinc"
-              />
-            </div>
-          </div>
-        </Container>
-      </section>
-
-      {/* FINAL CTA */}
-      <section className="border-t border-zinc-200 bg-white">
-        <Container>
-          <div className="py-14 sm:py-16">
-            <div className="rounded-[2.5rem] border border-zinc-200 bg-gradient-to-br from-amber-50 via-white to-teal-50 p-8 shadow-sm sm:p-10">
-              <h2 className="text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl">
-                Se trovi un animale, ogni secondo conta.
-              </h2>
-              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-zinc-600">
-                Preparati prima: crea l’identità, stampa il QR, e riduci il caos quando serve lucidità.
+              <p className="mt-6 max-w-2xl text-lg leading-relaxed text-zinc-600">
+                UNIMALIA aiuta proprietari e professionisti a gestire in modo semplice dati essenziali,
+                accessi autorizzati, consulti e strumenti utili quando un animale si smarrisce o ha bisogno
+                di assistenza.
               </p>
 
-              <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-                <PrimaryCTA href="/identita/nuovo">Crea identità ora</PrimaryCTA>
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                <PrimaryCTA href="/identita/nuovo">Crea identità animale</PrimaryCTA>
+                <SecondaryCTA href="/professionisti">Scopri l’area professionisti</SecondaryCTA>
                 <SecondaryCTA href="/smarrimenti/nuovo">Pubblica smarrimento</SecondaryCTA>
+              </div>
+
+              <div className="mt-8 grid max-w-3xl gap-3 sm:grid-cols-3">
+                <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Per i proprietari</p>
+                  <p className="mt-2 text-sm font-medium text-zinc-900">
+                    Identità digitale, QR code e gestione rapida dell’animale.
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Per i professionisti</p>
+                  <p className="mt-2 text-sm font-medium text-zinc-900">
+                    Accessi autorizzati, consulti e collaborazione più ordinata.
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">In emergenza</p>
+                  <p className="mt-2 text-sm font-medium text-zinc-900">
+                    Meno caos, più informazioni giuste quando il tempo conta.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="lg:col-span-5">
+              <div className="rounded-[2rem] border border-zinc-200 bg-white p-6 shadow-sm">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-semibold text-zinc-900">UNIMALIA</p>
+                    <p className="mt-1 text-sm text-zinc-600">
+                      Un ecosistema digitale pensato per essere chiaro, rapido e controllato.
+                    </p>
+                  </div>
+                  <Image
+                    src="/logo-main.png"
+                    alt="Logo UNIMALIA"
+                    width={92}
+                    height={84}
+                    className="h-16 w-auto"
+                    priority
+                  />
+                </div>
+
+                <div className="mt-6 space-y-3">
+                  <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+                    <p className="text-sm font-semibold text-zinc-900">Identità animale</p>
+                    <p className="mt-1 text-sm text-zinc-600">
+                      Scheda digitale con dati essenziali, QR e codici pronti all’uso.
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+                    <p className="text-sm font-semibold text-zinc-900">Cartella clinica e accessi</p>
+                    <p className="mt-1 text-sm text-zinc-600">
+                      Il proprietario autorizza, il professionista lavora con dati pertinenti e tracciati.
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+                    <p className="text-sm font-semibold text-zinc-900">Smarrimenti e verifiche</p>
+                    <p className="mt-1 text-sm text-zinc-600">
+                      Strumenti utili per condividere, segnalare e velocizzare il rientro dell’animale.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                  <p className="text-sm font-semibold text-amber-900">Messaggio chiave</p>
+                  <p className="mt-2 text-sm leading-relaxed text-amber-800">
+                    UNIMALIA non vuole complicare: vuole rendere più semplice trovare, riconoscere,
+                    condividere e proteggere le informazioni giuste sull’animale.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Container>
+      </section>
+
+      <section className="bg-zinc-50">
+        <Container>
+          <div className="py-16 sm:py-20">
+            <SectionTitle
+              eyebrow="Capire subito"
+              title="Cosa puoi fare con UNIMALIA"
+              description="La homepage deve spiegare il prodotto in pochi secondi. Queste sono le quattro aree che contano davvero."
+            />
+
+            <div className="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+              <FeatureCard
+                title="Crea l’identità dell’animale"
+                description="Raccogli i dati essenziali dell’animale in una scheda digitale chiara e sempre accessibile."
+                href="/identita/nuovo"
+                cta="Crea identità"
+              />
+              <FeatureCard
+                title="Gestisci QR e codici"
+                description="Usa QR e codici per condivisione rapida, verifica e accesso più semplice alle informazioni utili."
+                href="/identita"
+                cta="Apri identità"
+              />
+              <FeatureCard
+                title="Pubblica smarrimenti"
+                description="Segnala rapidamente un animale smarrito e centralizza le informazioni importanti."
+                href="/smarrimenti/nuovo"
+                cta="Pubblica smarrimento"
+              />
+              <FeatureCard
+                title="Collabora con i professionisti"
+                description="Concedi accessi controllati e abilita consulti e gestione clinica in modo ordinato."
+                href="/professionisti"
+                cta="Vai ai professionisti"
+              />
+            </div>
+          </div>
+        </Container>
+      </section>
+
+      <section className="border-y border-zinc-200 bg-white">
+        <Container>
+          <div className="py-16 sm:py-20">
+            <SectionTitle
+              eyebrow="Per chi è"
+              title="Due percorsi chiari: proprietari e professionisti"
+              description="UNIMALIA funziona meglio quando il valore è immediato per entrambi."
+            />
+
+            <div className="mt-10 grid gap-6 lg:grid-cols-2">
+              <AudienceCard
+                title="Per i proprietari"
+                description="Uno spazio più ordinato per gestire identità, accessi e situazioni delicate senza perdere tempo."
+                bullets={[
+                  "Crei l’identità digitale dell’animale e tieni i dati essenziali in un unico posto.",
+                  "Decidi tu chi può accedere alle informazioni cliniche e per quanto tempo.",
+                  "Hai strumenti rapidi per QR, codici e smarrimenti quando serve agire in fretta.",
+                ]}
+                href="/identita"
+                cta="Apri area identità"
+              />
+
+              <AudienceCard
+                title="Per veterinari e professionisti"
+                description="Un flusso più pulito per accedere ai dati autorizzati, lavorare sulla cartella clinica e gestire consulti."
+                bullets={[
+                  "Richiedi accesso agli animali solo quando autorizzato dal proprietario.",
+                  "Operi sulla cartella clinica con tracciabilità e ruoli più chiari.",
+                  "Invii consulti e condividi eventi clinici in modo controllato.",
+                ]}
+                href="/professionisti"
+                cta="Apri area professionisti"
+              />
+            </div>
+          </div>
+        </Container>
+      </section>
+
+      <section className="bg-zinc-50">
+        <Container>
+          <div className="py-16 sm:py-20">
+            <SectionTitle
+              eyebrow="Come funziona"
+              title="Una logica semplice: prima prepari, poi reagisci meglio"
+              description="UNIMALIA deve essere utile prima dell’emergenza, non solo durante."
+            />
+
+            <div className="mt-10 grid gap-6 lg:grid-cols-3">
+              <Step
+                number="1"
+                title="Crea la scheda"
+                description="Inserisci i dati principali dell’animale e genera la sua identità digitale."
+              />
+              <Step
+                number="2"
+                title="Attiva strumenti e accessi"
+                description="Usa QR e codici, poi concedi ai professionisti solo gli accessi necessari."
+              />
+              <Step
+                number="3"
+                title="Gestisci emergenze e consulti"
+                description="In caso di smarrimento o bisogno clinico, hai già una base pronta e più ordinata."
+              />
+            </div>
+          </div>
+        </Container>
+      </section>
+
+      <section className="bg-white">
+        <Container>
+          <div className="py-16 sm:py-20">
+            <div className="rounded-[2.5rem] border border-zinc-200 bg-[linear-gradient(135deg,rgba(20,184,166,0.06),white,rgba(245,158,11,0.08))] p-8 shadow-sm sm:p-10">
+              <div className="max-w-3xl">
+                <p className="text-sm font-semibold text-teal-700">Chiusura forte</p>
+                <h2 className="mt-2 text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl">
+                  In pochi secondi deve essere chiaro: UNIMALIA serve a proteggere meglio l’animale.
+                </h2>
+                <p className="mt-4 text-base leading-relaxed text-zinc-600">
+                  Identità digitale, accessi clinici controllati, consulti e smarrimenti: meno dispersione,
+                  più chiarezza, più fiducia tra proprietari e professionisti.
+                </p>
+              </div>
+
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                <PrimaryCTA href="/identita/nuovo">Crea identità animale</PrimaryCTA>
+                <SecondaryCTA href="/professionisti">Entra nell’area professionisti</SecondaryCTA>
+                <SecondaryCTA href="/smarrimenti">Vai agli smarrimenti</SecondaryCTA>
               </div>
             </div>
           </div>
