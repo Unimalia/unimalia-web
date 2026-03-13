@@ -114,12 +114,20 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    if (!user.id) {
+      return NextResponse.json(
+        { error: "Utente professionista non valido" },
+        { status: 500 }
+      );
+    }
+
     const insertResult = await admin
       .from("animal_access_requests")
       .insert({
         animal_id: animalId,
         owner_id: animal.owner_id,
         org_id: orgId,
+        requested_by: user.id,
         requested_scope: permissions,
         status: "pending",
       })
