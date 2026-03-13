@@ -38,8 +38,8 @@ export default function AuthButtons({ onNavigate }: { onNavigate?: () => void } 
 
   if (loading) {
     return (
-      <div className="hidden md:flex items-center gap-2">
-        <div className="h-9 w-24 rounded-xl bg-zinc-100" />
+      <div className="hidden min-w-[190px] md:flex items-center justify-end gap-2">
+        <div className="h-9 w-[190px] rounded-xl bg-zinc-100" />
       </div>
     );
   }
