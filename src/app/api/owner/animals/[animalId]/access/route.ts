@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient, supabaseAdmin } from "@/lib/supabase/server";
 
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value
+  );
+}
+
 export async function GET(
   _req: Request,
   ctx: { params: Promise<{ animalId: string }> }
@@ -9,6 +15,10 @@ export async function GET(
 
   if (!animalId || animalId === "undefined") {
     return NextResponse.json({ error: "animalId mancante" }, { status: 400 });
+  }
+
+  if (!isUuid(animalId)) {
+    return NextResponse.json({ error: "animalId non valido" }, { status: 400 });
   }
 
   const supabase = await createServerSupabaseClient();
