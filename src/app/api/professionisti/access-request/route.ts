@@ -119,7 +119,7 @@ export async function POST(req: NextRequest) {
         animal_id: animalId,
         owner_id: animal.owner_id,
         requester_id: orgId,
-        requested_permissions: permissions,
+        requested_scope: permissions,
         status: "pending",
       })
       .select("id")
