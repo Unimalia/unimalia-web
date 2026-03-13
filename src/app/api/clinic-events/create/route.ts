@@ -11,6 +11,12 @@ function getBearerToken(req: Request) {
   return m?.[1] || null;
 }
 
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value
+  );
+}
+
 type Body = {
   animalId: string;
   type: string;
@@ -86,7 +92,13 @@ export async function POST(req: Request) {
   if (!body) return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
 
   const animalId = (body.animalId || "").trim();
-  if (!animalId) return NextResponse.json({ error: "animalId required" }, { status: 400 });
+  if (!animalId) {
+    return NextResponse.json({ error: "animalId required" }, { status: 400 });
+  }
+
+  if (!isUuid(animalId)) {
+    return NextResponse.json({ error: "animalId invalid" }, { status: 400 });
+  }
 
   const grant = await requireOwnerOrGrant(supabase, user.id, animalId, "write");
   if (!grant.ok) {
@@ -107,8 +119,18 @@ export async function POST(req: Request) {
   const type = (body.type || "").trim();
   const title = (body.title || "").trim();
   const description = (body.description ?? "").toString().trim() || null;
-  const visibility = body.visibility || "professionals";
-  const source = body.source || "professional";
+
+  const visibility =
+    body.visibility === "owner" ||
+    body.visibility === "professionals" ||
+    body.visibility === "emergency"
+      ? body.visibility
+      : "professionals";
+
+  const source =
+    body.source === "professional" || body.source === "veterinarian"
+      ? body.source
+      : "professional";
 
   const dateStr = (body.eventDate || "").trim();
   if (!type || !title) return NextResponse.json({ error: "type/title required" }, { status: 400 });
