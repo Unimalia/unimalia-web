@@ -92,9 +92,10 @@ export default function OwnerGrantNotifier({ pathname }: OwnerGrantNotifierProps
         });
 
         if (!channel) {
-          channel = supabase
-            .channel(`owner-access-requests-${user.id}`)
-            .on(
+          try {
+            channel = supabase.channel(`owner-access-requests-${user.id}`);
+
+            channel.on(
               "postgres_changes",
               {
                 event: "*",
@@ -105,8 +106,17 @@ export default function OwnerGrantNotifier({ pathname }: OwnerGrantNotifierProps
               () => {
                 void loadPendingOwnerRequests();
               }
-            )
-            .subscribe();
+            );
+
+            channel.subscribe((status) => {
+              if (status === "CHANNEL_ERROR") {
+                console.warn("OwnerGrantNotifier realtime non disponibile, uso polling.");
+              }
+            });
+          } catch (err) {
+            console.warn("OwnerGrantNotifier realtime non disponibile, uso polling.", err);
+            channel = null;
+          }
         }
       } finally {
         if (alive) setOwnerLoading(false);

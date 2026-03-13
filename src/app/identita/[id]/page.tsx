@@ -75,11 +75,7 @@ export default function AnimalProfilePage() {
         return;
       }
 
-      const { data, error } = await supabase
-        .from("animals")
-        .select("*")
-        .eq("id", id)
-        .single();
+      const { data, error } = await supabase.from("animals").select("*").eq("id", id).single();
 
       if (!alive) return;
 
@@ -135,7 +131,6 @@ export default function AnimalProfilePage() {
     const verified = !!animal?.microchip_verified;
 
     const label = hasChip ? "Microchip" : "Codice";
-
     if (!verified) {
       return (
         <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">
@@ -159,9 +154,7 @@ export default function AnimalProfilePage() {
         backFallbackHref="/identita"
         actions={<div className="h-9 w-32 rounded-lg bg-zinc-200/60" />}
       >
-        <div className="text-sm text-zinc-600">
-          Sto caricando la scheda…
-        </div>
+        <div className="text-sm text-zinc-600">Sto caricando la scheda…</div>
       </PageShell>
     );
   }
@@ -185,13 +178,8 @@ export default function AnimalProfilePage() {
       backFallbackHref="/identita"
       actions={
         <>
-          <ButtonSecondary href={`/identita/${animal.id}/modifica`}>
-            Modifica
-          </ButtonSecondary>
-
-          <ButtonSecondary href={`/identita/${animal.id}/stampa`}>
-            Stampa
-          </ButtonSecondary>
+          <ButtonSecondary href={`/identita/${animal.id}/modifica`}>Modifica</ButtonSecondary>
+          <ButtonSecondary href={`/identita/${animal.id}/stampa`}>Stampa</ButtonSecondary>
 
           <ButtonSecondary
             href="#"
@@ -209,72 +197,114 @@ export default function AnimalProfilePage() {
             Gestisci accessi professionisti
           </Link>
 
-          <ButtonPrimary href="/identita">
-            Tutte le identità
-          </ButtonPrimary>
+          <ButtonPrimary href="/identita">Tutte le identità</ButtonPrimary>
         </>
       }
     >
       <OwnerGrantNotifier pathname={`/identita/${animal.id}`} />
 
       <div className="flex flex-col gap-6">
-        <div className="text-xs text-zinc-500">
-          Creato il {new Date(animal.created_at).toLocaleDateString("it-IT")}
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs text-zinc-500">
+            Creato il {new Date(animal.created_at).toLocaleDateString("it-IT")}
+          </p>
+
+          {premiumOk ? (
+            <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">
+              Premium attivo
+            </span>
+          ) : null}
         </div>
 
         <div className="grid gap-4 md:grid-cols-3">
-          <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm md:col-span-1">
-            <h2 className="text-base font-semibold text-zinc-900">Identità</h2>
+          <div className="flex flex-col gap-4 md:col-span-1">
+            <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+              <div className="flex items-start justify-between gap-4">
+                <h2 className="text-base font-semibold text-zinc-900">Identità</h2>
 
-            <dl className="mt-4 grid gap-3 text-sm">
-              <div className="flex justify-between">
-                <dt className="text-zinc-500">Nome</dt>
-                <dd className="font-medium text-zinc-900">{animal.name}</dd>
+                <Link
+                  href={`/identita/${animal.id}/modifica`}
+                  className="shrink-0 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+                >
+                  Aggiorna dati
+                </Link>
               </div>
 
-              <div className="flex justify-between">
-                <dt className="text-zinc-500">Tipo</dt>
-                <dd className="font-medium text-zinc-900">{animal.species}</dd>
-              </div>
+              <dl className="mt-4 grid gap-3 text-sm">
+                <div className="flex justify-between gap-4">
+                  <dt className="text-zinc-500">Nome</dt>
+                  <dd className="font-medium text-zinc-900">{animal.name}</dd>
+                </div>
 
-              <div className="flex justify-between">
-                <dt className="text-zinc-500">Razza</dt>
-                <dd className="font-medium text-zinc-900">
-                  {animal.breed || "—"}
-                </dd>
-              </div>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-zinc-500">Tipo</dt>
+                  <dd className="font-medium text-zinc-900">{animal.species}</dd>
+                </div>
 
-              <div className="flex justify-between">
-                <dt className="text-zinc-500">Colore</dt>
-                <dd className="font-medium text-zinc-900">
-                  {animal.color || "—"}
-                </dd>
-              </div>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-zinc-500">Razza</dt>
+                  <dd className="font-medium text-zinc-900">{animal.breed || "—"}</dd>
+                </div>
 
-              <div className="flex justify-between">
-                <dt className="text-zinc-500">Taglia</dt>
-                <dd className="font-medium text-zinc-900">
-                  {animal.size || "—"}
-                </dd>
-              </div>
-            </dl>
-          </section>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-zinc-500">Colore / segni</dt>
+                  <dd className="font-medium text-zinc-900">{animal.color || "—"}</dd>
+                </div>
+
+                <div className="flex justify-between gap-4">
+                  <dt className="text-zinc-500">Taglia</dt>
+                  <dd className="font-medium text-zinc-900">{animal.size || "—"}</dd>
+                </div>
+              </dl>
+            </section>
+
+            <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+              <h2 className="text-base font-semibold text-zinc-900">Cartella clinica</h2>
+              <p className="mt-1 text-sm text-zinc-600">Referti, vaccinazioni, terapie e note.</p>
+
+              <Link
+                href={`/identita/${animal.id}/clinica`}
+                className="mt-4 inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+              >
+                Apri cartella clinica
+              </Link>
+            </section>
+          </div>
 
           <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm md:col-span-2">
-            <h2 className="text-base font-semibold text-zinc-900">
-              Codici
-            </h2>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h2 className="text-base font-semibold text-zinc-900">Codici</h2>
+                <p className="mt-1 text-sm text-zinc-600">
+                  Da usare in emergenza o per verifica rapida.
+                </p>
+              </div>
 
-            <div className="mt-2">{codeStatusBadge}</div>
+              <div className="shrink-0">{codeStatusBadge}</div>
+            </div>
+
+            <div className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4">
+              <div className="text-xs text-zinc-500">Microchip / Codice</div>
+              <div className="mt-1 text-sm font-semibold text-zinc-900">
+                {animal.chip_number
+                  ? normalizeChip(animal.chip_number)
+                  : qrValue || `UNIMALIA:${animal.id}`}
+              </div>
+            </div>
 
             <div className="mt-4">
               <AnimalCodes
-                qrValue={qrValue}
+                qrValue={qrValue || `UNIMALIA:${animal.id}`}
                 barcodeValue={barcodeValue}
                 caption=""
                 layout="stack"
               />
             </div>
+
+            <p className="mt-3 text-xs text-zinc-500">
+              Nota: alcuni animali possono non avere microchip. In quel caso UNIMALIA usa un codice
+              interno.
+            </p>
           </section>
         </div>
       </div>
@@ -282,30 +312,55 @@ export default function AnimalProfilePage() {
       {shareOpen ? (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
           <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl">
-            <div className="text-base font-semibold">
-              Condividi al professionista
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-base font-semibold text-zinc-900">Condividi al professionista</div>
+                <div className="mt-1 text-sm text-zinc-600">
+                  Scegli come condividere questa identità con un veterinario.
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShareOpen(false)}
+                className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+              >
+                Chiudi
+              </button>
             </div>
 
             <div className="mt-4 grid gap-2">
               <button
-                className="w-full rounded-xl border px-4 py-3 text-left text-sm font-semibold"
+                type="button"
+                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-left text-sm font-semibold text-zinc-900"
                 onClick={() => {
                   alert("Veterinario di fiducia: non ancora impostato.");
                   setShareOpen(false);
                 }}
               >
                 Veterinario di fiducia
+                <div className="mt-1 text-xs font-normal text-zinc-600">
+                  (In futuro: condivisione 1-click con il tuo vet.)
+                </div>
               </button>
 
               <button
-                className="w-full rounded-xl border px-4 py-3 text-left text-sm font-semibold"
+                type="button"
+                className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-left text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
                 onClick={() => {
-                  alert("Altro veterinario: flusso in definizione.");
+                  alert("Altro veterinario: flusso in definizione (nome/codice accesso).");
                   setShareOpen(false);
                 }}
               >
                 Condividi ad altro veterinario
+                <div className="mt-1 text-xs font-normal text-zinc-600">
+                  (In futuro: ricerca per nome o codice di accesso.)
+                </div>
               </button>
+            </div>
+
+            <div className="mt-4 text-xs text-zinc-500">
+              Nota: questo pulsante non apre il portale professionisti.
             </div>
           </div>
         </div>
