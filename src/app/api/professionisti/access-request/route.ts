@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, supabaseAdmin } from "@/lib/supabase/server";
+import { getCoreSystemFlags } from "@/lib/systemFlags";
 
 async function getProfessionalOrgId(userId: string) {
   const admin = supabaseAdmin();
@@ -17,9 +18,17 @@ async function getProfessionalOrgId(userId: string) {
   return null;
 }
 
-// deploy-refresh: force new production build for access-request route
 export async function POST(req: NextRequest) {
   try {
+    const flags = await getCoreSystemFlags();
+
+    if (!flags.owner_access_requests_enabled || flags.emergency_mode || flags.maintenance_mode) {
+      return NextResponse.json(
+        { error: "Richieste accesso temporaneamente non disponibili" },
+        { status: 403 }
+      );
+    }
+
     const supabase = await createClient();
     const admin = supabaseAdmin();
 
@@ -29,33 +38,22 @@ export async function POST(req: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return NextResponse.json(
-        { error: "Non autorizzato" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Non autorizzato" }, { status: 401 });
     }
 
     const orgId = await getProfessionalOrgId(user.id);
 
     if (!orgId) {
-      return NextResponse.json(
-        { error: "Profilo professionista non valido" },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: "Profilo professionista non valido" }, { status: 403 });
     }
 
     const body = await req.json().catch(() => null);
 
     const animalId = String(body?.animalId ?? "").trim();
-    const permissions = Array.isArray(body?.permissions)
-      ? body.permissions
-      : [];
+    const permissions = Array.isArray(body?.permissions) ? body.permissions : [];
 
     if (!animalId) {
-      return NextResponse.json(
-        { error: "animalId mancante" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "animalId mancante" }, { status: 400 });
     }
 
     const animalResult = await admin
@@ -65,10 +63,7 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (animalResult.error || !animalResult.data) {
-      return NextResponse.json(
-        { error: "Animale non trovato" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Animale non trovato" }, { status: 404 });
     }
 
     const animal = animalResult.data;
@@ -115,10 +110,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (!user.id) {
-      return NextResponse.json(
-        { error: "Utente professionista non valido" },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "Utente professionista non valido" }, { status: 500 });
     }
 
     const insertResult = await admin
@@ -137,9 +129,7 @@ export async function POST(req: NextRequest) {
     if (insertResult.error) {
       return NextResponse.json(
         {
-          error:
-            insertResult.error.message ||
-            "Errore richiesta accesso",
+          error: insertResult.error.message || "Errore richiesta accesso",
         },
         { status: 500 }
       );
@@ -150,9 +140,6 @@ export async function POST(req: NextRequest) {
       requestId: insertResult.data.id,
     });
   } catch (error: any) {
-    return NextResponse.json(
-      { error: error?.message || "Errore interno" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error?.message || "Errore interno" }, { status: 500 });
   }
 }

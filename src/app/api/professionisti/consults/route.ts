@@ -4,9 +4,19 @@ import {
   getComposeData,
   listProfessionalConsults,
 } from "@/lib/professionisti/consults";
+import { getCoreSystemFlags } from "@/lib/systemFlags";
 
 export async function GET(req: NextRequest) {
   try {
+    const flags = await getCoreSystemFlags();
+
+    if (!flags.consults_enabled || flags.emergency_mode || flags.maintenance_mode) {
+      return NextResponse.json(
+        { error: "Modulo consulti temporaneamente non disponibile" },
+        { status: 403 }
+      );
+    }
+
     const { searchParams } = new URL(req.url);
     const mode = searchParams.get("mode");
 
@@ -38,6 +48,15 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const flags = await getCoreSystemFlags();
+
+    if (!flags.consults_enabled || flags.emergency_mode || flags.maintenance_mode) {
+      return NextResponse.json(
+        { error: "Modulo consulti temporaneamente non disponibile" },
+        { status: 403 }
+      );
+    }
+
     const body = await req.json();
 
     const result = await createProfessionalConsult({
