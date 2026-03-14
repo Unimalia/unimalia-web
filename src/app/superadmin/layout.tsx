@@ -22,6 +22,11 @@ const navItems: NavItem[] = [
     label: "Professionisti",
     description: "Revisione e approvazione professionisti e veterinari.",
   },
+  {
+    href: "/superadmin/sistema",
+    label: "Sistema",
+    description: "Feature flag, manutenzione, emergency mode.",
+  },
 ];
 
 function isActive(pathname: string, href: string) {
@@ -76,8 +81,6 @@ export default async function SuperAdminLayout({
   if (!isAdminUser(user)) {
     redirect("/");
   }
-
-  const pathname = "/superadmin";
 
   return (
     <>
@@ -134,7 +137,7 @@ export default async function SuperAdminLayout({
                     href={item.href}
                     label={item.label}
                     description={item.description}
-                    pathname={pathname}
+                    pathname=""
                   />
                 ))}
               </div>
