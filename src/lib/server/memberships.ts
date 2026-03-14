@@ -4,18 +4,27 @@ import { createClient } from "@/lib/supabase/server";
 import { OrgMembership } from "@/lib/org-membership";
 import { getCurrentUserEmailOrThrow } from "@/lib/server/session";
 
+type MembershipRow = {
+  organization_id: string;
+  role: string;
+  status: string;
+  is_default: boolean | null;
+  organizations: { id: string; name: string }[] | null;
+};
+
 export async function getUserMemberships(): Promise<OrgMembership[]> {
-  const email = await getCurrentUserEmailOrThrow();
+  await getCurrentUserEmailOrThrow();
 
   const supabase = await createClient();
 
-  const { data: userData, error: userError } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
 
-  if (userError || !userData.user) {
+  if (userError || !user) {
     throw new Error("UNAUTHORIZED");
   }
-
-  const userId = userData.user.id;
 
   const { data, error } = await supabase
     .from("organization_members")
@@ -29,15 +38,17 @@ export async function getUserMemberships(): Promise<OrgMembership[]> {
         name
       )
     `)
-    .eq("user_id", userId);
+    .eq("user_id", user.id);
 
   if (error) {
     throw new Error("MEMBERSHIP_QUERY_FAILED");
   }
 
-  return (data ?? []).map((row) => ({
+  const rows = (data ?? []) as MembershipRow[];
+
+  return rows.map((row) => ({
     organizationId: row.organization_id,
-    organizationName: row.organizations?.name ?? "",
+    organizationName: row.organizations?.[0]?.name ?? "",
     memberRole: row.role,
     status: row.status,
     isDefault: row.is_default ?? false,
