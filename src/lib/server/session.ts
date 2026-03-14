@@ -1,7 +1,23 @@
 import "server-only";
+import { createClient } from "@/lib/supabase/server";
 
 export async function getCurrentUserEmailOrThrow(): Promise<string> {
-  // TODO: collega al tuo sistema auth reale (NextAuth/Clerk/custom)
-  // Per adesso, fai fallire in modo chiaro così non va in prod per sbaglio
-  throw new Error("AUTH_NOT_IMPLEMENTED: implement getCurrentUserEmailOrThrow()");
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+
+  if (error || !user) {
+    throw new Error("UNAUTHORIZED: user session not found");
+  }
+
+  const email = user.email?.toLowerCase().trim();
+
+  if (!email) {
+    throw new Error("INVALID_SESSION: user email missing");
+  }
+
+  return email;
 }
