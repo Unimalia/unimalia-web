@@ -7,22 +7,25 @@ export const dynamic = "force-dynamic";
 function getSupabaseAdmin() {
   const supabaseUrl =
     process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+
   if (!supabaseUrl) {
     throw new Error("Missing SUPABASE_URL or NEXT_PUBLIC_SUPABASE_URL");
   }
 
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!serviceKey) throw new Error("Missing SUPABASE_SERVICE_ROLE_KEY");
+  if (!serviceKey) {
+    throw new Error("Missing SUPABASE_SERVICE_ROLE_KEY");
+  }
 
   return createClient(supabaseUrl, serviceKey, {
     auth: { persistSession: false },
   });
 }
 
-// Se usi Vercel Cron, puoi proteggere l'endpoint con un segreto
 function isAuthorized(req: Request) {
   const expected = process.env.CRON_SECRET;
-  if (!expected) return true;
+  if (!expected) return false;
+
   const got = req.headers.get("x-cron-secret");
   return got === expected;
 }
@@ -32,7 +35,7 @@ function utcTodayISODate() {
   const yyyy = d.getUTCFullYear();
   const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
   const dd = String(d.getUTCDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`; // YYYY-MM-DD
+  return `${yyyy}-${mm}-${dd}`;
 }
 
 function isoDateFromUTC(d: Date) {
@@ -47,7 +50,7 @@ type ReminderRow = {
   animal_id: string;
   title: string;
   kind: "vaccine" | "visit" | "exam" | "other";
-  due_date: string; // YYYY-MM-DD
+  due_date: string;
   remind_days_before: number;
   recipient_email: string;
   status: "scheduled" | "sent" | "cancelled";
@@ -60,15 +63,11 @@ export async function GET(req: Request) {
     }
 
     const supabase = getSupabaseAdmin();
-
     const todayISO = utcTodayISODate();
 
-    // Prendiamo tutti i reminders schedulati
     const { data: reminders, error: rErr } = await supabase
       .from("animal_reminders")
-      .select(
-        "id,animal_id,title,kind,due_date,remind_days_before,recipient_email,status"
-      )
+      .select("id,animal_id,title,kind,due_date,remind_days_before,recipient_email,status")
       .eq("status", "scheduled");
 
     if (rErr) throw new Error(rErr.message);
@@ -79,7 +78,6 @@ export async function GET(req: Request) {
 
     for (const r of (reminders ?? []) as ReminderRow[]) {
       try {
-        // Calcola data invio: due_date - remind_days_before
         const due = new Date(`${r.due_date}T00:00:00.000Z`);
         const daysBefore =
           typeof r.remind_days_before === "number" ? r.remind_days_before : 7;
@@ -91,7 +89,6 @@ export async function GET(req: Request) {
           continue;
         }
 
-        // Invia email
         await resend.emails.send({
           from: EMAIL_FROM_NO_REPLY,
           to: r.recipient_email,
@@ -103,13 +100,12 @@ export async function GET(req: Request) {
               <p style="margin:0 0 12px">Scadenza: <b>${r.due_date}</b></p>
               <p style="margin:0;color:#666;font-size:13px">Animale: ${r.animal_id}</p>
               <p style="margin:12px 0 0;color:#666;font-size:12px">
-                Ricevi questo promemoria perché è stato impostato ${daysBefore} giorno/i prima della scadenza.
+                Ricevi questo promemoria perch&eacute; &egrave; stato impostato ${daysBefore} giorno/i prima della scadenza.
               </p>
             </div>
           `,
         });
 
-        // Marca come sent
         const { error: uErr } = await supabase
           .from("animal_reminders")
           .update({ status: "sent", last_sent_at: new Date().toISOString() })
@@ -132,7 +128,7 @@ export async function GET(req: Request) {
       errors,
     });
   } catch (e: any) {
-    console.log("❌ /api/cron/daily error:", e?.message ?? e);
+    console.log("/api/cron/daily error:", e?.message ?? e);
     return new Response(`Cron error: ${e?.message ?? "unknown"}`, {
       status: 500,
     });
