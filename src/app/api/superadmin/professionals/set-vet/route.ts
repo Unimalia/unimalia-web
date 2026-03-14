@@ -23,7 +23,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "professionalId mancante" }, { status: 400 });
   }
 
-  const { error } = await supabaseAdmin
+  const admin = supabaseAdmin();
+
+  const { error } = await admin
     .from("professionals")
     .update({
       is_vet: true,
