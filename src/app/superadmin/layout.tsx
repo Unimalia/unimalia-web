@@ -32,6 +32,11 @@ const navItems: NavItem[] = [
     label: "Audit log",
     description: "Storico attività e azioni superadmin.",
   },
+  {
+    href: "/superadmin/checklist",
+    label: "Checklist",
+    description: "Checkpoint interno e pre-audit finale.",
+  },
 ];
 
 function isActive(pathname: string, href: string) {
