@@ -53,7 +53,6 @@ const nextConfig: NextConfig = {
       },
       { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
       { key: "X-Frame-Options", value: "DENY" },
-
       { key: "X-Content-Type-Options", value: "nosniff" },
       { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
       { key: "Cross-Origin-Resource-Policy", value: "same-site" },
@@ -61,6 +60,30 @@ const nextConfig: NextConfig = {
     ];
 
     return [
+      // ✅ EMERGENCY VIEW: no-cache + no-index + camera/usb OFF
+      {
+        source: "/e/:path*",
+        headers: [
+          ...commonSecurityHeaders,
+          {
+            key: "Permissions-Policy",
+            value: "geolocation=(), microphone=(), camera=(), usb=(), payment=()",
+          },
+          {
+            key: "Cache-Control",
+            value: "private, no-store, max-age=0",
+          },
+          {
+            key: "Pragma",
+            value: "no-cache",
+          },
+          {
+            key: "X-Robots-Tag",
+            value: "noindex, nofollow, noarchive, nosnippet",
+          },
+        ],
+      },
+
       // ✅ PUBBLICO: super restrittivo (camera/usb OFF)
       {
         source: "/(.*)",
@@ -74,7 +97,6 @@ const nextConfig: NextConfig = {
       },
 
       // ✅ PROFESSIONISTI: abilita camera + usb SOLO nel portale
-      // NB: la regola più specifica vince.
       {
         source: "/professionisti/:path*",
         headers: [
