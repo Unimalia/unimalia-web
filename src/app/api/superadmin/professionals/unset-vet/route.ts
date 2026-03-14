@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { isAdminUser } from "@/lib/adminAccess";
+import { syncProfessionalAuth } from "@/lib/syncProfessionalAuth";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +35,17 @@ export async function POST(req: Request) {
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  const syncResult = await syncProfessionalAuth(professionalId);
+
+  if (!syncResult.ok) {
+    return NextResponse.json(
+      {
+        error: `Professionista aggiornato, ma sync Auth fallita: ${syncResult.error}`,
+      },
+      { status: 500 }
+    );
   }
 
   return NextResponse.redirect(new URL(redirectTo, req.url), 303);

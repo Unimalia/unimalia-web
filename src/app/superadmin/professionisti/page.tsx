@@ -153,7 +153,6 @@ function matchesSearch(value: string | null, q: string) {
 
 function getDisplayName(p: Professional) {
   const fullName = [p.first_name, p.last_name].filter(Boolean).join(" ").trim();
-
   return p.display_name || fullName || p.business_name || p.email || "—";
 }
 
@@ -240,8 +239,8 @@ export default async function SuperAdminProfessionistiPage({
             Professionisti registrati
           </h1>
           <p className="mt-4 text-base leading-relaxed text-zinc-600">
-            Questa pagina è ora operativa: puoi filtrare i professionisti e applicare azioni admin
-            reali su approvazione e stato veterinario.
+            La superadmin ora può aggiornare sia la tabella professionals sia i metadata Auth del
+            relativo utente, così il portale professionisti resta coerente con lo stato reale.
           </p>
 
           {error ? (
@@ -360,7 +359,7 @@ export default async function SuperAdminProfessionistiPage({
 
       <section className="overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1320px] border-collapse">
+          <table className="w-full min-w-[1460px] border-collapse">
             <thead className="border-b bg-zinc-50">
               <tr className="text-left text-xs font-semibold uppercase tracking-wide text-zinc-500">
                 <th className="px-4 py-3">Professionista</th>
@@ -476,6 +475,13 @@ export default async function SuperAdminProfessionistiPage({
                               label="Rimuovi vet"
                             />
                           )}
+
+                          <ActionButton
+                            action="/api/superadmin/professionals/sync-auth"
+                            professionalId={p.id}
+                            redirectTo={redirectTo}
+                            label="Sync Auth"
+                          />
                         </div>
                       </td>
                     </tr>
@@ -488,14 +494,10 @@ export default async function SuperAdminProfessionistiPage({
       </section>
 
       <section className="rounded-3xl border border-dashed border-zinc-300 bg-zinc-50 p-6">
-        <div className="text-sm font-semibold text-zinc-800">Stato attuale</div>
+        <div className="text-sm font-semibold text-zinc-800">Uso pratico</div>
         <p className="mt-2 text-sm leading-relaxed text-zinc-600">
-          La superadmin ora non è più solo descrittiva: può aggiornare davvero approved e is_vet
-          direttamente sulla tabella professionals.
-        </p>
-        <p className="mt-2 text-sm leading-relaxed text-zinc-600">
-          Il passo successivo sensato sarà aggiungere anche public_visible, note revisione e dettaglio
-          singolo professionista.
+          Per sbloccare un account demo già presente in professionals, ora puoi usare direttamente il
+          bottone <strong>Sync Auth</strong> dalla superadmin senza toccare manualmente Supabase Auth.
         </p>
       </section>
     </div>
