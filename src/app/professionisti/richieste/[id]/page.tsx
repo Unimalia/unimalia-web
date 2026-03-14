@@ -563,6 +563,99 @@ export default function ProfessionistiRichiestaDettaglioPage() {
             <div className="mt-1 text-sm text-zinc-600">{animal?.owner_email || "—"}</div>
           </div>
         </div>
+
+        {/* Stato clinico rapido */}
+        <section className="mt-4 rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
+          <h2 className="mb-4 text-lg font-semibold text-zinc-900">
+            Stato clinico rapido
+          </h2>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <div className="text-sm font-semibold text-zinc-700">
+                Età / Peso
+              </div>
+              <div className="text-sm text-zinc-600">
+                Età: — | Peso: 35 kg • 06/03/2026
+              </div>
+            </div>
+
+            <div>
+              <div className="text-sm font-semibold text-zinc-700">
+                Allergie
+              </div>
+              <ul className="ml-4 list-disc text-sm text-zinc-600">
+                <li>amoxicillina • 06/03/2026</li>
+                <li>pollo • 06/03/2026</li>
+              </ul>
+            </div>
+
+            <div>
+              <div className="text-sm font-semibold text-zinc-700">
+                Terapie attive
+              </div>
+              <ul className="ml-4 list-disc text-sm text-zinc-600">
+                <li>terapia a base di cortisone 2 volte al giorno 1mg</li>
+              </ul>
+            </div>
+
+            <div>
+              <div className="text-sm font-semibold text-zinc-700">
+                Ultime terapie
+              </div>
+              <ul className="ml-4 list-disc text-sm text-zinc-600">
+                <li>3 compresse al giorno di xxx • 05/03/2026</li>
+                <li>terapia a base di cortisone 3 volte al giorno per 4 giorni a base di ccc • 05/03/2026</li>
+                <li>2 applicazioni al giorno di yyy • 05/03/2026</li>
+              </ul>
+            </div>
+
+            <div>
+              <div className="text-sm font-semibold text-zinc-700">
+                Patologie croniche
+              </div>
+              <ul className="ml-4 list-disc text-sm text-zinc-600">
+                <li>osteoartrite • 09/03/2026</li>
+              </ul>
+            </div>
+
+            <div>
+              <div className="text-sm font-semibold text-zinc-700">
+                Ricontrolli programmati
+              </div>
+              <div className="text-sm text-zinc-600">
+                —
+              </div>
+            </div>
+
+            <div>
+              <div className="text-sm font-semibold text-zinc-700">
+                Ultima visita
+              </div>
+              <div className="text-sm text-zinc-600">
+                06/03/2026
+              </div>
+            </div>
+
+            <div>
+              <div className="text-sm font-semibold text-zinc-700">
+                Ultima vaccinazione
+              </div>
+              <div className="text-sm text-zinc-600">
+                05/03/2026
+              </div>
+            </div>
+
+            <div>
+              <div className="text-sm font-semibold text-zinc-700">
+                Vaccinazioni scadute / in scadenza
+              </div>
+              <div className="text-sm text-zinc-600">
+                —
+              </div>
+            </div>
+          </div>
+        </section>
       </section>
 
       {canAcceptReject ? (
@@ -686,8 +779,8 @@ export default function ProfessionistiRichiestaDettaglioPage() {
                           ) : null}
 
                           {hasFiles ? (
-                            <span className="inline-flex items-center rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-xs font-semibold text-zinc-700">
-                              📎 {event.files.length}
+                            <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
+                              📎 {event.files.length} allegati
                             </span>
                           ) : null}
 
@@ -698,19 +791,19 @@ export default function ProfessionistiRichiestaDettaglioPage() {
                           ) : null}
                         </div>
 
-                        <div className="mt-3 text-sm font-semibold leading-6 text-zinc-900">
+                        <div className="mt-3 text-base font-semibold leading-6 text-zinc-900">
                           {event.title || typeLabel(event.type)}
                         </div>
 
                         {event.description ? (
-                          <p className="mt-2 line-clamp-2 text-sm leading-6 text-zinc-700">
+                          <p className="mt-2 line-clamp-2 text-[15px] leading-6 text-zinc-700">
                             {event.description}
                           </p>
                         ) : null}
                       </div>
 
                       <div className="shrink-0 text-xs font-semibold text-zinc-500">
-                        Apri
+                        Apri →
                       </div>
                     </div>
                   </button>
@@ -849,11 +942,15 @@ export default function ProfessionistiRichiestaDettaglioPage() {
                   ) : (
                     <ul className="mt-3 space-y-2">
                       {selectedEvent.files.map((file) => (
-                        <li
-                          key={file.id}
-                          className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-800"
-                        >
-                          {file.filename || "File allegato"}
+                        <li key={file.id}>
+                          <a
+                            href={file.path || "#"}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-100"
+                          >
+                            📎 {file.filename || "File allegato"}
+                          </a>
                         </li>
                       ))}
                     </ul>
