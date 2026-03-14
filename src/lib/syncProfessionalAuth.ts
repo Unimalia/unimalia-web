@@ -56,19 +56,9 @@ export async function syncProfessionalAuth(professionalId: string): Promise<Sync
       ? authData.user.app_metadata
       : {};
 
-  const currentUserMetadata =
-    authData.user.user_metadata && typeof authData.user.user_metadata === "object"
-      ? authData.user.user_metadata
-      : {};
-
   const { error: authUpdateError } = await admin.auth.admin.updateUserById(authUserId, {
     app_metadata: {
       ...currentAppMetadata,
-      is_professional: isProfessional,
-      is_vet: isVet,
-    },
-    user_metadata: {
-      ...currentUserMetadata,
       is_professional: isProfessional,
       is_vet: isVet,
     },
