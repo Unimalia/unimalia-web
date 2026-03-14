@@ -1,16 +1,45 @@
 import "server-only";
-import { OrgMembership } from "@/lib/org-membership";
-import { getCurrentUserEmailOrThrow } from "@/lib/server/session"; // adatta
 
-// TODO: sostituisci con query DB reale
+import { createClient } from "@/lib/supabase/server";
+import { OrgMembership } from "@/lib/org-membership";
+import { getCurrentUserEmailOrThrow } from "@/lib/server/session";
+
 export async function getUserMemberships(): Promise<OrgMembership[]> {
   const email = await getCurrentUserEmailOrThrow();
 
-  // ESEMPIO: qui fai query sulle tue tabelle organization_members + organizations
-  // return db.organizationMembers.findMany(...)
+  const supabase = await createClient();
 
-  // Placeholder: sostituisci subito con DB
-  return [
-    // { organizationId: "org_1", organizationName: "Clinica X", memberRole: "vet", status: "active", isDefault: true },
-  ];
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+
+  if (userError || !userData.user) {
+    throw new Error("UNAUTHORIZED");
+  }
+
+  const userId = userData.user.id;
+
+  const { data, error } = await supabase
+    .from("organization_members")
+    .select(`
+      organization_id,
+      role,
+      status,
+      is_default,
+      organizations (
+        id,
+        name
+      )
+    `)
+    .eq("user_id", userId);
+
+  if (error) {
+    throw new Error("MEMBERSHIP_QUERY_FAILED");
+  }
+
+  return (data ?? []).map((row) => ({
+    organizationId: row.organization_id,
+    organizationName: row.organizations?.name ?? "",
+    memberRole: row.role,
+    status: row.status,
+    isDefault: row.is_default ?? false,
+  }));
 }
