@@ -27,6 +27,11 @@ const navItems: NavItem[] = [
     label: "Sistema",
     description: "Feature flag, manutenzione, emergency mode.",
   },
+  {
+    href: "/superadmin/audit",
+    label: "Audit log",
+    description: "Storico attività e azioni superadmin.",
+  },
 ];
 
 function isActive(pathname: string, href: string) {
