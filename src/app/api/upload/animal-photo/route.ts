@@ -5,11 +5,23 @@ export const runtime = "nodejs";
 
 const BUCKET = "animal-photos";
 const PROFILE_FOLDER = "profiles";
+const MAX_FILE_SIZE_BYTES = 8 * 1024 * 1024;
+
+const ALLOWED_MIME_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+]);
 
 function extFromFileName(name: string) {
   const n = (name || "").toLowerCase();
   const m = n.match(/\.([a-z0-9]+)$/);
   return m?.[1] || "jpg";
+}
+
+function randomSuffix() {
+  return Math.random().toString(36).slice(2, 10);
 }
 
 export async function POST(req: Request) {
@@ -19,13 +31,9 @@ export async function POST(req: Request) {
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
     if (!supabaseUrl || !anonKey || !serviceKey) {
-      return NextResponse.json(
-        { error: "Missing Supabase env vars" },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "Missing Supabase env vars" }, { status: 500 });
     }
 
-    // 1) verifica utente via access token (dal client)
     const authHeader = req.headers.get("authorization") || "";
     const token = authHeader.startsWith("Bearer ")
       ? authHeader.slice("Bearer ".length).trim()
@@ -39,42 +47,41 @@ export async function POST(req: Request) {
     const { data: userData, error: userErr } = await supaVerify.auth.getUser(token);
 
     if (userErr || !userData?.user) {
-      return NextResponse.json(
-        { error: "Invalid session" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Invalid session" }, { status: 401 });
     }
 
     const userId = userData.user.id;
 
-    // 2) leggi file
     const form = await req.formData();
     const file = form.get("file") as File | null;
 
     if (!file) {
       return NextResponse.json({ error: "Missing file" }, { status: 400 });
     }
-    if (!file.type?.startsWith("image/")) {
+
+    if (!ALLOWED_MIME_TYPES.has(file.type || "")) {
       return NextResponse.json({ error: "Invalid file type" }, { status: 400 });
     }
-    if (file.size > 8 * 1024 * 1024) {
+
+    if (file.size <= 0 || file.size > MAX_FILE_SIZE_BYTES) {
       return NextResponse.json({ error: "File too large (max 8MB)" }, { status: 400 });
     }
 
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    // 3) upload su Storage con service role (server)
-    const supaAdmin = createClient(supabaseUrl, serviceKey);
+    const supaAdmin = createClient(supabaseUrl, serviceKey, {
+      auth: { persistSession: false },
+    });
 
     const ext = extFromFileName(file.name);
-    const fileName = `animal_${Date.now()}.${ext}`;
+    const fileName = `animal_${Date.now()}_${randomSuffix()}.${ext}`;
     const path = `${PROFILE_FOLDER}/${userId}/${fileName}`;
 
     const { error: upErr } = await supaAdmin.storage
       .from(BUCKET)
       .upload(path, buffer, {
-        upsert: true,
+        upsert: false,
         contentType: file.type || "image/jpeg",
         cacheControl: "3600",
       });
@@ -87,18 +94,12 @@ export async function POST(req: Request) {
     const publicUrl = pub?.publicUrl ? `${pub.publicUrl}?t=${Date.now()}` : "";
 
     if (!publicUrl) {
-      return NextResponse.json(
-        { error: "Uploaded but public URL not available" },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "Uploaded but public URL not available" }, { status: 500 });
     }
 
     return NextResponse.json({ publicUrl });
   } catch (e: any) {
     console.error("UPLOAD API ERROR:", e);
-    return NextResponse.json(
-      { error: e?.message || "Server upload error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: e?.message || "Server upload error" }, { status: 500 });
   }
 }
