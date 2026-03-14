@@ -6,6 +6,13 @@ import { writeAdminAuditLog } from "@/lib/adminAudit";
 
 export const dynamic = "force-dynamic";
 
+function sanitizeRedirectTo(value: FormDataEntryValue | null) {
+  const raw = String(value || "").trim();
+  if (!raw.startsWith("/superadmin")) return "/superadmin/professionisti";
+  if (raw.startsWith("//")) return "/superadmin/professionisti";
+  return raw;
+}
+
 export async function POST(req: Request) {
   const auth = await supabaseServer();
   const {
@@ -19,7 +26,7 @@ export async function POST(req: Request) {
   const formData = await req.formData();
 
   const professionalId = String(formData.get("professionalId") || "").trim();
-  const redirectTo = String(formData.get("redirectTo") || "/superadmin/professionisti").trim();
+  const redirectTo = sanitizeRedirectTo(formData.get("redirectTo"));
 
   const verificationStatusRaw = String(formData.get("verification_status") || "").trim();
   const verificationLevelRaw = String(formData.get("verification_level") || "").trim();
