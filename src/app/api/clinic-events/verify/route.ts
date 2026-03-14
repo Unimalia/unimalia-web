@@ -39,6 +39,11 @@ export async function POST(req: Request) {
   const user = userData?.user;
   if (userErr || !user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const isVet = user.app_metadata?.is_vet === true;
+  if (!isVet) {
+    return NextResponse.json({ error: "Solo i veterinari possono verificare eventi clinici" }, { status: 403 });
+  }
+
   const body = (await req.json().catch(() => null)) as Body | null;
   if (!body) return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
 
@@ -49,7 +54,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "animalId invalid" }, { status: 400 });
   }
 
-  // ✅ GRANT CHECK (WRITE) per validare
   const grant = await requireOwnerOrGrant(supabase, user.id, animalId, "write");
   if (!grant.ok) {
     await writeAudit(supabase, {
@@ -67,13 +71,10 @@ export async function POST(req: Request) {
 
   const verifyAll = !!body.verifyAll;
   const eventIds = Array.isArray(body.eventIds)
-    ? body.eventIds
-        .map((id) => String(id).trim())
-        .filter((id) => isUuid(id))
+    ? body.eventIds.map((id) => String(id).trim()).filter((id) => isUuid(id))
     : [];
 
   try {
-    // selezione target
     let q = supabase
       .from("animal_clinic_events")
       .update({
@@ -87,7 +88,9 @@ export async function POST(req: Request) {
       .neq("status", "void");
 
     if (!verifyAll) {
-      if (eventIds.length === 0) return NextResponse.json({ error: "eventIds required" }, { status: 400 });
+      if (eventIds.length === 0) {
+        return NextResponse.json({ error: "eventIds required" }, { status: 400 });
+      }
       q = q.in("id", eventIds);
     }
 
