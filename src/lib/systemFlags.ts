@@ -15,12 +15,12 @@ export type CoreSystemFlags = {
 const DEFAULT_FLAGS: CoreSystemFlags = {
   emergency_mode: false,
   maintenance_mode: false,
-  public_registration_enabled: true,
-  professional_registration_enabled: true,
-  lost_found_enabled: true,
-  public_search_enabled: true,
-  consults_enabled: true,
-  owner_access_requests_enabled: true,
+  public_registration_enabled: false,
+  professional_registration_enabled: false,
+  lost_found_enabled: false,
+  public_search_enabled: false,
+  consults_enabled: false,
+  owner_access_requests_enabled: false,
 };
 
 export async function getCoreSystemFlags(): Promise<CoreSystemFlags> {
@@ -42,12 +42,12 @@ export async function getCoreSystemFlags(): Promise<CoreSystemFlags> {
     return {
       emergency_mode: raw.emergency_mode === true,
       maintenance_mode: raw.maintenance_mode === true,
-      public_registration_enabled: raw.public_registration_enabled !== false,
-      professional_registration_enabled: raw.professional_registration_enabled !== false,
-      lost_found_enabled: raw.lost_found_enabled !== false,
-      public_search_enabled: raw.public_search_enabled !== false,
-      consults_enabled: raw.consults_enabled !== false,
-      owner_access_requests_enabled: raw.owner_access_requests_enabled !== false,
+      public_registration_enabled: raw.public_registration_enabled === true,
+      professional_registration_enabled: raw.professional_registration_enabled === true,
+      lost_found_enabled: raw.lost_found_enabled === true,
+      public_search_enabled: raw.public_search_enabled === true,
+      consults_enabled: raw.consults_enabled === true,
+      owner_access_requests_enabled: raw.owner_access_requests_enabled === true,
     };
   } catch {
     return DEFAULT_FLAGS;
