@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { isAdminUser } from "@/lib/adminAccess";
 import { syncProfessionalAuth } from "@/lib/syncProfessionalAuth";
+import { writeAdminAuditLog } from "@/lib/adminAudit";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,18 @@ export async function POST(req: Request) {
   }
 
   const syncResult = await syncProfessionalAuth(professionalId);
+
+  await writeAdminAuditLog({
+    adminId: user.id,
+    action: "professional_sync_auth",
+    targetType: "professional",
+    targetId: professionalId,
+    meta: {
+      redirectTo,
+      sync_ok: syncResult.ok,
+      sync_result: syncResult,
+    },
+  });
 
   if (!syncResult.ok) {
     return NextResponse.json({ error: syncResult.error }, { status: 500 });

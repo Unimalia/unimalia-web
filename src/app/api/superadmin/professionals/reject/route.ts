@@ -3,6 +3,7 @@ import { supabaseServer } from "@/lib/supabaseServer";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { isAdminUser } from "@/lib/adminAccess";
 import { syncProfessionalAuth } from "@/lib/syncProfessionalAuth";
+import { writeAdminAuditLog } from "@/lib/adminAudit";
 
 export const dynamic = "force-dynamic";
 
@@ -41,6 +42,18 @@ export async function POST(req: Request) {
   }
 
   const syncResult = await syncProfessionalAuth(professionalId);
+
+  await writeAdminAuditLog({
+    adminId: user.id,
+    action: "professional_rejected",
+    targetType: "professional",
+    targetId: professionalId,
+    meta: {
+      redirectTo,
+      sync_ok: syncResult.ok,
+      sync_result: syncResult,
+    },
+  });
 
   if (!syncResult.ok) {
     return NextResponse.json(

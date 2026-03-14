@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { isAdminUser } from "@/lib/adminAccess";
+import { writeAdminAuditLog } from "@/lib/adminAudit";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +36,14 @@ export async function POST(req: Request) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  await writeAdminAuditLog({
+    adminId: user.id,
+    action: "professional_unset_visible",
+    targetType: "professional",
+    targetId: professionalId,
+    meta: { redirectTo },
+  });
 
   return NextResponse.redirect(new URL(redirectTo, req.url), 303);
 }
