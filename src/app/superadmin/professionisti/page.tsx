@@ -36,12 +36,12 @@ function Badge({
     tone === "success"
       ? "border-emerald-200 bg-emerald-50 text-emerald-700"
       : tone === "warning"
-      ? "border-amber-200 bg-amber-50 text-amber-700"
-      : tone === "danger"
-      ? "border-rose-200 bg-rose-50 text-rose-700"
-      : tone === "info"
-      ? "border-sky-200 bg-sky-50 text-sky-700"
-      : "border-zinc-200 bg-zinc-100 text-zinc-700";
+        ? "border-amber-200 bg-amber-50 text-amber-700"
+        : tone === "danger"
+          ? "border-rose-200 bg-rose-50 text-rose-700"
+          : tone === "info"
+            ? "border-sky-200 bg-sky-50 text-sky-700"
+            : "border-zinc-200 bg-zinc-100 text-zinc-700";
 
   return (
     <span className={`inline-flex rounded-full border px-2 py-1 text-xs font-semibold ${toneClass}`}>
@@ -109,10 +109,10 @@ function ActionButton({
     tone === "success"
       ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
       : tone === "danger"
-      ? "border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
-      : tone === "info"
-      ? "border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100"
-      : "border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50";
+        ? "border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
+        : tone === "info"
+          ? "border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100"
+          : "border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50";
 
   return (
     <form action={action} method="post">
@@ -239,8 +239,8 @@ export default async function SuperAdminProfessionistiPage({
             Professionisti registrati
           </h1>
           <p className="mt-4 text-base leading-relaxed text-zinc-600">
-            La superadmin ora può aggiornare sia la tabella professionals sia i metadata Auth del
-            relativo utente, così il portale professionisti resta coerente con lo stato reale.
+            Dalla lista puoi filtrare rapidamente i profili e aprire il dettaglio completo per revisione,
+            visibilità pubblica, note e verifica.
           </p>
 
           {error ? (
@@ -359,7 +359,7 @@ export default async function SuperAdminProfessionistiPage({
 
       <section className="overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1460px] border-collapse">
+          <table className="w-full min-w-[1520px] border-collapse">
             <thead className="border-b bg-zinc-50">
               <tr className="text-left text-xs font-semibold uppercase tracking-wide text-zinc-500">
                 <th className="px-4 py-3">Professionista</th>
@@ -370,14 +370,15 @@ export default async function SuperAdminProfessionistiPage({
                 <th className="px-4 py-3">Ruolo</th>
                 <th className="px-4 py-3">Verifica</th>
                 <th className="px-4 py-3">Visibilità</th>
-                <th className="px-4 py-3">Azioni</th>
+                <th className="px-4 py-3">Azioni rapide</th>
+                <th className="px-4 py-3">Dettaglio</th>
               </tr>
             </thead>
 
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-10 text-center text-sm text-zinc-500">
+                  <td colSpan={10} className="px-4 py-10 text-center text-sm text-zinc-500">
                     Nessun professionista trovato con i filtri attuali.
                   </td>
                 </tr>
@@ -439,43 +440,6 @@ export default async function SuperAdminProfessionistiPage({
 
                       <td className="px-4 py-4">
                         <div className="flex flex-wrap gap-2">
-                          {p.approved !== true ? (
-                            <ActionButton
-                              action="/api/superadmin/professionals/approve"
-                              professionalId={p.id}
-                              redirectTo={redirectTo}
-                              label="Approva"
-                              tone="success"
-                            />
-                          ) : null}
-
-                          {p.approved !== false ? (
-                            <ActionButton
-                              action="/api/superadmin/professionals/reject"
-                              professionalId={p.id}
-                              redirectTo={redirectTo}
-                              label="Rifiuta"
-                              tone="danger"
-                            />
-                          ) : null}
-
-                          {p.is_vet !== true ? (
-                            <ActionButton
-                              action="/api/superadmin/professionals/set-vet"
-                              professionalId={p.id}
-                              redirectTo={redirectTo}
-                              label="Imposta vet"
-                              tone="info"
-                            />
-                          ) : (
-                            <ActionButton
-                              action="/api/superadmin/professionals/unset-vet"
-                              professionalId={p.id}
-                              redirectTo={redirectTo}
-                              label="Rimuovi vet"
-                            />
-                          )}
-
                           <ActionButton
                             action="/api/superadmin/professionals/sync-auth"
                             professionalId={p.id}
@@ -484,6 +448,15 @@ export default async function SuperAdminProfessionistiPage({
                           />
                         </div>
                       </td>
+
+                      <td className="px-4 py-4">
+                        <Link
+                          href={`/superadmin/professionisti/${p.id}`}
+                          className="inline-flex rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-900 shadow-sm hover:bg-zinc-50"
+                        >
+                          Apri dettaglio
+                        </Link>
+                      </td>
                     </tr>
                   );
                 })
@@ -491,14 +464,6 @@ export default async function SuperAdminProfessionistiPage({
             </tbody>
           </table>
         </div>
-      </section>
-
-      <section className="rounded-3xl border border-dashed border-zinc-300 bg-zinc-50 p-6">
-        <div className="text-sm font-semibold text-zinc-800">Uso pratico</div>
-        <p className="mt-2 text-sm leading-relaxed text-zinc-600">
-          Per sbloccare un account demo già presente in professionals, ora puoi usare direttamente il
-          bottone <strong>Sync Auth</strong> dalla superadmin senza toccare manualmente Supabase Auth.
-        </p>
       </section>
     </div>
   );
