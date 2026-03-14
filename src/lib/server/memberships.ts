@@ -1,16 +1,31 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
-import { OrgMembership } from "@/lib/org-membership";
+import { OrgMembership, OrgMemberRole } from "@/lib/org-membership";
 import { getCurrentUserEmailOrThrow } from "@/lib/server/session";
 
 type MembershipRow = {
   organization_id: string;
-  role: string;
+  role: string | null;
   status: string;
   is_default: boolean | null;
   organizations: { id: string; name: string }[] | null;
 };
+
+function toOrgMemberRole(role: string | null): OrgMemberRole {
+  const normalized = (role ?? "").toLowerCase().trim();
+
+  if (
+    normalized === "owner" ||
+    normalized === "admin" ||
+    normalized === "vet" ||
+    normalized === "staff"
+  ) {
+    return normalized;
+  }
+
+  return "staff";
+}
 
 export async function getUserMemberships(): Promise<OrgMembership[]> {
   await getCurrentUserEmailOrThrow();
@@ -49,7 +64,7 @@ export async function getUserMemberships(): Promise<OrgMembership[]> {
   return rows.map((row) => ({
     organizationId: row.organization_id,
     organizationName: row.organizations?.[0]?.name ?? "",
-    memberRole: row.role,
+    memberRole: toOrgMemberRole(row.role),
     status: row.status,
     isDefault: row.is_default ?? false,
   }));
