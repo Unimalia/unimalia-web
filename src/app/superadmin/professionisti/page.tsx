@@ -154,13 +154,7 @@ function matchesSearch(value: string | null, q: string) {
 function getDisplayName(p: Professional) {
   const fullName = [p.first_name, p.last_name].filter(Boolean).join(" ").trim();
 
-  return (
-    p.display_name ||
-    fullName ||
-    p.business_name ||
-    p.email ||
-    "—"
-  );
+  return p.display_name || fullName || p.business_name || p.email || "—";
 }
 
 export default async function SuperAdminProfessionistiPage({
@@ -199,7 +193,7 @@ export default async function SuperAdminProfessionistiPage({
     )
     .order("created_at", { ascending: false });
 
-  const professionals: Professional[] = data || [];
+  const professionals = ((data ?? []) as unknown[]) as Professional[];
 
   const filtered = professionals.filter((p) => {
     const matchesQ =
@@ -214,27 +208,26 @@ export default async function SuperAdminProfessionistiPage({
       status === "all"
         ? true
         : status === "approved"
-        ? p.approved === true
-        : status === "rejected"
-        ? p.approved === false
-        : status === "review"
-        ? p.approved === null
-        : true;
+          ? p.approved === true
+          : status === "rejected"
+            ? p.approved === false
+            : status === "review"
+              ? p.approved === null
+              : true;
 
     const matchesVet =
       vet === "all"
         ? true
         : vet === "yes"
-        ? p.is_vet === true
-        : vet === "no"
-        ? p.is_vet !== true
-        : true;
+          ? p.is_vet === true
+          : vet === "no"
+            ? p.is_vet !== true
+            : true;
 
     return matchesQ && matchesStatus && matchesVet;
   });
 
   const approvedCount = professionals.filter((p) => p.approved === true).length;
-  const rejectedCount = professionals.filter((p) => p.approved === false).length;
   const reviewCount = professionals.filter((p) => p.approved === null).length;
   const vetCount = professionals.filter((p) => p.is_vet === true).length;
 
@@ -404,13 +397,9 @@ export default async function SuperAdminProfessionistiPage({
                         <div className="mt-1 text-xs text-zinc-500">{p.id}</div>
                       </td>
 
-                      <td className="px-4 py-4 text-sm text-zinc-600">
-                        {p.category || "—"}
-                      </td>
+                      <td className="px-4 py-4 text-sm text-zinc-600">{p.category || "—"}</td>
 
-                      <td className="px-4 py-4 text-sm text-zinc-600">
-                        {p.email || "—"}
-                      </td>
+                      <td className="px-4 py-4 text-sm text-zinc-600">{p.email || "—"}</td>
 
                       <td className="px-4 py-4 text-sm text-zinc-600">
                         {[p.city, p.province].filter(Boolean).join(" · ") || "—"}
@@ -485,7 +474,6 @@ export default async function SuperAdminProfessionistiPage({
                               professionalId={p.id}
                               redirectTo={redirectTo}
                               label="Rimuovi vet"
-                              tone="default"
                             />
                           )}
                         </div>
