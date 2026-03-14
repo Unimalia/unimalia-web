@@ -10,6 +10,13 @@ function toBoolean(value: FormDataEntryValue | null) {
   return String(value || "").toLowerCase() === "true";
 }
 
+function sanitizeRedirectTo(value: FormDataEntryValue | null) {
+  const raw = String(value || "").trim();
+  if (!raw.startsWith("/superadmin")) return "/superadmin/sistema";
+  if (raw.startsWith("//")) return "/superadmin/sistema";
+  return raw;
+}
+
 export async function POST(req: Request) {
   const auth = await supabaseServer();
   const {
@@ -21,7 +28,7 @@ export async function POST(req: Request) {
   }
 
   const formData = await req.formData();
-  const redirectTo = String(formData.get("redirectTo") || "/superadmin/sistema").trim();
+  const redirectTo = sanitizeRedirectTo(formData.get("redirectTo"));
 
   const payload = {
     emergency_mode: toBoolean(formData.get("emergency_mode")),
