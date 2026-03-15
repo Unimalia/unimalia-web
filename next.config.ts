@@ -15,7 +15,7 @@ const nextConfig: NextConfig = {
       frame-ancestors 'none';
       form-action 'self';
 
-      img-src 'self' data: https: https://*.googleusercontent.com https://*.gstatic.com;
+      img-src 'self' data: https: https://*.googleusercontent.com https://*.gstatic.com https://www.google-analytics.com https://www.googletagmanager.com;
       font-src 'self' data: https:;
       style-src 'self' 'unsafe-inline' https://cdn.iubenda.com;
 
@@ -24,20 +24,27 @@ const nextConfig: NextConfig = {
         https://maps.googleapis.com
         https://maps.gstatic.com
         https://cdn.iubenda.com
-        https://embeds.iubenda.com;
+        https://embeds.iubenda.com
+        https://www.googletagmanager.com
+        https://www.google-analytics.com;
 
       script-src-elem 'self' 'unsafe-inline'
         https://vercel.live
         https://maps.googleapis.com
         https://maps.gstatic.com
         https://cdn.iubenda.com
-        https://embeds.iubenda.com;
+        https://embeds.iubenda.com
+        https://www.googletagmanager.com
+        https://www.google-analytics.com;
 
       connect-src 'self'
         https://*.supabase.co
         https://maps.googleapis.com
         https://*.googleapis.com
-        https://maps.gstatic.com;
+        https://maps.gstatic.com
+        https://www.google-analytics.com
+        https://region1.google-analytics.com
+        https://www.googletagmanager.com;
 
       frame-src 'self'
         https://www.google.com
