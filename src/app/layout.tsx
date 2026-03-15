@@ -4,12 +4,10 @@ import Script from "next/script";
 import "./globals.css";
 import AppShell from "../_components/AppShell";
 
-const IUBENDA_SITE_ID = process.env.IUBENDA_SITE_ID ?? "";
-const IUBENDA_COOKIE_POLICY_ID = process.env.IUBENDA_COOKIE_POLICY_ID ?? "";
 const GA_MEASUREMENT_ID = "G-YE91HM8ZLW";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://www.unimalia.it"),
+  metadataBase: new URL("https://unimalia.it"),
   title: "UNIMALIA",
   description: "Un ecosistema digitale per proteggere la vita dell’animale.",
   icons: {
@@ -19,7 +17,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "UNIMALIA",
     description: "Un ecosistema digitale per proteggere la vita dell’animale.",
-    url: "https://www.unimalia.it/",
+    url: "https://unimalia.it/",
     siteName: "UNIMALIA",
     images: ["/logo-512.png"],
     locale: "it_IT",
@@ -38,8 +36,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     "@context": "https://schema.org",
     "@type": "Organization",
     name: "UNIMALIA",
-    url: "https://www.unimalia.it/",
-    logo: "https://www.unimalia.it/logo-512.png",
+    url: "https://unimalia.it/",
+    logo: "https://unimalia.it/logo-512.png",
   };
 
   return (
@@ -65,30 +63,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           `}
         </Script>
 
-        {/* Iubenda Cookie Solution (banner + preferenze + consenso) */}
-        <Script id="iubenda-cs-config" strategy="beforeInteractive">
-          {`
-            var _iub = _iub || [];
-            _iub.csConfiguration = {
-              siteId: ${JSON.stringify(IUBENDA_SITE_ID)},
-              cookiePolicyId: ${JSON.stringify(IUBENDA_COOKIE_POLICY_ID)},
-              lang: "it",
-
-              priorConsent: true,
-              perPurposeConsent: true,
-              rejectButton: true,
-
-              floatingPreferencesButtonDisplay: "bottom-right",
-              enableRemoteConsent: true
-            };
-          `}
-        </Script>
-
-        <Script
-          id="iubenda-cs"
-          strategy="beforeInteractive"
-          src="https://cdn.iubenda.com/cs/iubenda_cs.js"
-        />
+        {/* Iubenda disattivato temporaneamente finché non viene configurato davvero */}
 
         <AppShell>{children}</AppShell>
       </body>
