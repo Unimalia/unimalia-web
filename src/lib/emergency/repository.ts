@@ -148,25 +148,29 @@ export async function insertEmergencyAccessLog(input: {
   servedView: string | null;
   requestId: string | null;
 }) {
-  const admin = supabaseAdmin();
+  try {
+    const admin = supabaseAdmin();
 
-  const payload: EmergencyAccessLogInsert = {
-    token_hash: input.tokenHash,
-    animal_id: input.animalId,
-    request_path: input.requestPath,
-    ip_hash: input.ip ? hashValue(input.ip) : null,
-    user_agent_hash: input.userAgent ? hashValue(input.userAgent) : null,
-    country: input.country,
-    outcome: input.outcome,
-    served_view: input.servedView,
-    request_id: input.requestId,
-  };
+    const payload: EmergencyAccessLogInsert = {
+      token_hash: input.tokenHash,
+      animal_id: input.animalId,
+      request_path: input.requestPath,
+      ip_hash: input.ip ? hashValue(input.ip) : null,
+      user_agent_hash: input.userAgent ? hashValue(input.userAgent) : null,
+      country: input.country,
+      outcome: input.outcome,
+      served_view: input.servedView,
+      request_id: input.requestId,
+    };
 
-  const { error } = await admin
-    .from("emergency_access_logs" as never)
-    .insert(payload as never);
+    const { error } = await admin
+      .from("emergency_access_logs" as never)
+      .insert(payload as never);
 
-  if (error) {
-    console.error("insertEmergencyAccessLog failed", error);
+    if (error) {
+      console.error("insertEmergencyAccessLog failed", error);
+    }
+  } catch (error) {
+    console.error("insertEmergencyAccessLog crashed", error);
   }
 }
