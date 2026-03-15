@@ -6,6 +6,7 @@ import AppShell from "../_components/AppShell";
 
 const IUBENDA_SITE_ID = process.env.IUBENDA_SITE_ID ?? "";
 const IUBENDA_COOKIE_POLICY_ID = process.env.IUBENDA_COOKIE_POLICY_ID ?? "";
+const GA_MEASUREMENT_ID = "G-YE91HM8ZLW";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.unimalia.it"),
@@ -49,6 +50,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }}
         />
+
+        {/* Google Analytics */}
+        <Script
+          src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', '${GA_MEASUREMENT_ID}');
+          `}
+        </Script>
 
         {/* Iubenda Cookie Solution (banner + preferenze + consenso) */}
         <Script id="iubenda-cs-config" strategy="beforeInteractive">
