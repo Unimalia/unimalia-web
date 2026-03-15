@@ -1,0 +1,4 @@
+Contact: mailto:info@unimalia.it
+Policy: https://unimalia.it/termini
+Preferred-Languages: it, en
+Canonical: https://unimalia.it/.well-known/security.txt
