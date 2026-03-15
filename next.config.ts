@@ -26,7 +26,8 @@ const nextConfig: NextConfig = {
         https://cdn.iubenda.com
         https://embeds.iubenda.com
         https://www.googletagmanager.com
-        https://www.google-analytics.com;
+        https://www.google-analytics.com
+        https://challenges.cloudflare.com;
 
       script-src-elem 'self' 'unsafe-inline'
         https://vercel.live
@@ -35,7 +36,8 @@ const nextConfig: NextConfig = {
         https://cdn.iubenda.com
         https://embeds.iubenda.com
         https://www.googletagmanager.com
-        https://www.google-analytics.com;
+        https://www.google-analytics.com
+        https://challenges.cloudflare.com;
 
       connect-src 'self'
         https://*.supabase.co
@@ -44,11 +46,13 @@ const nextConfig: NextConfig = {
         https://maps.gstatic.com
         https://www.google-analytics.com
         https://region1.google-analytics.com
-        https://www.googletagmanager.com;
+        https://www.googletagmanager.com
+        https://challenges.cloudflare.com;
 
       frame-src 'self'
         https://www.google.com
-        https://google.com;
+        https://google.com
+        https://challenges.cloudflare.com;
 
       upgrade-insecure-requests;
     `);
@@ -67,7 +71,6 @@ const nextConfig: NextConfig = {
     ];
 
     return [
-      // ✅ EMERGENCY VIEW: no-cache + no-index + camera/usb OFF
       {
         source: "/e/:path*",
         headers: [
@@ -90,8 +93,6 @@ const nextConfig: NextConfig = {
           },
         ],
       },
-
-      // ✅ PUBBLICO: super restrittivo (camera/usb OFF)
       {
         source: "/(.*)",
         headers: [
@@ -102,8 +103,6 @@ const nextConfig: NextConfig = {
           },
         ],
       },
-
-      // ✅ PROFESSIONISTI: abilita camera + usb SOLO nel portale
       {
         source: "/professionisti/:path*",
         headers: [
