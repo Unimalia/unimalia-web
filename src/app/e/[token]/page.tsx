@@ -53,7 +53,7 @@ function InfoRow({
       <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
         {label}
       </div>
-      <div className="mt-1 text-sm text-neutral-900 whitespace-pre-wrap">{value}</div>
+      <div className="mt-1 whitespace-pre-wrap text-sm text-neutral-900">{value}</div>
     </div>
   );
 }
@@ -62,9 +62,7 @@ function EmergencyBasicView({ profile }: { profile: EmergencyProfile }) {
   return (
     <main className="mx-auto min-h-screen max-w-2xl bg-neutral-50 px-4 py-6">
       <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
-        <div className="text-sm font-semibold text-red-700">
-          Emergency Veterinary View
-        </div>
+        <div className="text-sm font-semibold text-red-700">Emergency Veterinary View</div>
         <div className="mt-1 text-sm text-red-900">
           Scheda emergenziale con dati essenziali. Per accesso clinico completo è
           necessario accesso professionale autorizzato.
@@ -99,10 +97,7 @@ function EmergencyBasicView({ profile }: { profile: EmergencyProfile }) {
           />
           <InfoRow label="Advanced summary" value={profile.advanced_summary} />
           <InfoRow label="Last visit" value={profile.last_visit_summary} />
-          <InfoRow
-            label="Last vaccination"
-            value={profile.last_vaccination_summary}
-          />
+          <InfoRow label="Last vaccination" value={profile.last_vaccination_summary} />
         </section>
       )}
 
@@ -113,10 +108,7 @@ function EmergencyBasicView({ profile }: { profile: EmergencyProfile }) {
           </div>
           <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <InfoRow label="Contact name" value={profile.emergency_contact_name} />
-            <InfoRow
-              label="Phone"
-              value={profile.emergency_contact_phone}
-            />
+            <InfoRow label="Phone" value={profile.emergency_contact_phone} />
           </div>
         </section>
       )}
@@ -128,7 +120,7 @@ function EmergencyBasicView({ profile }: { profile: EmergencyProfile }) {
   );
 }
 
-async function resolveInternalRedirect(animalId: string) {
+async function resolveInternalRedirect(_animalId: string) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -140,9 +132,9 @@ async function resolveInternalRedirect(animalId: string) {
   // 1. se user è owner dell'animale → redirect dashboard animale
   // 2. se user è veterinario con grant attivo → redirect cartella clinica completa
   // 3. se user è professionista senza grant → redirect vista limitata + richiesta accesso
-
-  // Placeholder temporaneo sicuro:
-  return `/animali/${animalId}`;
+  //
+  // Finché la logica non è implementata davvero, fallback fail-closed:
+  return null;
 }
 
 export default async function EmergencyTokenPage({ params }: PageProps) {
