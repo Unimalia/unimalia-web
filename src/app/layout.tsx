@@ -10,6 +10,9 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://unimalia.it"),
   title: "UNIMALIA",
   description: "Un ecosistema digitale per proteggere la vita dell’animale.",
+  alternates: {
+    canonical: "/",
+  },
   icons: {
     icon: "/favicon-32.png",
     apple: "/apple-touch-icon.png",
