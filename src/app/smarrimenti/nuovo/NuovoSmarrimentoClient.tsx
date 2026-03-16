@@ -1,10 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import MapsWithConsent from "../../_components/MapsWithConsent";
 import LocationPicker from "../../_components/LocationPicker";
 
-type ReportType = "lost" | "found" | "sighted";
 type ContactMode = "protected" | "phone_public";
 
 export default function NuovoSmarrimentoClient() {
@@ -15,7 +13,6 @@ export default function NuovoSmarrimentoClient() {
     lng: null,
   });
 
-  const [type, setType] = useState<ReportType>("lost");
   const [title, setTitle] = useState("");
   const [animalName, setAnimalName] = useState("");
   const [species, setSpecies] = useState("cane");
@@ -37,29 +34,29 @@ export default function NuovoSmarrimentoClient() {
     setResultMsg(null);
 
     if (!consent) {
-      setResultMsg("Devi accettare il consenso per pubblicare l’annuncio.");
+      setResultMsg("Devi accettare l’informativa per pubblicare l’annuncio.");
       return;
     }
 
-    if (!coords.lat || !coords.lng) {
+    if (coords.lat == null || coords.lng == null) {
       setResultMsg("Seleziona un punto sulla mappa (o cerca un indirizzo) prima di pubblicare.");
       return;
     }
 
+    if (!contactEmail.trim()) {
+      setResultMsg("Inserisci una email valida.");
+      return;
+    }
+
     setLoading(true);
+
     try {
       const res = await fetch("/api/reports/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          type,
-          title:
-            title.trim() ||
-            (type === "lost"
-              ? "Smarrimento"
-              : type === "found"
-                ? "Trovato in custodia"
-                : "Avvistamento"),
+          type: "lost",
+          title: title.trim() || "Smarrimento",
           animal_name: animalName.trim() || null,
           species: species.trim(),
           region: region.trim(),
@@ -78,12 +75,13 @@ export default function NuovoSmarrimentoClient() {
       });
 
       const data = await res.json().catch(() => ({}));
+
       if (!res.ok) {
         setResultMsg(data?.error || "Errore pubblicazione.");
         return;
       }
 
-      setResultMsg("✅ Perfetto! Controlla la tua email per confermare l’annuncio.");
+      setResultMsg("✅ Perfetto! Controlla la tua email per confermare lo smarrimento.");
     } catch {
       setResultMsg("Errore di rete o server.");
     } finally {
@@ -93,25 +91,12 @@ export default function NuovoSmarrimentoClient() {
 
   return (
     <div className="mx-auto w-full max-w-2xl px-4 py-8">
-      <h1 className="text-2xl font-extrabold text-zinc-900">Pubblica (rapido)</h1>
+      <h1 className="text-2xl font-extrabold text-zinc-900">Pubblica smarrimento</h1>
       <p className="mt-2 text-sm text-zinc-600">
-        Pubblica in 60 secondi e condividi subito su Facebook. Ti inviamo una mail per confermare.
+        Compila i dati principali e pubblica il tuo annuncio di smarrimento.
       </p>
 
       <form onSubmit={onSubmit} className="mt-6 grid gap-4">
-        <label className="grid gap-2 text-sm font-semibold text-zinc-800">
-          Tipo annuncio
-          <select
-            value={type}
-            onChange={(e) => setType(e.target.value as ReportType)}
-            className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm font-medium"
-          >
-            <option value="lost">Smarrito</option>
-            <option value="found">Trovato (in custodia)</option>
-            <option value="sighted">Avvistato</option>
-          </select>
-        </label>
-
         <label className="grid gap-2 text-sm font-semibold text-zinc-800">
           Titolo (breve)
           <input
@@ -178,7 +163,7 @@ export default function NuovoSmarrimentoClient() {
         </label>
 
         <label className="grid gap-2 text-sm font-semibold text-zinc-800">
-          Data evento
+          Data smarrimento
           <input
             type="date"
             value={eventDate}
@@ -188,26 +173,29 @@ export default function NuovoSmarrimentoClient() {
         </label>
 
         <div className="rounded-xl border border-zinc-200 bg-white p-4">
-          <div className="text-sm font-semibold text-zinc-900">Posizione (Google Maps)</div>
+          <div className="text-sm font-semibold text-zinc-900">Posizione</div>
+          <p className="mt-1 text-xs text-zinc-600">
+            Seleziona il punto sulla mappa oppure cerca un indirizzo.
+          </p>
 
           <div className="mt-3">
-            <MapsWithConsent>
-              <LocationPicker
-                apiKey={apiKey}
-                value={coords}
-                onChange={setCoords}
-                onAddress={(a) => {
-                  if (a.city && !locationText.trim()) setLocationText(a.city);
-                  if (a.province && !province.trim()) setProvince(a.province);
-                }}
-              />
-            </MapsWithConsent>
+            <LocationPicker
+              apiKey={apiKey}
+              value={coords}
+              onChange={setCoords}
+              onAddress={(a) => {
+                if (a.city && !locationText.trim()) setLocationText(a.city);
+                if (a.province && !province.trim()) setProvince(a.province);
+              }}
+            />
           </div>
 
           <div className="mt-3 text-xs text-zinc-600">
             Coordinate:{" "}
             <span className="font-semibold">
-              {coords.lat != null && coords.lng != null ? `${coords.lat}, ${coords.lng}` : "non selezionate"}
+              {coords.lat != null && coords.lng != null
+                ? `${coords.lat}, ${coords.lng}`
+                : "non selezionate"}
             </span>
           </div>
         </div>
@@ -271,7 +259,7 @@ export default function NuovoSmarrimentoClient() {
           disabled={loading}
           className="h-11 rounded-xl bg-black text-sm font-semibold text-white disabled:opacity-60"
         >
-          {loading ? "Pubblicazione..." : "Pubblica annuncio"}
+          {loading ? "Pubblicazione..." : "Pubblica smarrimento"}
         </button>
 
         {resultMsg ? (

@@ -6,7 +6,7 @@ type NavItem = { href: string; label: string };
 
 const nav: NavItem[] = [
   { href: "/smarrimenti", label: "Smarrimenti" },
-  { href: "/trovati-avvistati", label: "Trovati / Avvistati" },
+  { href: "/trovati", label: "Trovati / Avvistati" },
   { href: "/ritrovati", label: "Lieti Fine" },
   { href: "/adotta", label: "Adozioni" },
   { href: "/servizi", label: "Servizi" },
