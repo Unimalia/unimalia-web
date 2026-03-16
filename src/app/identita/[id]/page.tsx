@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { getBarcodeValue, getQrValue } from "@/lib/animalCodes";
 
 import { PageShell } from "@/_components/ui/page-shell";
 import { ButtonPrimary, ButtonSecondary } from "@/_components/ui/button";
@@ -109,21 +110,15 @@ export default function AnimalProfilePage() {
   }, [animal]);
 
   const qrValue = useMemo(() => {
+    const origin =
+      typeof window !== "undefined" ? window.location.origin : "https://unimalia.it";
     if (!animal) return "";
-    const code = (animal.unimalia_code || "").trim();
-    if (code) return `UNIMALIA:${code}`;
-    return `UNIMALIA:${animal.id}`;
+    return getQrValue(animal, origin);
   }, [animal]);
 
   const barcodeValue = useMemo(() => {
     if (!animal) return "";
-    const chip = normalizeChip(animal.chip_number);
-    if (chip) return chip;
-
-    const code = (animal.unimalia_code || "").trim();
-    if (code) return `UNIMALIA:${code}`;
-
-    return `UNIMALIA:${animal.id}`;
+    return getBarcodeValue(animal);
   }, [animal]);
 
   const codeStatusBadge = useMemo(() => {
@@ -286,15 +281,13 @@ export default function AnimalProfilePage() {
             <div className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4">
               <div className="text-xs text-zinc-500">Microchip / Codice</div>
               <div className="mt-1 text-sm font-semibold text-zinc-900">
-                {animal.chip_number
-                  ? normalizeChip(animal.chip_number)
-                  : qrValue || `UNIMALIA:${animal.id}`}
+                {animal.chip_number ? normalizeChip(animal.chip_number) : barcodeValue}
               </div>
             </div>
 
             <div className="mt-4">
               <AnimalCodes
-                qrValue={qrValue || `UNIMALIA:${animal.id}`}
+                qrValue={qrValue}
                 barcodeValue={barcodeValue}
                 caption=""
                 layout="stack"
