@@ -67,13 +67,14 @@ export default function RitrovatiPage() {
     setProvinceFilter("");
   }
 
-  if (loading) return <p>Caricamento ritrovati…</p>;
+  if (loading) return <p>Caricamento lieti fine…</p>;
 
   return (
     <main>
-      <h1 className="text-3xl font-bold tracking-tight">Ritrovati ✅</h1>
+      <h1 className="text-3xl font-bold tracking-tight">Lieti Fine ❤️</h1>
       <p className="mt-3 text-zinc-700">
-        Alcuni smarrimenti si sono risolti. Questo aiuta a capire che UNIMALIA funziona.
+        Qui raccogliamo i casi risolti positivamente: animali tornati a casa,
+        ritrovati o ricongiunti con la propria famiglia.
       </p>
 
       <div className="mt-6 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
@@ -122,7 +123,7 @@ export default function RitrovatiPage() {
 
       {filtered.length === 0 ? (
         <p className="mt-8 text-zinc-700">
-          Nessun ritrovamento corrisponde ai filtri selezionati.
+          Nessun lieto fine corrisponde ai filtri selezionati.
         </p>
       ) : (
         <div className="mt-8 grid gap-6 sm:grid-cols-2">
@@ -154,7 +155,7 @@ export default function RitrovatiPage() {
                     </h2>
 
                     <span className="shrink-0 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-                      Ritrovato ✅
+                      Lieto fine
                     </span>
                   </div>
 

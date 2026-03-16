@@ -11,19 +11,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 1,
     },
     {
-      url: `${baseUrl}/smarriti`,
+      url: `${baseUrl}/smarrimenti`,
       lastModified: new Date(),
       changeFrequency: "daily",
       priority: 0.9,
     },
     {
-      url: `${baseUrl}/trovati`,
-      lastModified: new Date(),
-      changeFrequency: "daily",
-      priority: 0.9,
-    },
-    {
-      url: `${baseUrl}/lieti-fine`,
+      url: `${baseUrl}/ritrovati`,
       lastModified: new Date(),
       changeFrequency: "daily",
       priority: 0.9,
