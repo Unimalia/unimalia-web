@@ -5,11 +5,16 @@ import "./globals.css";
 import AppShell from "../_components/AppShell";
 
 const GA_MEASUREMENT_ID = "G-YE91HM8ZLW";
+const SITE_URL = "https://www.unimalia.it";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://unimalia.it"),
-  title: "UNIMALIA",
-  description: "Un ecosistema digitale per proteggere la vita dell’animale.",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "UNIMALIA",
+    template: "%s | UNIMALIA",
+  },
+  description:
+    "UNIMALIA è un ecosistema digitale per proteggere la vita dell’animale: identità digitale, smarrimenti e strumenti per proprietari e professionisti.",
   alternates: {
     canonical: "/",
   },
@@ -19,17 +24,26 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "UNIMALIA",
-    description: "Un ecosistema digitale per proteggere la vita dell’animale.",
-    url: "https://unimalia.it/",
+    description:
+      "Un ecosistema digitale per proteggere la vita dell’animale: identità digitale, smarrimenti e strumenti per proprietari e professionisti.",
+    url: SITE_URL,
     siteName: "UNIMALIA",
-    images: ["/logo-512.png"],
+    images: [
+      {
+        url: "/logo-512.png",
+        width: 512,
+        height: 512,
+        alt: "Logo UNIMALIA",
+      },
+    ],
     locale: "it_IT",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
     title: "UNIMALIA",
-    description: "Un ecosistema digitale per proteggere la vita dell’animale.",
+    description:
+      "Un ecosistema digitale per proteggere la vita dell’animale: identità digitale, smarrimenti e strumenti per proprietari e professionisti.",
     images: ["/logo-512.png"],
   },
 };
@@ -46,8 +60,8 @@ export default async function RootLayout({
     "@context": "https://schema.org",
     "@type": "Organization",
     name: "UNIMALIA",
-    url: "https://unimalia.it/",
-    logo: "https://unimalia.it/logo-512.png",
+    url: SITE_URL,
+    logo: `${SITE_URL}/logo-512.png`,
   };
 
   return (
