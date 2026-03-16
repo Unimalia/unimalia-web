@@ -31,6 +31,19 @@ type CurrentProfessionalContext = {
   };
 };
 
+export type ProfessionalConsultMessageFileRow = {
+  id: string;
+  message_id: string;
+  consult_id: string;
+  filename: string | null;
+  path: string;
+  mime: string | null;
+  size: number | null;
+  created_at: string;
+  uploaded_by_user_id: string | null;
+  uploaded_by_professional_id: string | null;
+};
+
 function hoursFromNow(hours: number) {
   return new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
 }
@@ -90,6 +103,42 @@ export async function getCurrentProfessionalContext(): Promise<CurrentProfession
     userId,
     orgId,
     professional: data,
+  };
+}
+
+async function assertConsultParticipant(consultId: string) {
+  if (!isUuid(consultId)) {
+    throw new Error("consultId non valido");
+  }
+
+  const admin = supabaseAdmin();
+  const ctx = await getCurrentProfessionalContext();
+
+  const { data: consult, error } = await admin
+    .from("professional_consult_requests")
+    .select(
+      "id,sender_professional_id,receiver_professional_id,status,expires_at,sender_user_id,sender_org_id"
+    )
+    .eq("id", consultId)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  if (!consult) throw new Error("Consulto non trovato");
+
+  const current = normalizeStatus(consult);
+  const isSender = current.sender_professional_id === ctx.professional.id;
+  const isReceiver = current.receiver_professional_id === ctx.professional.id;
+  const isParticipant = isSender || isReceiver;
+
+  if (!isParticipant) {
+    throw new Error("Non autorizzato");
+  }
+
+  return {
+    ctx,
+    consult: current,
+    isSender,
+    isReceiver,
   };
 }
 
@@ -492,6 +541,16 @@ export async function getProfessionalConsultDetail(id: string) {
     throw new Error("Non autorizzato");
   }
 
+  const { data: animal, error: animalError } = await admin
+    .from("animals")
+    .select(
+      "id,name,species,breed,sex,birth_date,weight_kg,owner_id,owners(full_name,first_name,last_name)"
+    )
+    .eq("id", consult.animal_id)
+    .maybeSingle();
+
+  if (animalError) throw new Error(animalError.message);
+
   const { data: sharedRows, error: sharedError } = await admin
     .from("professional_consult_shared_events")
     .select("event_id")
@@ -534,14 +593,50 @@ export async function getProfessionalConsultDetail(id: string) {
 
   if (messagesError) throw new Error(messagesError.message);
 
+  const messageIds = (messages ?? []).map((m) => m.id);
+
+  const { data: messageFiles, error: messageFilesError } = await admin
+    .from("professional_consult_message_files")
+    .select(
+      "id,message_id,consult_id,filename,path,mime,size,created_at,uploaded_by_user_id,uploaded_by_professional_id"
+    )
+    .in(
+      "message_id",
+      messageIds.length ? messageIds : ["00000000-0000-0000-0000-000000000000"]
+    )
+    .order("created_at", { ascending: true });
+
+  if (messageFilesError) throw new Error(messageFilesError.message);
+
+  const filesByMessage: Record<string, ProfessionalConsultMessageFileRow[]> = {};
+  for (const file of messageFiles ?? []) {
+    if (!filesByMessage[file.message_id]) filesByMessage[file.message_id] = [];
+    filesByMessage[file.message_id].push(file);
+  }
+
   return {
     consult: normalizeStatus(consult),
     currentProfessionalId: ctx.professional.id,
+    animal: animal
+      ? {
+          ...animal,
+          microchip: null,
+          owner_name:
+            (animal as any)?.owners?.full_name ||
+            [((animal as any)?.owners?.first_name ?? "").trim(), ((animal as any)?.owners?.last_name ?? "").trim()]
+              .filter(Boolean)
+              .join(" ") ||
+            null,
+        }
+      : null,
     events: (events ?? []).map((event) => ({
       ...event,
       files: filesByEvent[event.id] ?? [],
     })),
-    messages: messages ?? [],
+    messages: (messages ?? []).map((message) => ({
+      ...message,
+      files: filesByMessage[message.id] ?? [],
+    })),
   };
 }
 
@@ -580,12 +675,14 @@ export async function updateProfessionalConsult(input: {
     if (!isReceiver) throw new Error("Solo il destinatario può accettare");
     if (current.status !== "pending") throw new Error("Il consulto non è più in attesa");
 
+    const now = new Date().toISOString();
+
     const { error: updateError } = await admin
       .from("professional_consult_requests")
       .update({
         status: "accepted",
-        accepted_at: new Date().toISOString(),
-        last_message_at: new Date().toISOString(),
+        accepted_at: now,
+        last_message_at: now,
       })
       .eq("id", input.id);
 
@@ -597,12 +694,14 @@ export async function updateProfessionalConsult(input: {
     if (!isReceiver) throw new Error("Solo il destinatario può rifiutare");
     if (current.status !== "pending") throw new Error("Il consulto non è più in attesa");
 
+    const now = new Date().toISOString();
+
     const { error: updateError } = await admin
       .from("professional_consult_requests")
       .update({
         status: "rejected",
-        rejected_at: new Date().toISOString(),
-        last_message_at: new Date().toISOString(),
+        rejected_at: now,
+        last_message_at: now,
       })
       .eq("id", input.id);
 
@@ -617,7 +716,9 @@ export async function updateProfessionalConsult(input: {
       throw new Error("Il consulto deve prima essere accettato");
     }
 
-    const { error: msgError } = await admin
+    const now = new Date().toISOString();
+
+    const { data: insertedMessage, error: msgError } = await admin
       .from("professional_consult_messages")
       .insert({
         consult_id: input.id,
@@ -626,28 +727,37 @@ export async function updateProfessionalConsult(input: {
         sender_display_name: senderName,
         message_type: "reply",
         message,
-      });
+      })
+      .select("id,consult_id,created_at")
+      .single();
 
     if (msgError) throw new Error(msgError.message);
+    if (!insertedMessage) throw new Error("Messaggio consulto non creato");
 
     const { error: updateError } = await admin
       .from("professional_consult_requests")
       .update({
         status: "replied",
-        replied_at: new Date().toISOString(),
-        last_message_at: new Date().toISOString(),
+        replied_at: now,
+        last_message_at: now,
       })
       .eq("id", input.id);
 
     if (updateError) throw new Error(updateError.message);
 
-    return { ok: true };
+    return {
+      ok: true,
+      messageId: insertedMessage.id,
+      message: insertedMessage,
+    };
   }
 
   if (input.action === "close") {
     if (!["accepted", "replied"].includes(current.status)) {
       throw new Error("Puoi chiudere solo un consulto attivo");
     }
+
+    const now = new Date().toISOString();
 
     const { error: noteError } = await admin
       .from("professional_consult_messages")
@@ -666,8 +776,8 @@ export async function updateProfessionalConsult(input: {
       .from("professional_consult_requests")
       .update({
         status: "closed",
-        closed_at: new Date().toISOString(),
-        last_message_at: new Date().toISOString(),
+        closed_at: now,
+        last_message_at: now,
       })
       .eq("id", input.id);
 
@@ -677,4 +787,66 @@ export async function updateProfessionalConsult(input: {
   }
 
   throw new Error("Azione non valida");
+}
+
+export async function createProfessionalConsultMessageFiles(input: {
+  consultId: string;
+  messageId: string;
+  files: Array<{
+    filename: string;
+    path: string;
+    mime?: string | null;
+    size?: number | null;
+  }>;
+}) {
+  if (!isUuid(input.consultId)) {
+    throw new Error("consultId non valido");
+  }
+
+  if (!isUuid(input.messageId)) {
+    throw new Error("messageId non valido");
+  }
+
+  if (!Array.isArray(input.files) || input.files.length === 0) {
+    throw new Error("Nessun file da registrare");
+  }
+
+  const admin = supabaseAdmin();
+  const { ctx, consult } = await assertConsultParticipant(input.consultId);
+
+  const { data: message, error: messageError } = await admin
+    .from("professional_consult_messages")
+    .select("id,consult_id")
+    .eq("id", input.messageId)
+    .eq("consult_id", input.consultId)
+    .maybeSingle();
+
+  if (messageError) throw new Error(messageError.message);
+  if (!message) throw new Error("Messaggio consulto non trovato");
+
+  if (!["accepted", "replied", "closed"].includes(consult.status)) {
+    throw new Error("Stato consulto non valido per gli allegati");
+  }
+
+  const rows = input.files.map((file) => ({
+    message_id: input.messageId,
+    consult_id: input.consultId,
+    filename: file.filename || null,
+    path: file.path,
+    mime: file.mime || null,
+    size: typeof file.size === "number" ? file.size : null,
+    uploaded_by_user_id: ctx.userId,
+    uploaded_by_professional_id: ctx.professional.id,
+  }));
+
+  const { data, error } = await admin
+    .from("professional_consult_message_files")
+    .insert(rows)
+    .select(
+      "id,message_id,consult_id,filename,path,mime,size,created_at,uploaded_by_user_id,uploaded_by_professional_id"
+    );
+
+  if (error) throw new Error(error.message);
+
+  return data ?? [];
 }
