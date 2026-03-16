@@ -20,7 +20,7 @@ function generateNonce() {
 function buildCsp(nonce: string) {
   return cspValue(`
     default-src 'self';
-    base-uri 'self';
+    base-uri 'none';
     object-src 'none';
     frame-ancestors 'none';
     form-action 'self';
@@ -28,8 +28,9 @@ function buildCsp(nonce: string) {
     img-src 'self' data: https: https://*.googleusercontent.com https://*.gstatic.com https://www.google-analytics.com https://www.googletagmanager.com;
     font-src 'self' data: https:;
     style-src 'self' 'unsafe-inline' https://cdn.iubenda.com;
+    style-src-attr 'unsafe-inline';
 
-    script-src 'self' 'nonce-${nonce}'
+    script-src 'self' 'nonce-${nonce}' 'strict-dynamic'
       https://vercel.live
       https://maps.googleapis.com
       https://maps.gstatic.com
@@ -39,7 +40,7 @@ function buildCsp(nonce: string) {
       https://www.google-analytics.com
       https://challenges.cloudflare.com;
 
-    script-src-elem 'self' 'nonce-${nonce}'
+    script-src-elem 'self' 'nonce-${nonce}' 'strict-dynamic'
       https://vercel.live
       https://maps.googleapis.com
       https://maps.gstatic.com
