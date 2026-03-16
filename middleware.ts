@@ -71,7 +71,6 @@ function buildCsp(nonce: string) {
     manifest-src 'self';
     worker-src 'self' blob:;
     media-src 'self' data: blob: https:;
-    frame-ancestors 'none';
     upgrade-insecure-requests;
   `);
 }
