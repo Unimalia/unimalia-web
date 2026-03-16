@@ -1,148 +1,21 @@
-"use client";
-
-import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
-import { createPortal } from "react-dom";
-import AuthButtons from "./AuthButtons";
+import AppShellClient from "./AppShellClient";
 
 type NavItem = { href: string; label: string };
 
-function cx(...classes: Array<string | false | null | undefined>) {
-  return classes.filter(Boolean).join(" ");
-}
+const nav: NavItem[] = [
+  { href: "/smarrimenti", label: "Smarrimenti" },
+  { href: "/ritrovati", label: "Ritrovati" },
+  { href: "/adotta", label: "Adozioni" },
+  { href: "/servizi", label: "Servizi" },
+  { href: "/identita", label: "Identità animale" },
+  { href: "/smarrimenti/nuovo", label: "Pubblica smarrimento" },
+];
 
-function isActivePath(pathname: string, href: string) {
-  if (href === "/") return pathname === "/";
-  return pathname === href || pathname.startsWith(href + "/");
-}
-
-function NavLink({
-  href,
-  label,
-  onClick,
-  fullWidth,
-}: {
-  href: string;
-  label: string;
-  onClick?: () => void;
-  fullWidth?: boolean;
-}) {
-  const pathname = usePathname();
-  const active = isActivePath(pathname, href);
-
-  return (
-    <Link
-      href={href}
-      onClick={onClick}
-      className={cx(
-        "relative inline-flex items-center rounded-xl px-3 py-2 text-sm font-medium transition",
-        fullWidth && "w-full justify-start",
-        active ? "bg-zinc-900 text-white" : "text-zinc-700 hover:bg-zinc-100 hover:text-black"
-      )}
-    >
-      {label}
-    </Link>
-  );
-}
+const proHref = "/professionisti/dashboard";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-
-  const [open, setOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => setMounted(true), []);
-
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
-    }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
-
-  useEffect(() => {
-    if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [open]);
-
-  const nav: NavItem[] = useMemo(
-    () => [
-      { href: "/smarrimenti", label: "Smarrimenti" },
-      { href: "/ritrovati", label: "Ritrovati" },
-      { href: "/adotta", label: "Adozioni" },
-      { href: "/servizi", label: "Servizi" },
-      { href: "/identita", label: "Identità animale" },
-      { href: "/smarrimenti/nuovo", label: "Pubblica smarrimento" },
-    ],
-    []
-  );
-
-  const proHref = "/professionisti/dashboard";
-
-  const mobileDrawer =
-    open && mounted
-      ? createPortal(
-          <div className="fixed inset-0 z-[1000] md:hidden">
-            <button
-              type="button"
-              className="absolute inset-0 cursor-default bg-black/30"
-              aria-label="Chiudi menu"
-              onClick={() => setOpen(false)}
-            />
-
-            <div className="absolute right-0 top-0 h-full w-[86%] max-w-sm border-l border-zinc-200 bg-white shadow-2xl">
-              <div className="flex h-16 items-center justify-between px-4">
-                <span className="text-sm font-semibold">Menu</span>
-                <button
-                  type="button"
-                  className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold"
-                  onClick={() => setOpen(false)}
-                  aria-label="Chiudi menu"
-                >
-                  ✕
-                </button>
-              </div>
-
-              <div className="px-2 pb-6">
-                <div className="flex flex-col gap-1 px-2">
-                  {nav.map((item) => (
-                    <NavLink
-                      key={item.href}
-                      href={item.href}
-                      label={item.label}
-                      onClick={() => setOpen(false)}
-                      fullWidth
-                    />
-                  ))}
-                </div>
-
-                <div className="mt-4 border-t border-zinc-200 px-4 pt-4">
-                  <Link
-                    href={proHref}
-                    onClick={() => setOpen(false)}
-                    className="inline-flex w-full items-center justify-center rounded-xl bg-black px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-900"
-                  >
-                    Professionisti
-                  </Link>
-
-                  <div className="mt-3">
-                    <AuthButtons onNavigate={() => setOpen(false)} />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>,
-          document.body
-        )
-      : null;
-
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900">
       <header className="sticky top-0 z-50 border-b border-zinc-200 bg-white/80 backdrop-blur">
@@ -158,44 +31,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             />
           </Link>
 
-          <div className="hidden min-w-0 flex-1 items-center justify-end gap-3 md:flex">
-            <nav className="flex min-w-0 flex-1 items-center justify-end gap-1 overflow-x-auto whitespace-nowrap">
-              {nav.map((item) => (
-                <NavLink key={item.href} href={item.href} label={item.label} />
-              ))}
-            </nav>
-
-            <Link
-              href={proHref}
-              className="inline-flex min-w-[124px] items-center justify-center rounded-xl bg-black px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-900"
-            >
-              Professionisti
-            </Link>
-
-            <AuthButtons />
-          </div>
-
-          <div className="flex items-center gap-2 md:hidden">
-            <Link
-              href={proHref}
-              className="inline-flex min-w-[124px] items-center justify-center rounded-xl bg-black px-3 py-2 text-sm font-semibold text-white transition hover:bg-zinc-900"
-            >
-              Professionisti
-            </Link>
-
-            <button
-              type="button"
-              className="inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-900 shadow-sm transition hover:bg-zinc-50"
-              onClick={() => setOpen(true)}
-              aria-label="Apri menu"
-            >
-              ☰
-            </button>
-          </div>
+          <AppShellClient nav={nav} proHref={proHref} />
         </div>
       </header>
-
-      {mobileDrawer}
 
       <main className="container-page py-8 sm:py-10">{children}</main>
 
