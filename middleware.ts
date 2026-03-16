@@ -19,16 +19,11 @@ function generateNonce() {
 
 function buildCsp(nonce: string) {
   return cspValue(`
-    default-src 'self';
+    default-src 'none';
     base-uri 'none';
     object-src 'none';
     frame-ancestors 'none';
     form-action 'self';
-
-    img-src 'self' data: https: https://*.googleusercontent.com https://*.gstatic.com https://www.google-analytics.com https://www.googletagmanager.com;
-    font-src 'self' data: https:;
-    style-src 'self' 'unsafe-inline' https://cdn.iubenda.com;
-    style-src-attr 'unsafe-inline';
 
     script-src 'self' 'nonce-${nonce}' 'strict-dynamic'
       https://vercel.live
@@ -52,6 +47,12 @@ function buildCsp(nonce: string) {
 
     script-src-attr 'none';
 
+    style-src 'self' 'unsafe-inline' https://cdn.iubenda.com;
+    style-src-elem 'self' 'unsafe-inline' https://cdn.iubenda.com;
+    style-src-attr 'unsafe-inline';
+
+    img-src 'self' data: https: https://*.googleusercontent.com https://*.gstatic.com https://www.google-analytics.com https://www.googletagmanager.com;
+    font-src 'self' data: https:;
     connect-src 'self'
       https://*.supabase.co
       https://maps.googleapis.com
@@ -67,6 +68,10 @@ function buildCsp(nonce: string) {
       https://google.com
       https://challenges.cloudflare.com;
 
+    manifest-src 'self';
+    worker-src 'self' blob:;
+    media-src 'self' data: blob: https:;
+    frame-ancestors 'none';
     upgrade-insecure-requests;
   `);
 }
