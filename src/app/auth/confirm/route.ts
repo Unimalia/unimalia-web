@@ -6,12 +6,6 @@ function normalizeCF(s: string) {
   return (s || "").replace(/\s+/g, "").trim().toUpperCase();
 }
 
-function normalizePhone(input: string) {
-  const raw = (input || "").replace(/\s+/g, "").trim();
-  if (!raw) return "";
-  return raw.startsWith("+") ? raw : `+39${raw}`;
-}
-
 function sanitizeNextPath(value: string | null) {
   if (!value) return "/identita";
   if (!value.startsWith("/")) return "/identita";
@@ -55,19 +49,12 @@ export async function GET(request: NextRequest) {
       {
         id: user.id,
         full_name: (meta.full_name ?? "").trim() || null,
-        phone: normalizePhone(meta.phone ?? "") || null,
         city: (meta.city ?? "").trim() || null,
         fiscal_code: normalizeCF(meta.fiscal_code ?? "") || null,
-        phone_verified: false,
       },
       { onConflict: "id" }
     );
   }
 
-  return NextResponse.redirect(
-    new URL(
-      `/login?mode=signup&onboarding=phone&next=${encodeURIComponent(next)}`,
-      requestUrl.origin
-    )
-  );
+  return NextResponse.redirect(new URL(next, requestUrl.origin));
 }
