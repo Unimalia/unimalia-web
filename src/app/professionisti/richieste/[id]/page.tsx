@@ -224,6 +224,126 @@ function normalizeChip(raw?: string | null) {
   return String(raw || "").replace(/\s+/g, "").trim();
 }
 
+function eventDateTs(e: { event_date?: string | null; created_at?: string | null }) {
+  const source = e.event_date || e.created_at || "";
+  const ts = source ? new Date(source).getTime() : 0;
+  return Number.isFinite(ts) ? ts : 0;
+}
+
+function sortDescByDate<T extends { event_date?: string | null; created_at?: string | null }>(rows: T[]) {
+  return [...rows].sort((a, b) => eventDateTs(b) - eventDateTs(a));
+}
+
+function inferAllergies(events: ConsultDetail["events"]) {
+  return sortDescByDate(events)
+    .filter((e) => {
+      const text = `${e.title || ""} ${e.description || ""}`.toLowerCase();
+      return text.includes("allerg");
+    })
+    .slice(0, 5)
+    .map((e) => ({
+      label: e.title || e.description || "Allergia",
+      date: e.event_date || e.created_at || null,
+    }));
+}
+
+function inferActiveTherapies(events: ConsultDetail["events"]) {
+  const now = Date.now();
+
+  return sortDescByDate(events)
+    .filter((e) => e.type === "therapy")
+    .filter((e) => {
+      const endDate =
+        e?.meta?.therapy_end_date ||
+        e?.meta?.therapyEndDate ||
+        null;
+
+      if (!endDate) return true;
+
+      const ts = new Date(endDate).getTime();
+      if (!Number.isFinite(ts)) return true;
+      return ts >= now;
+    })
+    .slice(0, 5)
+    .map((e) => ({
+      label: e.description || e.title || "Terapia attiva",
+      date: e.event_date || e.created_at || null,
+    }));
+}
+
+function inferRecentTherapies(events: ConsultDetail["events"]) {
+  return sortDescByDate(events)
+    .filter((e) => e.type === "therapy")
+    .slice(0, 5)
+    .map((e) => ({
+      label: e.description || e.title || "Terapia",
+      date: e.event_date || e.created_at || null,
+    }));
+}
+
+function inferChronicConditions(events: ConsultDetail["events"]) {
+  return sortDescByDate(events)
+    .filter((e) => e.type === "chronic_condition")
+    .slice(0, 5)
+    .map((e) => ({
+      label: e.title || e.description || "Patologia cronica",
+      date: e.event_date || e.created_at || null,
+    }));
+}
+
+function inferFollowUps(events: ConsultDetail["events"]) {
+  return sortDescByDate(events)
+    .filter((e) => e.type === "follow_up")
+    .slice(0, 5)
+    .map((e) => ({
+      label: e.title || e.description || "Ricontrollo",
+      date: e.event_date || e.created_at || null,
+    }));
+}
+
+function findLatestByType(events: ConsultDetail["events"], type: string) {
+  return sortDescByDate(events).find((e) => e.type === type) ?? null;
+}
+
+function findExpiringVaccines(events: ConsultDetail["events"]) {
+  const now = Date.now();
+  const in30Days = now + 30 * 24 * 60 * 60 * 1000;
+
+  return sortDescByDate(events)
+    .filter((e) => e.type === "vaccine")
+    .map((e) => {
+      const due =
+        e?.meta?.next_due_date ||
+        e?.meta?.nextDueDate ||
+        null;
+
+      return {
+        event: e,
+        due,
+      };
+    })
+    .filter((x) => !!x.due)
+    .filter((x) => {
+      const ts = new Date(String(x.due)).getTime();
+      return Number.isFinite(ts) && ts <= in30Days;
+    })
+    .slice(0, 5);
+}
+
+function buildDownloadHref(file: { path?: string | null; filename?: string | null }) {
+  if (!file?.path) return null;
+
+  const params = new URLSearchParams({
+    path: file.path,
+  });
+
+  if (file.filename) {
+    params.set("filename", file.filename);
+  }
+
+  return `/api/clinic-events/files/download?${params.toString()}`;
+}
+
 export default function ProfessionistiRichiestaDettaglioPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -382,6 +502,36 @@ export default function ProfessionistiRichiestaDettaglioPage() {
     });
   }, [data, filter, search]);
 
+  const quickStatus = useMemo(() => {
+    if (!data) return null;
+
+    const events = data.events;
+    const latestWeightEvent = sortDescByDate(events).find((e) => extractWeightKg(e) !== null) ?? null;
+    const latestWeight = latestWeightEvent ? extractWeightKg(latestWeightEvent) : null;
+
+    const allergies = inferAllergies(events);
+    const activeTherapies = inferActiveTherapies(events);
+    const recentTherapies = inferRecentTherapies(events);
+    const chronicConditions = inferChronicConditions(events);
+    const followUps = inferFollowUps(events);
+    const latestVisit = findLatestByType(events, "visit");
+    const latestVaccine = findLatestByType(events, "vaccine");
+    const expiringVaccines = findExpiringVaccines(events);
+
+    return {
+      latestWeight,
+      latestWeightDate: latestWeightEvent?.event_date || latestWeightEvent?.created_at || null,
+      allergies,
+      activeTherapies,
+      recentTherapies,
+      chronicConditions,
+      followUps,
+      latestVisit,
+      latestVaccine,
+      expiringVaccines,
+    };
+  }, [data]);
+
   async function runAction(action: "accept" | "reject" | "close") {
     try {
       setSaving(true);
@@ -509,17 +659,17 @@ export default function ProfessionistiRichiestaDettaglioPage() {
                 </span>
               </div>
 
-              <h1 className="mt-4 text-xl font-semibold tracking-tight text-zinc-900 md:text-2xl">
+              <h1 className="mt-4 text-2xl font-semibold tracking-tight text-zinc-900 md:text-3xl">
                 {data.consult.animal_name} <span className="text-zinc-400">•</span>{" "}
                 <span className="text-zinc-700">{data.consult.subject}</span>
               </h1>
 
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-600">
+              <p className="mt-2 max-w-3xl text-base leading-7 text-zinc-600">
                 Cartella clinica condivisa da {data.consult.sender_display_name} a{" "}
                 {data.consult.receiver_display_name}.
               </p>
 
-              <p className="mt-2 text-xs text-zinc-500">
+              <p className="mt-2 text-sm text-zinc-500">
                 Creato il {new Date(data.consult.created_at).toLocaleString("it-IT")} · Scade il{" "}
                 {new Date(data.consult.expires_at).toLocaleString("it-IT")}
               </p>
@@ -532,7 +682,7 @@ export default function ProfessionistiRichiestaDettaglioPage() {
             <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
               Animale
             </div>
-            <div className="mt-2 text-sm font-semibold text-zinc-900">
+            <div className="mt-2 text-base font-semibold text-zinc-900">
               {animal?.name || data.consult.animal_name || "—"}
             </div>
             <div className="mt-1 text-sm text-zinc-600">
@@ -545,7 +695,7 @@ export default function ProfessionistiRichiestaDettaglioPage() {
             <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
               Microchip / Codice
             </div>
-            <div className="mt-2 break-all text-sm font-semibold text-zinc-900">
+            <div className="mt-2 break-all text-base font-semibold text-zinc-900">
               {normalizeChip(animal?.chip_number) || "Non disponibile"}
             </div>
             <div className="mt-1 text-xs text-zinc-500">
@@ -557,105 +707,143 @@ export default function ProfessionistiRichiestaDettaglioPage() {
             <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
               Proprietario
             </div>
-            <div className="mt-2 text-sm font-semibold text-zinc-900">
+            <div className="mt-2 text-base font-semibold text-zinc-900">
               {animal?.owner_name || "Non disponibile"}
             </div>
             <div className="mt-1 text-sm text-zinc-600">{animal?.owner_email || "—"}</div>
           </div>
         </div>
+      </section>
 
-        {/* Stato clinico rapido */}
-        <section className="mt-4 rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-semibold text-zinc-900">
-            Stato clinico rapido
-          </h2>
+      <section className="mt-6 rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-zinc-900">Stato clinico rapido</h2>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <div className="text-sm font-semibold text-zinc-700">
-                Età / Peso
-              </div>
-              <div className="text-sm text-zinc-600">
-                Età: — | Peso: 35 kg • 06/03/2026
-              </div>
-            </div>
-
-            <div>
-              <div className="text-sm font-semibold text-zinc-700">
-                Allergie
-              </div>
-              <ul className="ml-4 list-disc text-sm text-zinc-600">
-                <li>amoxicillina • 06/03/2026</li>
-                <li>pollo • 06/03/2026</li>
-              </ul>
-            </div>
-
-            <div>
-              <div className="text-sm font-semibold text-zinc-700">
-                Terapie attive
-              </div>
-              <ul className="ml-4 list-disc text-sm text-zinc-600">
-                <li>terapia a base di cortisone 2 volte al giorno 1mg</li>
-              </ul>
-            </div>
-
-            <div>
-              <div className="text-sm font-semibold text-zinc-700">
-                Ultime terapie
-              </div>
-              <ul className="ml-4 list-disc text-sm text-zinc-600">
-                <li>3 compresse al giorno di xxx • 05/03/2026</li>
-                <li>terapia a base di cortisone 3 volte al giorno per 4 giorni a base di ccc • 05/03/2026</li>
-                <li>2 applicazioni al giorno di yyy • 05/03/2026</li>
-              </ul>
-            </div>
-
-            <div>
-              <div className="text-sm font-semibold text-zinc-700">
-                Patologie croniche
-              </div>
-              <ul className="ml-4 list-disc text-sm text-zinc-600">
-                <li>osteoartrite • 09/03/2026</li>
-              </ul>
-            </div>
-
-            <div>
-              <div className="text-sm font-semibold text-zinc-700">
-                Ricontrolli programmati
-              </div>
-              <div className="text-sm text-zinc-600">
-                —
-              </div>
-            </div>
-
-            <div>
-              <div className="text-sm font-semibold text-zinc-700">
-                Ultima visita
-              </div>
-              <div className="text-sm text-zinc-600">
-                06/03/2026
-              </div>
-            </div>
-
-            <div>
-              <div className="text-sm font-semibold text-zinc-700">
-                Ultima vaccinazione
-              </div>
-              <div className="text-sm text-zinc-600">
-                05/03/2026
-              </div>
-            </div>
-
-            <div>
-              <div className="text-sm font-semibold text-zinc-700">
-                Vaccinazioni scadute / in scadenza
-              </div>
-              <div className="text-sm text-zinc-600">
-                —
-              </div>
+        <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+            <div className="text-sm font-semibold text-zinc-700">Età / Peso</div>
+            <div className="mt-2 text-sm text-zinc-600">
+              Età: — | Peso:{" "}
+              {quickStatus?.latestWeight !== null && quickStatus?.latestWeight !== undefined
+                ? formatWeightLabel(quickStatus.latestWeight)
+                : "—"}
+              {quickStatus?.latestWeightDate
+                ? ` • ${formatEventDateIT(quickStatus.latestWeightDate)}`
+                : ""}
             </div>
           </div>
-        </section>
+
+          <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+            <div className="text-sm font-semibold text-zinc-700">Allergie</div>
+            {quickStatus?.allergies?.length ? (
+              <ul className="mt-2 space-y-1 text-sm text-zinc-600">
+                {quickStatus.allergies.map((item, idx) => (
+                  <li key={`${item.label}-${idx}`}>
+                    {item.label} {item.date ? `• ${formatEventDateIT(item.date)}` : ""}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="mt-2 text-sm text-zinc-600">—</div>
+            )}
+          </div>
+
+          <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+            <div className="text-sm font-semibold text-zinc-700">Terapie attive</div>
+            {quickStatus?.activeTherapies?.length ? (
+              <ul className="mt-2 space-y-1 text-sm text-zinc-600">
+                {quickStatus.activeTherapies.map((item, idx) => (
+                  <li key={`${item.label}-${idx}`}>
+                    {item.label} {item.date ? `• ${formatEventDateIT(item.date)}` : ""}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="mt-2 text-sm text-zinc-600">—</div>
+            )}
+          </div>
+
+          <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+            <div className="text-sm font-semibold text-zinc-700">Ultime terapie</div>
+            {quickStatus?.recentTherapies?.length ? (
+              <ul className="mt-2 space-y-1 text-sm text-zinc-600">
+                {quickStatus.recentTherapies.map((item, idx) => (
+                  <li key={`${item.label}-${idx}`}>
+                    {item.label} {item.date ? `• ${formatEventDateIT(item.date)}` : ""}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="mt-2 text-sm text-zinc-600">—</div>
+            )}
+          </div>
+
+          <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+            <div className="text-sm font-semibold text-zinc-700">Patologie croniche</div>
+            {quickStatus?.chronicConditions?.length ? (
+              <ul className="mt-2 space-y-1 text-sm text-zinc-600">
+                {quickStatus.chronicConditions.map((item, idx) => (
+                  <li key={`${item.label}-${idx}`}>
+                    {item.label} {item.date ? `• ${formatEventDateIT(item.date)}` : ""}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="mt-2 text-sm text-zinc-600">—</div>
+            )}
+          </div>
+
+          <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+            <div className="text-sm font-semibold text-zinc-700">Ricontrolli programmati</div>
+            {quickStatus?.followUps?.length ? (
+              <ul className="mt-2 space-y-1 text-sm text-zinc-600">
+                {quickStatus.followUps.map((item, idx) => (
+                  <li key={`${item.label}-${idx}`}>
+                    {item.label} {item.date ? `• ${formatEventDateIT(item.date)}` : ""}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="mt-2 text-sm text-zinc-600">—</div>
+            )}
+          </div>
+
+          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+            <div className="text-sm font-semibold text-zinc-700">Ultima visita</div>
+            <div className="mt-2 text-sm text-zinc-600">
+              {quickStatus?.latestVisit
+                ? formatEventDateIT(quickStatus.latestVisit.event_date || quickStatus.latestVisit.created_at)
+                : "—"}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+            <div className="text-sm font-semibold text-zinc-700">Ultima vaccinazione</div>
+            <div className="mt-2 text-sm text-zinc-600">
+              {quickStatus?.latestVaccine
+                ? formatEventDateIT(
+                    quickStatus.latestVaccine.event_date || quickStatus.latestVaccine.created_at
+                  )
+                : "—"}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+            <div className="text-sm font-semibold text-zinc-700">
+              Vaccinazioni scadute / in scadenza
+            </div>
+            {quickStatus?.expiringVaccines?.length ? (
+              <ul className="mt-2 space-y-1 text-sm text-zinc-600">
+                {quickStatus.expiringVaccines.map((item, idx) => (
+                  <li key={`${item.event.id}-${idx}`}>
+                    {(item.event.title || "Vaccinazione")} • {formatEventDateIT(item.due)}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="mt-2 text-sm text-zinc-600">—</div>
+            )}
+          </div>
+        </div>
       </section>
 
       {canAcceptReject ? (
@@ -686,7 +874,7 @@ export default function ProfessionistiRichiestaDettaglioPage() {
       <div className="mt-6 grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
         <section className="space-y-4 rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
           <div>
-            <h2 className="text-base font-semibold text-zinc-900">Cartella clinica condivisa</h2>
+            <h2 className="text-lg font-semibold text-zinc-900">Cartella clinica condivisa</h2>
             <p className="mt-1 text-sm leading-6 text-zinc-600">
               Vista rapida degli eventi clinici condivisi nel consulto, con filtri e dettaglio
               completo al click.
@@ -731,7 +919,7 @@ export default function ProfessionistiRichiestaDettaglioPage() {
               />
 
               <div className="flex items-center rounded-2xl border border-zinc-200 bg-zinc-50 px-4 text-xs font-medium text-zinc-600">
-                Anteprima breve come in cartella clinica: apri l’evento per vedere tutto.
+                Anteprima breve: apri l’evento per leggere tutto e gestire gli allegati.
               </div>
             </div>
           </div>
@@ -814,7 +1002,7 @@ export default function ProfessionistiRichiestaDettaglioPage() {
         </section>
 
         <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <h2 className="text-base font-semibold text-zinc-900">Messaggi / referto</h2>
+          <h2 className="text-lg font-semibold text-zinc-900">Messaggi / referto</h2>
 
           <div className="mt-4 space-y-3">
             {data.messages.map((msg) => {
@@ -880,6 +1068,11 @@ export default function ProfessionistiRichiestaDettaglioPage() {
                   </button>
                 ) : null}
               </div>
+
+              <p className="mt-3 text-xs text-zinc-500">
+                Allegati al consulto: per ora puoi aggiungerli ai singoli eventi condivisi aprendo
+                il dettaglio evento qui a sinistra.
+              </p>
             </div>
           ) : null}
         </section>
@@ -891,7 +1084,7 @@ export default function ProfessionistiRichiestaDettaglioPage() {
             <div className="p-5 md:p-6">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <h2 className="text-lg font-semibold leading-6 text-zinc-900">
+                  <h2 className="text-xl font-semibold leading-6 text-zinc-900">
                     {selectedEvent.title || typeLabel(selectedEvent.type)}
                   </h2>
 
@@ -941,24 +1134,35 @@ export default function ProfessionistiRichiestaDettaglioPage() {
                     <div className="mt-2 text-xs text-zinc-600">Nessun allegato.</div>
                   ) : (
                     <ul className="mt-3 space-y-2">
-                      {selectedEvent.files.map((file) => (
-                        <li key={file.id}>
-                          <a
-                            href={file.path || "#"}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-100"
+                      {selectedEvent.files.map((file) => {
+                        const href = buildDownloadHref(file);
+
+                        return href ? (
+                          <li key={file.id}>
+                            <a
+                              href={href}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-100"
+                            >
+                              📎 {file.filename || "File allegato"}
+                            </a>
+                          </li>
+                        ) : (
+                          <li
+                            key={file.id}
+                            className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-800"
                           >
                             📎 {file.filename || "File allegato"}
-                          </a>
-                        </li>
-                      ))}
+                          </li>
+                        );
+                      })}
                     </ul>
                   )}
 
                   <label className="mt-4 block">
                     <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-zinc-700">
-                      Aggiungi allegati
+                      Aggiungi allegati all’evento
                     </span>
 
                     <input

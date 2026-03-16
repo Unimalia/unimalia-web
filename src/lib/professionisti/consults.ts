@@ -512,7 +512,7 @@ export async function getProfessionalConsultDetail(id: string) {
 
   const { data: files, error: filesError } = await admin
     .from("animal_clinic_event_files")
-    .select("id,event_id,filename,mime,size,created_at")
+    .select("id,event_id,filename,path,mime,size,created_at")
     .in("event_id", eventIds.length ? eventIds : ["00000000-0000-0000-0000-000000000000"])
     .order("created_at", { ascending: true });
 
