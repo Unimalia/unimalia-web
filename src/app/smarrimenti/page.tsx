@@ -12,9 +12,7 @@ type LostEvent = {
   id: string;
   created_at: string;
   reporter_id: string;
-
   animal_id: string | null;
-
   species: string;
   animal_name: string | null;
   description: string;
@@ -26,8 +24,6 @@ type LostEvent = {
   lng: number | null;
   contact_phone: string | null;
   contact_email: string | null;
-
-  // 👇 Supabase spesso torna un array anche se la FK è 1:1
   animals?: { name: string; species: string }[] | null;
 };
 
@@ -91,6 +87,7 @@ export default function SmarrimentiPage() {
   const filtered = useMemo(() => {
     const c = cityFilter.trim().toLowerCase();
     const p = provinceFilter.trim().toLowerCase();
+
     return items.filter((i) => {
       const cityOk = !c || (i.city ?? "").toLowerCase().includes(c);
       const provOk = !p || (i.province ?? "").toLowerCase() === p;
@@ -107,17 +104,9 @@ export default function SmarrimentiPage() {
     if (item.lat != null && item.lng != null) {
       return `https://www.google.com/maps?q=${item.lat},${item.lng}`;
     }
+
     const q = `${item.city || ""} ${item.province || ""} Italia`.trim();
     return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
-  }
-
-  // embed pubblico (senza API key)
-  function mapsEmbedUrl(item: LostEvent) {
-    if (item.lat != null && item.lng != null) {
-      return `https://www.google.com/maps?q=${item.lat},${item.lng}&output=embed`;
-    }
-    const q = `${item.city || ""} ${item.province || ""} Italia`.trim();
-    return `https://www.google.com/maps?q=${encodeURIComponent(q)}&output=embed`;
   }
 
   function detailUrl(item: LostEvent) {
@@ -146,7 +135,9 @@ export default function SmarrimentiPage() {
         .update({ status: "home" })
         .eq("id", item.animal_id);
 
-      if (e2) console.warn("Impossibile aggiornare stato animale:", e2.message);
+      if (e2) {
+        console.warn("Impossibile aggiornare stato animale:", e2.message);
+      }
     }
 
     setItems((prev) => prev.filter((x) => x.id !== item.id));
@@ -161,8 +152,8 @@ export default function SmarrimentiPage() {
         boxed
         actions={
           <>
-            <ButtonSecondary href="/smarrimenti/miei">I miei</ButtonSecondary>
-            <ButtonPrimary href="/smarrimenti/nuovo">+ Nuovo</ButtonPrimary>
+            <ButtonSecondary href="/smarrimenti/miei">I miei annunci</ButtonSecondary>
+            <ButtonPrimary href="/smarrimenti/nuovo">Pubblica smarrimento</ButtonPrimary>
           </>
         }
       >
@@ -181,62 +172,70 @@ export default function SmarrimentiPage() {
   return (
     <PageShell
       title="Smarrimenti"
-      subtitle="Segnalazioni attive di animali smarriti."
+      subtitle="Segnalazioni attive di animali smarriti. Se hai perso un animale, pubblica qui il tuo annuncio."
       backFallbackHref="/"
       boxed={false}
       actions={
         <>
-          <ButtonSecondary href="/smarrimenti/miei">I miei</ButtonSecondary>
-          <ButtonPrimary href="/smarrimenti/nuovo">+ Nuovo</ButtonPrimary>
+          <ButtonSecondary href="/smarrimenti/miei">I miei annunci</ButtonSecondary>
+          <ButtonPrimary href="/smarrimenti/nuovo">Pubblica smarrimento</ButtonPrimary>
         </>
       }
     >
-      {/* FILTRI */}
       <Card>
-        <div className="grid gap-3 sm:grid-cols-3">
-          <div>
-            <label className="block text-sm font-semibold text-zinc-900">
-              Città
-            </label>
-            <input
-              className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900"
-              placeholder="Es. Firenze"
-              value={cityFilter}
-              onChange={(e) => setCityFilter(e.target.value)}
-            />
+        <div className="space-y-4">
+          <p className="text-sm text-zinc-700">
+            Cerca per città o provincia per trovare gli annunci attivi nella tua zona.
+          </p>
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div>
+              <label className="block text-sm font-semibold text-zinc-900">
+                Città
+              </label>
+              <input
+                className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900"
+                placeholder="Es. Firenze"
+                value={cityFilter}
+                onChange={(e) => setCityFilter(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-zinc-900">
+                Provincia
+              </label>
+              <select
+                className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900"
+                value={provinceFilter}
+                onChange={(e) => setProvinceFilter(e.target.value)}
+              >
+                <option value="">Tutte</option>
+                {provinces.map((p) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-end">
+              <button
+                type="button"
+                onClick={resetFilters}
+                className="w-full rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+              >
+                Reset
+              </button>
+            </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-semibold text-zinc-900">
-              Provincia
-            </label>
-            <select
-              className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900"
-              value={provinceFilter}
-              onChange={(e) => setProvinceFilter(e.target.value)}
-            >
-              <option value="">Tutte</option>
-              {provinces.map((p) => (
-                <option key={p} value={p}>
-                  {p}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex items-end">
-            <button
-              type="button"
-              onClick={resetFilters}
-              className="w-full rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
-            >
-              Reset
-            </button>
-          </div>
+          <p className="text-xs text-zinc-500">
+            Risultati: <span className="font-medium text-zinc-700">{filtered.length}</span>
+          </p>
         </div>
       </Card>
 
-      {/* LISTA */}
       {filtered.length === 0 ? (
         <div className="mt-6">
           <Card>
@@ -298,17 +297,6 @@ export default function SmarrimentiPage() {
 
                   <p className="mt-3 text-sm text-zinc-700">{item.description}</p>
 
-                  {/* MAPPA SEMPRE VISIBILE */}
-                  <div className="mt-4 overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50">
-                    <iframe
-                      title={`Mappa ${item.id}`}
-                      src={mapsEmbedUrl(item)}
-                      className="h-56 w-full"
-                      loading="lazy"
-                      referrerPolicy="no-referrer-when-downgrade"
-                    />
-                  </div>
-
                   <div className="mt-4 flex flex-wrap gap-2">
                     <a
                       href={detailUrl(item)}
@@ -323,7 +311,7 @@ export default function SmarrimentiPage() {
                       rel="noreferrer"
                       className="inline-flex items-center justify-center rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800"
                     >
-                      Google Maps
+                      Apri su Google Maps
                     </a>
                   </div>
                 </div>
