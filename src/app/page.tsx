@@ -6,11 +6,14 @@ export const metadata: Metadata = {
   title: "UNIMALIA | Identità animale digitale, dati clinici e smarrimenti",
   description:
     "UNIMALIA aiuta proprietari e professionisti a gestire identità animale, accessi clinici controllati, consulti e smarrimenti in modo semplice e affidabile.",
+  alternates: {
+    canonical: "https://unimalia.it/",
+  },
   openGraph: {
     title: "UNIMALIA | Identità animale digitale, dati clinici e smarrimenti",
     description:
       "Identità animale, accessi clinici controllati, consulti e smarrimenti: tutto in un unico ecosistema digitale.",
-    url: "https://www.unimalia.it/",
+    url: "https://unimalia.it/",
     siteName: "UNIMALIA",
     images: ["/logo-512.png"],
     locale: "it_IT",
