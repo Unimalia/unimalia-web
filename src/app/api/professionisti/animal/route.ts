@@ -30,6 +30,17 @@ function isUuid(value: string) {
   );
 }
 
+function normalizeAnimalRef(value: string) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+
+  if (/^unimalia[:\-]/i.test(raw)) {
+    return raw.replace(/^unimalia[:\-]/i, "").trim();
+  }
+
+  return raw;
+}
+
 async function getProfessionalRefs(userId: string) {
   const admin = supabaseAdmin();
   const refs = new Set<string>();
@@ -78,6 +89,60 @@ async function getProfessionalOrgId(userId: string) {
   };
 }
 
+async function resolveAnimalByRef(animalRef: string) {
+  const admin = supabaseAdmin();
+
+  const ref = normalizeAnimalRef(animalRef);
+
+  if (!ref) return { data: null, error: { message: "animalId mancante" } };
+
+  const selectFields = `
+    id,
+    created_at,
+    name,
+    species,
+    breed,
+    color,
+    size,
+    sex,
+    sterilized,
+    birth_date,
+    birth_date_is_estimated,
+    chip_number,
+    microchip_verified,
+    microchip_verified_at,
+    microchip_verified_org_id,
+    microchip_verified_by_label,
+    unimalia_code,
+    photo_url,
+    owner_id,
+    owner_claim_status,
+    owner_claimed_at,
+    created_by_role,
+    created_by_org_id,
+    origin_org_id,
+    status
+  `;
+
+  if (isUuid(ref)) {
+    const byId = await admin
+      .from("animals")
+      .select(selectFields)
+      .eq("id", ref)
+      .maybeSingle();
+
+    if (byId.data) return byId;
+  }
+
+  const byCode = await admin
+    .from("animals")
+    .select(selectFields)
+    .eq("unimalia_code", ref)
+    .maybeSingle();
+
+  return byCode;
+}
+
 export async function GET(req: NextRequest) {
   try {
     const supabase = await createClient();
@@ -102,40 +167,13 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const animalId = (req.nextUrl.searchParams.get("animalId") || "").trim();
+    const animalRef = (req.nextUrl.searchParams.get("animalId") || "").trim();
 
-    if (!animalId) {
+    if (!animalRef) {
       return NextResponse.json({ error: "animalId mancante" }, { status: 400 });
     }
 
-    if (!isUuid(animalId)) {
-      return NextResponse.json({ error: "animalId non valido" }, { status: 400 });
-    }
-
-    const animalResult = await admin
-      .from("animals")
-      .select(`
-        id,
-        name,
-        species,
-        breed,
-        color,
-        size,
-        sex,
-        sterilized,
-        birth_date,
-        chip_number,
-        unimalia_code,
-        photo_url,
-        owner_id,
-        owner_claim_status,
-        owner_claimed_at,
-        created_by_role,
-        created_by_org_id,
-        origin_org_id
-      `)
-      .eq("id", animalId)
-      .single();
+    const animalResult = await resolveAnimalByRef(animalRef);
 
     if (animalResult.error || !animalResult.data) {
       return NextResponse.json({ error: "Animale non trovato" }, { status: 404 });
@@ -146,7 +184,7 @@ export async function GET(req: NextRequest) {
     const grantResult = await admin
       .from("animal_access_grants")
       .select("id, grantee_id, status")
-      .eq("animal_id", animalId)
+      .eq("animal_id", animal.id)
       .in("grantee_id", refs)
       .in("status", ["active", "approved"]);
 
@@ -265,6 +303,7 @@ export async function POST(req: NextRequest) {
       .insert(insertPayload)
       .select(`
         id,
+        created_at,
         name,
         species,
         breed,
@@ -273,7 +312,12 @@ export async function POST(req: NextRequest) {
         sex,
         sterilized,
         birth_date,
+        birth_date_is_estimated,
         chip_number,
+        microchip_verified,
+        microchip_verified_at,
+        microchip_verified_org_id,
+        microchip_verified_by_label,
         unimalia_code,
         photo_url,
         owner_id,
@@ -281,7 +325,8 @@ export async function POST(req: NextRequest) {
         owner_claimed_at,
         created_by_role,
         created_by_org_id,
-        origin_org_id
+        origin_org_id,
+        status
       `)
       .single();
 
