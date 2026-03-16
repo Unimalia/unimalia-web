@@ -540,7 +540,7 @@ export default function LoginClient() {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4" autoComplete="on">
           {mode === "signup" && (
             <>
               <div>
@@ -597,27 +597,37 @@ export default function LoginClient() {
           )}
 
           <div>
-            <label className="block text-sm font-medium">Email</label>
+            <label htmlFor="email" className="block text-sm font-medium">Email</label>
             <input
+              id="email"
+              name="email"
               className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="tuo@email.it"
-              autoComplete="email"
+              autoComplete="username"
+              autoCapitalize="none"
+              spellCheck={false}
+              inputMode="email"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium">Password</label>
+            <label htmlFor="password" className="block text-sm font-medium">Password</label>
             <input
+              id="password"
+              name={mode === "signup" ? "new-password" : "password"}
               className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder={mode === "signup" ? "Minimo 12 caratteri" : "La tua password"}
               autoComplete={mode === "signup" ? "new-password" : "current-password"}
+              autoCapitalize="none"
+              spellCheck={false}
+              minLength={mode === "signup" ? 12 : undefined}
               required
             />
             {mode === "signup" && (
@@ -630,14 +640,19 @@ export default function LoginClient() {
 
           {mode === "signup" && (
             <div>
-              <label className="block text-sm font-medium">Conferma password</label>
+              <label htmlFor="confirm-password" className="block text-sm font-medium">Conferma password</label>
               <input
+                id="confirm-password"
+                name="confirm-password"
                 className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Ripeti la password"
                 autoComplete="new-password"
+                autoCapitalize="none"
+                spellCheck={false}
+                minLength={12}
                 required
               />
             </div>
