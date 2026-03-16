@@ -1,9 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import type { EmergencyPublicPayload } from "@/lib/emergency/public";
+import {
+  detectEmergencyLocale,
+  emergencyDict,
+} from "@/lib/emergency/i18n";
 
 type AnimalPublic = {
   animal_id: string;
@@ -47,6 +51,13 @@ export default function AnimalPublicPage() {
   const [state, setState] = useState<PageState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [hasSession, setHasSession] = useState(false);
+  const [browserLanguage, setBrowserLanguage] = useState<string>("it");
+
+  useEffect(() => {
+    if (typeof navigator !== "undefined") {
+      setBrowserLanguage(navigator.language || "it");
+    }
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -114,10 +125,17 @@ export default function AnimalPublicPage() {
     };
   }, [token]);
 
+  const locale = useMemo(() => {
+    const premiumEnabled = state?.view === "advanced";
+    return detectEmergencyLocale(browserLanguage, premiumEnabled);
+  }, [browserLanguage, state?.view]);
+
+  const t = emergencyDict[locale];
+
   if (loading) {
     return (
       <main className="mx-auto max-w-3xl px-4 py-6">
-        <p className="text-sm text-zinc-700">Caricamento…</p>
+        <p className="text-sm text-zinc-700">{t.loading}</p>
       </main>
     );
   }
@@ -130,13 +148,11 @@ export default function AnimalPublicPage() {
           onClick={() => router.push("/")}
           className="rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
         >
-          ← Home
+          {t.home}
         </button>
 
         <div className="mt-6 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <p className="text-sm text-zinc-700">
-            {error ?? "Scheda non disponibile."}
-          </p>
+          <p className="text-sm text-zinc-700">{error ?? t.unavailable}</p>
         </div>
       </main>
     );
@@ -153,20 +169,14 @@ export default function AnimalPublicPage() {
             UNIMALIA
           </div>
           <h1 className="mt-2 text-2xl font-bold tracking-tight text-zinc-950">
-            Accesso rilevato
+            {t.accessDetectedTitle}
           </h1>
-          <p className="mt-3 text-sm text-zinc-700">
-            Hai aperto il QR da una sessione autenticata UNIMALIA.
-          </p>
-          <p className="mt-2 text-sm text-zinc-700">
-            Nel prossimo step collegheremo qui il flusso completo basato sui
-            permessi reali. Per ora la vista emergenza pubblica è riservata
-            all’accesso anonimo.
-          </p>
+          <p className="mt-3 text-sm text-zinc-700">{t.accessDetectedText}</p>
+          <p className="mt-2 text-sm text-zinc-700">{t.accessDetectedText2}</p>
 
           <div className="mt-5 rounded-xl border border-zinc-200 bg-zinc-50 p-4">
             <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-              Animale
+              {t.animalLabel}
             </div>
             <div className="mt-1 text-sm text-zinc-900">
               {animal.name} · {animal.species}
@@ -182,12 +192,9 @@ export default function AnimalPublicPage() {
     <main className="mx-auto max-w-3xl px-4 py-6">
       <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
         <div className="text-sm font-semibold text-red-700">
-          Emergency Veterinary View
+          {t.emergencyTitle}
         </div>
-        <div className="mt-1 text-sm text-red-900">
-          Vista emergenziale di accesso rapido per veterinari, soccorritori e
-          persone che trovano l’animale.
-        </div>
+        <div className="mt-1 text-sm text-red-900">{t.emergencySubtitle}</div>
       </div>
 
       <section className="mt-4 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
@@ -209,22 +216,22 @@ export default function AnimalPublicPage() {
                 : "bg-zinc-100 text-zinc-700"
             }`}
           >
-            {state.view === "advanced" ? "Premium · Advanced" : "Free · Basic"}
+            {state.view === "advanced" ? t.premiumAdvanced : t.freeBasic}
           </div>
         </div>
 
         <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <InfoRow label="Nome animale" value={emergency?.animal_name || animal.name} />
-          <InfoRow label="Specie" value={emergency?.species || animal.species} />
-          <InfoRow label="Peso (kg)" value={emergency?.weight_kg ?? null} />
+          <InfoRow label={t.animalName} value={emergency?.animal_name || animal.name} />
+          <InfoRow label={t.species} value={emergency?.species || animal.species} />
+          <InfoRow label={t.weightKg} value={emergency?.weight_kg ?? null} />
         </div>
       </section>
 
       <section className="mt-4 grid grid-cols-1 gap-3">
-        <InfoRow label="Allergie" value={emergency?.allergies ?? null} />
-        <InfoRow label="Terapie attive" value={emergency?.active_therapies ?? null} />
+        <InfoRow label={t.allergies} value={emergency?.allergies ?? null} />
+        <InfoRow label={t.activeTherapies} value={emergency?.active_therapies ?? null} />
         <InfoRow
-          label="Patologie croniche essenziali"
+          label={t.chronicConditions}
           value={emergency?.chronic_conditions ?? null}
         />
       </section>
@@ -232,11 +239,11 @@ export default function AnimalPublicPage() {
       {emergency?.is_lost && emergency?.show_emergency_contact && (
         <section className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
           <div className="text-sm font-semibold text-amber-700">
-            Contatto emergenza
+            {t.emergencyContact}
           </div>
           <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <InfoRow label="Nome" value={emergency.emergency_contact_name} />
-            <InfoRow label="Telefono" value={emergency.emergency_contact_phone} />
+            <InfoRow label={t.contactName} value={emergency.emergency_contact_name} />
+            <InfoRow label={t.phone} value={emergency.emergency_contact_phone} />
           </div>
         </section>
       )}
@@ -244,20 +251,20 @@ export default function AnimalPublicPage() {
       {state.view === "advanced" && emergency && (
         <section className="mt-4 grid grid-cols-1 gap-3">
           <InfoRow
-            label="Stato vaccinale sintetico"
+            label={t.vaccinationStatus}
             value={emergency.essential_vaccination_status}
           />
-          <InfoRow label="Riepilogo sanitario breve" value={emergency.advanced_summary} />
-          <InfoRow label="Ultima visita" value={emergency.last_visit_summary} />
+          <InfoRow label={t.advancedSummary} value={emergency.advanced_summary} />
+          <InfoRow label={t.lastVisit} value={emergency.last_visit_summary} />
           <InfoRow
-            label="Ultima vaccinazione"
+            label={t.lastVaccination}
             value={emergency.last_vaccination_summary}
           />
         </section>
       )}
 
       <footer className="mt-6 text-center text-xs text-zinc-500">
-        UNIMALIA · La vista pubblica non sostituisce la cartella clinica completa.
+        {t.footer}
       </footer>
     </main>
   );
