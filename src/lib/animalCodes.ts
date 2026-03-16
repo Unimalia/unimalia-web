@@ -21,8 +21,7 @@ export function getBarcodeValue(a: AnimalCodesInput) {
 }
 
 export function getQrValue(a: AnimalCodesInput, origin: string) {
-  // QR unico: sempre /scansiona?q=
-  const payload = a.chip_number ? getBarcodeValue(a) : getUnimaliaTextCode(a);
+  const payload = getUnimaliaTextCode(a);
   const o = origin?.trim() || "https://unimalia.it";
   return `${o}/scansiona?q=${encodeURIComponent(payload)}`;
 }
