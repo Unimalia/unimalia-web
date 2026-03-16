@@ -1,5 +1,5 @@
-// app/layout.tsx
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import Script from "next/script";
 import "./globals.css";
 import AppShell from "../_components/AppShell";
@@ -31,7 +31,14 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const headersList = await headers();
+  const nonce = headersList.get("x-nonce") ?? undefined;
+
   const orgJsonLd = {
     "@context": "https://schema.org",
     "@type": "Organization",
@@ -43,18 +50,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="it">
       <body>
-        {/* JSON-LD (logo per Google) */}
         <script
+          nonce={nonce}
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }}
         />
 
-        {/* Google Analytics */}
         <Script
+          nonce={nonce}
           src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
           strategy="afterInteractive"
         />
-        <Script id="google-analytics" strategy="afterInteractive">
+        <Script id="google-analytics" nonce={nonce} strategy="afterInteractive">
           {`
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}
@@ -62,8 +69,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             gtag('config', '${GA_MEASUREMENT_ID}');
           `}
         </Script>
-
-        {/* Iubenda disattivato temporaneamente finché non viene configurato davvero */}
 
         <AppShell>{children}</AppShell>
       </body>
