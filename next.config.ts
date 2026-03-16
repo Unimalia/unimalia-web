@@ -1,62 +1,9 @@
 import type { NextConfig } from "next";
 
-function cspValue(value: string) {
-  return value.replace(/\s{2,}/g, " ").trim();
-}
-
 const nextConfig: NextConfig = {
   reactStrictMode: true,
 
   async headers() {
-    const CSP = cspValue(`
-      default-src 'self';
-      base-uri 'self';
-      object-src 'none';
-      frame-ancestors 'none';
-      form-action 'self';
-
-      img-src 'self' data: https: https://*.googleusercontent.com https://*.gstatic.com https://www.google-analytics.com https://www.googletagmanager.com;
-      font-src 'self' data: https:;
-      style-src 'self' 'unsafe-inline' https://cdn.iubenda.com;
-
-      script-src 'self' 'unsafe-inline'
-        https://vercel.live
-        https://maps.googleapis.com
-        https://maps.gstatic.com
-        https://cdn.iubenda.com
-        https://embeds.iubenda.com
-        https://www.googletagmanager.com
-        https://www.google-analytics.com
-        https://challenges.cloudflare.com;
-
-      script-src-elem 'self' 'unsafe-inline'
-        https://vercel.live
-        https://maps.googleapis.com
-        https://maps.gstatic.com
-        https://cdn.iubenda.com
-        https://embeds.iubenda.com
-        https://www.googletagmanager.com
-        https://www.google-analytics.com
-        https://challenges.cloudflare.com;
-
-      connect-src 'self'
-        https://*.supabase.co
-        https://maps.googleapis.com
-        https://*.googleapis.com
-        https://maps.gstatic.com
-        https://www.google-analytics.com
-        https://region1.google-analytics.com
-        https://www.googletagmanager.com
-        https://challenges.cloudflare.com;
-
-      frame-src 'self'
-        https://www.google.com
-        https://google.com
-        https://challenges.cloudflare.com;
-
-      upgrade-insecure-requests;
-    `);
-
     const commonSecurityHeaders = [
       {
         key: "Strict-Transport-Security",
@@ -67,7 +14,6 @@ const nextConfig: NextConfig = {
       { key: "X-Content-Type-Options", value: "nosniff" },
       { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
       { key: "Cross-Origin-Resource-Policy", value: "same-site" },
-      { key: "Content-Security-Policy", value: CSP },
     ];
 
     return [
@@ -94,22 +40,22 @@ const nextConfig: NextConfig = {
         ],
       },
       {
-        source: "/(.*)",
-        headers: [
-          ...commonSecurityHeaders,
-          {
-            key: "Permissions-Policy",
-            value: "geolocation=(), microphone=(), camera=(), usb=(), payment=()",
-          },
-        ],
-      },
-      {
         source: "/professionisti/:path*",
         headers: [
           ...commonSecurityHeaders,
           {
             key: "Permissions-Policy",
             value: "geolocation=(), microphone=(), camera=(self), usb=(self), payment=()",
+          },
+        ],
+      },
+      {
+        source: "/(.*)",
+        headers: [
+          ...commonSecurityHeaders,
+          {
+            key: "Permissions-Policy",
+            value: "geolocation=(), microphone=(), camera=(), usb=(), payment=()",
           },
         ],
       },

@@ -1,15 +1,82 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
+function cspValue(value: string) {
+  return value.replace(/\s{2,}/g, " ").trim();
+}
+
+function generateNonce() {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+
+  let binary = "";
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+
+  return btoa(binary);
+}
+
+function buildCsp(nonce: string) {
+  return cspValue(`
+    default-src 'self';
+    base-uri 'self';
+    object-src 'none';
+    frame-ancestors 'none';
+    form-action 'self';
+
+    img-src 'self' data: https: https://*.googleusercontent.com https://*.gstatic.com https://www.google-analytics.com https://www.googletagmanager.com;
+    font-src 'self' data: https:;
+    style-src 'self' 'unsafe-inline' https://cdn.iubenda.com;
+
+    script-src 'self' 'nonce-${nonce}'
+      https://vercel.live
+      https://maps.googleapis.com
+      https://maps.gstatic.com
+      https://cdn.iubenda.com
+      https://embeds.iubenda.com
+      https://www.googletagmanager.com
+      https://www.google-analytics.com
+      https://challenges.cloudflare.com;
+
+    script-src-elem 'self' 'nonce-${nonce}'
+      https://vercel.live
+      https://maps.googleapis.com
+      https://maps.gstatic.com
+      https://cdn.iubenda.com
+      https://embeds.iubenda.com
+      https://www.googletagmanager.com
+      https://www.google-analytics.com
+      https://challenges.cloudflare.com;
+
+    script-src-attr 'none';
+
+    connect-src 'self'
+      https://*.supabase.co
+      https://maps.googleapis.com
+      https://*.googleapis.com
+      https://maps.gstatic.com
+      https://www.google-analytics.com
+      https://region1.google-analytics.com
+      https://www.googletagmanager.com
+      https://challenges.cloudflare.com;
+
+    frame-src 'self'
+      https://www.google.com
+      https://google.com
+      https://challenges.cloudflare.com;
+
+    upgrade-insecure-requests;
+  `);
+}
+
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // ✅ IMPORTANTISSIMO: non toccare MAI le API route
   if (pathname.startsWith("/api")) {
     return NextResponse.next();
   }
 
-  // ✅ non toccare assets / next internals
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon.ico") ||
@@ -20,13 +87,23 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // Se avevi logiche di redirect/auth QUI, re-inseriscile sotto
-  // (ma sempre lasciando l'early return per /api sopra)
+  const nonce = generateNonce();
+  const csp = buildCsp(nonce);
 
-  return NextResponse.next();
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set("x-nonce", nonce);
+
+  const response = NextResponse.next({
+    request: {
+      headers: requestHeaders,
+    },
+  });
+
+  response.headers.set("Content-Security-Policy", csp);
+
+  return response;
 }
 
-// ✅ matcher: evita di matchare /api già qui (doppia protezione)
 export const config = {
   matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
 };
