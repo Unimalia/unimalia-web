@@ -1,35 +1,136 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ChangeEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { authHeaders } from "@/lib/client/authHeaders";
 
-type FilterKey =
-  | "all"
-  | "visit"
-  | "vaccine"
-  | "exam"
-  | "therapy"
-  | "note"
-  | "document"
-  | "weight"
-  | "surgery"
-  | "chronic_condition"
-  | "follow_up";
+async function safeJson(res: Response) {
+  const text = await res.text();
 
-const FILTERS: Array<{ key: FilterKey; label: string }> = [
-  { key: "all", label: "Tutti" },
-  { key: "visit", label: "Visite" },
-  { key: "vaccine", label: "Vaccini" },
-  { key: "exam", label: "Esami" },
-  { key: "therapy", label: "Terapie" },
-  { key: "chronic_condition", label: "Patologie croniche" },
-  { key: "follow_up", label: "Ricontrolli" },
-  { key: "surgery", label: "Chirurgia" },
-  { key: "note", label: "Note" },
-  { key: "document", label: "Documenti" },
-  { key: "weight", label: "Peso" },
-];
+  try {
+    return text ? JSON.parse(text) : {};
+  } catch {
+    return { raw: text };
+  }
+}
+
+type EventFileLike = {
+  id?: string;
+  filename?: string | null;
+  path?: string | null;
+  mime?: string | null;
+  size?: number | null;
+};
+
+type ConsultMessageFileLike = {
+  id?: string;
+  filename?: string | null;
+  path?: string | null;
+  mime?: string | null;
+  size?: number | null;
+};
+
+function buildEventDownloadHref(file?: EventFileLike | null) {
+  if (!file?.path) return null;
+
+  const params = new URLSearchParams({ path: file.path });
+  if (file.filename) params.set("filename", file.filename);
+
+  return `/api/clinic-events/files/download?${params.toString()}`;
+}
+
+function formatBytes(size?: number | null) {
+  if (!size || size <= 0) return "";
+  const units = ["B", "KB", "MB", "GB"];
+  let value = size;
+  let unitIndex = 0;
+
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex += 1;
+  }
+
+  return `${value < 10 && unitIndex > 0 ? value.toFixed(1) : Math.round(value)} ${units[unitIndex]}`;
+}
+
+function extractText(value: unknown): string {
+  if (!value) return "";
+  if (typeof value === "string") return value.trim();
+  if (Array.isArray(value)) return value.map(extractText).filter(Boolean).join(", ");
+  if (typeof value === "object") {
+    return Object.values(value as Record<string, unknown>)
+      .map(extractText)
+      .filter(Boolean)
+      .join(" ");
+  }
+  return String(value).trim();
+}
+
+function normalizeDate(value?: string | null) {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function formatDate(value?: string | null) {
+  const date = normalizeDate(value);
+  if (!date) return "—";
+
+  return new Intl.DateTimeFormat("it-IT", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(date);
+}
+
+function formatDateTime(value?: string | null) {
+  const date = normalizeDate(value);
+  if (!date) return "—";
+
+  return new Intl.DateTimeFormat("it-IT", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function isFutureDate(value?: string | null) {
+  const date = normalizeDate(value);
+  if (!date) return false;
+  return date.getTime() > Date.now();
+}
+
+function pickLatestByDate<T extends Record<string, unknown>>(
+  items: T[],
+  getDate: (item: T) => string | null | undefined
+) {
+  return (
+    [...items]
+      .filter((item) => normalizeDate(getDate(item)))
+      .sort((a, b) => {
+        const da = normalizeDate(getDate(a))!;
+        const db = normalizeDate(getDate(b))!;
+        return db.getTime() - da.getTime();
+      })[0] ?? null
+  );
+}
+
+function pickNearestFuture<T extends Record<string, unknown>>(
+  items: T[],
+  getDate: (item: T) => string | null | undefined
+) {
+  return (
+    [...items]
+      .filter((item) => isFutureDate(getDate(item)))
+      .sort((a, b) => {
+        const da = normalizeDate(getDate(a))!;
+        const db = normalizeDate(getDate(b))!;
+        return da.getTime() - db.getTime();
+      })[0] ?? null
+  );
+}
 
 type ConsultDetail = {
   consult: {
@@ -56,6 +157,7 @@ type ConsultDetail = {
     message_type: string;
     message: string;
     created_at: string;
+    files?: ConsultMessageFileLike[];
   }>;
   events: Array<{
     id: string;
@@ -67,17 +169,29 @@ type ConsultDetail = {
     visibility: string | null;
     status: string | null;
     priority: string | null;
+    performed_at?: string | null;
+    scheduled_for?: string | null;
     created_at?: string | null;
-    meta?: any;
-    files: Array<{
-      id: string;
-      filename: string | null;
-      path?: string | null;
-      mime: string | null;
-      size: number | null;
-      created_at?: string | null;
-    }>;
+    weight?: string | number | null;
+    data?: unknown;
+    payload?: unknown;
+    meta?: unknown;
+    files: EventFileLike[];
   }>;
+  animal?: {
+    id?: string | null;
+    name?: string | null;
+    species?: string | null;
+    breed?: string | null;
+    chip_number?: string | null;
+    owner_name?: string | null;
+    owner_email?: string | null;
+    weight?: string | null;
+    peso?: string | null;
+    age?: string | null;
+    eta?: string | null;
+    birth_date?: string | null;
+  } | null;
 };
 
 type AnimalSummary = {
@@ -88,6 +202,9 @@ type AnimalSummary = {
   chip_number?: string | null;
   owner_name?: string | null;
   owner_email?: string | null;
+  weight?: string | null;
+  age?: string | null;
+  birth_date?: string | null;
 };
 
 function statusLabel(status: string) {
@@ -132,221 +249,14 @@ function typeLabel(t?: string | null) {
   }
 }
 
-function typeIcon(t?: string | null) {
-  switch (t) {
-    case "visit":
-      return "🩺";
-    case "vaccine":
-      return "💉";
-    case "exam":
-      return "🔬";
-    case "therapy":
-      return "💊";
-    case "surgery":
-      return "🏥";
-    case "note":
-      return "📝";
-    case "chronic_condition":
-      return "📌";
-    case "follow_up":
-      return "🔁";
-    default:
-      return "📄";
-  }
-}
-
-function eventTypeDisplay(t?: string | null) {
-  return `${typeIcon(t)} ${typeLabel(t)}`;
-}
-
-function extractWeightKg(e: any): number | null {
-  if (!e) return null;
-
-  const direct =
-    e.weight_kg ??
-    e.weightKg ??
-    e?.meta?.weight_kg ??
-    e?.meta?.weightKg ??
-    e?.data?.weightKg ??
-    e?.data?.weight_kg ??
-    e?.payload?.weightKg ??
-    e?.payload?.weight_kg;
-
-  if (direct === null || direct === undefined) return null;
-
-  const n = typeof direct === "number" ? direct : Number(String(direct).replace(",", "."));
-  if (!Number.isFinite(n) || n <= 0) return null;
-
-  return Math.round(n * 10) / 10;
-}
-
-function formatWeightLabel(kg: number) {
-  return Number.isInteger(kg) ? `${kg} kg` : `${kg} kg`;
-}
-
-function formatEventDateIT(dateStr?: string | null) {
-  if (!dateStr) return "—";
-
-  const s = String(dateStr).trim();
-
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
-    const [y, m, d] = s.split("-").map(Number);
-    const dt = new Date(y, m - 1, d);
-    return dt.toLocaleDateString("it-IT", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    });
-  }
-
-  return new Date(s).toLocaleString("it-IT", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-function formatInsertedAtIT(iso?: string | null) {
-  if (!iso) return "—";
-
-  return new Date(iso).toLocaleString("it-IT", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
 function normalizeChip(raw?: string | null) {
   return String(raw || "").replace(/\s+/g, "").trim();
-}
-
-function eventDateTs(e: { event_date?: string | null; created_at?: string | null }) {
-  const source = e.event_date || e.created_at || "";
-  const ts = source ? new Date(source).getTime() : 0;
-  return Number.isFinite(ts) ? ts : 0;
-}
-
-function sortDescByDate<T extends { event_date?: string | null; created_at?: string | null }>(rows: T[]) {
-  return [...rows].sort((a, b) => eventDateTs(b) - eventDateTs(a));
-}
-
-function inferAllergies(events: ConsultDetail["events"]) {
-  return sortDescByDate(events)
-    .filter((e) => {
-      const text = `${e.title || ""} ${e.description || ""}`.toLowerCase();
-      return text.includes("allerg");
-    })
-    .slice(0, 5)
-    .map((e) => ({
-      label: e.title || e.description || "Allergia",
-      date: e.event_date || e.created_at || null,
-    }));
-}
-
-function inferActiveTherapies(events: ConsultDetail["events"]) {
-  const now = Date.now();
-
-  return sortDescByDate(events)
-    .filter((e) => e.type === "therapy")
-    .filter((e) => {
-      const endDate =
-        e?.meta?.therapy_end_date ||
-        e?.meta?.therapyEndDate ||
-        null;
-
-      if (!endDate) return true;
-
-      const ts = new Date(endDate).getTime();
-      if (!Number.isFinite(ts)) return true;
-      return ts >= now;
-    })
-    .slice(0, 5)
-    .map((e) => ({
-      label: e.description || e.title || "Terapia attiva",
-      date: e.event_date || e.created_at || null,
-    }));
-}
-
-function inferRecentTherapies(events: ConsultDetail["events"]) {
-  return sortDescByDate(events)
-    .filter((e) => e.type === "therapy")
-    .slice(0, 5)
-    .map((e) => ({
-      label: e.description || e.title || "Terapia",
-      date: e.event_date || e.created_at || null,
-    }));
-}
-
-function inferChronicConditions(events: ConsultDetail["events"]) {
-  return sortDescByDate(events)
-    .filter((e) => e.type === "chronic_condition")
-    .slice(0, 5)
-    .map((e) => ({
-      label: e.title || e.description || "Patologia cronica",
-      date: e.event_date || e.created_at || null,
-    }));
-}
-
-function inferFollowUps(events: ConsultDetail["events"]) {
-  return sortDescByDate(events)
-    .filter((e) => e.type === "follow_up")
-    .slice(0, 5)
-    .map((e) => ({
-      label: e.title || e.description || "Ricontrollo",
-      date: e.event_date || e.created_at || null,
-    }));
-}
-
-function findLatestByType(events: ConsultDetail["events"], type: string) {
-  return sortDescByDate(events).find((e) => e.type === type) ?? null;
-}
-
-function findExpiringVaccines(events: ConsultDetail["events"]) {
-  const now = Date.now();
-  const in30Days = now + 30 * 24 * 60 * 60 * 1000;
-
-  return sortDescByDate(events)
-    .filter((e) => e.type === "vaccine")
-    .map((e) => {
-      const due =
-        e?.meta?.next_due_date ||
-        e?.meta?.nextDueDate ||
-        null;
-
-      return {
-        event: e,
-        due,
-      };
-    })
-    .filter((x) => !!x.due)
-    .filter((x) => {
-      const ts = new Date(String(x.due)).getTime();
-      return Number.isFinite(ts) && ts <= in30Days;
-    })
-    .slice(0, 5);
-}
-
-function buildDownloadHref(file: { path?: string | null; filename?: string | null }) {
-  if (!file?.path) return null;
-
-  const params = new URLSearchParams({
-    path: file.path,
-  });
-
-  if (file.filename) {
-    params.set("filename", file.filename);
-  }
-
-  return `/api/clinic-events/files/download?${params.toString()}`;
 }
 
 export default function ProfessionistiRichiestaDettaglioPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const consultId = String(params.id || "");
 
   const [data, setData] = useState<ConsultDetail | null>(null);
   const [animal, setAnimal] = useState<AnimalSummary | null>(null);
@@ -355,28 +265,43 @@ export default function ProfessionistiRichiestaDettaglioPage() {
   const [saving, setSaving] = useState(false);
   const [reply, setReply] = useState("");
   const [error, setError] = useState("");
+  const [sendingReply, setSendingReply] = useState(false);
 
-  const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<FilterKey>("all");
+  const [replyFiles, setReplyFiles] = useState<File[]>([]);
+  const [sendingReplyFiles, setSendingReplyFiles] = useState(false);
+  const [filter, setFilter] = useState<string>("all");
+  const [selectedEvent, setSelectedEvent] = useState<ConsultDetail["events"][number] | null>(null);
 
-  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [uploadingFiles, setUploadingFiles] = useState(false);
 
-  async function load(keepSelectedEventId?: string | null) {
+  const sharedEvents = useMemo(() => {
+    return Array.isArray(data?.events) ? data.events : [];
+  }, [data]);
+
+  async function loadConsultDetail(keepSelectedEventId?: string | null) {
     try {
       setLoading(true);
       setError("");
 
-      const res = await fetch(`/api/professionisti/consults/${params.id}`, {
+      const res = await fetch(`/api/professionisti/consults/${consultId}`, {
         cache: "no-store",
       });
-      const json = await res.json();
+      const json = await safeJson(res);
 
-      if (!res.ok) throw new Error(json.error || "Errore caricamento consulto");
+      if (!res.ok) {
+        throw new Error(
+          (json as { error?: string; raw?: string })?.error ||
+            (json as { error?: string; raw?: string })?.raw ||
+            "Errore caricamento consulto"
+        );
+      }
 
-      setData(json);
+      const detail = json as ConsultDetail;
+      setData(detail);
 
-      const animalId = json?.consult?.animal_id;
+      const fallbackAnimal = detail?.animal ?? null;
+      const animalId = detail?.consult?.animal_id;
+
       if (animalId) {
         try {
           const animalRes = await fetch(
@@ -390,37 +315,69 @@ export default function ProfessionistiRichiestaDettaglioPage() {
           );
 
           if (animalRes.ok) {
-            const animalJson = await animalRes.json().catch(() => ({}));
-            const a = animalJson?.animal || null;
+            const animalJson = await safeJson(animalRes);
+            const a =
+              (animalJson as { animal?: ConsultDetail["animal"] | null })?.animal || fallbackAnimal;
 
             setAnimal(
               a
                 ? {
-                    id: a.id,
+                    id: a.id ?? animalId,
                     name: a.name ?? null,
                     species: a.species ?? null,
                     breed: a.breed ?? null,
-                    chip_number: a.chip_number ?? a.chip_code ?? null,
+                    chip_number: a.chip_number ?? null,
                     owner_name: a.owner_name ?? null,
                     owner_email: a.owner_email ?? null,
+                    weight: a.weight ?? a.peso ?? null,
+                    age: a.age ?? a.eta ?? null,
+                    birth_date: a.birth_date ?? null,
                   }
                 : null
             );
+          } else if (fallbackAnimal) {
+            setAnimal({
+              id: fallbackAnimal.id ?? animalId,
+              name: fallbackAnimal.name ?? null,
+              species: fallbackAnimal.species ?? null,
+              breed: fallbackAnimal.breed ?? null,
+              chip_number: fallbackAnimal.chip_number ?? null,
+              owner_name: fallbackAnimal.owner_name ?? null,
+              owner_email: fallbackAnimal.owner_email ?? null,
+              weight: fallbackAnimal.weight ?? fallbackAnimal.peso ?? null,
+              age: fallbackAnimal.age ?? fallbackAnimal.eta ?? null,
+              birth_date: fallbackAnimal.birth_date ?? null,
+            });
           } else {
             setAnimal(null);
           }
         } catch {
-          setAnimal(null);
+          if (fallbackAnimal) {
+            setAnimal({
+              id: fallbackAnimal.id ?? animalId,
+              name: fallbackAnimal.name ?? null,
+              species: fallbackAnimal.species ?? null,
+              breed: fallbackAnimal.breed ?? null,
+              chip_number: fallbackAnimal.chip_number ?? null,
+              owner_name: fallbackAnimal.owner_name ?? null,
+              owner_email: fallbackAnimal.owner_email ?? null,
+              weight: fallbackAnimal.weight ?? fallbackAnimal.peso ?? null,
+              age: fallbackAnimal.age ?? fallbackAnimal.eta ?? null,
+              birth_date: fallbackAnimal.birth_date ?? null,
+            });
+          } else {
+            setAnimal(null);
+          }
         }
       } else {
         setAnimal(null);
       }
 
       if (keepSelectedEventId) {
-        const refreshedEvent =
-          (json?.events as ConsultDetail["events"])?.find((e) => e.id === keepSelectedEventId) ??
-          null;
-        setSelectedEventId(refreshedEvent?.id ?? null);
+        const refreshedEvent = detail.events.find((e) => e.id === keepSelectedEventId) ?? null;
+        setSelectedEvent(refreshedEvent);
+      } else {
+        setSelectedEvent(null);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore imprevisto");
@@ -430,13 +387,8 @@ export default function ProfessionistiRichiestaDettaglioPage() {
   }
 
   useEffect(() => {
-    load();
-  }, [params.id]);
-
-  const selectedEvent = useMemo(() => {
-    if (!data || !selectedEventId) return null;
-    return data.events.find((e) => e.id === selectedEventId) ?? null;
-  }, [data, selectedEventId]);
+    void loadConsultDetail();
+  }, [consultId]);
 
   useEffect(() => {
     if (!selectedEvent) return;
@@ -467,85 +419,160 @@ export default function ProfessionistiRichiestaDettaglioPage() {
     return ["accepted", "replied"].includes(data.consult.status);
   }, [data]);
 
-  const filteredEvents = useMemo(() => {
-    if (!data) return [];
+  function handleReplyFilesChange(event: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files || []);
+    setReplyFiles(files);
+  }
 
-    const q = search.trim().toLowerCase();
+  function removeReplyFile(indexToRemove: number) {
+    setReplyFiles((prev) => prev.filter((_, index) => index !== indexToRemove));
+  }
 
-    let base = (() => {
-      if (filter === "all") return data.events;
-      if (filter === "document") {
-        return data.events.filter((e) => (e.files?.length ?? 0) > 0);
-      }
-      if (filter === "weight") {
-        return data.events.filter((e) => extractWeightKg(e) !== null);
-      }
-      return data.events.filter((e) => e.type === filter);
-    })();
+  const rapidClinicalState = useMemo(() => {
+    const events = Array.isArray(sharedEvents) ? sharedEvents : [];
 
-    if (!q) return base;
+    const normalized = events.map((event) => {
+      const title = extractText(event?.title);
+      const description = extractText(event?.description);
+      const type = extractText(event?.type).toLowerCase();
+      const date =
+        event?.event_date || event?.performed_at || event?.scheduled_for || event?.created_at || null;
 
-    return base.filter((e) => {
-      const haystack = [
-        e.title,
-        e.description,
-        e.type,
-        e.visibility,
-        e.status,
-        eventTypeDisplay(e.type),
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
+      const payload = event?.payload || event?.data || {};
 
-      return haystack.includes(q);
+      return {
+        raw: event,
+        title,
+        description,
+        type,
+        date,
+        payload,
+        text: `${title} ${description} ${extractText(payload)}`.toLowerCase(),
+      };
     });
-  }, [data, filter, search]);
 
-  const quickStatus = useMemo(() => {
-    if (!data) return null;
+    const allergies = normalized.filter(
+      (e) => e.text.includes("allerg") || e.type.includes("allerg")
+    );
 
-    const events = data.events;
-    const latestWeightEvent = sortDescByDate(events).find((e) => extractWeightKg(e) !== null) ?? null;
-    const latestWeight = latestWeightEvent ? extractWeightKg(latestWeightEvent) : null;
+    const activeTherapies = normalized.filter(
+      (e) =>
+        e.text.includes("terapia attiva") ||
+        e.text.includes("in terapia") ||
+        e.text.includes("somministrazione") ||
+        e.type.includes("therapy")
+    );
 
-    const allergies = inferAllergies(events);
-    const activeTherapies = inferActiveTherapies(events);
-    const recentTherapies = inferRecentTherapies(events);
-    const chronicConditions = inferChronicConditions(events);
-    const followUps = inferFollowUps(events);
-    const latestVisit = findLatestByType(events, "visit");
-    const latestVaccine = findLatestByType(events, "vaccine");
-    const expiringVaccines = findExpiringVaccines(events);
+    const therapies = normalized.filter(
+      (e) => e.text.includes("terapia") || e.text.includes("farmaco") || e.type.includes("therapy")
+    );
+
+    const chronicPathologies = normalized.filter(
+      (e) =>
+        e.text.includes("cron") || e.text.includes("patologia") || e.text.includes("diagnosi")
+    );
+
+    const visits = normalized.filter(
+      (e) => e.text.includes("visita") || e.type.includes("visit") || e.type.includes("check")
+    );
+
+    const vaccinations = normalized.filter(
+      (e) => e.text.includes("vaccin") || e.type.includes("vacc")
+    );
+
+    const recalls = normalized.filter(
+      (e) =>
+        e.text.includes("ricontroll") ||
+        e.text.includes("follow-up") ||
+        e.text.includes("follow up") ||
+        e.text.includes("controllo programmato")
+    );
+
+    const latestVisit = pickLatestByDate(visits, (item) => item.date);
+    const latestVaccination = pickLatestByDate(vaccinations, (item) => item.date);
+    const nextRecall = pickNearestFuture(recalls, (item) => item.date);
+    const vaccinationExpiry = pickNearestFuture(
+      vaccinations.filter((e) => e.text.includes("scadenza") || e.text.includes("richiamo")),
+      (item) => item.date
+    );
+
+    const lastTherapies = [...therapies]
+      .filter((item) => normalizeDate(item.date))
+      .sort((a, b) => normalizeDate(b.date)!.getTime() - normalizeDate(a.date)!.getTime())
+      .slice(0, 3);
+
+    const animalWeight =
+      extractText(data?.animal?.weight) ||
+      extractText(data?.animal?.peso) ||
+      extractText(animal?.weight) ||
+      extractText(latestVisit?.raw?.weight) ||
+      extractText((latestVisit?.raw?.payload as { weight?: unknown } | undefined)?.weight);
+
+    const animalAge =
+      extractText(data?.animal?.age) ||
+      extractText(data?.animal?.eta) ||
+      extractText(animal?.age) ||
+      (extractText(data?.animal?.birth_date || animal?.birth_date)
+        ? formatDate(data?.animal?.birth_date || animal?.birth_date)
+        : "");
 
     return {
-      latestWeight,
-      latestWeightDate: latestWeightEvent?.event_date || latestWeightEvent?.created_at || null,
-      allergies,
-      activeTherapies,
-      recentTherapies,
-      chronicConditions,
-      followUps,
+      age: animalAge || "—",
+      weight: animalWeight || "—",
+      allergies: allergies.slice(0, 3),
+      activeTherapies: activeTherapies.slice(0, 3),
+      lastTherapies,
+      chronicPathologies: chronicPathologies.slice(0, 3),
+      nextRecall,
       latestVisit,
-      latestVaccine,
-      expiringVaccines,
+      latestVaccination,
+      vaccinationExpiry,
     };
-  }, [data]);
+  }, [sharedEvents, data, animal]);
+
+  const filteredSharedEvents = useMemo(() => {
+    const events = Array.isArray(sharedEvents) ? sharedEvents : [];
+    if (filter === "all") return events;
+
+    return events.filter((event) => {
+      const type = extractText(event?.type).toLowerCase();
+      const text = `${extractText(event?.title)} ${extractText(event?.description)}`.toLowerCase();
+
+      switch (filter) {
+        case "visits":
+          return type.includes("visit") || text.includes("visita");
+        case "therapies":
+          return type.includes("therapy") || text.includes("terapia");
+        case "vaccines":
+          return type.includes("vacc") || text.includes("vaccin");
+        case "files":
+          return Array.isArray(event?.files) && event.files.length > 0;
+        default:
+          return true;
+      }
+    });
+  }, [sharedEvents, filter]);
 
   async function runAction(action: "accept" | "reject" | "close") {
     try {
       setSaving(true);
 
-      const res = await fetch(`/api/professionisti/consults/${params.id}`, {
+      const res = await fetch(`/api/professionisti/consults/${consultId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action }),
       });
 
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Errore aggiornamento consulto");
+      const json = await safeJson(res);
+      if (!res.ok) {
+        throw new Error(
+          (json as { error?: string; raw?: string })?.error ||
+            (json as { error?: string; raw?: string })?.raw ||
+            "Errore aggiornamento consulto"
+        );
+      }
 
-      await load(selectedEventId);
+      await loadConsultDetail(selectedEvent?.id ?? null);
     } catch (err) {
       alert(err instanceof Error ? err.message : "Errore imprevisto");
     } finally {
@@ -554,24 +581,83 @@ export default function ProfessionistiRichiestaDettaglioPage() {
   }
 
   async function sendReply() {
-    try {
-      setSaving(true);
+    if (!consultId) return;
 
-      const res = await fetch(`/api/professionisti/consults/${params.id}`, {
+    if (!reply.trim()) {
+      alert("Scrivi un testo di risposta prima dell'invio.");
+      return;
+    }
+
+    try {
+      setSendingReply(true);
+
+      const res = await fetch(`/api/professionisti/consults/${consultId}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "reply", message: reply }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action: "reply",
+          message: reply.trim(),
+        }),
       });
 
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Errore invio risposta");
+      const responseData = await safeJson(res);
+
+      if (!res.ok) {
+        throw new Error(
+          (responseData as { error?: string; raw?: string })?.error ||
+            (responseData as { error?: string; raw?: string })?.raw ||
+            "Errore durante l'invio della risposta."
+        );
+      }
+
+      const messageId =
+        (responseData as { messageId?: string; message?: { id?: string } })?.messageId ||
+        (responseData as { message?: { id?: string } })?.message?.id ||
+        null;
+
+      if (messageId && replyFiles.length > 0) {
+        setSendingReplyFiles(true);
+
+        const formData = new FormData();
+        formData.append("messageId", messageId);
+        formData.append("consultId", consultId);
+
+        for (const file of replyFiles) {
+          formData.append("files", file);
+        }
+
+        const uploadRes = await fetch("/api/professionisti/consults/messages/files/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        const uploadData = await safeJson(uploadRes);
+
+        if (!uploadRes.ok) {
+          throw new Error(
+            (uploadData as { error?: string; raw?: string })?.error ||
+              (uploadData as { error?: string; raw?: string })?.raw ||
+              "Risposta inviata, ma upload allegati fallito."
+          );
+        }
+      }
 
       setReply("");
-      await load(selectedEventId);
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "Errore imprevisto");
+      setReplyFiles([]);
+
+      await loadConsultDetail(selectedEvent?.id ?? null);
+    } catch (uploadError) {
+      console.error(uploadError);
+      alert(
+        uploadError instanceof Error
+          ? uploadError.message
+          : "Errore durante l'invio della risposta."
+      );
     } finally {
-      setSaving(false);
+      setSendingReply(false);
+      setSendingReplyFiles(false);
     }
   }
 
@@ -596,12 +682,16 @@ export default function ProfessionistiRichiestaDettaglioPage() {
         body: fd,
       });
 
-      const json = await res.json().catch(() => ({}));
+      const json = await safeJson(res);
       if (!res.ok) {
-        throw new Error(json?.error || "Errore caricamento allegati");
+        throw new Error(
+          (json as { error?: string; raw?: string })?.error ||
+            (json as { error?: string; raw?: string })?.raw ||
+            "Errore caricamento allegati"
+        );
       }
 
-      await load(eventId);
+      await loadConsultDetail(eventId);
     } catch (err) {
       alert(err instanceof Error ? err.message : "Errore caricamento allegati");
     } finally {
@@ -686,8 +776,8 @@ export default function ProfessionistiRichiestaDettaglioPage() {
               {animal?.name || data.consult.animal_name || "—"}
             </div>
             <div className="mt-1 text-sm text-zinc-600">
-              {animal?.species || "—"}
-              {animal?.breed ? ` • ${animal.breed}` : ""}
+              {animal?.species || data.animal?.species || "—"}
+              {animal?.breed || data.animal?.breed ? ` • ${animal?.breed || data.animal?.breed}` : ""}
             </div>
           </div>
 
@@ -696,7 +786,7 @@ export default function ProfessionistiRichiestaDettaglioPage() {
               Microchip / Codice
             </div>
             <div className="mt-2 break-all text-base font-semibold text-zinc-900">
-              {normalizeChip(animal?.chip_number) || "Non disponibile"}
+              {normalizeChip(animal?.chip_number || data.animal?.chip_number) || "Non disponibile"}
             </div>
             <div className="mt-1 text-xs text-zinc-500">
               Identificazione rapida del paziente condiviso.
@@ -708,143 +798,177 @@ export default function ProfessionistiRichiestaDettaglioPage() {
               Proprietario
             </div>
             <div className="mt-2 text-base font-semibold text-zinc-900">
-              {animal?.owner_name || "Non disponibile"}
+              {animal?.owner_name || data.animal?.owner_name || "Non disponibile"}
             </div>
-            <div className="mt-1 text-sm text-zinc-600">{animal?.owner_email || "—"}</div>
+            <div className="mt-1 text-sm text-zinc-600">
+              {animal?.owner_email || data.animal?.owner_email || "—"}
+            </div>
           </div>
         </div>
       </section>
 
-      <section className="mt-6 rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-zinc-900">Stato clinico rapido</h2>
-
-        <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-            <div className="text-sm font-semibold text-zinc-700">Età / Peso</div>
-            <div className="mt-2 text-sm text-zinc-600">
-              Età: — | Peso:{" "}
-              {quickStatus?.latestWeight !== null && quickStatus?.latestWeight !== undefined
-                ? formatWeightLabel(quickStatus.latestWeight)
-                : "—"}
-              {quickStatus?.latestWeightDate
-                ? ` • ${formatEventDateIT(quickStatus.latestWeightDate)}`
-                : ""}
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-            <div className="text-sm font-semibold text-zinc-700">Allergie</div>
-            {quickStatus?.allergies?.length ? (
-              <ul className="mt-2 space-y-1 text-sm text-zinc-600">
-                {quickStatus.allergies.map((item, idx) => (
-                  <li key={`${item.label}-${idx}`}>
-                    {item.label} {item.date ? `• ${formatEventDateIT(item.date)}` : ""}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <div className="mt-2 text-sm text-zinc-600">—</div>
-            )}
-          </div>
-
-          <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-            <div className="text-sm font-semibold text-zinc-700">Terapie attive</div>
-            {quickStatus?.activeTherapies?.length ? (
-              <ul className="mt-2 space-y-1 text-sm text-zinc-600">
-                {quickStatus.activeTherapies.map((item, idx) => (
-                  <li key={`${item.label}-${idx}`}>
-                    {item.label} {item.date ? `• ${formatEventDateIT(item.date)}` : ""}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <div className="mt-2 text-sm text-zinc-600">—</div>
-            )}
-          </div>
-
-          <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-            <div className="text-sm font-semibold text-zinc-700">Ultime terapie</div>
-            {quickStatus?.recentTherapies?.length ? (
-              <ul className="mt-2 space-y-1 text-sm text-zinc-600">
-                {quickStatus.recentTherapies.map((item, idx) => (
-                  <li key={`${item.label}-${idx}`}>
-                    {item.label} {item.date ? `• ${formatEventDateIT(item.date)}` : ""}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <div className="mt-2 text-sm text-zinc-600">—</div>
-            )}
-          </div>
-
-          <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-            <div className="text-sm font-semibold text-zinc-700">Patologie croniche</div>
-            {quickStatus?.chronicConditions?.length ? (
-              <ul className="mt-2 space-y-1 text-sm text-zinc-600">
-                {quickStatus.chronicConditions.map((item, idx) => (
-                  <li key={`${item.label}-${idx}`}>
-                    {item.label} {item.date ? `• ${formatEventDateIT(item.date)}` : ""}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <div className="mt-2 text-sm text-zinc-600">—</div>
-            )}
-          </div>
-
-          <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-            <div className="text-sm font-semibold text-zinc-700">Ricontrolli programmati</div>
-            {quickStatus?.followUps?.length ? (
-              <ul className="mt-2 space-y-1 text-sm text-zinc-600">
-                {quickStatus.followUps.map((item, idx) => (
-                  <li key={`${item.label}-${idx}`}>
-                    {item.label} {item.date ? `• ${formatEventDateIT(item.date)}` : ""}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <div className="mt-2 text-sm text-zinc-600">—</div>
-            )}
-          </div>
-
-          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-            <div className="text-sm font-semibold text-zinc-700">Ultima visita</div>
-            <div className="mt-2 text-sm text-zinc-600">
-              {quickStatus?.latestVisit
-                ? formatEventDateIT(quickStatus.latestVisit.event_date || quickStatus.latestVisit.created_at)
-                : "—"}
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-            <div className="text-sm font-semibold text-zinc-700">Ultima vaccinazione</div>
-            <div className="mt-2 text-sm text-zinc-600">
-              {quickStatus?.latestVaccine
-                ? formatEventDateIT(
-                    quickStatus.latestVaccine.event_date || quickStatus.latestVaccine.created_at
-                  )
-                : "—"}
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-            <div className="text-sm font-semibold text-zinc-700">
-              Vaccinazioni scadute / in scadenza
-            </div>
-            {quickStatus?.expiringVaccines?.length ? (
-              <ul className="mt-2 space-y-1 text-sm text-zinc-600">
-                {quickStatus.expiringVaccines.map((item, idx) => (
-                  <li key={`${item.event.id}-${idx}`}>
-                    {(item.event.title || "Vaccinazione")} • {formatEventDateIT(item.due)}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <div className="mt-2 text-sm text-zinc-600">—</div>
-            )}
+      <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">Stato clinico rapido</h2>
+            <p className="text-sm text-slate-500">
+              Riepilogo dinamico derivato dagli eventi condivisi.
+            </p>
           </div>
         </div>
-      </section>
+
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
+              Età / Peso
+            </div>
+            <div className="mt-2 text-sm text-slate-800">
+              <div>
+                <span className="font-medium">Età:</span> {rapidClinicalState.age}
+              </div>
+              <div>
+                <span className="font-medium">Peso:</span> {rapidClinicalState.weight}
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
+              Allergie
+            </div>
+            <div className="mt-2 text-sm text-slate-800">
+              {rapidClinicalState.allergies.length > 0 ? (
+                rapidClinicalState.allergies.map((item, index) => (
+                  <div key={index}>{item.title || item.description || "Allergia registrata"}</div>
+                ))
+              ) : (
+                <div className="text-slate-500">Nessuna evidenza negli eventi condivisi</div>
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
+              Terapie attive
+            </div>
+            <div className="mt-2 text-sm text-slate-800">
+              {rapidClinicalState.activeTherapies.length > 0 ? (
+                rapidClinicalState.activeTherapies.map((item, index) => (
+                  <div key={index}>{item.title || item.description || "Terapia attiva"}</div>
+                ))
+              ) : (
+                <div className="text-slate-500">Nessuna terapia attiva rilevata</div>
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
+              Ultime terapie
+            </div>
+            <div className="mt-2 text-sm text-slate-800">
+              {rapidClinicalState.lastTherapies.length > 0 ? (
+                rapidClinicalState.lastTherapies.map((item, index) => (
+                  <div key={index}>
+                    {formatDate(item.date)} · {item.title || item.description || "Terapia"}
+                  </div>
+                ))
+              ) : (
+                <div className="text-slate-500">Nessuna terapia recente</div>
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
+              Patologie croniche
+            </div>
+            <div className="mt-2 text-sm text-slate-800">
+              {rapidClinicalState.chronicPathologies.length > 0 ? (
+                rapidClinicalState.chronicPathologies.map((item, index) => (
+                  <div key={index}>{item.title || item.description || "Patologia cronica"}</div>
+                ))
+              ) : (
+                <div className="text-slate-500">Nessuna patologia cronica rilevata</div>
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
+              Ricontrolli programmati
+            </div>
+            <div className="mt-2 text-sm text-slate-800">
+              {rapidClinicalState.nextRecall ? (
+                <div>
+                  {formatDate(rapidClinicalState.nextRecall.date)} ·{" "}
+                  {rapidClinicalState.nextRecall.title ||
+                    rapidClinicalState.nextRecall.description ||
+                    "Ricontrollo"}
+                </div>
+              ) : (
+                <div className="text-slate-500">Nessun ricontrollo futuro rilevato</div>
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
+              Ultima visita
+            </div>
+            <div className="mt-2 text-sm text-slate-800">
+              {rapidClinicalState.latestVisit ? (
+                <div>
+                  {formatDate(rapidClinicalState.latestVisit.date)} ·{" "}
+                  {rapidClinicalState.latestVisit.title ||
+                    rapidClinicalState.latestVisit.description ||
+                    "Visita"}
+                </div>
+              ) : (
+                <div className="text-slate-500">Nessuna visita rilevata</div>
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
+              Ultima vaccinazione
+            </div>
+            <div className="mt-2 text-sm text-slate-800">
+              {rapidClinicalState.latestVaccination ? (
+                <div>
+                  {formatDate(rapidClinicalState.latestVaccination.date)} ·{" "}
+                  {rapidClinicalState.latestVaccination.title ||
+                    rapidClinicalState.latestVaccination.description ||
+                    "Vaccinazione"}
+                </div>
+              ) : (
+                <div className="text-slate-500">Nessuna vaccinazione rilevata</div>
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
+              Vaccinazioni in scadenza
+            </div>
+            <div className="mt-2 text-sm text-slate-800">
+              {rapidClinicalState.vaccinationExpiry ? (
+                <div>
+                  {formatDate(rapidClinicalState.vaccinationExpiry.date)} ·{" "}
+                  {rapidClinicalState.vaccinationExpiry.title ||
+                    rapidClinicalState.vaccinationExpiry.description ||
+                    "Richiamo / scadenza vaccinale"}
+                </div>
+              ) : (
+                <div className="text-slate-500">
+                  Nessuna scadenza vaccinale futura rilevata
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
 
       {canAcceptReject ? (
         <div className="mt-6 rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
@@ -881,118 +1005,92 @@ export default function ProfessionistiRichiestaDettaglioPage() {
             </p>
           </div>
 
-          <div className="space-y-3 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="text-sm text-zinc-700">
-                Eventi condivisi: <span className="font-semibold">{data.events.length}</span> •
-                Filtrati: <span className="font-semibold">{filteredEvents.length}</span>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                {FILTERS.map((f) => {
-                  const active = filter === f.key;
-                  return (
-                    <button
-                      key={f.key}
-                      type="button"
-                      className={
-                        active
-                          ? "rounded-full border border-black bg-black px-3 py-1.5 text-xs font-semibold text-white"
-                          : "rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-800 hover:bg-zinc-50"
-                      }
-                      onClick={() => setFilter(f.key)}
-                    >
-                      {f.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="grid gap-3 md:grid-cols-2">
-              <input
-                type="text"
-                className="h-11 rounded-2xl border border-zinc-200 bg-white px-4 text-sm outline-none focus:border-zinc-400"
-                placeholder="Cerca in titolo, descrizione, tipo..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-
-              <div className="flex items-center rounded-2xl border border-zinc-200 bg-zinc-50 px-4 text-xs font-medium text-zinc-600">
-                Anteprima breve: apri l’evento per leggere tutto e gestire gli allegati.
-              </div>
-            </div>
+          <div className="mb-4 flex flex-wrap gap-2">
+            {[
+              { key: "all", label: "Tutti" },
+              { key: "visits", label: "Visite" },
+              { key: "therapies", label: "Terapie" },
+              { key: "vaccines", label: "Vaccini" },
+              { key: "files", label: "Con allegati" },
+            ].map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => setFilter(item.key)}
+                className={`rounded-full border px-3 py-1.5 text-sm transition ${
+                  filter === item.key
+                    ? "border-slate-900 bg-slate-900 text-white"
+                    : "border-slate-300 bg-white text-slate-700 hover:border-slate-400"
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
           </div>
 
-          {filteredEvents.length === 0 ? (
+          {filteredSharedEvents.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 p-6 text-sm leading-6 text-zinc-600">
               Nessun evento per questo filtro.
             </div>
           ) : (
             <div className="space-y-3">
-              {filteredEvents.map((event) => {
-                const kg = extractWeightKg(event);
-                const hasFiles = (event.files?.length ?? 0) > 0;
+              {filteredSharedEvents.map((event) => {
+                const files = Array.isArray(event?.files) ? event.files : [];
+                const preview = extractText(event?.description);
+                const weightLabel =
+                  extractText(event?.weight) ||
+                  extractText((event?.payload as { weight?: unknown } | undefined)?.weight) ||
+                  extractText((event?.data as { weight?: unknown } | undefined)?.weight);
 
                 return (
                   <button
                     key={event.id}
                     type="button"
-                    onClick={() => setSelectedEventId(event.id)}
-                    className="block w-full rounded-2xl border border-zinc-200 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-zinc-300 hover:shadow-md"
+                    onClick={() => setSelectedEvent(event)}
+                    className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-slate-300 hover:shadow"
                   >
-                    <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-500">
-                          <span className="rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 font-medium text-zinc-700">
-                            {eventTypeDisplay(event.type)}
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
+                            {typeLabel(event?.type)}
                           </span>
 
-                          <span className="font-medium text-zinc-700">
-                            {formatEventDateIT(event.event_date)}
-                          </span>
+                          {weightLabel ? (
+                            <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
+                              Peso {weightLabel}
+                            </span>
+                          ) : null}
 
-                          {event.created_at ? (
-                            <span className="text-zinc-400">
-                              • Inserito il {formatInsertedAtIT(event.created_at)}
+                          {files.length > 0 ? (
+                            <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-800">
+                              Allegati {files.length}
                             </span>
                           ) : null}
                         </div>
 
-                        <div className="mt-3 flex flex-wrap items-center gap-2">
-                          {kg !== null ? (
-                            <span className="inline-flex items-center rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-xs font-semibold text-zinc-700">
-                              ⚖ {formatWeightLabel(kg)}
-                            </span>
-                          ) : null}
+                        <h3 className="mt-3 text-base font-semibold text-slate-900 md:text-lg">
+                          {event?.title || "Evento clinico"}
+                        </h3>
 
-                          {hasFiles ? (
-                            <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
-                              📎 {event.files.length} allegati
-                            </span>
-                          ) : null}
-
-                          {event.visibility ? (
-                            <span className="inline-flex items-center rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-xs font-medium text-zinc-700">
-                              {event.visibility}
-                            </span>
-                          ) : null}
+                        <div className="mt-1 text-sm text-slate-500">
+                          {formatDateTime(
+                            event?.event_date || event?.performed_at || event?.created_at
+                          )}
                         </div>
 
-                        <div className="mt-3 text-base font-semibold leading-6 text-zinc-900">
-                          {event.title || typeLabel(event.type)}
-                        </div>
-
-                        {event.description ? (
-                          <p className="mt-2 line-clamp-2 text-[15px] leading-6 text-zinc-700">
-                            {event.description}
+                        {preview ? (
+                          <p className="mt-3 line-clamp-2 text-sm leading-6 text-slate-700">
+                            {preview}
                           </p>
-                        ) : null}
+                        ) : (
+                          <p className="mt-3 text-sm text-slate-400">
+                            Nessuna descrizione disponibile
+                          </p>
+                        )}
                       </div>
 
-                      <div className="shrink-0 text-xs font-semibold text-zinc-500">
-                        Apri →
-                      </div>
+                      <div className="shrink-0 text-sm font-medium text-slate-600">Apri →</div>
                     </div>
                   </button>
                 );
@@ -1005,29 +1103,63 @@ export default function ProfessionistiRichiestaDettaglioPage() {
           <h2 className="text-lg font-semibold text-zinc-900">Messaggi / referto</h2>
 
           <div className="mt-4 space-y-3">
-            {data.messages.map((msg) => {
-              const mine = msg.sender_professional_id === data.currentProfessionalId;
+            {data.messages.map((message) => {
+              const mine = message.sender_professional_id === data.currentProfessionalId;
               return (
                 <div
-                  key={msg.id}
+                  key={message.id}
                   className={`rounded-2xl p-4 ${mine ? "bg-zinc-100" : "bg-blue-50"}`}
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="text-sm font-semibold text-zinc-900">
-                      {msg.sender_display_name}
+                      {message.sender_display_name}
                     </div>
                     <div className="text-xs text-zinc-500">
-                      {new Date(msg.created_at).toLocaleString("it-IT")}
+                      {new Date(message.created_at).toLocaleString("it-IT")}
                     </div>
                   </div>
 
                   <div className="mt-1 text-xs uppercase tracking-wide text-zinc-500">
-                    {msg.message_type}
+                    {message.message_type}
                   </div>
 
                   <div className="mt-3 whitespace-pre-wrap text-sm text-zinc-800">
-                    {msg.message}
+                    {message.message}
                   </div>
+
+                  {Array.isArray(message?.files) && message.files.length > 0 ? (
+                    <div className="mt-3 space-y-2">
+                      {message.files.map((file, index) => {
+                        const href = file?.path
+                          ? `/api/professionisti/consults/messages/files/download?path=${encodeURIComponent(file.path)}${
+                              file.filename ? `&filename=${encodeURIComponent(file.filename)}` : ""
+                            }`
+                          : null;
+
+                        return href ? (
+                          <a
+                            key={file.id || `${file.filename || "file"}-${index}`}
+                            href={href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                          >
+                            <span className="truncate">{file.filename || "Allegato"}</span>
+                            <span className="ml-3 shrink-0 text-xs text-slate-500">
+                              {formatBytes(file.size)}
+                            </span>
+                          </a>
+                        ) : (
+                          <div
+                            key={file.id || `${file.filename || "file"}-${index}`}
+                            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-500"
+                          >
+                            {file.filename || "Allegato"}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : null}
                 </div>
               );
             })}
@@ -1047,14 +1179,56 @@ export default function ProfessionistiRichiestaDettaglioPage() {
                 placeholder="Scrivi il tuo referto o la risposta..."
               />
 
+              <div className="mt-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4">
+                <div className="mb-2">
+                  <div className="text-sm font-medium text-slate-800">Allegati risposta</div>
+                  <div className="text-xs text-slate-500">
+                    Allega PDF, immagini, referti, esami.
+                  </div>
+                </div>
+
+                <input
+                  type="file"
+                  multiple
+                  onChange={handleReplyFilesChange}
+                  className="block w-full text-sm text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-900 file:px-3 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-slate-700"
+                />
+
+                {replyFiles.length > 0 ? (
+                  <div className="mt-3 space-y-2">
+                    {replyFiles.map((file, index) => (
+                      <div
+                        key={`${file.name}-${index}`}
+                        className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                      >
+                        <div className="min-w-0">
+                          <div className="truncate font-medium text-slate-800">{file.name}</div>
+                          <div className="text-xs text-slate-500">{formatBytes(file.size)}</div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => removeReplyFile(index)}
+                          className="ml-3 rounded-lg border border-slate-300 px-2.5 py-1 text-xs text-slate-700 hover:bg-slate-50"
+                        >
+                          Rimuovi
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+
               <div className="mt-3 flex flex-wrap gap-2">
                 <button
                   type="button"
                   onClick={sendReply}
-                  disabled={saving}
-                  className="rounded-2xl bg-black px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                  disabled={sendingReply || sendingReplyFiles}
+                  className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  Invia risposta
+                  {sendingReply || sendingReplyFiles
+                    ? "Invio in corso..."
+                    : "Invia risposta / referto"}
                 </button>
 
                 {canClose ? (
@@ -1068,11 +1242,6 @@ export default function ProfessionistiRichiestaDettaglioPage() {
                   </button>
                 ) : null}
               </div>
-
-              <p className="mt-3 text-xs text-zinc-500">
-                Allegati al consulto: per ora puoi aggiungerli ai singoli eventi condivisi aprendo
-                il dettaglio evento qui a sinistra.
-              </p>
             </div>
           ) : null}
         </section>
@@ -1080,134 +1249,132 @@ export default function ProfessionistiRichiestaDettaglioPage() {
 
       {selectedEvent ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="max-h-[85vh] w-full max-w-3xl overflow-hidden rounded-3xl bg-white shadow-xl">
-            <div className="p-5 md:p-6">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h2 className="text-xl font-semibold leading-6 text-zinc-900">
-                    {selectedEvent.title || typeLabel(selectedEvent.type)}
-                  </h2>
-
-                  <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-zinc-600">
-                    <span className="rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-xs font-semibold text-zinc-700">
-                      {eventTypeDisplay(selectedEvent.type)}
-                    </span>
-                    <span>{formatEventDateIT(selectedEvent.event_date)}</span>
-                  </div>
-
-                  {extractWeightKg(selectedEvent) !== null ? (
-                    <div className="mt-3">
-                      <span className="inline-flex items-center rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-xs font-semibold text-zinc-700">
-                        ⚖ {formatWeightLabel(extractWeightKg(selectedEvent)!)}
-                      </span>
-                    </div>
-                  ) : null}
+          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="mb-2 text-sm font-medium text-slate-500">
+                  {typeLabel(selectedEvent?.type)}
                 </div>
-
-                <button
-                  type="button"
-                  className="rounded-xl border border-zinc-200 bg-white px-3.5 py-2 text-sm font-semibold text-zinc-800 shadow-sm transition hover:bg-zinc-50"
-                  onClick={() => setSelectedEventId(null)}
-                >
-                  Chiudi
-                </button>
-              </div>
-
-              <div className="mt-6 max-h-[60vh] space-y-4 overflow-y-auto pr-1 text-sm">
-                {selectedEvent.description ? (
-                  <div>
-                    <div className="text-xs font-semibold text-zinc-700">Descrizione</div>
-                    <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-zinc-700">
-                      {selectedEvent.description}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="rounded-2xl border border-dashed border-zinc-200 p-4 text-sm text-zinc-600">
-                    Nessuna descrizione disponibile.
-                  </div>
-                )}
-
-                <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-                  <div className="text-xs font-semibold text-zinc-700">Allegati</div>
-
-                  {selectedEvent.files.length === 0 ? (
-                    <div className="mt-2 text-xs text-zinc-600">Nessun allegato.</div>
-                  ) : (
-                    <ul className="mt-3 space-y-2">
-                      {selectedEvent.files.map((file) => {
-                        const href = buildDownloadHref(file);
-
-                        return href ? (
-                          <li key={file.id}>
-                            <a
-                              href={href}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-100"
-                            >
-                              📎 {file.filename || "File allegato"}
-                            </a>
-                          </li>
-                        ) : (
-                          <li
-                            key={file.id}
-                            className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-800"
-                          >
-                            📎 {file.filename || "File allegato"}
-                          </li>
-                        );
-                      })}
-                    </ul>
+                <h2 className="text-2xl font-semibold text-slate-900">
+                  {selectedEvent?.title || "Dettaglio evento"}
+                </h2>
+                <div className="mt-2 text-sm text-slate-500">
+                  {formatDateTime(
+                    selectedEvent?.event_date ||
+                      selectedEvent?.performed_at ||
+                      selectedEvent?.scheduled_for ||
+                      selectedEvent?.created_at
                   )}
-
-                  <label className="mt-4 block">
-                    <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-zinc-700">
-                      Aggiungi allegati all’evento
-                    </span>
-
-                    <input
-                      type="file"
-                      multiple
-                      className="block w-full rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 px-3.5 py-3 text-sm text-zinc-700 file:mr-3 file:rounded-xl file:border-0 file:bg-black file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:border-zinc-400"
-                      onChange={async (e) => {
-                        const files = Array.from(e.target.files || []);
-                        if (!files.length) return;
-                        await uploadEventFiles(selectedEvent.id, files);
-                      }}
-                    />
-                  </label>
-
-                  {uploadingFiles ? (
-                    <div className="mt-2 text-xs text-zinc-500">Caricamento allegati…</div>
-                  ) : null}
                 </div>
+              </div>
 
-                <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-                  <div className="text-xs font-semibold text-zinc-700">Meta informazioni</div>
+              <button
+                type="button"
+                onClick={() => setSelectedEvent(null)}
+                className="rounded-full border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+              >
+                Chiudi
+              </button>
+            </div>
 
-                  <div className="mt-2 space-y-1.5 text-xs leading-5 text-zinc-600">
-                    <div>
-                      ID evento: <span className="font-mono">{selectedEvent.id}</span>
-                    </div>
-                    <div>Visibilità: {selectedEvent.visibility || "—"}</div>
-                    <div>Stato: {selectedEvent.status || "—"}</div>
-                    <div>Priorità: {selectedEvent.priority || "—"}</div>
-                    {selectedEvent.created_at ? (
-                      <div>Inserito il: {formatInsertedAtIT(selectedEvent.created_at)}</div>
-                    ) : null}
+            <div className="mt-6 grid gap-4 md:grid-cols-2">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Meta</div>
+                <div className="mt-3 space-y-2 text-sm text-slate-700">
+                  <div>
+                    <span className="font-medium">Titolo:</span> {selectedEvent?.title || "—"}
+                  </div>
+                  <div>
+                    <span className="font-medium">Data:</span>{" "}
+                    {formatDateTime(
+                      selectedEvent?.event_date ||
+                        selectedEvent?.performed_at ||
+                        selectedEvent?.created_at
+                    )}
+                  </div>
+                  <div>
+                    <span className="font-medium">Tipo:</span> {typeLabel(selectedEvent?.type)}
+                  </div>
+                  <div>
+                    <span className="font-medium">Peso:</span>{" "}
+                    {extractText(
+                      selectedEvent?.weight ||
+                        (selectedEvent?.payload as { weight?: unknown } | undefined)?.weight ||
+                        (selectedEvent?.data as { weight?: unknown } | undefined)?.weight
+                    ) || "—"}
                   </div>
                 </div>
               </div>
 
-              <div className="mt-6 flex justify-end">
-                <button
-                  type="button"
-                  className="rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800 shadow-sm transition hover:bg-zinc-50"
-                  onClick={() => setSelectedEventId(null)}
-                >
-                  Chiudi
-                </button>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Allegati evento
+                </div>
+                <div className="mt-3 space-y-2">
+                  {(selectedEvent?.files || []).length > 0 ? (
+                    selectedEvent.files.map((file, index) => {
+                      const href = buildEventDownloadHref(file);
+
+                      return href ? (
+                        <a
+                          key={file.id || `${file.filename || "file"}-${index}`}
+                          href={href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                        >
+                          <span className="truncate">{file.filename || "File allegato"}</span>
+                          <span className="ml-3 shrink-0 text-xs text-slate-500">
+                            {formatBytes(file.size)}
+                          </span>
+                        </a>
+                      ) : (
+                        <div
+                          key={file.id || `${file.filename || "file"}-${index}`}
+                          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-400"
+                        >
+                          {file.filename || "File allegato"}
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="text-sm text-slate-500">Nessun allegato presente</div>
+                  )}
+                </div>
               </div>
+            </div>
+
+            <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-4">
+              <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                Descrizione completa
+              </div>
+              <div className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-800">
+                {extractText(selectedEvent?.description) || "Nessuna descrizione disponibile"}
+              </div>
+            </div>
+
+            <div className="mt-6 rounded-2xl border border-zinc-200 bg-white p-4">
+              <label className="block">
+                <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-zinc-700">
+                  Aggiungi allegati all’evento
+                </span>
+
+                <input
+                  type="file"
+                  multiple
+                  className="block w-full rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 px-3.5 py-3 text-sm text-zinc-700 file:mr-3 file:rounded-xl file:border-0 file:bg-black file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:border-zinc-400"
+                  onChange={async (e) => {
+                    const files = Array.from(e.target.files || []);
+                    if (!files.length) return;
+                    await uploadEventFiles(selectedEvent.id, files);
+                    e.currentTarget.value = "";
+                  }}
+                />
+              </label>
+
+              {uploadingFiles ? (
+                <div className="mt-2 text-xs text-zinc-500">Caricamento allegati…</div>
+              ) : null}
             </div>
           </div>
         </div>
