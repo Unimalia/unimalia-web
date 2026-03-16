@@ -1,6 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, supabaseAdmin } from "@/lib/supabase/server";
 
+type AnimalPayload = {
+  name?: string;
+  species?: string;
+  breed?: string | null;
+  color?: string | null;
+  size?: string | null;
+  sex?: string | null;
+  sterilized?: boolean | null;
+  birth_date?: string | null;
+  microchip?: string | null;
+  chip_number?: string | null;
+  photo_url?: string | null;
+};
+
+function normalizeChip(value?: string | null) {
+  const digits = String(value ?? "").replace(/\D+/g, "").trim();
+  return digits.length ? digits : null;
+}
+
+function isValidChip(value: string) {
+  return /^\d{15}$/.test(value);
+}
+
 function isUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
     value
@@ -11,49 +34,106 @@ function digitsOnly(v: string) {
   return (v || "").replace(/\D+/g, "");
 }
 
-async function resolveAnimalByRef(admin: any, ref: string) {
-  const value = (ref || "").trim();
+function normalizeAnimalRef(value: string) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
 
-  if (!value) return null;
-
-  // UUID diretto
-  if (isUuid(value)) {
-    const { data } = await admin
-      .from("animals")
-      .select("*")
-      .eq("id", value)
-      .maybeSingle();
-
-    if (data) return data;
+  if (/^unimalia[:\-]/i.test(raw)) {
+    return raw.replace(/^unimalia[:\-]/i, "").trim();
   }
 
-  // UNIMALIA:CODE
-  if (/^unimalia[:\-]/i.test(value)) {
-    const code = value.replace(/^unimalia[:\-]/i, "").trim();
+  return raw;
+}
 
-    const { data } = await admin
-      .from("animals")
-      .select("*")
-      .eq("unimalia_code", code)
-      .maybeSingle();
+async function getProfessionalRefs(userId: string) {
+  const admin = supabaseAdmin();
+  const refs = new Set<string>();
+  refs.add(userId);
 
-    if (data) return data;
+  const profileResult = await admin
+    .from("professional_profiles")
+    .select("user_id, org_id")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (profileResult.data?.org_id) {
+    refs.add(profileResult.data.org_id);
   }
 
-  // Microchip
-  const chip = digitsOnly(value);
+  return Array.from(refs).filter(Boolean);
+}
 
+async function getProfessionalOrgId(userId: string) {
+  const admin = supabaseAdmin();
+
+  const profileResult = await admin
+    .from("professional_profiles")
+    .select("user_id, org_id")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (profileResult.data?.org_id) {
+    return {
+      orgId: profileResult.data.org_id as string,
+      profile: profileResult.data,
+    };
+  }
+
+  return {
+    orgId: null,
+    profile: null,
+    error: profileResult.error
+      ? {
+          message: profileResult.error.message,
+          details: profileResult.error.details,
+          hint: profileResult.error.hint,
+          code: profileResult.error.code,
+        }
+      : null,
+  };
+}
+
+async function resolveAnimalByRef(animalRef: string) {
+  const admin = supabaseAdmin();
+  const ref = normalizeAnimalRef(animalRef);
+
+  if (!ref) {
+    return {
+      data: null,
+      error: { message: "animalId mancante" },
+    };
+  }
+
+  if (isUuid(ref)) {
+    const byId = await admin
+      .from("animals")
+      .select("*")
+      .eq("id", ref)
+      .maybeSingle();
+
+    if (byId.error) return byId;
+    if (byId.data) return byId;
+  }
+
+  const chip = digitsOnly(ref);
   if (chip.length === 15 || chip.length === 10) {
-    const { data } = await admin
+    const byChip = await admin
       .from("animals")
       .select("*")
       .eq("chip_number", chip)
       .maybeSingle();
 
-    if (data) return data;
+    if (byChip.error) return byChip;
+    if (byChip.data) return byChip;
   }
 
-  return null;
+  const byCode = await admin
+    .from("animals")
+    .select("*")
+    .eq("unimalia_code", ref)
+    .maybeSingle();
+
+  return byCode;
 }
 
 export async function GET(req: NextRequest) {
@@ -63,71 +143,199 @@ export async function GET(req: NextRequest) {
 
     const {
       data: { user },
+      error: authError,
     } = await supabase.auth.getUser();
 
-    if (!user) {
-      return NextResponse.json(
-        { error: "Non autenticato" },
-        { status: 401 }
-      );
+    if (authError || !user) {
+      return NextResponse.json({ error: "Non autorizzato" }, { status: 401 });
     }
 
-    const isProfessional =
-      user.app_metadata?.is_professional === true ||
-      user.app_metadata?.is_vet === true;
+    const orgLookup = await getProfessionalOrgId(user.id);
+    const refs = await getProfessionalRefs(user.id);
 
-    if (!isProfessional) {
+    if (!orgLookup.orgId) {
       return NextResponse.json(
-        { error: "Accesso riservato ai professionisti" },
+        { error: "Profilo professionista non valido o organizzazione non trovata" },
         { status: 403 }
       );
     }
 
-    const url = new URL(req.url);
+    const animalRef =
+      (req.nextUrl.searchParams.get("animalId") || "").trim() ||
+      (req.nextUrl.searchParams.get("id") || "").trim() ||
+      (req.nextUrl.searchParams.get("q") || "").trim();
 
-    const ref =
-      url.searchParams.get("animalId") ||
-      url.searchParams.get("id") ||
-      url.searchParams.get("q");
+    if (!animalRef) {
+      return NextResponse.json({ error: "animalId mancante" }, { status: 400 });
+    }
 
-    if (!ref) {
+    const animalResult = await resolveAnimalByRef(animalRef);
+
+    if (animalResult.error) {
       return NextResponse.json(
-        { error: "Parametro animale mancante" },
-        { status: 400 }
+        { error: animalResult.error.message || "Errore lookup animale" },
+        { status: 500 }
       );
     }
 
-    const animal = await resolveAnimalByRef(admin, ref);
-
-    if (!animal) {
-      return NextResponse.json(
-        { error: "Animale non trovato" },
-        { status: 404 }
-      );
+    if (!animalResult.data) {
+      return NextResponse.json({ error: "Animale non trovato" }, { status: 404 });
     }
 
-    // verifica grant
-    const { data: grant } = await admin
+    const animal = animalResult.data as Record<string, any>;
+
+    const grantResult = await admin
       .from("animal_access_grants")
-      .select("id")
+      .select("id, grantee_id, status")
       .eq("animal_id", animal.id)
-      .eq("grantee_id", user.id)
-      .maybeSingle();
+      .in("grantee_id", refs)
+      .in("status", ["active", "approved"]);
 
-    if (!grant) {
+    if (grantResult.error) {
       return NextResponse.json(
-        { error: "Accesso non autorizzato" },
+        { error: grantResult.error.message || "Errore verifica grant" },
+        { status: 500 }
+      );
+    }
+
+    const hasGrant = (grantResult.data?.length ?? 0) > 0;
+
+    const canAccess =
+      hasGrant ||
+      refs.includes(String(animal.created_by_org_id ?? "")) ||
+      refs.includes(String(animal.origin_org_id ?? ""));
+
+    if (!canAccess) {
+      return NextResponse.json(
+        { error: "Accesso negato: nessun grant attivo per questo professionista/organizzazione" },
         { status: 403 }
       );
     }
 
     return NextResponse.json({
-      ok: true,
-      animal,
+      animal: {
+        ...animal,
+        microchip: animal.chip_number ?? null,
+      },
     });
-  } catch (err: any) {
+  } catch (error: any) {
     return NextResponse.json(
-      { error: err?.message || "Errore server" },
+      { error: error?.message || "Errore interno" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const supabase = await createClient();
+    const admin = supabaseAdmin();
+
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ error: "Non autorizzato" }, { status: 401 });
+    }
+
+    const orgLookup = await getProfessionalOrgId(user.id);
+
+    if (!orgLookup.orgId) {
+      return NextResponse.json(
+        { error: "Profilo professionista non valido o organizzazione non trovata" },
+        { status: 403 }
+      );
+    }
+
+    const body = (await req.json()) as AnimalPayload;
+
+    const name = body.name?.trim() ?? "";
+    const species = body.species?.trim() ?? "";
+    const chipNumber = normalizeChip(body.microchip ?? body.chip_number ?? null);
+
+    if (!name) {
+      return NextResponse.json({ error: "Nome obbligatorio" }, { status: 400 });
+    }
+
+    if (!species) {
+      return NextResponse.json({ error: "Specie obbligatoria" }, { status: 400 });
+    }
+
+    if (chipNumber && !isValidChip(chipNumber)) {
+      return NextResponse.json(
+        { error: "Microchip non valido: servono 15 cifre" },
+        { status: 400 }
+      );
+    }
+
+    if (chipNumber) {
+      const chipCheck = await admin
+        .from("animals")
+        .select("id, name, chip_number")
+        .eq("chip_number", chipNumber)
+        .maybeSingle();
+
+      if (chipCheck.data?.id) {
+        return NextResponse.json(
+          { error: "Esiste già un animale con questo microchip" },
+          { status: 409 }
+        );
+      }
+
+      if (chipCheck.error) {
+        return NextResponse.json(
+          { error: chipCheck.error.message || "Errore controllo microchip" },
+          { status: 500 }
+        );
+      }
+    }
+
+    const insertPayload = {
+      name,
+      species,
+      breed: body.breed?.trim() || null,
+      color: body.color?.trim() || null,
+      size: body.size?.trim() || null,
+      sex: body.sex?.trim() || null,
+      sterilized:
+        typeof body.sterilized === "boolean" ? body.sterilized : null,
+      birth_date: body.birth_date || null,
+      chip_number: chipNumber,
+      photo_url: body.photo_url || null,
+      owner_id: null,
+      created_by_role: "professional",
+      created_by_org_id: orgLookup.orgId,
+      origin_org_id: orgLookup.orgId,
+      owner_claim_status: "pending",
+    };
+
+    const created = await admin
+      .from("animals")
+      .insert(insertPayload)
+      .select("*")
+      .single();
+
+    if (created.error || !created.data) {
+      return NextResponse.json(
+        { error: created.error?.message || "Errore creazione animale" },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json(
+      {
+        animal: {
+          ...created.data,
+          microchip: created.data.chip_number ?? null,
+        },
+      },
+      { status: 201 }
+    );
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: error?.message || "Errore interno" },
       { status: 500 }
     );
   }
