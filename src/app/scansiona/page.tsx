@@ -1,35 +1,44 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { BrowserMultiFormatReader } from "@zxing/browser";
+import { supabase } from "@/lib/supabaseClient";
+import { normalizeScanResult } from "@/lib/normalizeScanResult";
 
-function normalizeScanResult(text: string) {
-  const t = text.trim();
+function isUuid(v: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    v
+  );
+}
 
-  // Se è già un link unimalia tipo https://unimalia.it/a/<token>
-  try {
-    const u = new URL(t);
-    if (u.pathname.startsWith("/a/")) return u.pathname; // "/a/<token>"
-  } catch {}
+function publicTokenFromValue(raw: string) {
+  const value = normalizeScanResult(raw);
 
-  // Se è solo un token uuid, lo trasformo in route
-  const uuidRe =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  if (uuidRe.test(t)) return `/a/${t}`;
+  if (!value) return "";
 
-  return t;
+  if (/^unimalia[:\-]/i.test(value)) {
+    return value.replace(/^unimalia[:\-]/i, "").trim();
+  }
+
+  if (isUuid(value)) return value;
+
+  return value.trim();
 }
 
 export default function ScansionaPage() {
   const router = useRouter();
-  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const searchParams = useSearchParams();
+  const qParam = (searchParams.get("q") || "").trim();
 
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const controlsStopRef = useRef<null | (() => void)>(null);
   const startingRef = useRef(false);
+  const handledDirectRef = useRef(false);
 
   const [error, setError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
+  const [routing, setRouting] = useState(false);
 
   const stop = useCallback(() => {
     try {
@@ -38,6 +47,38 @@ export default function ScansionaPage() {
     controlsStopRef.current = null;
     setRunning(false);
   }, []);
+
+  const routeDirectValue = useCallback(async (raw: string) => {
+    const normalized = normalizeScanResult(raw);
+    const publicToken = publicTokenFromValue(normalized);
+
+    if (!publicToken) {
+      setError("Codice QR non valido.");
+      setRouting(false);
+      return;
+    }
+
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      const isProfessional =
+        user?.app_metadata?.is_professional === true ||
+        user?.app_metadata?.is_vet === true;
+
+      if (isProfessional) {
+        router.replace(
+          `/professionisti/scansiona?value=${encodeURIComponent(normalized)}`
+        );
+        return;
+      }
+
+      router.replace(`/a/${encodeURIComponent(publicToken)}`);
+    } catch {
+      router.replace(`/a/${encodeURIComponent(publicToken)}`);
+    }
+  }, [router]);
 
   const start = useCallback(async () => {
     if (startingRef.current) return;
@@ -50,12 +91,10 @@ export default function ScansionaPage() {
       const el = videoRef.current;
       if (!el) throw new Error("Video element non pronto.");
 
-      // Stop eventuale sessione precedente
       stop();
 
       const codeReader = new BrowserMultiFormatReader();
 
-      // Forza (idealmente) camera posteriore: facingMode "environment"
       const constraints: MediaStreamConstraints = {
         video: { facingMode: { ideal: "environment" } },
         audio: false,
@@ -64,21 +103,20 @@ export default function ScansionaPage() {
       const controls = await codeReader.decodeFromConstraints(
         constraints,
         el,
-        (result) => {
+        async (result) => {
           if (!result) return;
 
           const text = result.getText();
-          const path = normalizeScanResult(text);
 
-          // Stop camera appena trovato
           try {
             controls.stop();
           } catch {}
 
           controlsStopRef.current = null;
           setRunning(false);
+          setRouting(true);
 
-          router.push(path);
+          await routeDirectValue(text);
         }
       );
 
@@ -96,12 +134,37 @@ export default function ScansionaPage() {
     } finally {
       startingRef.current = false;
     }
-  }, [router, stop]);
+  }, [routeDirectValue, stop]);
 
   useEffect(() => {
-    start();
+    if (qParam && !handledDirectRef.current) {
+      handledDirectRef.current = true;
+      setRouting(true);
+      void routeDirectValue(qParam);
+      return;
+    }
+
+    if (!qParam) {
+      void start();
+    }
+
     return () => stop();
-  }, [start, stop]);
+  }, [qParam, routeDirectValue, start, stop]);
+
+  if (routing) {
+    return (
+      <div className="space-y-6">
+        <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-900">
+            Reindirizzamento in corso…
+          </h1>
+          <p className="mt-2 text-sm text-zinc-600">
+            Sto aprendo la scheda corretta in base al contesto di accesso.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

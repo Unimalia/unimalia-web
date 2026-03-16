@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import UsbScannerMode from "./UsbScannerMode";
 import { normalizeScanResult } from "@/lib/normalizeScanResult";
 import CameraScanner from "./CameraScanner";
@@ -71,6 +71,10 @@ function extractFromScan(raw: string): Extract {
     if (path === "/scansiona" || path === "/scansiona/") {
       const q = (url.searchParams.get("q") || "").trim();
       if (!q) return { kind: "error", error: "Link /scansiona senza parametro q" };
+
+      if (/^unimalia[:\-]/i.test(q)) {
+        return { kind: "q", q };
+      }
 
       if (isUuid(q)) return { kind: "animalId", animalId: q };
 
@@ -170,6 +174,9 @@ function ModeButton({
 
 export default function ScannerPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const directValue = (searchParams.get("value") || "").trim();
+  const directHandledRef = useRef(false);
 
   const [mode, setMode] = useState<Mode>("camera");
   const [manualValue, setManualValue] = useState("");
@@ -371,7 +378,10 @@ export default function ScannerPage() {
       }
 
       if (ex.kind === "q") {
-        showBanner({ kind: "success", text: "Codice UNIMALIA riconosciuto. Risolvo animale…" }, 1200);
+        showBanner(
+          { kind: "success", text: "Codice UNIMALIA riconosciuto. Risolvo animale…" },
+          1200
+        );
 
         const findRes = await fetch(`/api/animals/find?q=${encodeURIComponent(ex.q)}`, {
           cache: "no-store",
@@ -447,6 +457,12 @@ export default function ScannerPage() {
       setBusy(false);
     }
   }
+
+  useEffect(() => {
+    if (!directValue || directHandledRef.current) return;
+    directHandledRef.current = true;
+    void handleScan(directValue);
+  }, [directValue]);
 
   return (
     <div className="mx-auto max-w-3xl space-y-5">
