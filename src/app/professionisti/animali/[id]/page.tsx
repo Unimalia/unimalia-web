@@ -930,7 +930,7 @@ export default function ProAnimalPage() {
       </div>
 
       <AnimalCodes
-        qrValue={qrValue || `UNIMALIA:${animal.id}`}
+        qrValue={qrValue}
         barcodeValue={barcodeValue}
         caption="Da usare in emergenza o per verifica rapida."
       />

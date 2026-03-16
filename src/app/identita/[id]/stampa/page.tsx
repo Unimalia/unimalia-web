@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { getBarcodeValue, getQrValue } from "@/lib/animalCodes";
 
 import { PageShell } from "@/_components/ui/page-shell";
 import { ButtonPrimary, ButtonSecondary } from "@/_components/ui/button";
@@ -36,18 +37,15 @@ export default function StampaAnimalPage() {
   const [error, setError] = useState<string | null>(null);
 
   const qrValue = useMemo(() => {
-    const origin = typeof window !== "undefined" ? window.location.origin : "";
-    if (!id) return "";
-    return origin ? `${origin}/scansiona/animali/${id}` : `UNIMALIA:${id}`;
-  }, [id]);
+    const origin =
+      typeof window !== "undefined" ? window.location.origin : "https://unimalia.it";
+    if (!animal) return "";
+    return getQrValue(animal, origin);
+  }, [animal]);
 
   const barcodeValue = useMemo(() => {
     if (!animal) return "";
-    const chip = normalizeChip(animal.chip_number);
-    if (chip) return chip;
-    const code = (animal.unimalia_code || "").trim();
-    if (code) return `UNIMALIA:${code}`;
-    return `UNIMALIA:${animal.id}`;
+    return getBarcodeValue(animal);
   }, [animal]);
 
   useEffect(() => {
