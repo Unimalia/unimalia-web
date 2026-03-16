@@ -299,6 +299,7 @@ export default function LoginClient() {
           email: emailValue,
           password,
           options: {
+            emailRedirectTo: "https://unimalia.it/auth/confirm",
             data: {
               full_name: fullName.trim(),
               phone: phoneE164,
@@ -309,6 +310,18 @@ export default function LoginClient() {
         });
 
         if (error) {
+          const m = (error.message || "").toLowerCase();
+
+          if (
+            m.includes("already registered") ||
+            m.includes("already exists") ||
+            m.includes("user already registered")
+          ) {
+            setMsg("Questa email risulta già registrata. Usa “Accedi” oppure “Password dimenticata”.");
+            setMode("login");
+            return;
+          }
+
           setMsg(error.message);
           return;
         }
