@@ -12,13 +12,11 @@ function normalizeCF(s: string) {
 function normalizePhone(input: string) {
   const raw = (input || "").replace(/\s+/g, "").trim();
   if (!raw) return "";
-  // Se non parte con +, assumiamo Italia (+39). Se vuoi, lo rendiamo più rigido dopo.
   return raw.startsWith("+") ? raw : `+39${raw}`;
 }
 
 function isLikelyFullName(s: string) {
   const v = (s || "").trim();
-  // minimo sobrio: 2 parole e almeno 5 caratteri totali
   if (v.length < 5) return false;
   const parts = v.split(/\s+/).filter(Boolean);
   return parts.length >= 2;
@@ -32,13 +30,31 @@ function isProfileComplete(p: any) {
   const cityOk = (p.city ?? "").trim().length >= 2;
 
   const cf = normalizeCF(p.fiscal_code ?? "");
-  const cfOk = !cf || cf.length === 16; // facoltativo
+  const cfOk = !cf || cf.length === 16;
 
-  // Se la colonna non esiste (o non la selezioni), non blocchiamo.
   const phoneVerified =
     p.phone_verified === undefined ? true : p.phone_verified === true;
 
   return fullNameOk && phoneOk && cityOk && cfOk && phoneVerified;
+}
+
+function sanitizeNextPath(value: string | null) {
+  if (!value) return "/identita";
+  if (!value.startsWith("/")) return "/identita";
+  if (value.startsWith("//")) return "/identita";
+  return value;
+}
+
+function getPasswordIssues(password: string) {
+  const issues: string[] = [];
+
+  if (password.length < 12) issues.push("almeno 12 caratteri");
+  if (!/[a-z]/.test(password)) issues.push("almeno una lettera minuscola");
+  if (!/[A-Z]/.test(password)) issues.push("almeno una lettera maiuscola");
+  if (!/[0-9]/.test(password)) issues.push("almeno un numero");
+  if (!/[^A-Za-z0-9]/.test(password)) issues.push("almeno un simbolo");
+
+  return issues;
 }
 
 async function ensureProfileRow(userId: string) {
@@ -68,31 +84,33 @@ async function decideRedirect(router: ReturnType<typeof useRouter>, fallback: st
 export default function LoginClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get("next") || "/identita";
+
+  const next = sanitizeNextPath(searchParams.get("next"));
+  const onboardingPhone = searchParams.get("onboarding") === "phone";
 
   const initialMode = searchParams.get("mode") === "signup" ? "signup" : "login";
   const [mode, setMode] = useState<"login" | "signup">(initialMode);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
-  // campi profilo (richiesti in signup; in login li usiamo solo se mancano e vuoi completarli qui)
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [city, setCity] = useState("");
   const [fiscalCode, setFiscalCode] = useState("");
 
-  // verifica telefono
   const [otpSent, setOtpSent] = useState(false);
   const [otp, setOtp] = useState("");
 
   const [loadingPage, setLoadingPage] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [hasSession, setHasSession] = useState(false);
 
   const phoneE164 = useMemo(() => normalizePhone(phone), [phone]);
+  const passwordIssues = useMemo(() => getPasswordIssues(password), [password]);
 
-  // Se già loggato, non restare su /login
   useEffect(() => {
     let alive = true;
 
@@ -100,9 +118,19 @@ export default function LoginClient() {
       const { data } = await supabase.auth.getUser();
       if (!alive) return;
 
-      if (data.user) {
+      const signedIn = !!data.user;
+      setHasSession(signedIn);
+
+      if (signedIn && !onboardingPhone) {
         await decideRedirect(router, next);
         return;
+      }
+
+      if (signedIn && onboardingPhone) {
+        setMode("signup");
+        setMsg(
+          "Email confermata ✅ Ora verifica il telefono per completare l’attivazione del profilo."
+        );
       }
 
       setLoadingPage(false);
@@ -110,8 +138,11 @@ export default function LoginClient() {
 
     init();
 
-    const { data: sub } = supabase.auth.onAuthStateChange(async (event) => {
-      if (event === "SIGNED_IN") {
+    const { data: sub } = supabase.auth.onAuthStateChange(async (event, session) => {
+      const signedIn = !!session?.user;
+      setHasSession(signedIn);
+
+      if (event === "SIGNED_IN" && !onboardingPhone) {
         await decideRedirect(router, next);
       }
     });
@@ -120,21 +151,26 @@ export default function LoginClient() {
       alive = false;
       sub.subscription.unsubscribe();
     };
-  }, [router, next]);
+  }, [router, next, onboardingPhone]);
 
   async function sendPhoneOtp() {
     setMsg(null);
 
-    if (!phoneE164) return setMsg("Inserisci un numero di telefono valido.");
+    if (!phoneE164) {
+      setMsg("Inserisci un numero di telefono valido.");
+      return;
+    }
+
     setSubmitting(true);
 
     try {
-      // Invia OTP per associare/verificare il telefono dell’utente loggato
       const { error } = await supabase.auth.updateUser({ phone: phoneE164 });
+
       if (error) {
         setMsg(error.message);
         return;
       }
+
       setOtpSent(true);
       setMsg("Codice inviato via SMS ✅ Inseriscilo qui sotto per verificare il telefono.");
     } catch (err: any) {
@@ -152,8 +188,15 @@ export default function LoginClient() {
     setMsg(null);
 
     const token = (otp || "").trim();
-    if (!token) return setMsg("Inserisci il codice ricevuto via SMS.");
-    if (!phoneE164) return setMsg("Telefono non valido.");
+    if (!token) {
+      setMsg("Inserisci il codice ricevuto via SMS.");
+      return;
+    }
+
+    if (!phoneE164) {
+      setMsg("Telefono non valido.");
+      return;
+    }
 
     setSubmitting(true);
 
@@ -169,13 +212,18 @@ export default function LoginClient() {
         return;
       }
 
-      // aggiorna profilo: phone + flag verificato
       const { data: authData } = await supabase.auth.getUser();
       const user = authData.user;
+
       if (user) {
-        await supabase
-          .from("profiles")
-          .upsert({ id: user.id, phone: phoneE164, phone_verified: true }, { onConflict: "id" });
+        await supabase.from("profiles").upsert(
+          {
+            id: user.id,
+            phone: phoneE164,
+            phone_verified: true,
+          },
+          { onConflict: "id" }
+        );
       }
 
       setMsg("Telefono verificato ✅");
@@ -195,19 +243,50 @@ export default function LoginClient() {
     e.preventDefault();
     setMsg(null);
 
-    const e1 = email.trim();
-    if (!e1) return setMsg("Inserisci email.");
-    if (!password || password.length < 6)
-      return setMsg("Inserisci una password (min 6 caratteri).");
+    const emailValue = email.trim().toLowerCase();
+    if (!emailValue) {
+      setMsg("Inserisci email.");
+      return;
+    }
+
+    if (mode === "login") {
+      if (!password) {
+        setMsg("Inserisci la password.");
+        return;
+      }
+    }
 
     if (mode === "signup") {
-      if (!isLikelyFullName(fullName)) return setMsg("Inserisci nome e cognome (reali).");
-      if (!phoneE164) return setMsg("Inserisci un numero di telefono valido.");
-      if ((city || "").trim().length < 2) return setMsg("Inserisci la città.");
+      if (!isLikelyFullName(fullName)) {
+        setMsg("Inserisci nome e cognome reali.");
+        return;
+      }
+
+      if (!phoneE164) {
+        setMsg("Inserisci un numero di telefono valido.");
+        return;
+      }
+
+      if ((city || "").trim().length < 2) {
+        setMsg("Inserisci la città.");
+        return;
+      }
 
       const cf = normalizeCF(fiscalCode);
-      if (cf && cf.length !== 16)
-        return setMsg("Il codice fiscale deve avere 16 caratteri (oppure lascialo vuoto).");
+      if (cf && cf.length !== 16) {
+        setMsg("Il codice fiscale deve avere 16 caratteri oppure va lasciato vuoto.");
+        return;
+      }
+
+      if (passwordIssues.length > 0) {
+        setMsg(`Password non valida: ${passwordIssues.join(", ")}.`);
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        setMsg("Le due password non coincidono.");
+        return;
+      }
     }
 
     setSubmitting(true);
@@ -217,7 +296,7 @@ export default function LoginClient() {
         const cf = normalizeCF(fiscalCode);
 
         const { error } = await supabase.auth.signUp({
-          email: e1,
+          email: emailValue,
           password,
           options: {
             data: {
@@ -234,18 +313,16 @@ export default function LoginClient() {
           return;
         }
 
-        // se email confirmation è attiva, l’utente potrebbe non avere sessione subito
         const { data } = await supabase.auth.getUser();
 
         if (!data.user) {
           setMsg(
-            "Registrazione completata ✅ Controlla l’email per confermare l’account. Dopo la conferma, accedi e completa la verifica del telefono."
+            "Registrazione quasi completata ✅ Controlla la tua email e clicca il link di conferma. Ti riporteremo su UNIMALIA per completare l’attivazione."
           );
           setMode("login");
           return;
         }
 
-        // crea/aggiorna profilo con i dati appena inseriti
         await ensureProfileRow(data.user.id);
         await supabase.from("profiles").upsert(
           {
@@ -259,28 +336,28 @@ export default function LoginClient() {
           { onConflict: "id" }
         );
 
-        // invia OTP SMS e fai verificare subito
         await sendPhoneOtp();
-        setMsg("Registrazione ok ✅ Ora verifica il telefono con il codice SMS.");
+        setMsg("Registrazione completata ✅ Ora verifica il telefono con il codice SMS.");
         return;
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email: e1,
-          password,
-        });
+      }
 
-        if (error) {
-          const m = (error.message || "").toLowerCase();
-          if (m.includes("confirm") || m.includes("confirmed") || m.includes("not confirmed")) {
-            setMsg("Email non confermata. Controlla la tua casella di posta e clicca il link di conferma.");
-            return;
-          }
-          setMsg("Credenziali non valide. Controlla email e password.");
+      const { error } = await supabase.auth.signInWithPassword({
+        email: emailValue,
+        password,
+      });
+
+      if (error) {
+        const m = (error.message || "").toLowerCase();
+        if (m.includes("confirm") || m.includes("confirmed") || m.includes("not confirmed")) {
+          setMsg("Email non confermata. Controlla la tua casella di posta e clicca il link di conferma.");
           return;
         }
 
-        await decideRedirect(router, next);
+        setMsg("Credenziali non valide. Controlla email e password.");
+        return;
       }
+
+      await decideRedirect(router, next);
     } catch (err: any) {
       console.error("LOGIN ERROR:", err);
       const message =
@@ -298,14 +375,16 @@ export default function LoginClient() {
   async function handleResetPassword() {
     setMsg(null);
 
-    const e1 = email.trim();
-    if (!e1)
-      return setMsg("Scrivi prima la tua email, poi clicca “Password dimenticata”.");
+    const emailValue = email.trim().toLowerCase();
+    if (!emailValue) {
+      setMsg("Scrivi prima la tua email, poi clicca “Password dimenticata”.");
+      return;
+    }
 
     setSubmitting(true);
 
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(e1);
+      const { error } = await supabase.auth.resetPasswordForEmail(emailValue);
       if (error) {
         setMsg(error.message);
         return;
@@ -329,6 +408,79 @@ export default function LoginClient() {
       <main className="max-w-md">
         <h1 className="text-3xl font-bold tracking-tight">Login</h1>
         <p className="mt-4 text-zinc-700">Caricamento…</p>
+      </main>
+    );
+  }
+
+  if (onboardingPhone && hasSession) {
+    return (
+      <main className="max-w-md">
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold tracking-tight">Attiva il profilo</h1>
+          <Link href="/" className="text-sm text-zinc-600 hover:underline">
+            ← Home
+          </Link>
+        </div>
+
+        <p className="mt-3 text-zinc-700">
+          La tua email è stata confermata. Ora verifichiamo il numero di telefono per completare
+          l’attivazione del profilo UNIMALIA.
+        </p>
+
+        <div className="mt-6 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+          <div>
+            <label className="block text-sm font-medium">Telefono</label>
+            <input
+              className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="Es. +393331112222"
+              autoComplete="tel"
+            />
+            <p className="mt-1 text-xs text-zinc-600">
+              Se non inserisci il prefisso, assumiamo +39.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={sendPhoneOtp}
+            disabled={submitting}
+            className="mt-4 w-full rounded-lg bg-black px-6 py-3 text-white hover:bg-zinc-800 disabled:opacity-60"
+          >
+            {submitting ? "Attendi..." : "Invia codice SMS"}
+          </button>
+
+          {otpSent && (
+            <div className="mt-4 rounded-xl border border-zinc-200 bg-white p-4">
+              <label className="block text-sm font-medium">Codice SMS</label>
+              <div className="mt-2 flex gap-2">
+                <input
+                  className="w-full rounded-lg border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value)}
+                  placeholder="Inserisci il codice"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                />
+                <button
+                  type="button"
+                  onClick={verifyPhoneOtp}
+                  disabled={submitting}
+                  className="rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-900 disabled:opacity-60"
+                >
+                  Verifica
+                </button>
+              </div>
+            </div>
+          )}
+
+          {msg && (
+            <div className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-800">
+              {msg}
+            </div>
+          )}
+        </div>
       </main>
     );
   }
@@ -398,6 +550,7 @@ export default function LoginClient() {
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="Es. Mario Rossi"
+                  autoComplete="name"
                   required
                 />
               </div>
@@ -408,7 +561,9 @@ export default function LoginClient() {
                   className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  placeholder="Es. +393331112222 (o 3331112222)"
+                  placeholder="Es. +393331112222 o 3331112222"
+                  autoComplete="tel"
+                  inputMode="tel"
                   required
                 />
                 <p className="mt-1 text-xs text-zinc-600">Se non inserisci il prefisso, assumiamo +39.</p>
@@ -421,6 +576,7 @@ export default function LoginClient() {
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
                   placeholder="Es. Firenze"
+                  autoComplete="address-level2"
                   required
                 />
               </div>
@@ -434,6 +590,7 @@ export default function LoginClient() {
                   value={fiscalCode}
                   onChange={(e) => setFiscalCode(e.target.value)}
                   placeholder="16 caratteri"
+                  autoComplete="off"
                 />
               </div>
             </>
@@ -447,6 +604,7 @@ export default function LoginClient() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="tuo@email.it"
+              autoComplete="email"
               required
             />
           </div>
@@ -458,10 +616,45 @@ export default function LoginClient() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Minimo 6 caratteri"
+              placeholder={mode === "signup" ? "Minimo 12 caratteri" : "La tua password"}
+              autoComplete={mode === "signup" ? "new-password" : "current-password"}
               required
             />
+            {mode === "signup" && (
+              <p className="mt-1 text-xs text-zinc-600">
+                Usa almeno 12 caratteri con maiuscola, minuscola, numero e simbolo. Il browser o il telefono
+                possono proporti una password casuale sicura.
+              </p>
+            )}
           </div>
+
+          {mode === "signup" && (
+            <div>
+              <label className="block text-sm font-medium">Conferma password</label>
+              <input
+                className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Ripeti la password"
+                autoComplete="new-password"
+                required
+              />
+            </div>
+          )}
+
+          {mode === "signup" && password.length > 0 && (
+            <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-800">
+              <p className="font-medium">Requisiti password</p>
+              <ul className="mt-2 space-y-1">
+                <li>{password.length >= 12 ? "✅" : "•"} Almeno 12 caratteri</li>
+                <li>{/[a-z]/.test(password) ? "✅" : "•"} Almeno una minuscola</li>
+                <li>{/[A-Z]/.test(password) ? "✅" : "•"} Almeno una maiuscola</li>
+                <li>{/[0-9]/.test(password) ? "✅" : "•"} Almeno un numero</li>
+                <li>{/[^A-Za-z0-9]/.test(password) ? "✅" : "•"} Almeno un simbolo</li>
+              </ul>
+            </div>
+          )}
 
           {msg && (
             <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-800">
@@ -469,7 +662,6 @@ export default function LoginClient() {
             </div>
           )}
 
-          {/* Step verifica telefono (dopo signup) */}
           {mode === "signup" && otpSent && (
             <div className="rounded-xl border border-zinc-200 bg-white p-4">
               <label className="block text-sm font-medium">Codice SMS</label>
@@ -479,6 +671,8 @@ export default function LoginClient() {
                   value={otp}
                   onChange={(e) => setOtp(e.target.value)}
                   placeholder="Inserisci il codice"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
                 />
                 <button
                   type="button"
