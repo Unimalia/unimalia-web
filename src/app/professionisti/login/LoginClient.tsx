@@ -110,8 +110,8 @@ export default function LoginClient() {
         setLoading(false);
         setMsg(
           professionalType === "veterinarian"
-            ? "Registrazione veterinario completata ✅ Controlla l’email per confermare l’account. Dopo la conferma potrai accedere al Portale Professionisti; l’abilitazione finale resterà soggetta a verifica."
-            : "Registrazione professionista completata ✅ Controlla l’email per confermare l’account. Dopo la conferma potrai accedere al Portale Professionisti."
+            ? "Registrazione veterinario completata ✅ Controlla l’email per confermare l’account. Dopo la conferma il profilo resterà in attesa di verifica prima dell’accesso al Portale Professionisti."
+            : "Registrazione professionista completata ✅ Controlla l’email per confermare l’account. Dopo la conferma il profilo resterà in attesa di verifica prima dell’accesso al Portale Professionisti."
         );
         setMode("login");
         return;
@@ -141,12 +141,14 @@ export default function LoginClient() {
 
       const isProfessional =
         !!user &&
-        Boolean(user.app_metadata?.is_professional || user.user_metadata?.is_professional);
+        user.app_metadata?.is_professional === true;
 
       if (!isProfessional) {
         await supabase.auth.signOut();
         setLoading(false);
-        setErr("Questo account non è abilitato al Portale Professionisti.");
+        setErr(
+          "Questo account professionale non è ancora abilitato al Portale Professionisti. Se hai appena confermato l’email, attendi la verifica del profilo."
+        );
         return;
       }
 

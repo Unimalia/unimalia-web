@@ -8,6 +8,7 @@ type SyncResult =
       authUserId: string;
       isProfessional: boolean;
       isVet: boolean;
+      professionalType: "generic" | "veterinarian" | null;
     }
   | {
       ok: false;
@@ -50,6 +51,11 @@ export async function syncProfessionalAuth(professionalId: string): Promise<Sync
 
   const isProfessional = professional.approved === true;
   const isVet = professional.approved === true && professional.is_vet === true;
+  const professionalType: "generic" | "veterinarian" | null = !isProfessional
+    ? null
+    : isVet
+      ? "veterinarian"
+      : "generic";
 
   const currentAppMetadata =
     authData.user.app_metadata && typeof authData.user.app_metadata === "object"
@@ -61,6 +67,7 @@ export async function syncProfessionalAuth(professionalId: string): Promise<Sync
       ...currentAppMetadata,
       is_professional: isProfessional,
       is_vet: isVet,
+      professional_type: professionalType,
     },
   });
 
@@ -77,5 +84,6 @@ export async function syncProfessionalAuth(professionalId: string): Promise<Sync
     authUserId,
     isProfessional,
     isVet,
+    professionalType,
   };
 }
