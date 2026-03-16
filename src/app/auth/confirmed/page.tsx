@@ -5,7 +5,23 @@ export const metadata = {
   description: "La tua email è stata confermata correttamente.",
 };
 
-export default function AuthConfirmedPage() {
+function sanitizeNextPath(value?: string) {
+  const raw = String(value || "").trim();
+
+  if (!raw.startsWith("/")) return "/identita";
+  if (raw.startsWith("//")) return "/identita";
+
+  return raw;
+}
+
+export default async function AuthConfirmedPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>;
+}) {
+  const resolved = await searchParams;
+  const next = sanitizeNextPath(resolved?.next);
+
   return (
     <main className="mx-auto flex min-h-[70vh] w-full max-w-2xl items-center px-4 py-12">
       <div className="w-full rounded-[2rem] border border-zinc-200 bg-white p-8 shadow-sm sm:p-10">
@@ -24,7 +40,7 @@ export default function AuthConfirmedPage() {
 
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
           <Link
-            href="/identita"
+            href={next}
             className="inline-flex items-center justify-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-zinc-800"
           >
             Continua

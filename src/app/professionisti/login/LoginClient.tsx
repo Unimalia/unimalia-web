@@ -55,6 +55,48 @@ export default function LoginClient() {
     return email.trim().length > 3 && password.length >= 12 && confirmPassword.length >= 12;
   }, [email, password, confirmPassword, mode]);
 
+  async function handleProfessionalPostLoginRedirect(userId: string) {
+    const { data: proData, error: proErr } = await supabase
+      .from("professionals")
+      .select("id, approved")
+      .eq("owner_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    if (proErr) {
+      await supabase.auth.signOut();
+      setErr("Errore nel recupero del profilo professionista.");
+      return;
+    }
+
+    const professional = proData?.[0];
+
+    if (!professional) {
+      router.replace("/professionisti/nuovo");
+      return;
+    }
+
+    if (professional.approved !== true) {
+      router.replace("/professionisti/nuovo/modifica?pending=1");
+      return;
+    }
+
+    const { data } = await supabase.auth.getUser();
+    const user = data.user;
+
+    const isProfessional = !!user && user.app_metadata?.is_professional === true;
+
+    if (!isProfessional) {
+      await supabase.auth.signOut();
+      setErr(
+        "Il profilo professionista risulta presente ma non ancora abilitato al Portale Professionisti. Contatta il supporto se il problema persiste."
+      );
+      return;
+    }
+
+    router.replace(next);
+  }
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErr(null);
@@ -79,7 +121,7 @@ export default function LoginClient() {
           email: email.trim().toLowerCase(),
           password,
           options: {
-            emailRedirectTo: "https://unimalia.it/auth/confirm?next=%2Fprofessionisti%2Fdashboard",
+            emailRedirectTo: "https://unimalia.it/auth/confirm?next=%2Fprofessionisti%2Flogin",
             data: {
               is_professional: true,
               professional_type: professionalType,
@@ -110,8 +152,8 @@ export default function LoginClient() {
         setLoading(false);
         setMsg(
           professionalType === "veterinarian"
-            ? "Registrazione veterinario completata ✅ Controlla l’email per confermare l’account. Dopo la conferma il profilo resterà in attesa di verifica prima dell’accesso al Portale Professionisti."
-            : "Registrazione professionista completata ✅ Controlla l’email per confermare l’account. Dopo la conferma il profilo resterà in attesa di verifica prima dell’accesso al Portale Professionisti."
+            ? "Registrazione veterinario completata ✅ Controlla l’email per confermare l’account. Dopo la conferma potrai creare la scheda professionista e il profilo resterà in attesa di verifica."
+            : "Registrazione professionista completata ✅ Controlla l’email per confermare l’account. Dopo la conferma potrai creare la scheda professionista e il profilo resterà in attesa di verifica."
         );
         setMode("login");
         return;
@@ -139,21 +181,14 @@ export default function LoginClient() {
       const { data } = await supabase.auth.getUser();
       const user = data.user;
 
-      const isProfessional =
-        !!user &&
-        user.app_metadata?.is_professional === true;
-
-      if (!isProfessional) {
-        await supabase.auth.signOut();
+      if (!user) {
+        setErr("Sessione non trovata dopo il login.");
         setLoading(false);
-        setErr(
-          "Questo account professionale non è ancora abilitato al Portale Professionisti. Se hai appena confermato l’email, attendi la verifica del profilo."
-        );
         return;
       }
 
+      await handleProfessionalPostLoginRedirect(user.id);
       setLoading(false);
-      router.replace(next);
     } catch (e: any) {
       setLoading(false);
       setErr(e?.message || "Errore inatteso.");

@@ -254,7 +254,7 @@ export default function ModificaProfessionistaPage() {
       setPro(p);
 
       setDisplayName(p.display_name ?? "");
-      setCategory(p.category ?? "veterinari");
+      setCategory(p.category ?? "");
       setActivityMode(p.is_business ? "business" : "hobby");
 
       setFirstName(p.first_name ?? "");

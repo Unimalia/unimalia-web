@@ -128,7 +128,7 @@ export default function ProfessionistiImpostazioniPage() {
       setPro(p);
 
       setDisplayName(p.display_name ?? "");
-      setCategory(p.category ?? "veterinari");
+      setCategory(p.category ?? "");
       setPhone(p.phone ?? "");
       setEmail(p.email ?? "");
       setWebsite(p.website ?? "");
