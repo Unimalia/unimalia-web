@@ -18,7 +18,7 @@ async function verifyTurnstileToken(token: string, ip?: string) {
   const formData = new FormData();
   formData.append("secret", secret);
   formData.append("response", token);
-  if (ip) formData.append("remoteip", ip);
+  if (ip && ip !== "unknown") formData.append("remoteip", ip);
 
   const res = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
     method: "POST",
@@ -83,30 +83,14 @@ export async function POST(req: Request) {
     const event_date = String(body?.event_date || "").trim() || null;
     const description = String(body?.description || "").trim() || null;
 
-    const contact_mode =
-      body?.contact_mode === "protected" || body?.contact_mode === "phone_public"
-        ? body.contact_mode
-        : "protected";
-
-    const consent = body?.consent === true;
-
     const lat =
       typeof body?.lat === "number" && Number.isFinite(body.lat) ? body.lat : null;
 
     const lng =
       typeof body?.lng === "number" && Number.isFinite(body.lng) ? body.lng : null;
 
-    const photo_urls = Array.isArray(body?.photo_urls) ? body.photo_urls : [];
-
     if (!title || !contact_email || !type) {
       return NextResponse.json({ error: "Dati mancanti" }, { status: 400 });
-    }
-
-    if (!consent) {
-      return NextResponse.json(
-        { error: "Devi accettare l’informativa per pubblicare." },
-        { status: 400 }
-      );
     }
 
     const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
@@ -142,11 +126,8 @@ export async function POST(req: Request) {
       location_text,
       event_date,
       description,
-      contact_mode,
-      consent,
       lat,
       lng,
-      photo_urls,
       ip_hash,
     };
 
