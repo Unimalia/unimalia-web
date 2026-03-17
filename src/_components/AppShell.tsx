@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import AppShellClient from "./AppShellClient";
 
 type NavItem = { href: string; label: string };
@@ -16,6 +19,13 @@ const nav: NavItem[] = [
 const proHref = "/professionisti/dashboard";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const isProfessionalArea = pathname?.startsWith("/professionisti");
+
+  if (isProfessionalArea) {
+    return <>{children}</>;
+  }
+
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900">
       <header className="sticky top-0 z-50 border-b border-zinc-200 bg-white/80 backdrop-blur">
