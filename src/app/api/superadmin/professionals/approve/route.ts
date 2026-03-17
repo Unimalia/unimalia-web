@@ -105,16 +105,33 @@ export async function POST(req: Request) {
         displayName,
         isVet: professionalBefore.is_vet === true,
       });
+      console.log("[professional_approved_email] sent", {
+        professionalId,
+        email,
+      });
     } catch (e: any) {
+      const message = e?.message || "Errore invio email approvazione";
+      console.error("[professional_approved_email] failed", {
+        professionalId,
+        email,
+        error: message,
+      });
+
       emailResult = {
         ok: false,
-        error: e?.message || "Errore invio email approvazione",
+        error: message,
       };
     }
   } else {
+    const message = "Email professionista assente";
+    console.error("[professional_approved_email] skipped", {
+      professionalId,
+      error: message,
+    });
+
     emailResult = {
       ok: false,
-      error: "Email professionista assente",
+      error: message,
     };
   }
 
@@ -130,6 +147,15 @@ export async function POST(req: Request) {
       approval_email: emailResult,
     },
   });
+
+  if (!emailResult.ok) {
+    return NextResponse.json(
+      {
+        error: `Professionista approvato e sincronizzato, ma email non inviata: ${emailResult.error}`,
+      },
+      { status: 500 }
+    );
+  }
 
   return NextResponse.redirect(new URL(redirectTo, req.url), 303);
 }
