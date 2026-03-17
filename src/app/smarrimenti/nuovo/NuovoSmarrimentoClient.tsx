@@ -15,7 +15,6 @@ export default function NuovoSmarrimentoClient() {
     lng: null,
   });
 
-  const [title, setTitle] = useState("");
   const [animalName, setAnimalName] = useState("");
   const [species, setSpecies] = useState("cane");
   const [region, setRegion] = useState("");
@@ -36,13 +35,28 @@ export default function NuovoSmarrimentoClient() {
     e.preventDefault();
     setResultMsg(null);
 
+    if (!animalName.trim()) {
+      setResultMsg("Inserisci il nome dell’animale.");
+      return;
+    }
+
+    if (!locationText.trim() || !province.trim() || !region.trim()) {
+      setResultMsg("Seleziona correttamente il luogo sulla mappa.");
+      return;
+    }
+
+    if (!eventDate) {
+      setResultMsg("Inserisci la data dello smarrimento.");
+      return;
+    }
+
     if (!consent) {
       setResultMsg("Devi accettare l’informativa per pubblicare l’annuncio.");
       return;
     }
 
     if (coords.lat == null || coords.lng == null) {
-      setResultMsg("Seleziona un punto sulla mappa (o cerca un indirizzo) prima di pubblicare.");
+      setResultMsg("Seleziona un punto sulla mappa prima di pubblicare.");
       return;
     }
 
@@ -64,8 +78,7 @@ export default function NuovoSmarrimentoClient() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           type: "lost",
-          title: title.trim() || "Smarrimento",
-          animal_name: animalName.trim() || null,
+          animal_name: animalName.trim(),
           species: species.trim(),
           region: region.trim(),
           province: province.trim(),
@@ -90,7 +103,9 @@ export default function NuovoSmarrimentoClient() {
         return;
       }
 
-      setResultMsg("✅ Smarrimento pubblicato correttamente. Ti abbiamo inviato una email con il link dell’annuncio.");
+      setResultMsg(
+        "✅ Ti abbiamo inviato una email per verificare l’annuncio. Apri la mail e conferma per metterlo online."
+      );
       setTurnstileToken(null);
     } catch {
       setResultMsg("Errore di rete o server.");
@@ -103,27 +118,18 @@ export default function NuovoSmarrimentoClient() {
     <div className="mx-auto w-full max-w-2xl px-4 py-8">
       <h1 className="text-2xl font-extrabold text-zinc-900">Pubblica smarrimento</h1>
       <p className="mt-2 text-sm text-zinc-600">
-        Compila i dati principali e pubblica il tuo annuncio di smarrimento.
+        Inserisci i dati essenziali e conferma via email per pubblicare l’annuncio.
       </p>
 
       <form onSubmit={onSubmit} className="mt-6 grid gap-4">
         <label className="grid gap-2 text-sm font-semibold text-zinc-800">
-          Titolo (breve)
-          <input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Es. Cane smarrito - Leo - Firenze"
-            className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm"
-          />
-        </label>
-
-        <label className="grid gap-2 text-sm font-semibold text-zinc-800">
-          Nome animale (opzionale)
+          Nome animale
           <input
             value={animalName}
             onChange={(e) => setAnimalName(e.target.value)}
-            placeholder="Leo"
+            placeholder="Es. Leo"
             className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm"
+            required
           />
         </label>
 
@@ -140,38 +146,6 @@ export default function NuovoSmarrimentoClient() {
           </select>
         </label>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <label className="grid gap-2 text-sm font-semibold text-zinc-800">
-            Regione
-            <input
-              value={region}
-              onChange={(e) => setRegion(e.target.value)}
-              placeholder="Toscana"
-              className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm"
-            />
-          </label>
-
-          <label className="grid gap-2 text-sm font-semibold text-zinc-800">
-            Provincia
-            <input
-              value={province}
-              onChange={(e) => setProvince(e.target.value)}
-              placeholder="FI"
-              className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm"
-            />
-          </label>
-        </div>
-
-        <label className="grid gap-2 text-sm font-semibold text-zinc-800">
-          Zona / Comune / Quartiere
-          <input
-            value={locationText}
-            onChange={(e) => setLocationText(e.target.value)}
-            placeholder="Es. Coverciano, Firenze"
-            className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm"
-          />
-        </label>
-
         <label className="grid gap-2 text-sm font-semibold text-zinc-800">
           Data smarrimento
           <input
@@ -179,13 +153,14 @@ export default function NuovoSmarrimentoClient() {
             value={eventDate}
             onChange={(e) => setEventDate(e.target.value)}
             className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm"
+            required
           />
         </label>
 
         <div className="rounded-xl border border-zinc-200 bg-white p-4">
           <div className="text-sm font-semibold text-zinc-900">Posizione</div>
           <p className="mt-1 text-xs text-zinc-600">
-            Seleziona il punto sulla mappa oppure cerca un indirizzo.
+            Cerca il luogo e, se serve, sposta il pin nel punto esatto.
           </p>
 
           <div className="mt-3">
@@ -194,19 +169,30 @@ export default function NuovoSmarrimentoClient() {
               value={coords}
               onChange={setCoords}
               onAddress={(a) => {
-                if (a.city && !locationText.trim()) setLocationText(a.city);
-                if (a.province && !province.trim()) setProvince(a.province);
+                if (a.formattedAddress) setLocationText(a.formattedAddress);
+                if (a.province) setProvince(a.province);
+                if (a.region) setRegion(a.region);
               }}
             />
           </div>
 
-          <div className="mt-3 text-xs text-zinc-600">
-            Coordinate:{" "}
-            <span className="font-semibold">
+          <div className="mt-3 rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-700">
+            <div>
+              <span className="font-semibold">Luogo:</span>{" "}
+              {locationText || "non selezionato"}
+            </div>
+            <div className="mt-1">
+              <span className="font-semibold">Provincia:</span>{" "}
+              {province || "—"}{" "}
+              <span className="ml-3 font-semibold">Regione:</span>{" "}
+              {region || "—"}
+            </div>
+            <div className="mt-1">
+              <span className="font-semibold">Coordinate:</span>{" "}
               {coords.lat != null && coords.lng != null
                 ? `${coords.lat}, ${coords.lng}`
                 : "non selezionate"}
-            </span>
+            </div>
           </div>
         </div>
 
@@ -215,19 +201,20 @@ export default function NuovoSmarrimentoClient() {
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Segni particolari, collare, zona precisa..."
+            placeholder="Segni particolari, collare, ultime informazioni utili..."
             className="min-h-[100px] w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm"
           />
         </label>
 
         <label className="grid gap-2 text-sm font-semibold text-zinc-800">
-          Email (obbligatoria)
+          Email
           <input
             type="email"
             value={contactEmail}
             onChange={(e) => setContactEmail(e.target.value)}
             placeholder="tu@email.it"
             className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm"
+            required
           />
         </label>
 
@@ -276,20 +263,10 @@ export default function NuovoSmarrimentoClient() {
             <>
               <Turnstile
                 siteKey={turnstileSiteKey}
-                onSuccess={(token) => {
-                  console.log("TURNSTILE OK", token);
-                  setTurnstileToken(token);
-                }}
-                onExpire={() => {
-                  console.log("TURNSTILE EXPIRED");
-                  setTurnstileToken(null);
-                }}
-                onError={(error) => {
-                  console.log("TURNSTILE ERROR", error);
-                  setTurnstileToken(null);
-                }}
+                onSuccess={(token) => setTurnstileToken(token)}
+                onExpire={() => setTurnstileToken(null)}
+                onError={() => setTurnstileToken(null)}
               />
-
               <p className="mt-3 text-xs text-zinc-600">
                 Stato sicurezza:{" "}
                 <span className="font-semibold">
@@ -304,7 +281,7 @@ export default function NuovoSmarrimentoClient() {
           disabled={loading}
           className="h-11 rounded-xl bg-black text-sm font-semibold text-white disabled:opacity-60"
         >
-          {loading ? "Pubblicazione..." : "Pubblica smarrimento"}
+          {loading ? "Pubblicazione..." : "Invia e verifica email"}
         </button>
 
         {resultMsg ? (

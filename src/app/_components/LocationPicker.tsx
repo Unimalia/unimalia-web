@@ -8,7 +8,8 @@ type Value = { lat: number | null; lng: number | null };
 type AddressPayload = {
   formattedAddress?: string | null;
   city?: string | null;
-  province?: string | null; // 2 lettere (FI, MI, ...)
+  province?: string | null;
+  region?: string | null;
 };
 
 type Props = {
@@ -21,31 +22,49 @@ type Props = {
 
 let mapsLoaderConfigured = false;
 
-function pickCity(components?: google.maps.GeocoderAddressComponent[] | null) {
+function byType(
+  components: google.maps.GeocoderAddressComponent[] | null | undefined,
+  t: string,
+  mode: "long" | "short" = "long"
+) {
   if (!components || components.length === 0) return null;
+  const item = components.find((c) => c.types?.includes(t));
+  if (!item) return null;
+  return mode === "short" ? item.short_name ?? null : item.long_name ?? null;
+}
 
-  const byType = (t: string) => components.find((c) => c.types?.includes(t))?.long_name ?? null;
-
+function pickCity(components?: google.maps.GeocoderAddressComponent[] | null) {
   return (
-    byType("locality") ||
-    byType("postal_town") ||
-    byType("administrative_area_level_3") ||
-    byType("sublocality") ||
-    byType("sublocality_level_1") ||
+    byType(components, "locality") ||
+    byType(components, "postal_town") ||
+    byType(components, "administrative_area_level_3") ||
+    byType(components, "sublocality") ||
+    byType(components, "sublocality_level_1") ||
     null
   );
 }
 
 function pickProvince(components?: google.maps.GeocoderAddressComponent[] | null) {
-  if (!components || components.length === 0) return null;
-  const prov = components.find((c) => c.types?.includes("administrative_area_level_2"));
-  const short = (prov?.short_name || "").trim().toUpperCase();
+  const short = (byType(components, "administrative_area_level_2", "short") || "")
+    .trim()
+    .toUpperCase();
+
   if (short.length === 2) return short;
   if (short.length > 2) return short.slice(0, 2);
   return null;
 }
 
-export default function LocationPicker({ apiKey, value, onChange, onAddress, className }: Props) {
+function pickRegion(components?: google.maps.GeocoderAddressComponent[] | null) {
+  return byType(components, "administrative_area_level_1") || null;
+}
+
+export default function LocationPicker({
+  apiKey,
+  value,
+  onChange,
+  onAddress,
+  className,
+}: Props) {
   const mapDivRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
@@ -62,6 +81,27 @@ export default function LocationPicker({ apiKey, value, onChange, onAddress, cla
 
   useEffect(() => {
     let cancelled = false;
+
+    async function reverseGeocode(lat: number, lng: number) {
+      if (!onAddress) return;
+
+      try {
+        const geocoder = new google.maps.Geocoder();
+        const result = await geocoder.geocode({ location: { lat, lng } });
+
+        const first = result.results?.[0];
+        const components = first?.address_components ?? null;
+
+        onAddress({
+          formattedAddress: first?.formatted_address ?? null,
+          city: pickCity(components),
+          province: pickProvince(components),
+          region: pickRegion(components),
+        });
+      } catch {
+        // no-op
+      }
+    }
 
     async function boot() {
       try {
@@ -112,20 +152,22 @@ export default function LocationPicker({ apiKey, value, onChange, onAddress, cla
 
         markerRef.current = marker;
 
-        map.addListener("click", (e: google.maps.MapMouseEvent) => {
+        map.addListener("click", async (e: google.maps.MapMouseEvent) => {
           if (!e.latLng) return;
           const lat = Number(e.latLng.lat().toFixed(6));
           const lng = Number(e.latLng.lng().toFixed(6));
           marker.setPosition({ lat, lng });
           onChange({ lat, lng });
+          await reverseGeocode(lat, lng);
         });
 
-        marker.addListener("dragend", () => {
+        marker.addListener("dragend", async () => {
           const pos = marker.getPosition();
           if (!pos) return;
           const lat = Number(pos.lat().toFixed(6));
           const lng = Number(pos.lng().toFixed(6));
           onChange({ lat, lng });
+          await reverseGeocode(lat, lng);
         });
 
         const input = inputRef.current;
@@ -153,13 +195,12 @@ export default function LocationPicker({ apiKey, value, onChange, onAddress, cla
 
             if (onAddress) {
               const components = place.address_components ?? null;
-              const city = pickCity(components);
-              const province = pickProvince(components);
 
               onAddress({
                 formattedAddress: place.formatted_address ?? place.name ?? null,
-                city,
-                province,
+                city: pickCity(components),
+                province: pickProvince(components),
+                region: pickRegion(components),
               });
             }
           });
@@ -171,7 +212,8 @@ export default function LocationPicker({ apiKey, value, onChange, onAddress, cla
       }
     }
 
-    boot();
+    void boot();
+
     return () => {
       cancelled = true;
     };
@@ -198,7 +240,7 @@ export default function LocationPicker({ apiKey, value, onChange, onAddress, cla
   return (
     <div className={className}>
       <label className="block text-sm font-semibold text-zinc-900">
-        Cerca via / luogo (consigliato)
+        Cerca via / luogo
       </label>
 
       <input
@@ -212,7 +254,7 @@ export default function LocationPicker({ apiKey, value, onChange, onAddress, cla
         <p className="mt-2 text-sm text-red-700">{loadErr}</p>
       ) : (
         <p className="mt-2 text-xs text-zinc-600">
-          Suggerimento: cerca un indirizzo, poi trascina il pin nel punto esatto.
+          Cerca un indirizzo e poi, se serve, trascina il pin nel punto esatto.
         </p>
       )}
 
