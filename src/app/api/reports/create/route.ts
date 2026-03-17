@@ -225,16 +225,26 @@ export async function POST(req: Request) {
     if (type === "lost") {
       try {
         const verifyUrl = `${getBaseUrl()}/verifica/${verify_token}`;
-        const email = verificationEmail({
-          verifyUrl,
-          reportTitle: title,
-        });
 
         await resend.emails.send({
           from: EMAIL_FROM_NO_REPLY,
           to: contact_email,
-          subject: email.subject,
-          html: email.html,
+          subject: "Conferma il tuo annuncio su UNIMALIA",
+          html: `
+            <h2>Conferma il tuo annuncio</h2>
+
+            <p>Clicca qui per pubblicarlo:</p>
+
+            <p>
+              <a href="${verifyUrl}" style="color:#fff;background:#000;padding:10px 14px;border-radius:6px;text-decoration:none;">
+                Conferma annuncio
+              </a>
+            </p>
+
+            <p style="margin-top:20px;font-size:12px;color:#666;">
+              Se non hai richiesto tu questo annuncio, ignora questa email.
+            </p>
+          `,
         });
       } catch (mailError) {
         console.error("VERIFY EMAIL ERROR:", mailError);
