@@ -1,4 +1,3 @@
-// src/app/verifica/[token]/page.tsx
 import { redirect } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { resend, EMAIL_FROM_NO_REPLY, getBaseUrl } from "@/lib/email/resend";
@@ -6,8 +5,12 @@ import { reportPublishedEmail } from "@/lib/email/templates";
 
 export const dynamic = "force-dynamic";
 
-export default async function VerifyPage({ params }: { params: { token: string } }) {
-  const token = params.token;
+type PageProps = {
+  params: Promise<{ token: string }>;
+};
+
+export default async function VerifyPage({ params }: PageProps) {
+  const { token } = await params;
 
   const admin = supabaseAdmin();
 
@@ -29,14 +32,21 @@ export default async function VerifyPage({ params }: { params: { token: string }
 
     if (!updErr) {
       const reportUrl = `${getBaseUrl()}/annuncio/${report.id}`;
-      const email = reportPublishedEmail({ reportUrl, reportTitle: report.title });
-
-      await resend.emails.send({
-        from: EMAIL_FROM_NO_REPLY,
-        to: report.contact_email,
-        subject: email.subject,
-        html: email.html,
+      const email = reportPublishedEmail({
+        reportUrl,
+        reportTitle: report.title,
       });
+
+      try {
+        await resend.emails.send({
+          from: EMAIL_FROM_NO_REPLY,
+          to: report.contact_email,
+          subject: email.subject,
+          html: email.html,
+        });
+      } catch (mailError) {
+        console.error("REPORT PUBLISHED EMAIL ERROR:", mailError);
+      }
     }
   }
 
