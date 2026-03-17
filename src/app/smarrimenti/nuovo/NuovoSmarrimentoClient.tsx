@@ -267,12 +267,37 @@ export default function NuovoSmarrimentoClient() {
 
         <div className="rounded-xl border border-zinc-200 bg-white p-4">
           <p className="mb-3 text-sm font-semibold text-zinc-900">Controllo sicurezza</p>
-          <Turnstile
-            siteKey={turnstileSiteKey}
-            onSuccess={(token) => setTurnstileToken(token)}
-            onExpire={() => setTurnstileToken(null)}
-            onError={() => setTurnstileToken(null)}
-          />
+
+          {!turnstileSiteKey ? (
+            <p className="text-sm text-red-700">
+              Chiave Turnstile mancante. Controlla NEXT_PUBLIC_TURNSTILE_SITE_KEY.
+            </p>
+          ) : (
+            <>
+              <Turnstile
+                siteKey={turnstileSiteKey}
+                onSuccess={(token) => {
+                  console.log("TURNSTILE OK", token);
+                  setTurnstileToken(token);
+                }}
+                onExpire={() => {
+                  console.log("TURNSTILE EXPIRED");
+                  setTurnstileToken(null);
+                }}
+                onError={(error) => {
+                  console.log("TURNSTILE ERROR", error);
+                  setTurnstileToken(null);
+                }}
+              />
+
+              <p className="mt-3 text-xs text-zinc-600">
+                Stato sicurezza:{" "}
+                <span className="font-semibold">
+                  {turnstileToken ? "verificato" : "non verificato"}
+                </span>
+              </p>
+            </>
+          )}
         </div>
 
         <button
