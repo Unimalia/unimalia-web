@@ -315,6 +315,7 @@ export default function ProAnimalPage() {
       cache: "no-store",
       headers: {
         ...(await authHeaders()),
+        "x-unimalia-app": "professionisti",
       },
     });
 
@@ -351,6 +352,7 @@ export default function ProAnimalPage() {
         cache: "no-store",
         headers: {
           ...(await authHeaders()),
+          "x-unimalia-app": "professionisti",
         },
       });
 
