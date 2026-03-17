@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
@@ -42,6 +42,7 @@ export default function LoginClient() {
   const [confirmPassword, setConfirmPassword] = useState("");
 
   const [loading, setLoading] = useState(false);
+  const [loadingPage, setLoadingPage] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
 
@@ -64,7 +65,6 @@ export default function LoginClient() {
       .limit(1);
 
     if (proErr) {
-      await supabase.auth.signOut();
       setErr("Errore nel recupero del profilo professionista.");
       return;
     }
@@ -96,6 +96,37 @@ export default function LoginClient() {
 
     router.replace(next);
   }
+
+  useEffect(() => {
+    let alive = true;
+
+    async function init() {
+      const { data } = await supabase.auth.getUser();
+      const user = data.user;
+
+      if (!alive) return;
+
+      if (user) {
+        await handleProfessionalPostLoginRedirect(user.id);
+        return;
+      }
+
+      setLoadingPage(false);
+    }
+
+    init();
+
+    const { data: sub } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === "SIGNED_IN" && session?.user?.id) {
+        await handleProfessionalPostLoginRedirect(session.user.id);
+      }
+    });
+
+    return () => {
+      alive = false;
+      sub.subscription.unsubscribe();
+    };
+  }, [router, next]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -224,6 +255,18 @@ export default function LoginClient() {
     } finally {
       setLoading(false);
     }
+  }
+
+  if (loadingPage) {
+    return (
+      <div className="min-h-[calc(100vh-2rem)] bg-zinc-50 text-zinc-900">
+        <div className="mx-auto w-full max-w-md px-4 py-10">
+          <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
+            <p className="text-sm text-zinc-700">Caricamento…</p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
