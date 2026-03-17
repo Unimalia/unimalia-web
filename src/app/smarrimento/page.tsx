@@ -174,21 +174,29 @@ export default function SmarrimentoPage() {
         return;
       }
 
-      // upload foto
-      const fileExt = photo.name.split(".").pop() || "jpg";
-      const filePath = `${user.id}/${Date.now()}.${fileExt}`;
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
 
-      const { error: uploadError } = await supabase.storage
-        .from("lost-animals")
-        .upload(filePath, photo, { upsert: false });
+      if (!token) throw new Error("Sessione non valida");
 
-      if (uploadError) throw uploadError;
+      const formData = new FormData();
+      formData.append("file", photo);
 
-      const { data: publicUrlData } = supabase.storage
-        .from("lost-animals")
-        .getPublicUrl(filePath);
+      const uploadRes = await fetch("/api/upload/animal-photo", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
 
-      const photoUrl = publicUrlData.publicUrl;
+      const uploadData = await uploadRes.json();
+
+      if (!uploadRes.ok) {
+        throw new Error(uploadData.error || "Errore upload foto");
+      }
+
+      const photoUrl = uploadData.publicUrl;
 
       const { error: insertError } = await supabase.from("lost_events").insert({
         reporter_id: user.id,

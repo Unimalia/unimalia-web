@@ -24,6 +24,7 @@ export default function NuovoTrovatoPage() {
   const [locationText, setLocationText] = useState("");
   const [eventDate, setEventDate] = useState("");
   const [description, setDescription] = useState("");
+  const [photo, setPhoto] = useState<File | null>(null);
   const [contactEmail, setContactEmail] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [contactMode, setContactMode] = useState<ContactMode>("protected");
@@ -70,6 +71,28 @@ export default function NuovoTrovatoPage() {
     setLoading(true);
 
     try {
+      let photoUrl: string | null = null;
+
+      if (photo) {
+        const formData = new FormData();
+        formData.append("file", photo);
+
+        const uploadRes = await fetch("/api/upload/animal-photo", {
+          method: "POST",
+          body: formData,
+        });
+
+        const uploadData = await uploadRes.json();
+
+        if (!uploadRes.ok) {
+          setResultMsg(uploadData.error || "Errore upload foto");
+          setLoading(false);
+          return;
+        }
+
+        photoUrl = uploadData.publicUrl;
+      }
+
       const res = await fetch("/api/reports/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -82,7 +105,7 @@ export default function NuovoTrovatoPage() {
           location_text: locationText.trim(),
           event_date: eventDate,
           description: description.trim() || null,
-          photo_urls: [],
+          photo_urls: photoUrl ? [photoUrl] : [],
           contact_email: contactEmail.trim(),
           contact_phone: contactPhone.trim() || null,
           contact_mode: contactMode,
@@ -100,9 +123,7 @@ export default function NuovoTrovatoPage() {
         return;
       }
 
-      setResultMsg(
-        "✅ Ti abbiamo inviato una email per verificare la segnalazione. Apri la mail e conferma per metterla online."
-      );
+      setResultMsg("✅ Segnalazione pubblicata correttamente!");
       setTurnstileToken(null);
     } catch {
       setResultMsg("Errore di rete o server.");
@@ -215,6 +236,16 @@ export default function NuovoTrovatoPage() {
         </label>
 
         <label className="grid gap-2 text-sm font-semibold text-zinc-800">
+          Foto (opzionale)
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => setPhoto(e.target.files?.[0] || null)}
+            className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm"
+          />
+        </label>
+
+        <label className="grid gap-2 text-sm font-semibold text-zinc-800">
           Email
           <input
             type="email"
@@ -289,7 +320,7 @@ export default function NuovoTrovatoPage() {
           disabled={loading}
           className="h-11 rounded-xl bg-black text-sm font-semibold text-white disabled:opacity-60"
         >
-          {loading ? "Pubblicazione..." : "Invia e verifica email"}
+          {loading ? "Pubblicazione..." : "Pubblica segnalazione"}
         </button>
 
         {resultMsg ? (

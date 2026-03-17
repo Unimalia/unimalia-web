@@ -184,6 +184,8 @@ export async function POST(req: Request) {
       province,
     });
 
+    const email_verified = type === "found" || type === "sighted";
+
     const insertRow = {
       type,
       status: "active",
@@ -199,7 +201,7 @@ export async function POST(req: Request) {
       contact_email,
       contact_phone,
       contact_mode,
-      email_verified: false,
+      email_verified,
       verify_token,
       claim_token,
       created_by_user_id: null,
@@ -220,21 +222,23 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
-    try {
-      const verifyUrl = `${getBaseUrl()}/verifica/${verify_token}`;
-      const email = verificationEmail({
-        verifyUrl,
-        reportTitle: title,
-      });
+    if (type === "lost") {
+      try {
+        const verifyUrl = `${getBaseUrl()}/verifica/${verify_token}`;
+        const email = verificationEmail({
+          verifyUrl,
+          reportTitle: title,
+        });
 
-      await resend.emails.send({
-        from: EMAIL_FROM_NO_REPLY,
-        to: contact_email,
-        subject: email.subject,
-        html: email.html,
-      });
-    } catch (mailError) {
-      console.error("VERIFY EMAIL ERROR:", mailError);
+        await resend.emails.send({
+          from: EMAIL_FROM_NO_REPLY,
+          to: contact_email,
+          subject: email.subject,
+          html: email.html,
+        });
+      } catch (mailError) {
+        console.error("VERIFY EMAIL ERROR:", mailError);
+      }
     }
 
     return NextResponse.json({ ok: true, report: data }, { status: 200 });
