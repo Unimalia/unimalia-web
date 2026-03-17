@@ -207,7 +207,7 @@ export async function GET(req: NextRequest) {
 
     if (!canAccess) {
       return NextResponse.json(
-        { error: "Accesso negato: nessun grant attivo per questo professionista/organizzazione" },
+        { error: "Accesso negato" },
         { status: 403 }
       );
     }
