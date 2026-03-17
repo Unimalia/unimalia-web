@@ -209,9 +209,9 @@ export default async function SuperAdminProfessionistiPage({
         : status === "approved"
           ? p.approved === true
           : status === "rejected"
-            ? p.approved === false
+            ? p.approved === false && p.verification_status === "rejected"
             : status === "review"
-              ? p.approved === null
+              ? p.approved === false && p.verification_status === "pending"
               : true;
 
     const matchesVet =
@@ -227,7 +227,9 @@ export default async function SuperAdminProfessionistiPage({
   });
 
   const approvedCount = professionals.filter((p) => p.approved === true).length;
-  const reviewCount = professionals.filter((p) => p.approved === null).length;
+  const reviewCount = professionals.filter(
+    (p) => p.approved === false && p.verification_status === "pending"
+  ).length;
   const vetCount = professionals.filter((p) => p.is_vet === true).length;
 
   return (

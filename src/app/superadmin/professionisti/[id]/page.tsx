@@ -183,8 +183,12 @@ export default async function SuperAdminProfessionalDetailPage({
             <div className="flex flex-wrap items-center gap-2">
               <Badge tone="info">Profilo professionista</Badge>
               {p.approved === true ? <Badge tone="success">Approvato</Badge> : null}
-              {p.approved === false ? <Badge tone="danger">Rifiutato / non approvato</Badge> : null}
-              {p.approved === null ? <Badge tone="warning">Da verificare</Badge> : null}
+              {p.approved === false && p.verification_status === "pending" ? (
+                <Badge tone="warning">Da verificare</Badge>
+              ) : null}
+              {p.approved === false && p.verification_status !== "pending" ? (
+                <Badge tone="danger">Rifiutato / non approvato</Badge>
+              ) : null}
               {p.is_vet === true ? <Badge tone="info">Veterinario</Badge> : <Badge>Non veterinario</Badge>}
               {p.public_visible === true ? <Badge tone="success">Pubblico</Badge> : <Badge>Non pubblico</Badge>}
             </div>
@@ -223,7 +227,7 @@ export default async function SuperAdminProfessionalDetailPage({
               />
             ) : null}
 
-            {p.approved !== false ? (
+            {!(p.approved === false && p.verification_status === "rejected") ? (
               <ActionButton
                 action="/api/superadmin/professionals/reject"
                 professionalId={p.id}
