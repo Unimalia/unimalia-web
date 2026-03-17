@@ -5,15 +5,15 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "UNIMALIA | Identità animale digitale, dati clinici e smarrimenti",
   description:
-    "UNIMALIA aiuta proprietari e professionisti a gestire identità animale, accessi clinici controllati, consulti e smarrimenti in modo semplice e affidabile.",
+    "UNIMALIA aiuta proprietari e professionisti a gestire identità animale, accessi clinici controllati, consulti, smarrimenti, segnalazioni di animali trovati e lieti fine in modo semplice e affidabile.",
   alternates: {
-    canonical: "https://unimalia.it/",
+    canonical: "https://www.unimalia.it/",
   },
   openGraph: {
     title: "UNIMALIA | Identità animale digitale, dati clinici e smarrimenti",
     description:
-      "Identità animale, accessi clinici controllati, consulti e smarrimenti: tutto in un unico ecosistema digitale.",
-    url: "https://unimalia.it/",
+      "Identità animale, accessi clinici controllati, consulti, smarrimenti, animali trovati e lieti fine: tutto in un unico ecosistema digitale.",
+    url: "https://www.unimalia.it/",
     siteName: "UNIMALIA",
     images: ["/logo-512.png"],
     locale: "it_IT",
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "UNIMALIA | Identità animale digitale, dati clinici e smarrimenti",
     description:
-      "Identità animale, accessi clinici controllati, consulti e smarrimenti: tutto in un unico ecosistema digitale.",
+      "Identità animale, accessi clinici controllati, consulti, smarrimenti, animali trovati e lieti fine: tutto in un unico ecosistema digitale.",
     images: ["/logo-512.png"],
   },
 };
@@ -181,43 +181,44 @@ export default function HomePage() {
                 <Badge>Identità animale</Badge>
                 <Badge>Dati clinici controllati</Badge>
                 <Badge>Smarrimenti</Badge>
+                <Badge>Trovati / Avvistati</Badge>
                 <Badge>Professionisti</Badge>
               </div>
 
               <h1 className="mt-6 max-w-4xl text-4xl font-bold tracking-tight text-zinc-900 sm:text-5xl lg:text-6xl">
                 La piattaforma per{" "}
-                <span className="text-teal-700">identità animale, accessi clinici e smarrimenti</span>.
+                <span className="text-teal-700">identità animale, accessi clinici e segnalazioni utili</span>.
               </h1>
 
               <p className="mt-6 max-w-2xl text-lg leading-relaxed text-zinc-600">
                 UNIMALIA aiuta proprietari e professionisti a gestire in modo semplice dati essenziali,
-                accessi autorizzati, consulti e strumenti utili quando un animale si smarrisce o ha bisogno
-                di assistenza.
+                accessi autorizzati, consulti, smarrimenti, segnalazioni di animali trovati o avvistati
+                e casi conclusi con lieto fine.
               </p>
 
               <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                 <PrimaryCTA href="/identita/nuovo">Crea identità animale</PrimaryCTA>
-                <SecondaryCTA href="/professionisti">Scopri l’area professionisti</SecondaryCTA>
-                <SecondaryCTA href="/smarrimenti/nuovo">Pubblica smarrimento</SecondaryCTA>
+                <SecondaryCTA href="/smarrimenti">Ho perso un animale</SecondaryCTA>
+                <SecondaryCTA href="/trovati">Ho trovato o avvistato un animale</SecondaryCTA>
               </div>
 
               <div className="mt-8 grid max-w-3xl gap-3 sm:grid-cols-3">
                 <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
                   <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Per i proprietari</p>
                   <p className="mt-2 text-sm font-medium text-zinc-900">
-                    Identità digitale, QR code e gestione rapida dell’animale.
+                    Identità digitale, QR code e strumenti rapidi quando serve agire subito.
                   </p>
                 </div>
                 <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Per i professionisti</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Per i veterinari</p>
                   <p className="mt-2 text-sm font-medium text-zinc-900">
-                    Accessi autorizzati, consulti e collaborazione più ordinata.
+                    Accessi clinici autorizzati, consulti e collaborazione più ordinata.
                   </p>
                 </div>
                 <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">In emergenza</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Per altri professionisti</p>
                   <p className="mt-2 text-sm font-medium text-zinc-900">
-                    Meno caos, più informazioni giuste quando il tempo conta.
+                    Spazio in evoluzione per toelettatori, pet sitter, pensioni e addestratori.
                   </p>
                 </div>
               </div>
@@ -251,16 +252,16 @@ export default function HomePage() {
                   </div>
 
                   <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-                    <p className="text-sm font-semibold text-zinc-900">Cartella clinica e accessi</p>
+                    <p className="text-sm font-semibold text-zinc-900">Smarrimenti, trovati e avvistamenti</p>
                     <p className="mt-1 text-sm text-zinc-600">
-                      Il proprietario autorizza, il professionista lavora con dati pertinenti e tracciati.
+                      Segnalazioni più ordinate per aiutare a ritrovare l’animale e raccogliere informazioni utili.
                     </p>
                   </div>
 
                   <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-                    <p className="text-sm font-semibold text-zinc-900">Smarrimenti e verifiche</p>
+                    <p className="text-sm font-semibold text-zinc-900">Cartella clinica e accessi</p>
                     <p className="mt-1 text-sm text-zinc-600">
-                      Strumenti utili per condividere, segnalare e velocizzare il rientro dell’animale.
+                      Il proprietario autorizza, il veterinario lavora con dati pertinenti e tracciati.
                     </p>
                   </div>
                 </div>
@@ -284,7 +285,7 @@ export default function HomePage() {
             <SectionTitle
               eyebrow="Capire subito"
               title="Cosa puoi fare con UNIMALIA"
-              description="La homepage deve spiegare il prodotto in pochi secondi. Queste sono le quattro aree che contano davvero."
+              description="La homepage deve spiegare il prodotto in pochi secondi. Queste sono le aree che contano davvero."
             />
 
             <div className="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
@@ -295,20 +296,20 @@ export default function HomePage() {
                 cta="Crea identità"
               />
               <FeatureCard
-                title="Gestisci QR e codici"
-                description="Usa QR e codici per condivisione rapida, verifica e accesso più semplice alle informazioni utili."
-                href="/identita"
-                cta="Apri identità"
-              />
-              <FeatureCard
-                title="Pubblica smarrimenti"
+                title="Pubblica uno smarrimento"
                 description="Segnala rapidamente un animale smarrito e centralizza le informazioni importanti."
                 href="/smarrimenti/nuovo"
                 cta="Pubblica smarrimento"
               />
               <FeatureCard
-                title="Collabora con i professionisti"
-                description="Concedi accessi controllati e abilita consulti e gestione clinica in modo ordinato."
+                title="Segnala un animale trovato o avvistato"
+                description="Aiuta a raccogliere segnalazioni utili sul territorio in modo più ordinato e verificabile."
+                href="/trovati/nuovo"
+                cta="Pubblica segnalazione"
+              />
+              <FeatureCard
+                title="Collabora con veterinari e professionisti"
+                description="Concedi accessi controllati e prepara un ecosistema utile anche per altri operatori del settore animale."
                 href="/professionisti"
                 cta="Vai ai professionisti"
               />
@@ -322,25 +323,25 @@ export default function HomePage() {
           <div className="py-16 sm:py-20">
             <SectionTitle
               eyebrow="Per chi è"
-              title="Due percorsi chiari: proprietari e professionisti"
-              description="UNIMALIA funziona meglio quando il valore è immediato per entrambi."
+              title="Percorsi distinti per proprietari, veterinari e altri professionisti"
+              description="UNIMALIA funziona meglio quando il valore è immediato e il ruolo di ognuno è chiaro."
             />
 
-            <div className="mt-10 grid gap-6 lg:grid-cols-2">
+            <div className="mt-10 grid gap-6 lg:grid-cols-3">
               <AudienceCard
                 title="Per i proprietari"
                 description="Uno spazio più ordinato per gestire identità, accessi e situazioni delicate senza perdere tempo."
                 bullets={[
                   "Crei l’identità digitale dell’animale e tieni i dati essenziali in un unico posto.",
                   "Decidi tu chi può accedere alle informazioni cliniche e per quanto tempo.",
-                  "Hai strumenti rapidi per QR, codici e smarrimenti quando serve agire in fretta.",
+                  "Hai strumenti rapidi per smarrimenti, segnalazioni e rientri con lieto fine.",
                 ]}
                 href="/identita"
                 cta="Apri area identità"
               />
 
               <AudienceCard
-                title="Per veterinari e professionisti"
+                title="Per i veterinari"
                 description="Un flusso più pulito per accedere ai dati autorizzati, lavorare sulla cartella clinica e gestire consulti."
                 bullets={[
                   "Richiedi accesso agli animali solo quando autorizzato dal proprietario.",
@@ -348,7 +349,19 @@ export default function HomePage() {
                   "Invii consulti e condividi eventi clinici in modo controllato.",
                 ]}
                 href="/professionisti"
-                cta="Apri area professionisti"
+                cta="Apri area veterinari"
+              />
+
+              <AudienceCard
+                title="Per altri professionisti del settore animale"
+                description="Uno spazio pensato per crescere anche oltre l’area clinica, mantenendo ruoli e funzioni ben distinti."
+                bullets={[
+                  "Toelettatori, pet sitter, pensioni e addestratori avranno strumenti dedicati al proprio lavoro.",
+                  "Le attività non cliniche resteranno separate dalla cartella veterinaria.",
+                  "L’obiettivo è favorire collaborazione, ordine e continuità tra servizi diversi.",
+                ]}
+                href="/servizi"
+                cta="Scopri i servizi"
               />
             </div>
           </div>
@@ -364,7 +377,7 @@ export default function HomePage() {
               description="UNIMALIA deve essere utile prima dell’emergenza, non solo durante."
             />
 
-            <div className="mt-10 grid gap-6 lg:grid-cols-3">
+            <div className="mt-10 grid gap-6 lg:grid-cols-4">
               <Step
                 number="1"
                 title="Crea la scheda"
@@ -377,8 +390,13 @@ export default function HomePage() {
               />
               <Step
                 number="3"
-                title="Gestisci emergenze e consulti"
-                description="In caso di smarrimento o bisogno clinico, hai già una base pronta e più ordinata."
+                title="Gestisci segnalazioni"
+                description="In caso di smarrimento, ritrovamento o avvistamento hai già una base pronta e più ordinata."
+              />
+              <Step
+                number="4"
+                title="Chiudi con lieto fine"
+                description="Quando il caso si risolve, le informazioni restano più chiare e utili anche dopo l’emergenza."
               />
             </div>
           </div>
@@ -395,15 +413,15 @@ export default function HomePage() {
                   In pochi secondi deve essere chiaro: UNIMALIA serve a proteggere meglio l’animale.
                 </h2>
                 <p className="mt-4 text-base leading-relaxed text-zinc-600">
-                  Identità digitale, accessi clinici controllati, consulti e smarrimenti: meno dispersione,
-                  più chiarezza, più fiducia tra proprietari e professionisti.
+                  Identità digitale, accessi clinici controllati, consulti, smarrimenti, animali trovati,
+                  avvistamenti e lieti fine: meno dispersione, più chiarezza, più fiducia tra proprietari e professionisti.
                 </p>
               </div>
 
               <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                 <PrimaryCTA href="/identita/nuovo">Crea identità animale</PrimaryCTA>
-                <SecondaryCTA href="/professionisti">Entra nell’area professionisti</SecondaryCTA>
                 <SecondaryCTA href="/smarrimenti">Vai agli smarrimenti</SecondaryCTA>
+                <SecondaryCTA href="/trovati">Vai a trovati / avvistati</SecondaryCTA>
               </div>
             </div>
           </div>
