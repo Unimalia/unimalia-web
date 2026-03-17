@@ -250,7 +250,7 @@ export default function ModificaProfessionistaPage() {
         return;
       }
 
-            const p = proData[0] as unknown as Professional;
+      const p = proData[0] as unknown as Professional;
       setPro(p);
 
       setDisplayName(p.display_name ?? "");
@@ -561,6 +561,8 @@ export default function ModificaProfessionistaPage() {
             }
           : prev
       );
+
+      router.replace("/professionisti/dashboard?pending=1");
     } catch (e: any) {
       setError("Errore nel salvataggio. Riprova.");
     } finally {
@@ -581,6 +583,15 @@ export default function ModificaProfessionistaPage() {
         <Link href="/professionisti" className="text-sm font-medium text-zinc-600 hover:underline">
           ← Portale
         </Link>
+      </div>
+
+      <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+        <p className="text-sm font-semibold text-amber-900">Profilo in verifica</p>
+        <p className="mt-2 text-sm leading-relaxed text-amber-800">
+          La scheda professionista è stata salvata correttamente ed è ora in revisione.
+          La verifica richiede in genere 24/48 ore. Nel frattempo puoi aggiornare i dati,
+          ma le funzioni riservate resteranno abilitate solo dopo approvazione.
+        </p>
       </div>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-3">
@@ -859,7 +870,7 @@ export default function ModificaProfessionistaPage() {
             onClick={save}
             className="mt-6 inline-flex items-center justify-center rounded-lg bg-black px-5 py-3 text-sm font-semibold text-white hover:bg-zinc-800 disabled:opacity-60"
           >
-            {saving ? "Salvataggio..." : "Salva modifiche"}
+            {saving ? "Salvataggio..." : "Salva e chiudi"}
           </button>
 
           <p className="mt-4 text-xs text-zinc-500">
