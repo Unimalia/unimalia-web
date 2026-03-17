@@ -90,7 +90,7 @@ export default function NuovoSmarrimentoClient() {
         return;
       }
 
-      setResultMsg("✅ Perfetto! Controlla la tua email per confermare lo smarrimento.");
+      setResultMsg("✅ Smarrimento pubblicato correttamente. Ti abbiamo inviato una email con il link dell’annuncio.");
       setTurnstileToken(null);
     } catch {
       setResultMsg("Errore di rete o server.");

@@ -96,8 +96,8 @@ export default function NuovoTrovatoPage() {
 
       setResultMsg(
         type === "found"
-          ? "✅ Perfetto! Controlla la tua email per confermare la segnalazione di animale trovato."
-          : "✅ Perfetto! Controlla la tua email per confermare l’avvistamento."
+          ? "✅ Segnalazione di animale trovato pubblicata correttamente. Ti abbiamo inviato una email con il link dell’annuncio."
+          : "✅ Avvistamento pubblicato correttamente. Ti abbiamo inviato una email con il link dell’annuncio."
       );
       setTurnstileToken(null);
     } catch {

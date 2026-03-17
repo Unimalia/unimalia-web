@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { sendReportCreatedEmail } from "@/lib/email/resend";
 
 export const dynamic = "force-dynamic";
 
@@ -64,7 +65,7 @@ export async function POST(req: Request) {
     }
 
     const title = String(body?.title || "").trim();
-    const contact_email = String(body?.contact_email || "").trim();
+    const contact_email = String(body?.contact_email || "").trim().toLowerCase();
     const contact_phone =
       body?.contact_phone == null ? null : String(body.contact_phone).trim() || null;
 
@@ -144,6 +145,18 @@ export async function POST(req: Request) {
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
+    try {
+      await sendReportCreatedEmail({
+        to: contact_email,
+        type,
+        title,
+        reportId: data.id,
+        animalName: animal_name,
+      });
+    } catch (mailError) {
+      console.error("REPORT EMAIL ERROR:", mailError);
     }
 
     return NextResponse.json({ ok: true, report: data }, { status: 200 });
