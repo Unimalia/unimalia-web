@@ -501,12 +501,20 @@ export default function ProfessionistiRichiestaDettaglioPage() {
       .sort((a, b) => normalizeDate(b.date)!.getTime() - normalizeDate(a.date)!.getTime())
       .slice(0, 3);
 
+    const latestVisitMeta = (latestVisit?.raw?.meta as Record<string, unknown> | undefined) ?? {};
+    const latestVisitPayload =
+      (latestVisit?.raw?.payload as Record<string, unknown> | undefined) ?? {};
+    const latestVisitData = (latestVisit?.raw?.data as Record<string, unknown> | undefined) ?? {};
+
     const animalWeight =
       extractText(data?.animal?.weight) ||
       extractText(data?.animal?.peso) ||
       extractText(animal?.weight) ||
       extractText(latestVisit?.raw?.weight) ||
-      extractText((latestVisit?.raw?.payload as { weight?: unknown } | undefined)?.weight);
+      extractText(latestVisitPayload?.weight) ||
+      extractText(latestVisitData?.weight) ||
+      extractText(latestVisitMeta?.weight) ||
+      extractText(latestVisitMeta?.peso);
 
     const animalAge =
       extractText(data?.animal?.age) ||
@@ -516,9 +524,18 @@ export default function ProfessionistiRichiestaDettaglioPage() {
         ? formatDate(data?.animal?.birth_date || animal?.birth_date)
         : "");
 
+    const bloodType =
+      extractText(latestVisitMeta?.blood_type) ||
+      extractText(latestVisitMeta?.bloodType) ||
+      extractText(latestVisitPayload?.blood_type) ||
+      extractText(latestVisitPayload?.bloodType) ||
+      extractText(latestVisitData?.blood_type) ||
+      extractText(latestVisitData?.bloodType);
+
     return {
       age: animalAge || "—",
       weight: animalWeight || "—",
+      bloodType: bloodType || "Non rilevato",
       allergies: allergies.slice(0, 3),
       activeTherapies: activeTherapies.slice(0, 3),
       lastTherapies,
@@ -822,12 +839,15 @@ export default function ProfessionistiRichiestaDettaglioPage() {
             <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
               Età / Peso
             </div>
-            <div className="mt-2 text-sm text-slate-800">
+            <div className="mt-2 space-y-1 text-sm text-slate-800">
               <div>
                 <span className="font-medium">Età:</span> {rapidClinicalState.age}
               </div>
               <div>
                 <span className="font-medium">Peso:</span> {rapidClinicalState.weight}
+              </div>
+              <div>
+                <span className="font-medium">Gruppo sanguigno:</span> {rapidClinicalState.bloodType}
               </div>
             </div>
           </div>
