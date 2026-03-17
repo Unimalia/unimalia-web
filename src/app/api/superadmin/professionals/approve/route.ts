@@ -92,9 +92,9 @@ export async function POST(req: Request) {
     professionalBefore.business_name ||
     "Professionista";
 
-  let email = String(professionalBefore.email || "").trim().toLowerCase();
+  let email = "";
 
-  if (!email && professionalBefore.owner_id) {
+  if (professionalBefore.owner_id) {
     const { data: authUserData, error: authUserError } = await admin.auth.admin.getUserById(
       professionalBefore.owner_id
     );
@@ -102,6 +102,10 @@ export async function POST(req: Request) {
     if (!authUserError && authUserData?.user?.email) {
       email = String(authUserData.user.email).trim().toLowerCase();
     }
+  }
+
+  if (!email) {
+    email = String(professionalBefore.email || "").trim().toLowerCase();
   }
 
   let emailResult:
