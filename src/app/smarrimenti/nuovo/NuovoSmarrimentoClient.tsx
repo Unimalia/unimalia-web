@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import Image from "next/image";
 import { Turnstile } from "@marsidev/react-turnstile";
 import LocationPicker from "../../_components/LocationPicker";
 
@@ -28,8 +29,63 @@ export default function NuovoSmarrimentoClient() {
   const [consent, setConsent] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+
   const [loading, setLoading] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [resultMsg, setResultMsg] = useState<string | null>(null);
+
+  const canSubmit = useMemo(() => !loading && !uploadingPhoto, [loading, uploadingPhoto]);
+
+  function onPhotoChange(file: File | null) {
+    setPhoto(file);
+
+    if (!file) {
+      setPhotoPreview(null);
+      return;
+    }
+
+    const url = URL.createObjectURL(file);
+    setPhotoPreview(url);
+  }
+
+  async function uploadPhoto(): Promise<string> {
+    if (!photo) {
+      throw new Error("Carica una foto dell’animale.");
+    }
+
+    if (!turnstileToken) {
+      throw new Error("Completa il controllo di sicurezza prima di caricare la foto.");
+    }
+
+    setUploadingPhoto(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", photo);
+      formData.append("turnstileToken", turnstileToken);
+
+      const uploadRes = await fetch("/api/reports/upload-photo", {
+        method: "POST",
+        body: formData,
+      });
+
+      const uploadData = await uploadRes.json().catch(() => ({}));
+
+      if (!uploadRes.ok) {
+        throw new Error(uploadData?.error || "Errore upload foto.");
+      }
+
+      if (!uploadData?.publicUrl) {
+        throw new Error("Foto caricata ma URL non disponibile.");
+      }
+
+      return uploadData.publicUrl as string;
+    } finally {
+      setUploadingPhoto(false);
+    }
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -37,6 +93,11 @@ export default function NuovoSmarrimentoClient() {
 
     if (!animalName.trim()) {
       setResultMsg("Inserisci il nome dell’animale.");
+      return;
+    }
+
+    if (!photo) {
+      setResultMsg("Carica una foto dell’animale.");
       return;
     }
 
@@ -73,6 +134,8 @@ export default function NuovoSmarrimentoClient() {
     setLoading(true);
 
     try {
+      const uploadedPhotoUrl = await uploadPhoto();
+
       const res = await fetch("/api/reports/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -85,7 +148,7 @@ export default function NuovoSmarrimentoClient() {
           location_text: locationText.trim(),
           event_date: eventDate,
           description: description.trim() || null,
-          photo_urls: [],
+          photo_urls: [uploadedPhotoUrl],
           contact_email: contactEmail.trim(),
           contact_phone: contactPhone.trim() || null,
           contact_mode: contactMode,
@@ -106,9 +169,24 @@ export default function NuovoSmarrimentoClient() {
       setResultMsg(
         "✅ Ti abbiamo inviato una email per verificare l’annuncio. Apri la mail e conferma per metterlo online."
       );
+
+      setAnimalName("");
+      setSpecies("cane");
+      setRegion("");
+      setProvince("");
+      setLocationText("");
+      setEventDate("");
+      setDescription("");
+      setContactEmail("");
+      setContactPhone("");
+      setContactMode("protected");
+      setConsent(false);
+      setCoords({ lat: null, lng: null });
+      setPhoto(null);
+      setPhotoPreview(null);
       setTurnstileToken(null);
-    } catch {
-      setResultMsg("Errore di rete o server.");
+    } catch (error: any) {
+      setResultMsg(error?.message || "Errore di rete o server.");
     } finally {
       setLoading(false);
     }
@@ -118,7 +196,7 @@ export default function NuovoSmarrimentoClient() {
     <div className="mx-auto w-full max-w-2xl px-4 py-8">
       <h1 className="text-2xl font-extrabold text-zinc-900">Pubblica smarrimento</h1>
       <p className="mt-2 text-sm text-zinc-600">
-        Inserisci i dati essenziali e conferma via email per pubblicare l’annuncio.
+        Inserisci i dati essenziali, carica una foto e conferma via email per pubblicare l’annuncio.
       </p>
 
       <form onSubmit={onSubmit} className="mt-6 grid gap-4">
@@ -147,6 +225,34 @@ export default function NuovoSmarrimentoClient() {
         </label>
 
         <label className="grid gap-2 text-sm font-semibold text-zinc-800">
+          Foto animale
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => onPhotoChange(e.target.files?.[0] || null)}
+            className="block w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-100 file:px-3 file:py-2 file:text-sm file:font-medium"
+            required
+          />
+          <span className="text-xs font-normal text-zinc-500">
+            La foto è obbligatoria: aiuta moltissimo il riconoscimento.
+          </span>
+        </label>
+
+        {photoPreview ? (
+          <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white">
+            <div className="relative h-64 w-full">
+              <Image
+                src={photoPreview}
+                alt="Anteprima foto animale"
+                fill
+                className="object-cover"
+                unoptimized
+              />
+            </div>
+          </div>
+        ) : null}
+
+        <label className="grid gap-2 text-sm font-semibold text-zinc-800">
           Data smarrimento
           <input
             type="date"
@@ -168,7 +274,7 @@ export default function NuovoSmarrimentoClient() {
               apiKey={apiKey}
               value={coords}
               onChange={setCoords}
-              onAddress={(a) => {
+              onAddress={(a: any) => {
                 if (a.formattedAddress) setLocationText(a.formattedAddress);
                 if (a.province) setProvince(a.province);
                 if (a.region) setRegion(a.region);
@@ -278,10 +384,14 @@ export default function NuovoSmarrimentoClient() {
         </div>
 
         <button
-          disabled={loading}
+          disabled={!canSubmit}
           className="h-11 rounded-xl bg-black text-sm font-semibold text-white disabled:opacity-60"
         >
-          {loading ? "Pubblicazione..." : "Invia e verifica email"}
+          {loading
+            ? "Pubblicazione..."
+            : uploadingPhoto
+            ? "Caricamento foto..."
+            : "Invia e verifica email"}
         </button>
 
         {resultMsg ? (
