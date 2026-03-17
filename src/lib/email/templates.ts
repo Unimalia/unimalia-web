@@ -73,15 +73,19 @@ export function newMessageRelayEmail(params: {
   return { subject: "Nuovo messaggio sul tuo annuncio", html };
 }
 
-export function expiringSoonEmail(params: { reportTitle: string; manageUrl: string; daysLeft: number }) {
+export function expiringSoonEmail(params: {
+  reportTitle: string;
+  manageUrl: string;
+  daysLeft: number;
+}) {
   const html = wrapEmailHtml(
     "Il tuo annuncio sta per scadere",
     `
       <p><b>${escapeHtml(params.reportTitle)}</b> scadrà tra <b>${params.daysLeft} giorni</b>.</p>
-      <p>Vuoi fare un refresh per mantenerlo visibile?</p>
+      <p>Vuoi mantenerlo attivo?</p>
       <p>
         <a href="${params.manageUrl}" style="display:inline-block;padding:10px 14px;border-radius:10px;text-decoration:none;background:#111;color:#fff;">
-          Gestisci / Refresh annuncio
+          Mantieni attivo annuncio
         </a>
       </p>
     `
@@ -89,7 +93,11 @@ export function expiringSoonEmail(params: { reportTitle: string; manageUrl: stri
   return { subject: "Promemoria: annuncio in scadenza", html };
 }
 
-export function askIfFoundEmail(params: { reportTitle: string; closeFoundUrl: string; keepActiveUrl: string }) {
+export function askIfFoundEmail(params: {
+  reportTitle: string;
+  closeFoundUrl: string;
+  keepActiveUrl: string;
+}) {
   const html = wrapEmailHtml(
     "Aggiornamento annuncio",
     `
@@ -107,18 +115,50 @@ export function askIfFoundEmail(params: { reportTitle: string; closeFoundUrl: st
   return { subject: "È stato ritrovato?", html };
 }
 
-export function inviteToRegisterAfterFoundEmail(params: { registerUrl: string }) {
-  const html = wrapEmailHtml(
-    "Proteggi il tuo animale per sempre",
-    `
-      <p>Felici che sia andata bene ❤️</p>
-      <p>Vuoi creare l’identità digitale del tuo animale? Così, se succede di nuovo, fai tutto in 10 secondi.</p>
+export function inviteToRegisterAfterFoundEmail(params: {
+  registerUrl: string;
+  alreadyRegistered?: boolean;
+  donateUrl?: string | null;
+}) {
+  const title = params.alreadyRegistered
+    ? "Crea la scheda animale su UNIMALIA"
+    : "Proteggi il tuo animale per sempre";
+
+  const actionLabel = params.alreadyRegistered
+    ? "Crea scheda animale"
+    : "Registrati e crea scheda animale";
+
+  const donateBlock = params.donateUrl
+    ? `
+      <p style="margin-top:18px;color:#555;font-size:13px;">
+        Se UNIMALIA ti è stato utile e vuoi sostenere il progetto, puoi farlo in modo del tutto facoltativo.
+      </p>
       <p>
-        <a href="${params.registerUrl}" style="display:inline-block;padding:10px 14px;border-radius:10px;text-decoration:none;background:#111;color:#fff;">
-          Crea identità digitale
+        <a href="${params.donateUrl}" style="font-size:13px;color:#111;">
+          Sostieni UNIMALIA
         </a>
       </p>
     `
+    : "";
+
+  const html = wrapEmailHtml(
+    title,
+    `
+      <p>Felici che sia andata bene ❤️</p>
+      <p>
+        ${
+          params.alreadyRegistered
+            ? "Ora puoi creare la scheda animale su UNIMALIA, così avrai tutto più pronto in caso di emergenza."
+            : "Vuoi registrarti e creare l’identità digitale del tuo animale? Così, se succede di nuovo, fai tutto più velocemente."
+        }
+      </p>
+      <p>
+        <a href="${params.registerUrl}" style="display:inline-block;padding:10px 14px;border-radius:10px;text-decoration:none;background:#111;color:#fff;">
+          ${actionLabel}
+        </a>
+      </p>
+      ${donateBlock}
+    `
   );
-  return { subject: "Vuoi attivare l’identità digitale?", html };
+  return { subject: "UNIMALIA · Dopo il lieto fine", html };
 }
