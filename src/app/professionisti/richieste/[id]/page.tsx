@@ -501,6 +501,40 @@ export default function ProfessionistiRichiestaDettaglioPage() {
       .sort((a, b) => normalizeDate(b.date)!.getTime() - normalizeDate(a.date)!.getTime())
       .slice(0, 3);
 
+    const eventsByDateDesc = [...events].sort((a: any, b: any) => {
+      const da = normalizeDate(
+        a?.event_date || a?.performed_at || a?.scheduled_for || a?.created_at
+      );
+      const db = normalizeDate(
+        b?.event_date || b?.performed_at || b?.scheduled_for || b?.created_at
+      );
+
+      if (!da && !db) return 0;
+      if (!da) return 1;
+      if (!db) return -1;
+
+      return db.getTime() - da.getTime();
+    });
+
+    const latestDetectedWeight =
+      eventsByDateDesc
+        .map((event: any) => {
+          const meta = (event?.meta as Record<string, unknown> | undefined) ?? {};
+          const payload = (event?.payload as Record<string, unknown> | undefined) ?? {};
+          const dataObj = (event?.data as Record<string, unknown> | undefined) ?? {};
+
+          return (
+            extractText(event?.weight) ||
+            extractText(payload?.weight) ||
+            extractText(payload?.peso) ||
+            extractText(dataObj?.weight) ||
+            extractText(dataObj?.peso) ||
+            extractText(meta?.weight) ||
+            extractText(meta?.peso)
+          );
+        })
+        .find(Boolean) || "";
+
     const latestVisitMeta = (latestVisit?.raw?.meta as Record<string, unknown> | undefined) ?? {};
     const latestVisitPayload =
       (latestVisit?.raw?.payload as Record<string, unknown> | undefined) ?? {};
@@ -510,6 +544,7 @@ export default function ProfessionistiRichiestaDettaglioPage() {
       extractText(data?.animal?.weight) ||
       extractText(data?.animal?.peso) ||
       extractText(animal?.weight) ||
+      latestDetectedWeight ||
       extractText(latestVisit?.raw?.weight) ||
       extractText(latestVisitPayload?.weight) ||
       extractText(latestVisitData?.weight) ||
