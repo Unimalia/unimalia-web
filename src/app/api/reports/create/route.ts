@@ -21,10 +21,13 @@ async function verifyTurnstileToken(token: string, ip?: string) {
   formData.append("response", token);
   if (ip && ip !== "unknown") formData.append("remoteip", ip);
 
-  const res = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
-    method: "POST",
-    body: formData,
-  });
+  const res = await fetch(
+    "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+    {
+      method: "POST",
+      body: formData,
+    }
+  );
 
   const data = await res.json().catch(() => null);
 
@@ -32,7 +35,6 @@ async function verifyTurnstileToken(token: string, ip?: string) {
     return {
       ok: false,
       error: "Controllo sicurezza non valido.",
-      details: data,
     };
   }
 
@@ -43,12 +45,16 @@ export async function POST(req: Request) {
   try {
     const admin = supabaseAdmin();
 
-    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    const ip =
+      req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+
     const ip_hash = hashIp(ip);
 
     const body = await req.json().catch(() => ({}));
 
+    // 🔐 TURNSTILE
     const turnstileToken = String(body?.turnstileToken || "").trim();
+
     if (!turnstileToken) {
       return NextResponse.json(
         { error: "Controllo sicurezza mancante." },
@@ -57,43 +63,60 @@ export async function POST(req: Request) {
     }
 
     const turnstile = await verifyTurnstileToken(turnstileToken, ip);
+
     if (!turnstile.ok) {
       return NextResponse.json(
-        { error: turnstile.error || "Controllo sicurezza non valido." },
+        { error: "Controllo sicurezza non valido." },
         { status: 400 }
       );
     }
 
-    const title = String(body?.title || "").trim();
-    const contact_email = String(body?.contact_email || "").trim().toLowerCase();
+    // 📦 DATI
+    const contact_email = String(body?.contact_email || "")
+      .trim()
+      .toLowerCase();
+
     const contact_phone =
-      body?.contact_phone == null ? null : String(body.contact_phone).trim() || null;
+      body?.contact_phone == null
+        ? null
+        : String(body.contact_phone).trim() || null;
 
     const type =
-      body?.type === "lost" || body?.type === "found" || body?.type === "sighted"
+      body?.type === "lost" ||
+      body?.type === "found" ||
+      body?.type === "sighted"
         ? body.type
         : null;
 
-    const animal_name =
-      body?.animal_name == null ? null : String(body.animal_name).trim() || null;
+    const animal_name = String(body?.animal_name || "").trim();
 
     const species = String(body?.species || "").trim() || null;
-    const region = String(body?.region || "").trim() || null;
-    const province = String(body?.province || "").trim() || null;
+
     const location_text = String(body?.location_text || "").trim() || null;
+
     const event_date = String(body?.event_date || "").trim() || null;
+
     const description = String(body?.description || "").trim() || null;
 
     const lat =
-      typeof body?.lat === "number" && Number.isFinite(body.lat) ? body.lat : null;
+      typeof body?.lat === "number" && Number.isFinite(body.lat)
+        ? body.lat
+        : null;
 
     const lng =
-      typeof body?.lng === "number" && Number.isFinite(body.lng) ? body.lng : null;
+      typeof body?.lng === "number" && Number.isFinite(body.lng)
+        ? body.lng
+        : null;
 
-    if (!title || !contact_email || !type) {
-      return NextResponse.json({ error: "Dati mancanti" }, { status: 400 });
+    // ✅ VALIDAZIONE
+    if (!animal_name || !contact_email || !type) {
+      return NextResponse.json(
+        { error: "Dati mancanti" },
+        { status: 400 }
+      );
     }
 
+    // ⛔ RATE LIMIT
     const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
 
     const { count, error: countErr } = await admin
@@ -103,7 +126,10 @@ export async function POST(req: Request) {
       .gte("created_at", since);
 
     if (countErr) {
-      return NextResponse.json({ error: countErr.message }, { status: 400 });
+      return NextResponse.json(
+        { error: countErr.message },
+        { status: 400 }
+      );
     }
 
     const limit = Number(body?.rate_limit ?? 10);
@@ -115,15 +141,13 @@ export async function POST(req: Request) {
       );
     }
 
-    const insertRow: Record<string, unknown> = {
-      title,
+    // 💾 INSERT
+    const insertRow = {
+      animal_name,
       contact_email,
       contact_phone,
       type,
-      animal_name,
       species,
-      region,
-      province,
       location_text,
       event_date,
       description,
@@ -132,11 +156,6 @@ export async function POST(req: Request) {
       ip_hash,
     };
 
-    if (body?.verify_token) insertRow.verify_token = body.verify_token;
-    if (typeof body?.email_verified === "boolean") {
-      insertRow.email_verified = body.email_verified;
-    }
-
     const { data, error } = await admin
       .from("reports")
       .insert(insertRow)
@@ -144,23 +163,32 @@ export async function POST(req: Request) {
       .single();
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+      return NextResponse.json(
+        { error: error.message },
+        { status: 400 }
+      );
     }
 
+    // 📧 EMAIL
     try {
       await sendReportCreatedEmail({
         to: contact_email,
         type,
-        title,
         reportId: data.id,
         animalName: animal_name,
       });
     } catch (mailError) {
-      console.error("REPORT EMAIL ERROR:", mailError);
+      console.error("EMAIL ERROR:", mailError);
     }
 
-    return NextResponse.json({ ok: true, report: data }, { status: 200 });
+    return NextResponse.json(
+      { ok: true, report: data },
+      { status: 200 }
+    );
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message || "Errore server" }, { status: 500 });
+    return NextResponse.json(
+      { error: e?.message || "Errore server" },
+      { status: 500 }
+    );
   }
 }
