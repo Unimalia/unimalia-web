@@ -37,7 +37,7 @@ export async function POST(req: Request) {
 
   const { data: professionalBefore, error: professionalReadError } = await admin
     .from("professionals")
-    .select("id, email, display_name, first_name, last_name, business_name, category, is_vet")
+    .select("id, owner_id, email, display_name, first_name, last_name, business_name, category, is_vet")
     .eq("id", professionalId)
     .single();
 
@@ -92,11 +92,23 @@ export async function POST(req: Request) {
     professionalBefore.business_name ||
     "Professionista";
 
-  const email = String(professionalBefore.email || "").trim().toLowerCase();
+  let email = String(professionalBefore.email || "").trim().toLowerCase();
+
+  if (!email && professionalBefore.owner_id) {
+    const { data: authUserData, error: authUserError } = await admin.auth.admin.getUserById(
+      professionalBefore.owner_id
+    );
+
+    if (!authUserError && authUserData?.user?.email) {
+      email = String(authUserData.user.email).trim().toLowerCase();
+    }
+  }
 
   let emailResult:
-    | { ok: true }
-    | { ok: false; error: string } = { ok: true };
+    | { ok: true; to: string }
+    | { ok: false; error: string } = email
+    ? { ok: true, to: email }
+    : { ok: false, error: "Email professionista assente sia nel profilo sia in Auth" };
 
   if (email) {
     try {
@@ -107,10 +119,13 @@ export async function POST(req: Request) {
         category: professionalBefore.category,
         isVet: professionalBefore.is_vet === true,
       });
+
       console.log("[professional_approved_email] sent", {
         professionalId,
         email,
       });
+
+      emailResult = { ok: true, to: email };
     } catch (e: any) {
       const message = e?.message || "Errore invio email approvazione";
       console.error("[professional_approved_email] failed", {
@@ -125,16 +140,10 @@ export async function POST(req: Request) {
       };
     }
   } else {
-    const message = "Email professionista assente";
     console.error("[professional_approved_email] skipped", {
       professionalId,
-      error: message,
+      error: "Email professionista assente sia nel profilo sia in Auth",
     });
-
-    emailResult = {
-      ok: false,
-      error: message,
-    };
   }
 
   await writeAdminAuditLog({
