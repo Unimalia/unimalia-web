@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Turnstile } from "@marsidev/react-turnstile";
 import LocationPicker from "../../_components/LocationPicker";
 
 type ReportType = "found" | "sighted";
@@ -8,6 +9,7 @@ type ContactMode = "protected" | "phone_public";
 
 export default function NuovoTrovatoPage() {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
+  const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "";
 
   const [coords, setCoords] = useState<{ lat: number | null; lng: number | null }>({
     lat: null,
@@ -27,6 +29,7 @@ export default function NuovoTrovatoPage() {
   const [contactPhone, setContactPhone] = useState("");
   const [contactMode, setContactMode] = useState<ContactMode>("protected");
   const [consent, setConsent] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [resultMsg, setResultMsg] = useState<string | null>(null);
@@ -47,6 +50,11 @@ export default function NuovoTrovatoPage() {
 
     if (!contactEmail.trim()) {
       setResultMsg("Inserisci una email valida.");
+      return;
+    }
+
+    if (!turnstileToken) {
+      setResultMsg("Completa il controllo di sicurezza prima di pubblicare.");
       return;
     }
 
@@ -75,6 +83,7 @@ export default function NuovoTrovatoPage() {
           consent,
           lat: coords.lat,
           lng: coords.lng,
+          turnstileToken,
         }),
       });
 
@@ -90,6 +99,7 @@ export default function NuovoTrovatoPage() {
           ? "✅ Perfetto! Controlla la tua email per confermare la segnalazione di animale trovato."
           : "✅ Perfetto! Controlla la tua email per confermare l’avvistamento."
       );
+      setTurnstileToken(null);
     } catch {
       setResultMsg("Errore di rete o server.");
     } finally {
@@ -274,6 +284,16 @@ export default function NuovoTrovatoPage() {
             Accetto informativa privacy e autorizzo la pubblicazione della segnalazione secondo le opzioni selezionate.
           </span>
         </label>
+
+        <div className="rounded-xl border border-zinc-200 bg-white p-4">
+          <p className="mb-3 text-sm font-semibold text-zinc-900">Controllo sicurezza</p>
+          <Turnstile
+            siteKey={turnstileSiteKey}
+            onSuccess={(token) => setTurnstileToken(token)}
+            onExpire={() => setTurnstileToken(null)}
+            onError={() => setTurnstileToken(null)}
+          />
+        </div>
 
         <button
           disabled={loading}

@@ -262,7 +262,7 @@ export default function NuovoProfessionistaClient() {
 
       const { error } = await supabase.from("professionals").insert({
         owner_id: userId,
-        approved: null,
+        approved: false,
         is_vet: isVeterinary,
         public_visible: false,
         verification_status: "pending",

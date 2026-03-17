@@ -8,6 +8,36 @@ function hashIp(ip: string) {
   return crypto.createHash("sha256").update(ip).digest("hex");
 }
 
+async function verifyTurnstileToken(token: string, ip?: string) {
+  const secret = process.env.TURNSTILE_SECRET_KEY;
+
+  if (!secret) {
+    return { ok: false, error: "TURNSTILE_SECRET_KEY mancante." };
+  }
+
+  const formData = new FormData();
+  formData.append("secret", secret);
+  formData.append("response", token);
+  if (ip) formData.append("remoteip", ip);
+
+  const res = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+    method: "POST",
+    body: formData,
+  });
+
+  const data = await res.json().catch(() => null);
+
+  if (!res.ok || !data?.success) {
+    return {
+      ok: false,
+      error: "Controllo sicurezza non valido.",
+      details: data,
+    };
+  }
+
+  return { ok: true };
+}
+
 export async function POST(req: Request) {
   try {
     const admin = supabaseAdmin();
@@ -16,6 +46,22 @@ export async function POST(req: Request) {
     const ip_hash = hashIp(ip);
 
     const body = await req.json().catch(() => ({}));
+
+    const turnstileToken = String(body?.turnstileToken || "").trim();
+    if (!turnstileToken) {
+      return NextResponse.json(
+        { error: "Controllo sicurezza mancante." },
+        { status: 400 }
+      );
+    }
+
+    const turnstile = await verifyTurnstileToken(turnstileToken, ip);
+    if (!turnstile.ok) {
+      return NextResponse.json(
+        { error: turnstile.error || "Controllo sicurezza non valido." },
+        { status: 400 }
+      );
+    }
 
     const title = String(body?.title || "").trim();
     const contact_email = String(body?.contact_email || "").trim();
