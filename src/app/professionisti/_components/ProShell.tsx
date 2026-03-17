@@ -11,10 +11,15 @@ function cx(...classes: Array<string | false | null | undefined>) {
 }
 
 function isActive(pathname: string, href: string) {
-  return href === "/professionisti" ? pathname === href : pathname.startsWith(href);
+  if (href === "/professionisti") return pathname === href;
+  return pathname === href || pathname.startsWith(href + "/");
 }
 
-type Item = { href: string; label: string; description?: string };
+type Item = {
+  href: string;
+  label: string;
+  description?: string;
+};
 
 function getEmail(u: any) {
   return String(u?.email || "").toLowerCase().trim();
@@ -172,38 +177,32 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
       {
         href: "/professionisti/dashboard",
         label: "Dashboard",
-        description: "Hub operativo del Portale Professionisti.",
+        description: "Panoramica operativa dell’area professionisti.",
       },
       {
         href: "/professionisti/scansiona",
         label: "Scansiona",
-        description: "Microchip / QR per aprire rapidamente un animale.",
+        description: "Microchip, QR o codice identificativo animale.",
       },
       {
         href: "/professionisti/animali",
         label: "Animali in gestione",
-        description: "Vedi solo animali con grant attivo per la tua struttura.",
+        description: "Animali con accesso attivo per la tua struttura.",
       },
       {
         href: "/professionisti/richieste-accesso",
         label: "Richieste accesso",
-        description: "Invia nuove richieste e monitora lo stato.",
+        description: "Invia richieste e monitora gli stati di autorizzazione.",
       },
       {
-        href: "/professionisti/dashboard",
-        label: "Dashboard clinica",
-        description:
-          "Area clinica integrata nella dashboard professionisti. Bucket avanzati in arrivo.",
-      },
-      {
-        href: "/professionisti/dashboard",
-        label: "In arrivo",
-        description: "Funzioni aggiuntive in arrivo.",
+        href: "/professionisti/richieste",
+        label: "Consulti",
+        description: "Consulti clinici ricevuti e inviati tra professionisti.",
       },
       {
         href: "/professionisti/impostazioni",
         label: "Impostazioni",
-        description: "Profilo, organizzazione, preferenze.",
+        description: "Profilo, struttura e preferenze del portale.",
       },
     ],
     []
@@ -223,9 +222,39 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
     );
   }
 
+  const sidebarContent = (
+    <>
+      <div className="px-3 py-2 text-xs font-semibold tracking-[0.14em] text-zinc-500">
+        AREA PROFESSIONISTI
+      </div>
+
+      <div className="flex flex-col gap-1">
+        {items.map((it) => (
+          <SideLink
+            key={`${it.href}:${it.label}`}
+            href={it.href}
+            label={it.label}
+            description={it.description}
+          />
+        ))}
+      </div>
+
+      <div className="mt-3 border-t border-zinc-200 pt-3">
+        <button
+          type="button"
+          onClick={handleLogout}
+          disabled={loggingOut}
+          className="block w-full rounded-2xl px-3 py-3 text-left text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100 hover:text-black disabled:opacity-60"
+        >
+          {loggingOut ? "Uscita..." : "Logout"}
+        </button>
+      </div>
+    </>
+  );
+
   return (
     <div data-pro-portal="true" className="min-h-screen bg-zinc-50 text-zinc-900">
-      <header className="sticky top-0 z-50 border-b border-zinc-200 bg-white/90 backdrop-blur">
+      <header className="sticky top-0 z-50 border-b border-zinc-200 bg-white/95 backdrop-blur">
         <div className="container-page flex items-center justify-between gap-3 px-3 py-3 sm:px-0 sm:py-4">
           <Link
             href="/professionisti/dashboard"
@@ -254,7 +283,7 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
               type="button"
               className="inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold shadow-sm hover:bg-zinc-50 lg:hidden"
               onClick={() => setOpen(true)}
-              aria-label="Apri menu"
+              aria-label="Apri menu professionisti"
             >
               ☰
             </button>
@@ -265,31 +294,7 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
       <div className="container-page grid grid-cols-1 gap-6 px-3 py-6 sm:px-0 sm:py-8 lg:grid-cols-[320px_1fr]">
         <aside className="hidden lg:block">
           <div className="rounded-2xl border border-zinc-200 bg-white p-2 shadow-sm">
-            <div className="px-3 py-2 text-xs font-semibold tracking-wide text-zinc-500">
-              MENU
-            </div>
-
-            <div className="flex flex-col gap-1">
-              {items.map((it, index) => (
-                <SideLink
-                  key={`${it.href}:${it.label}:${index}`}
-                  href={it.href}
-                  label={it.label}
-                  description={it.description}
-                />
-              ))}
-            </div>
-
-            <div className="mt-3 border-t border-zinc-200 pt-3">
-              <button
-                type="button"
-                onClick={handleLogout}
-                disabled={loggingOut}
-                className="block w-full rounded-2xl px-3 py-3 text-left text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100 hover:text-black disabled:opacity-60"
-              >
-                {loggingOut ? "Uscita..." : "Logout"}
-              </button>
-            </div>
+            {sidebarContent}
           </div>
         </aside>
 
@@ -304,9 +309,16 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
             aria-label="Chiudi menu"
             onClick={() => setOpen(false)}
           />
+
           <div className="fixed right-0 top-0 z-50 h-full w-[92%] max-w-sm bg-white shadow-xl">
             <div className="flex items-center justify-between border-b p-4">
-              <div className="text-sm font-semibold">Portale Professionisti</div>
+              <div>
+                <div className="text-sm font-semibold">Portale Professionisti</div>
+                <div className="mt-1 text-xs text-zinc-500">
+                  Navigazione clinica dedicata
+                </div>
+              </div>
+
               <button
                 type="button"
                 className="rounded-xl border px-3 py-2 text-sm"
@@ -317,10 +329,14 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
             </div>
 
             <div className="p-2">
+              <div className="px-3 py-2 text-xs font-semibold tracking-[0.14em] text-zinc-500">
+                AREA PROFESSIONISTI
+              </div>
+
               <div className="flex flex-col gap-1">
-                {items.map((it, index) => (
+                {items.map((it) => (
                   <SideLink
-                    key={`${it.href}:${it.label}:mobile:${index}`}
+                    key={`${it.href}:${it.label}:mobile`}
                     href={it.href}
                     label={it.label}
                     description={it.description}

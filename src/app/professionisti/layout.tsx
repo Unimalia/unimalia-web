@@ -7,25 +7,5 @@ export default function ProfessionistiLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <>
-      <style>
-        {`
-          body > header {
-            display: none !important;
-          }
-
-          body > nav {
-            display: none !important;
-          }
-
-          body > [data-site-header] {
-            display: none !important;
-          }
-        `}
-      </style>
-
-      <ProShell>{children}</ProShell>
-    </>
-  );
+  return <ProShell>{children}</ProShell>;
 }
