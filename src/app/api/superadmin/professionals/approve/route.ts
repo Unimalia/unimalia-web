@@ -52,7 +52,7 @@ export async function POST(req: Request) {
     .from("professionals")
     .update({
       approved: true,
-      verification_status: "approved",
+      verification_status: "verified",
       verified_at: new Date().toISOString(),
       verified_by: user.id,
       rejection_reason: null,
