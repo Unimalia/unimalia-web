@@ -543,29 +543,11 @@ export async function getProfessionalConsultDetail(id: string) {
 
   const { data: animal, error: animalError } = await admin
     .from("animals")
-    .select("id,name,species,breed,sex,birth_date,owner_id,owners(full_name,first_name,last_name)")
+    .select("id,name,species,breed,sex,birth_date,owner_id")
     .eq("id", consult.animal_id)
     .maybeSingle();
 
   if (animalError) throw new Error(animalError.message);
-
-  let owner: {
-    full_name?: string | null;
-    first_name?: string | null;
-    last_name?: string | null;
-  } | null = null;
-
-  if (animal?.owner_id) {
-    const { data: ownerRow, error: ownerError } = await admin
-      .from("profiles")
-      .select("full_name,first_name,last_name")
-      .eq("id", animal.owner_id)
-      .maybeSingle();
-
-    if (ownerError) throw new Error(ownerError.message);
-
-    owner = ownerRow ?? null;
-  }
 
   const { data: sharedRows, error: sharedError } = await admin
     .from("professional_consult_shared_events")
@@ -630,13 +612,6 @@ export async function getProfessionalConsultDetail(id: string) {
     filesByMessage[file.message_id].push(file);
   }
 
-  const ownerName =
-    owner?.full_name ||
-    [owner?.first_name?.trim() ?? "", owner?.last_name?.trim() ?? ""]
-      .filter(Boolean)
-      .join(" ") ||
-    null;
-
   return {
     consult: normalizeStatus(consult),
     currentProfessionalId: ctx.professional.id,
@@ -644,7 +619,8 @@ export async function getProfessionalConsultDetail(id: string) {
       ? {
           ...animal,
           microchip: null,
-          owner_name: ownerName,
+          owner_name: null,
+          owner_email: null,
         }
       : null,
     events: (events ?? []).map((event) => ({
