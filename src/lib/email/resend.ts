@@ -2,11 +2,6 @@ import { Resend } from "resend";
 
 export const resend = new Resend(process.env.RESEND_API_KEY!);
 
-/**
- * Mittenti standard (centralizzati).
- * - EMAIL_FROM_NO_REPLY: per conferme, notifiche, automazioni
- * - EMAIL_FROM_MESSAGES: per messaggi/contatti/report (se vuoi separarlo)
- */
 export const EMAIL_FROM_NO_REPLY =
   process.env.EMAIL_FROM_NO_REPLY || "UNIMALIA <no-reply@unimalia.it>";
 
@@ -14,5 +9,126 @@ export const EMAIL_FROM_MESSAGES =
   process.env.EMAIL_FROM_MESSAGES || EMAIL_FROM_NO_REPLY;
 
 export function getBaseUrl() {
-  return process.env.PUBLIC_BASE_URL || "http://localhost:3000";
+  return process.env.PUBLIC_BASE_URL || "https://www.unimalia.it";
+}
+
+type SendReportCreatedEmailParams = {
+  to: string;
+  type: "lost" | "found" | "sighted";
+  title: string;
+  reportId: string;
+  animalName?: string | null;
+};
+
+function getReportUrl(type: "lost" | "found" | "sighted", reportId: string) {
+  const baseUrl = getBaseUrl();
+
+  if (type === "lost") {
+    return `${baseUrl}/smarrimenti/${reportId}`;
+  }
+
+  return `${baseUrl}/trovati/${reportId}`;
+}
+
+function getTypeLabel(type: "lost" | "found" | "sighted") {
+  if (type === "lost") return "smarrimento";
+  if (type === "found") return "segnalazione di animale trovato";
+  return "avvistamento";
+}
+
+export async function sendReportCreatedEmail({
+  to,
+  type,
+  title,
+  reportId,
+  animalName,
+}: SendReportCreatedEmailParams) {
+  const typeLabel = getTypeLabel(type);
+  const reportUrl = getReportUrl(type, reportId);
+  const displayName = animalName?.trim() || "animale";
+
+  const subject =
+    type === "lost"
+      ? "UNIMALIA · Smarrimento pubblicato correttamente"
+      : "UNIMALIA · Segnalazione pubblicata correttamente";
+
+  const html = `
+    <div style="font-family: Arial, Helvetica, sans-serif; color: #18181b; line-height: 1.6;">
+      <h2 style="margin: 0 0 16px;">UNIMALIA</h2>
+
+      <p style="margin: 0 0 16px;">
+        Abbiamo registrato correttamente il tuo ${typeLabel}.
+      </p>
+
+      <p style="margin: 0 0 16px;">
+        <strong>Titolo:</strong> ${escapeHtml(title)}
+      </p>
+
+      <p style="margin: 0 0 20px;">
+        Puoi aprire direttamente l’annuncio da qui:
+      </p>
+
+      <p style="margin: 0 0 24px;">
+        <a
+          href="${reportUrl}"
+          style="display: inline-block; background: #18181b; color: #ffffff; text-decoration: none; padding: 12px 18px; border-radius: 12px; font-weight: 600;"
+        >
+          Apri annuncio
+        </a>
+      </p>
+
+      ${
+        type === "lost"
+          ? `
+            <div style="margin: 24px 0; padding: 16px; border: 1px solid #e4e4e7; border-radius: 16px; background: #fafafa;">
+              <p style="margin: 0 0 10px; font-weight: 600;">
+                Consiglio utile
+              </p>
+              <p style="margin: 0;">
+                Se ${escapeHtml(
+                  displayName
+                )} verrà ritrovato, potrai aggiornare lo stato dell’annuncio. In seguito potremo anche invitarti a creare la scheda animale su UNIMALIA, così avrai tutto più pronto in caso di emergenza.
+              </p>
+            </div>
+          `
+          : ""
+      }
+
+      <p style="margin: 24px 0 0; color: #52525b; font-size: 14px;">
+        Questa è una email automatica di servizio inviata da UNIMALIA.
+      </p>
+    </div>
+  `;
+
+  const text = [
+    "UNIMALIA",
+    "",
+    `Abbiamo registrato correttamente il tuo ${typeLabel}.`,
+    `Titolo: ${title}`,
+    "",
+    `Apri annuncio: ${reportUrl}`,
+    "",
+    type === "lost"
+      ? `Se ${displayName} verrà ritrovato, potrai aggiornare lo stato dell’annuncio. In seguito potremo anche invitarti a creare la scheda animale su UNIMALIA.`
+      : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  return resend.emails.send({
+    from: EMAIL_FROM_NO_REPLY,
+    to,
+    subject,
+    html,
+    text,
+  });
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
