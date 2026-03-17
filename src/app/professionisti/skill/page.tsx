@@ -53,7 +53,6 @@ export default function ProfessionistiSkillPage() {
         return;
       }
 
-      // trova la tua scheda
       const { data: proData, error: proErr } = await supabase
         .from("professionals")
         .select("id,owner_id,category,display_name")
@@ -71,7 +70,6 @@ export default function ProfessionistiSkillPage() {
       const p = proData[0] as Professional;
       setPro(p);
 
-      // tags della macro
       const { data: tagData, error: tagErr } = await supabase
         .from("professional_tags")
         .select("id,macro,key,label,sort_order,active")
@@ -86,7 +84,6 @@ export default function ProfessionistiSkillPage() {
         setTags((tagData as Tag[]) || []);
       }
 
-      // links attuali
       const { data: linkData, error: linkErr } = await supabase
         .from("professional_tag_links")
         .select("professional_id,tag_id")
@@ -155,7 +152,6 @@ export default function ProfessionistiSkillPage() {
         if (insErr) throw insErr;
       }
 
-      // reload (opzionale)
       const { data: linkData } = await supabase
         .from("professional_tag_links")
         .select("professional_id,tag_id")
@@ -165,8 +161,8 @@ export default function ProfessionistiSkillPage() {
       setLinks(l);
       setSelected(new Set(l.map((x) => x.tag_id)));
 
-      router.replace("/professionisti");
-    } catch (e: any) {
+      router.replace("/professionisti/dashboard?pending=1");
+    } catch {
       setError("Errore nel salvataggio delle skill. Riprova.");
     } finally {
       setSaving(false);
@@ -183,7 +179,6 @@ export default function ProfessionistiSkillPage() {
 
   return (
     <main>
-      {/* TOP BAR con Indietro */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <button
           type="button"
@@ -203,10 +198,18 @@ export default function ProfessionistiSkillPage() {
         <p className="mt-2 text-zinc-700">{pro ? `Scheda: ${pro.display_name}` : "—"}</p>
       </div>
 
+      <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+        <p className="text-sm font-semibold text-amber-900">Profilo inviato correttamente</p>
+        <p className="mt-2 text-sm leading-relaxed text-amber-800">
+          Dopo il salvataggio finale, il profilo resterà in verifica prima dell’abilitazione completa.
+          La revisione avviene in genere entro 24/48 ore.
+        </p>
+      </div>
+
       <div className="mt-8 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-zinc-700">
-            Seleziona i servizi che offri. Puoi modificarli in qualsiasi momento.
+            Seleziona i servizi che offri. Potrai modificarli in seguito.
           </p>
 
           <p className="text-xs text-zinc-500">
@@ -249,12 +252,12 @@ export default function ProfessionistiSkillPage() {
             onClick={saveSkills}
             className="inline-flex items-center justify-center rounded-lg bg-black px-5 py-3 text-sm font-semibold text-white hover:bg-zinc-800 disabled:opacity-60"
           >
-            {saving ? "Salvataggio..." : "Salva skill"}
+            {saving ? "Salvataggio..." : "Salva e chiudi"}
           </button>
 
           <button
             type="button"
-            onClick={() => router.push("/professionisti")}
+            onClick={() => router.push("/professionisti/dashboard?pending=1")}
             className="inline-flex items-center justify-center rounded-lg border border-zinc-200 bg-white px-5 py-3 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
           >
             Salta per ora

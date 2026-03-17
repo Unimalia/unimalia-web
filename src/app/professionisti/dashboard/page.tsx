@@ -1,4 +1,3 @@
-// src/app/professionisti/dashboard/page.tsx
 import Link from "next/link";
 import ClinicAgendaDashboardWidget from "@/_components/professionisti/ClinicAgendaDashboardWidget";
 
@@ -36,13 +35,30 @@ function CardLink({
 
 export const dynamic = "force-dynamic";
 
-export default function ProDashboardPage() {
+export default async function ProDashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ pending?: string }>;
+}) {
+  const resolved = await searchParams;
+  const showPendingBanner = resolved?.pending === "1";
+
   return (
     <div className="mx-auto max-w-5xl p-6">
       <h1 className="text-2xl font-semibold">Dashboard</h1>
       <p className="mt-2 text-sm text-zinc-600">
         Hub operativo del Portale Professionisti.
       </p>
+
+      {showPendingBanner ? (
+        <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+          <p className="text-sm font-semibold text-amber-900">Profilo in verifica</p>
+          <p className="mt-2 text-sm leading-relaxed text-amber-800">
+            La scheda professionista è stata salvata correttamente. Il profilo sarà verificato entro 24/48 ore
+            prima dell’abilitazione completa delle funzioni riservate.
+          </p>
+        </div>
+      ) : null}
 
       <div className="mt-6">
         <ClinicAgendaDashboardWidget />
