@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { Turnstile } from "@marsidev/react-turnstile";
 import LocationPicker from "../../_components/LocationPicker";
 
 type ContactMode = "protected" | "phone_public";
 
 export default function NuovoSmarrimentoClient() {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
+  const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "";
 
   const [coords, setCoords] = useState<{ lat: number | null; lng: number | null }>({
     lat: null,
@@ -25,6 +27,7 @@ export default function NuovoSmarrimentoClient() {
   const [contactPhone, setContactPhone] = useState("");
   const [contactMode, setContactMode] = useState<ContactMode>("protected");
   const [consent, setConsent] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [resultMsg, setResultMsg] = useState<string | null>(null);
@@ -45,6 +48,11 @@ export default function NuovoSmarrimentoClient() {
 
     if (!contactEmail.trim()) {
       setResultMsg("Inserisci una email valida.");
+      return;
+    }
+
+    if (!turnstileToken) {
+      setResultMsg("Completa il controllo di sicurezza prima di pubblicare.");
       return;
     }
 
@@ -71,6 +79,7 @@ export default function NuovoSmarrimentoClient() {
           consent,
           lat: coords.lat,
           lng: coords.lng,
+          turnstileToken,
         }),
       });
 
@@ -82,6 +91,7 @@ export default function NuovoSmarrimentoClient() {
       }
 
       setResultMsg("✅ Perfetto! Controlla la tua email per confermare lo smarrimento.");
+      setTurnstileToken(null);
     } catch {
       setResultMsg("Errore di rete o server.");
     } finally {
@@ -254,6 +264,16 @@ export default function NuovoSmarrimentoClient() {
             Accetto informativa privacy e autorizzo la pubblicazione dell’annuncio secondo le opzioni selezionate.
           </span>
         </label>
+
+        <div className="rounded-xl border border-zinc-200 bg-white p-4">
+          <p className="mb-3 text-sm font-semibold text-zinc-900">Controllo sicurezza</p>
+          <Turnstile
+            siteKey={turnstileSiteKey}
+            onSuccess={(token) => setTurnstileToken(token)}
+            onExpire={() => setTurnstileToken(null)}
+            onError={() => setTurnstileToken(null)}
+          />
+        </div>
 
         <button
           disabled={loading}
