@@ -1,72 +1,56 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
-import { useRouter } from "next/navigation";
 
 import { PageShell } from "@/_components/ui/page-shell";
-import { ButtonPrimary, ButtonSecondary } from "@/_components/ui/button";
+import { ButtonPrimary } from "@/_components/ui/button";
 import { Card } from "@/_components/ui/card";
 
-type LostEvent = {
+type LostReport = {
   id: string;
   created_at: string;
-  reporter_id: string;
-  animal_id: string | null;
-  species: string;
+  type: "lost";
+  status: string;
+  title: string;
   animal_name: string | null;
-  description: string;
-  city: string;
+  species: string;
+  region: string;
   province: string;
-  lost_date: string;
-  primary_photo_url: string;
+  location_text: string;
+  event_date: string;
+  description: string | null;
+  photo_urls: string[];
+  contact_mode: "protected" | "phone_public";
+  public_phone?: string | null;
   lat: number | null;
   lng: number | null;
-  contact_phone: string | null;
-  contact_email: string | null;
-  animals?: { name: string; species: string }[] | null;
 };
 
 export default function SmarrimentiPage() {
-  const router = useRouter();
-
-  const [items, setItems] = useState<LostEvent[]>([]);
+  const [items, setItems] = useState<LostReport[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [cityFilter, setCityFilter] = useState("");
+  const [locationFilter, setLocationFilter] = useState("");
   const [provinceFilter, setProvinceFilter] = useState("");
-
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setCurrentUserId(data.user?.id ?? null);
-    });
-  }, []);
 
   useEffect(() => {
     async function load() {
       setLoading(true);
 
       const { data, error } = await supabase
-        .from("lost_events")
-        .select(
-          `
-          id, created_at, reporter_id,
-          animal_id,
-          species, animal_name, description, city, province, lost_date,
-          primary_photo_url, lat, lng, contact_phone, contact_email,
-          animals:animal_id ( name, species )
-          `
-        )
+        .from("reports_public")
+        .select("*")
+        .eq("type", "lost")
         .eq("status", "active")
-        .order("lost_date", { ascending: false });
+        .order("created_at", { ascending: false });
 
       if (error) {
         console.error(error.message);
         setItems([]);
       } else {
-        setItems((data as unknown as LostEvent[]) ?? []);
+        setItems((data as LostReport[]) ?? []);
       }
 
       setLoading(false);
@@ -77,70 +61,45 @@ export default function SmarrimentiPage() {
 
   const provinces = useMemo(() => {
     const set = new Set<string>();
-    for (const i of items) {
-      const p = (i.province || "").trim();
+
+    for (const item of items) {
+      const p = (item.province || "").trim();
       if (p) set.add(p);
     }
+
     return Array.from(set).sort();
   }, [items]);
 
   const filtered = useMemo(() => {
-    const c = cityFilter.trim().toLowerCase();
-    const p = provinceFilter.trim().toLowerCase();
+    const locationQ = locationFilter.trim().toLowerCase();
+    const provinceQ = provinceFilter.trim().toLowerCase();
 
-    return items.filter((i) => {
-      const cityOk = !c || (i.city ?? "").toLowerCase().includes(c);
-      const provOk = !p || (i.province ?? "").toLowerCase() === p;
-      return cityOk && provOk;
+    return items.filter((item) => {
+      const locationOk =
+        !locationQ ||
+        (item.location_text || "").toLowerCase().includes(locationQ) ||
+        (item.region || "").toLowerCase().includes(locationQ) ||
+        (item.province || "").toLowerCase().includes(locationQ);
+
+      const provinceOk =
+        !provinceQ || (item.province || "").toLowerCase() === provinceQ;
+
+      return locationOk && provinceOk;
     });
-  }, [items, cityFilter, provinceFilter]);
+  }, [items, locationFilter, provinceFilter]);
 
   function resetFilters() {
-    setCityFilter("");
+    setLocationFilter("");
     setProvinceFilter("");
   }
 
-  function mapsUrl(item: LostEvent) {
+  function mapsUrl(item: LostReport) {
     if (item.lat != null && item.lng != null) {
       return `https://www.google.com/maps?q=${item.lat},${item.lng}`;
     }
 
-    const q = `${item.city || ""} ${item.province || ""} Italia`.trim();
+    const q = `${item.location_text || ""} ${item.province || ""} ${item.region || ""} Italia`.trim();
     return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
-  }
-
-  function detailUrl(item: LostEvent) {
-    return `/smarrimenti/${item.id}`;
-  }
-
-  async function markFound(item: LostEvent) {
-    if (!currentUserId || item.reporter_id !== currentUserId) return;
-
-    const ok = window.confirm("Confermi che l’animale è stato ritrovato?");
-    if (!ok) return;
-
-    const { error: e1 } = await supabase
-      .from("lost_events")
-      .update({ status: "found" })
-      .eq("id", item.id);
-
-    if (e1) {
-      alert(e1.message);
-      return;
-    }
-
-    if (item.animal_id) {
-      const { error: e2 } = await supabase
-        .from("animals")
-        .update({ status: "home" })
-        .eq("id", item.animal_id);
-
-      if (e2) {
-        console.warn("Impossibile aggiornare stato animale:", e2.message);
-      }
-    }
-
-    setItems((prev) => prev.filter((x) => x.id !== item.id));
   }
 
   if (loading) {
@@ -150,12 +109,7 @@ export default function SmarrimentiPage() {
         subtitle="Segnalazioni attive di animali smarriti."
         backFallbackHref="/"
         boxed
-        actions={
-          <>
-            <ButtonSecondary href="/smarrimenti/miei">I miei annunci</ButtonSecondary>
-            <ButtonPrimary href="/smarrimenti/nuovo">Pubblica smarrimento</ButtonPrimary>
-          </>
-        }
+        actions={<ButtonPrimary href="/smarrimenti/nuovo">Pubblica smarrimento</ButtonPrimary>}
       >
         <div className="grid gap-4 sm:grid-cols-2">
           {Array.from({ length: 6 }).map((_, i) => (
@@ -172,32 +126,27 @@ export default function SmarrimentiPage() {
   return (
     <PageShell
       title="Smarrimenti"
-      subtitle="Segnalazioni attive di animali smarriti. Se hai perso un animale, pubblica qui il tuo annuncio."
+      subtitle="Segnalazioni attive di animali smarriti."
       backFallbackHref="/"
       boxed={false}
-      actions={
-        <>
-          <ButtonSecondary href="/smarrimenti/miei">I miei annunci</ButtonSecondary>
-          <ButtonPrimary href="/smarrimenti/nuovo">Pubblica smarrimento</ButtonPrimary>
-        </>
-      }
+      actions={<ButtonPrimary href="/smarrimenti/nuovo">Pubblica smarrimento</ButtonPrimary>}
     >
       <Card>
         <div className="space-y-4">
           <p className="text-sm text-zinc-700">
-            Cerca per città o provincia per trovare gli annunci attivi nella tua zona.
+            Cerca per zona o provincia per trovare gli annunci attivi.
           </p>
 
           <div className="grid gap-3 sm:grid-cols-3">
             <div>
               <label className="block text-sm font-semibold text-zinc-900">
-                Città
+                Zona / Comune / Luogo
               </label>
               <input
                 className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900"
-                placeholder="Es. Firenze"
-                value={cityFilter}
-                onChange={(e) => setCityFilter(e.target.value)}
+                placeholder="Es. Firenze, Coverciano..."
+                value={locationFilter}
+                onChange={(e) => setLocationFilter(e.target.value)}
               />
             </div>
 
@@ -248,14 +197,9 @@ export default function SmarrimentiPage() {
         <div className="mt-6 grid gap-6 sm:grid-cols-2">
           {filtered.map((item) => {
             const imgSrc =
-              (item.primary_photo_url || "/placeholder-animal.jpg") +
-              `?v=${encodeURIComponent(item.created_at)}`;
-
-            const isOwner = currentUserId && item.reporter_id === currentUserId;
-
-            const linkedAnimal = item.animals?.[0] || null;
-            const displaySpecies = linkedAnimal?.species || item.species || "Animale";
-            const displayName = linkedAnimal?.name || item.animal_name || null;
+              Array.isArray(item.photo_urls) && item.photo_urls.length > 0
+                ? item.photo_urls[0]
+                : "/placeholder-animal.jpg";
 
             return (
               <div
@@ -264,7 +208,7 @@ export default function SmarrimentiPage() {
               >
                 <img
                   src={imgSrc}
-                  alt={displayName ? `${displaySpecies} – ${displayName}` : displaySpecies}
+                  alt={item.animal_name || item.species || item.title}
                   className="h-48 w-full object-cover"
                   onError={(e) => {
                     (e.currentTarget as HTMLImageElement).src = "/placeholder-animal.jpg";
@@ -274,36 +218,31 @@ export default function SmarrimentiPage() {
                 <div className="p-5">
                   <div className="flex items-start justify-between gap-3">
                     <h2 className="text-lg font-semibold text-zinc-900">
-                      {displaySpecies}
-                      {displayName ? ` – ${displayName}` : ""}
+                      {item.animal_name ? `${item.animal_name} – ` : ""}
+                      {item.species}
                     </h2>
 
-                    {isOwner ? (
-                      <button
-                        type="button"
-                        onClick={() => markFound(item)}
-                        className="shrink-0 rounded-full border border-emerald-200 bg-white px-3 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
-                        title="Segna come ritrovato"
-                      >
-                        Segna come ritrovato
-                      </button>
-                    ) : null}
+                    <span className="shrink-0 rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">
+                      Smarrito
+                    </span>
                   </div>
 
                   <p className="mt-1 text-sm text-zinc-600">
-                    {(item.city || "—")} {item.province ? `(${item.province})` : ""} –{" "}
-                    {new Date(item.lost_date).toLocaleDateString("it-IT")}
+                    {item.location_text} {item.province ? `(${item.province})` : ""} –{" "}
+                    {new Date(item.event_date).toLocaleDateString("it-IT")}
                   </p>
 
-                  <p className="mt-3 text-sm text-zinc-700">{item.description}</p>
+                  {item.description ? (
+                    <p className="mt-3 text-sm text-zinc-700">{item.description}</p>
+                  ) : null}
 
                   <div className="mt-4 flex flex-wrap gap-2">
-                    <a
-                      href={detailUrl(item)}
+                    <Link
+                      href={`/annuncio/${item.id}`}
                       className="inline-flex items-center justify-center rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
                     >
                       Apri annuncio
-                    </a>
+                    </Link>
 
                     <a
                       href={mapsUrl(item)}
