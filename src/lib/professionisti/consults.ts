@@ -543,7 +543,7 @@ export async function getProfessionalConsultDetail(id: string) {
 
   const { data: animal, error: animalError } = await admin
     .from("animals")
-    .select("id,name,species,breed,sex,birth_date,weight_kg,owner_id")
+    .select("id,name,species,breed,sex,birth_date,owner_id,owners(full_name,first_name,last_name)")
     .eq("id", consult.animal_id)
     .maybeSingle();
 
