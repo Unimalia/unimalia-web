@@ -1,12 +1,27 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { sendReportCreatedEmail } from "@/lib/email/resend";
+import { resend, EMAIL_FROM_NO_REPLY, getBaseUrl } from "@/lib/email/resend";
+import { verificationEmail } from "@/lib/email/templates";
 
 export const dynamic = "force-dynamic";
 
 function hashIp(ip: string) {
   return crypto.createHash("sha256").update(ip).digest("hex");
+}
+
+function buildTitle(params: {
+  type: "lost" | "found" | "sighted";
+  animalName?: string | null;
+  species: string;
+  province: string;
+}) {
+  const who = params.animalName?.trim() || params.species;
+  const place = params.province.trim();
+
+  if (params.type === "lost") return `Smarrimento - ${who} - ${place}`;
+  if (params.type === "found") return `Animale trovato - ${who} - ${place}`;
+  return `Avvistamento - ${who} - ${place}`;
 }
 
 async function verifyTurnstileToken(token: string, ip?: string) {
@@ -49,10 +64,8 @@ export async function POST(req: Request) {
       req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
 
     const ip_hash = hashIp(ip);
-
     const body = await req.json().catch(() => ({}));
 
-    // 🔐 TURNSTILE
     const turnstileToken = String(body?.turnstileToken || "").trim();
 
     if (!turnstileToken) {
@@ -71,7 +84,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // 📦 DATI
     const contact_email = String(body?.contact_email || "")
       .trim()
       .toLowerCase();
@@ -88,15 +100,22 @@ export async function POST(req: Request) {
         ? body.type
         : null;
 
-    const animal_name = String(body?.animal_name || "").trim();
+    const animal_name =
+      body?.animal_name == null ? null : String(body.animal_name).trim() || null;
 
-    const species = String(body?.species || "").trim() || null;
-
-    const location_text = String(body?.location_text || "").trim() || null;
-
-    const event_date = String(body?.event_date || "").trim() || null;
-
+    const species = String(body?.species || "").trim();
+    const region = String(body?.region || "").trim();
+    const province = String(body?.province || "").trim();
+    const location_text = String(body?.location_text || "").trim();
+    const event_date = String(body?.event_date || "").trim();
     const description = String(body?.description || "").trim() || null;
+
+    const contact_mode =
+      body?.contact_mode === "protected" || body?.contact_mode === "phone_public"
+        ? body.contact_mode
+        : "protected";
+
+    const consent = body?.consent === true;
 
     const lat =
       typeof body?.lat === "number" && Number.isFinite(body.lat)
@@ -108,15 +127,26 @@ export async function POST(req: Request) {
         ? body.lng
         : null;
 
-    // ✅ VALIDAZIONE
-    if (!animal_name || !contact_email || !type) {
+    const photo_urls = Array.isArray(body?.photo_urls) ? body.photo_urls : [];
+
+    if (!contact_email || !type || !species || !region || !province || !location_text || !event_date) {
+      return NextResponse.json({ error: "Dati mancanti" }, { status: 400 });
+    }
+
+    if (type === "lost" && !animal_name) {
       return NextResponse.json(
-        { error: "Dati mancanti" },
+        { error: "Per lo smarrimento il nome animale è obbligatorio." },
         { status: 400 }
       );
     }
 
-    // ⛔ RATE LIMIT
+    if (!consent) {
+      return NextResponse.json(
+        { error: "Devi accettare l’informativa per pubblicare." },
+        { status: 400 }
+      );
+    }
+
     const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
 
     const { count, error: countErr } = await admin
@@ -126,10 +156,7 @@ export async function POST(req: Request) {
       .gte("created_at", since);
 
     if (countErr) {
-      return NextResponse.json(
-        { error: countErr.message },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: countErr.message }, { status: 400 });
     }
 
     const limit = Number(body?.rate_limit ?? 10);
@@ -141,19 +168,39 @@ export async function POST(req: Request) {
       );
     }
 
-    // 💾 INSERT
-    const insertRow = {
-      animal_name,
-      contact_email,
-      contact_phone,
+    const verify_token = crypto.randomUUID();
+    const claim_token = crypto.randomUUID();
+
+    const title = buildTitle({
       type,
+      animalName: animal_name,
       species,
+      province,
+    });
+
+    const insertRow = {
+      type,
+      status: "active",
+      title,
+      animal_name,
+      species,
+      region,
+      province,
       location_text,
       event_date,
       description,
+      photo_urls,
+      contact_email,
+      contact_phone,
+      contact_mode,
+      email_verified: false,
+      verify_token,
+      claim_token,
+      created_by_user_id: null,
+      ip_hash,
+      consent,
       lat,
       lng,
-      ip_hash,
     };
 
     const { data, error } = await admin
@@ -163,28 +210,27 @@ export async function POST(req: Request) {
       .single();
 
     if (error) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
-    // 📧 EMAIL
     try {
-      await sendReportCreatedEmail({
+      const verifyUrl = `${getBaseUrl()}/verifica/${verify_token}`;
+      const email = verificationEmail({
+        verifyUrl,
+        reportTitle: title,
+      });
+
+      await resend.emails.send({
+        from: EMAIL_FROM_NO_REPLY,
         to: contact_email,
-        type,
-        reportId: data.id,
-        animalName: animal_name,
+        subject: email.subject,
+        html: email.html,
       });
     } catch (mailError) {
-      console.error("EMAIL ERROR:", mailError);
+      console.error("VERIFY EMAIL ERROR:", mailError);
     }
 
-    return NextResponse.json(
-      { ok: true, report: data },
-      { status: 200 }
-    );
+    return NextResponse.json({ ok: true, report: data }, { status: 200 });
   } catch (e: any) {
     return NextResponse.json(
       { error: e?.message || "Errore server" },

@@ -17,7 +17,6 @@ export default function NuovoTrovatoPage() {
   });
 
   const [type, setType] = useState<ReportType>("found");
-  const [title, setTitle] = useState("");
   const [animalName, setAnimalName] = useState("");
   const [species, setSpecies] = useState("cane");
   const [region, setRegion] = useState("");
@@ -38,13 +37,23 @@ export default function NuovoTrovatoPage() {
     e.preventDefault();
     setResultMsg(null);
 
+    if (!locationText.trim() || !province.trim() || !region.trim()) {
+      setResultMsg("Seleziona correttamente il luogo sulla mappa.");
+      return;
+    }
+
+    if (!eventDate) {
+      setResultMsg("Inserisci la data dell’evento.");
+      return;
+    }
+
     if (!consent) {
       setResultMsg("Devi accettare l’informativa per pubblicare la segnalazione.");
       return;
     }
 
     if (coords.lat == null || coords.lng == null) {
-      setResultMsg("Seleziona un punto sulla mappa (o cerca un indirizzo) prima di pubblicare.");
+      setResultMsg("Seleziona un punto sulla mappa prima di pubblicare.");
       return;
     }
 
@@ -66,9 +75,6 @@ export default function NuovoTrovatoPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           type,
-          title:
-            title.trim() ||
-            (type === "found" ? "Animale trovato" : "Avvistamento animale"),
           animal_name: animalName.trim() || null,
           species: species.trim(),
           region: region.trim(),
@@ -95,9 +101,7 @@ export default function NuovoTrovatoPage() {
       }
 
       setResultMsg(
-        type === "found"
-          ? "✅ Segnalazione di animale trovato pubblicata correttamente. Ti abbiamo inviato una email con il link dell’annuncio."
-          : "✅ Avvistamento pubblicato correttamente. Ti abbiamo inviato una email con il link dell’annuncio."
+        "✅ Ti abbiamo inviato una email per verificare la segnalazione. Apri la mail e conferma per metterla online."
       );
       setTurnstileToken(null);
     } catch {
@@ -111,7 +115,7 @@ export default function NuovoTrovatoPage() {
     <div className="mx-auto w-full max-w-2xl px-4 py-8">
       <h1 className="text-2xl font-extrabold text-zinc-900">Segnala animale trovato / avvistato</h1>
       <p className="mt-2 text-sm text-zinc-600">
-        Compila i dati principali per aiutare a far tornare un animale a casa.
+        Inserisci i dati essenziali e conferma via email per pubblicare la segnalazione.
       </p>
 
       <form onSubmit={onSubmit} className="mt-6 grid gap-4">
@@ -125,16 +129,6 @@ export default function NuovoTrovatoPage() {
             <option value="found">Animale trovato</option>
             <option value="sighted">Animale avvistato</option>
           </select>
-        </label>
-
-        <label className="grid gap-2 text-sm font-semibold text-zinc-800">
-          Titolo (breve)
-          <input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Es. Cane trovato - Firenze"
-            className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm"
-          />
         </label>
 
         <label className="grid gap-2 text-sm font-semibold text-zinc-800">
@@ -160,38 +154,6 @@ export default function NuovoTrovatoPage() {
           </select>
         </label>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <label className="grid gap-2 text-sm font-semibold text-zinc-800">
-            Regione
-            <input
-              value={region}
-              onChange={(e) => setRegion(e.target.value)}
-              placeholder="Toscana"
-              className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm"
-            />
-          </label>
-
-          <label className="grid gap-2 text-sm font-semibold text-zinc-800">
-            Provincia
-            <input
-              value={province}
-              onChange={(e) => setProvince(e.target.value)}
-              placeholder="FI"
-              className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm"
-            />
-          </label>
-        </div>
-
-        <label className="grid gap-2 text-sm font-semibold text-zinc-800">
-          Zona / Comune / Quartiere
-          <input
-            value={locationText}
-            onChange={(e) => setLocationText(e.target.value)}
-            placeholder="Es. Coverciano, Firenze"
-            className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm"
-          />
-        </label>
-
         <label className="grid gap-2 text-sm font-semibold text-zinc-800">
           Data evento
           <input
@@ -199,13 +161,14 @@ export default function NuovoTrovatoPage() {
             value={eventDate}
             onChange={(e) => setEventDate(e.target.value)}
             className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm"
+            required
           />
         </label>
 
         <div className="rounded-xl border border-zinc-200 bg-white p-4">
           <div className="text-sm font-semibold text-zinc-900">Posizione</div>
           <p className="mt-1 text-xs text-zinc-600">
-            Seleziona il punto sulla mappa oppure cerca un indirizzo.
+            Cerca il luogo e, se serve, sposta il pin nel punto esatto.
           </p>
 
           <div className="mt-3">
@@ -214,19 +177,30 @@ export default function NuovoTrovatoPage() {
               value={coords}
               onChange={setCoords}
               onAddress={(a) => {
-                if (a.city && !locationText.trim()) setLocationText(a.city);
-                if (a.province && !province.trim()) setProvince(a.province);
+                if (a.formattedAddress) setLocationText(a.formattedAddress);
+                if (a.province) setProvince(a.province);
+                if (a.region) setRegion(a.region);
               }}
             />
           </div>
 
-          <div className="mt-3 text-xs text-zinc-600">
-            Coordinate:{" "}
-            <span className="font-semibold">
+          <div className="mt-3 rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-700">
+            <div>
+              <span className="font-semibold">Luogo:</span>{" "}
+              {locationText || "non selezionato"}
+            </div>
+            <div className="mt-1">
+              <span className="font-semibold">Provincia:</span>{" "}
+              {province || "—"}{" "}
+              <span className="ml-3 font-semibold">Regione:</span>{" "}
+              {region || "—"}
+            </div>
+            <div className="mt-1">
+              <span className="font-semibold">Coordinate:</span>{" "}
               {coords.lat != null && coords.lng != null
                 ? `${coords.lat}, ${coords.lng}`
                 : "non selezionate"}
-            </span>
+            </div>
           </div>
         </div>
 
@@ -241,13 +215,14 @@ export default function NuovoTrovatoPage() {
         </label>
 
         <label className="grid gap-2 text-sm font-semibold text-zinc-800">
-          Email (obbligatoria)
+          Email
           <input
             type="email"
             value={contactEmail}
             onChange={(e) => setContactEmail(e.target.value)}
             placeholder="tu@email.it"
             className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm"
+            required
           />
         </label>
 
@@ -287,19 +262,34 @@ export default function NuovoTrovatoPage() {
 
         <div className="rounded-xl border border-zinc-200 bg-white p-4">
           <p className="mb-3 text-sm font-semibold text-zinc-900">Controllo sicurezza</p>
-          <Turnstile
-            siteKey={turnstileSiteKey}
-            onSuccess={(token) => setTurnstileToken(token)}
-            onExpire={() => setTurnstileToken(null)}
-            onError={() => setTurnstileToken(null)}
-          />
+
+          {!turnstileSiteKey ? (
+            <p className="text-sm text-red-700">
+              Chiave Turnstile mancante. Controlla NEXT_PUBLIC_TURNSTILE_SITE_KEY.
+            </p>
+          ) : (
+            <>
+              <Turnstile
+                siteKey={turnstileSiteKey}
+                onSuccess={(token) => setTurnstileToken(token)}
+                onExpire={() => setTurnstileToken(null)}
+                onError={() => setTurnstileToken(null)}
+              />
+              <p className="mt-3 text-xs text-zinc-600">
+                Stato sicurezza:{" "}
+                <span className="font-semibold">
+                  {turnstileToken ? "verificato" : "non verificato"}
+                </span>
+              </p>
+            </>
+          )}
         </div>
 
         <button
           disabled={loading}
           className="h-11 rounded-xl bg-black text-sm font-semibold text-white disabled:opacity-60"
         >
-          {loading ? "Pubblicazione..." : "Pubblica segnalazione"}
+          {loading ? "Pubblicazione..." : "Invia e verifica email"}
         </button>
 
         {resultMsg ? (
