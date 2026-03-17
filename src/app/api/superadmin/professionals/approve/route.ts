@@ -37,7 +37,7 @@ export async function POST(req: Request) {
 
   const { data: professionalBefore, error: professionalReadError } = await admin
     .from("professionals")
-    .select("id, email, display_name, first_name, last_name, business_name, is_vet")
+    .select("id, email, display_name, first_name, last_name, business_name, category, is_vet")
     .eq("id", professionalId)
     .single();
 
@@ -103,6 +103,8 @@ export async function POST(req: Request) {
       await sendProfessionalApprovedEmail({
         to: email,
         displayName,
+        businessName: professionalBefore.business_name,
+        category: professionalBefore.category,
         isVet: professionalBefore.is_vet === true,
       });
       console.log("[professional_approved_email] sent", {

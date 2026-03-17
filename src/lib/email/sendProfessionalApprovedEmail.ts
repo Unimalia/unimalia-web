@@ -4,6 +4,8 @@ import { resend, EMAIL_FROM_NO_REPLY } from "@/lib/email/resend";
 type Params = {
   to: string;
   displayName?: string | null;
+  businessName?: string | null;
+  category?: string | null;
   isVet?: boolean;
 };
 
@@ -16,13 +18,39 @@ function escapeHtml(value: string) {
     .replaceAll("'", "&#039;");
 }
 
+function categoryLabel(category?: string | null, isVet?: boolean) {
+  if (isVet) return "Veterinario";
+
+  switch ((category || "").trim()) {
+    case "toelettatura":
+      return "Toelettatura";
+    case "pensione":
+      return "Pensione";
+    case "pet_sitter":
+      return "Pet sitter / Dog walking";
+    case "addestramento":
+      return "Addestramento";
+    case "ponte_arcobaleno":
+      return "Ponte dell’Arcobaleno";
+    case "veterinari":
+      return "Veterinario";
+    case "altro":
+      return "Professionista";
+    default:
+      return "Professionista";
+  }
+}
+
 export async function sendProfessionalApprovedEmail({
   to,
   displayName,
+  businessName,
+  category,
   isVet = false,
 }: Params) {
   const safeName = escapeHtml((displayName || "Professionista").trim() || "Professionista");
-  const roleLabel = isVet ? "profilo veterinario" : "profilo professionista";
+  const safeBusiness = escapeHtml((businessName || "").trim());
+  const roleLabel = categoryLabel(category, isVet);
 
   const subject = "UNIMALIA - Profilo approvato";
 
@@ -43,18 +71,37 @@ export async function sendProfessionalApprovedEmail({
                   height="80"
                   style="display:block;margin:0 auto 16px auto;height:auto;border:0;"
                 />
-                <div style="font-size:12px;line-height:18px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#0f766e;">
+
+                <div style="display:inline-block;padding:6px 12px;border:1px solid #99f6e4;background:#f0fdfa;color:#115e59;border-radius:999px;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;">
+                  Verificato UNIMALIA
+                </div>
+
+                <div style="margin-top:16px;font-size:12px;line-height:18px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#0f766e;">
                   Portale Professionisti
                 </div>
+
                 <h1 style="margin:12px 0 0 0;font-size:28px;line-height:36px;font-weight:700;color:#18181b;">
                   Profilo approvato
                 </h1>
+
                 <p style="margin:16px 0 0 0;font-size:16px;line-height:26px;color:#52525b;">
                   Ciao <strong>${safeName}</strong>,
                 </p>
+
                 <p style="margin:12px 0 0 0;font-size:16px;line-height:26px;color:#52525b;">
-                  il tuo ${roleLabel} su UNIMALIA è stato verificato e approvato.
+                  il tuo profilo <strong>${escapeHtml(roleLabel)}</strong> su UNIMALIA è stato verificato e approvato.
                 </p>
+
+                ${
+                  safeBusiness
+                    ? `
+                <p style="margin:12px 0 0 0;font-size:16px;line-height:26px;color:#52525b;">
+                  Struttura / attività: <strong>${safeBusiness}</strong>
+                </p>
+                `
+                    : ""
+                }
+
                 <p style="margin:12px 0 0 0;font-size:16px;line-height:26px;color:#52525b;">
                   Da questo momento puoi accedere al Portale Professionisti e utilizzare le funzioni abilitate per il tuo profilo.
                 </p>
@@ -75,11 +122,24 @@ export async function sendProfessionalApprovedEmail({
             <tr>
               <td style="padding:24px 32px 0 32px;">
                 <div style="border:1px solid #e4e4e7;border-radius:16px;background:#fafafa;padding:16px;">
-                  <p style="margin:0;font-size:14px;line-height:22px;color:#3f3f46;">
-                    Se non hai richiesto tu questa registrazione o ritieni che questa approvazione sia un errore,
-                    contattaci rispondendo a questa email.
-                  </p>
+                  <div style="font-size:13px;line-height:20px;font-weight:700;color:#18181b;margin-bottom:8px;">
+                    Riepilogo approvazione
+                  </div>
+                  <div style="font-size:14px;line-height:24px;color:#3f3f46;">
+                    <div><strong>Profilo:</strong> ${escapeHtml(roleLabel)}</div>
+                    <div><strong>Stato:</strong> Verificato UNIMALIA</div>
+                    ${safeBusiness ? `<div><strong>Attività:</strong> ${safeBusiness}</div>` : ""}
+                  </div>
                 </div>
+              </td>
+            </tr>
+
+            <tr>
+              <td style="padding:24px 32px 0 32px;">
+                <p style="margin:0;font-size:14px;line-height:22px;color:#52525b;">
+                  Se non hai richiesto tu questa registrazione o ritieni che questa approvazione sia un errore,
+                  contattaci rispondendo a questa email.
+                </p>
               </td>
             </tr>
 
@@ -104,12 +164,17 @@ export async function sendProfessionalApprovedEmail({
     "",
     `Ciao ${displayName || "Professionista"},`,
     "",
-    `Il tuo ${roleLabel} su UNIMALIA è stato verificato e approvato.`,
+    `Il tuo profilo ${roleLabel} su UNIMALIA è stato verificato e approvato.`,
+    safeBusiness ? `Struttura / attività: ${businessName}` : "",
+    "Stato: Verificato UNIMALIA",
+    "",
     "Da questo momento puoi accedere al Portale Professionisti e utilizzare le funzioni abilitate per il tuo profilo.",
     "",
     "Accedi qui:",
     "https://unimalia.it/professionisti/login",
-  ].join("\n");
+  ]
+    .filter(Boolean)
+    .join("\n");
 
   const result = await resend.emails.send({
     from: EMAIL_FROM_NO_REPLY,
