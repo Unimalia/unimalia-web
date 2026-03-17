@@ -2,6 +2,11 @@ import { Resend } from "resend";
 
 export const resend = new Resend(process.env.RESEND_API_KEY!);
 
+/**
+ * Mittenti standard (centralizzati).
+ * - EMAIL_FROM_NO_REPLY: per conferme, notifiche, automazioni
+ * - EMAIL_FROM_MESSAGES: per messaggi/contatti/report
+ */
 export const EMAIL_FROM_NO_REPLY =
   process.env.EMAIL_FROM_NO_REPLY || "UNIMALIA <no-reply@unimalia.it>";
 
@@ -15,7 +20,6 @@ export function getBaseUrl() {
 type SendReportCreatedEmailParams = {
   to: string;
   type: "lost" | "found" | "sighted";
-  title: string;
   reportId: string;
   animalName?: string | null;
 };
@@ -39,7 +43,6 @@ function getTypeLabel(type: "lost" | "found" | "sighted") {
 export async function sendReportCreatedEmail({
   to,
   type,
-  title,
   reportId,
   animalName,
 }: SendReportCreatedEmailParams) {
@@ -61,7 +64,7 @@ export async function sendReportCreatedEmail({
       </p>
 
       <p style="margin: 0 0 16px;">
-        <strong>Titolo:</strong> ${escapeHtml(title)}
+        <strong>${escapeHtml(displayName)}</strong>
       </p>
 
       <p style="margin: 0 0 20px;">
@@ -104,7 +107,7 @@ export async function sendReportCreatedEmail({
     "UNIMALIA",
     "",
     `Abbiamo registrato correttamente il tuo ${typeLabel}.`,
-    `Titolo: ${title}`,
+    `Animale: ${displayName}`,
     "",
     `Apri annuncio: ${reportUrl}`,
     "",
