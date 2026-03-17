@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { supabaseServer } from "@/lib/supabaseServer";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 type Professional = {
   id: string;
@@ -167,7 +167,7 @@ export default async function SuperAdminProfessionistiPage({
   const status = String(resolved?.status || "all");
   const vet = String(resolved?.vet || "all");
 
-  const supabase = await supabaseServer();
+  const supabase = supabaseAdmin();
 
   const { data, error } = await supabase
     .from("professionals")
@@ -267,7 +267,7 @@ export default async function SuperAdminProfessionistiPage({
         <StatCard
           title="Da verificare"
           value={String(reviewCount)}
-          description="Profili con approved = null."
+          description="Profili con approved = false e verification_status = pending."
         />
         <StatCard
           title="Veterinari"
@@ -410,10 +410,10 @@ export default async function SuperAdminProfessionistiPage({
                       <td className="px-4 py-4 text-sm">
                         {p.approved === true ? (
                           <Badge tone="success">Approvato</Badge>
-                        ) : p.approved === false ? (
-                          <Badge tone="danger">Rifiutato / non approvato</Badge>
-                        ) : (
+                        ) : p.approved === false && p.verification_status === "pending" ? (
                           <Badge tone="warning">Da verificare</Badge>
+                        ) : (
+                          <Badge tone="danger">Rifiutato / non approvato</Badge>
                         )}
                       </td>
 
