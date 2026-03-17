@@ -272,6 +272,9 @@ export default function ScannerPage() {
       if (ex.kind === "chip") {
         const res = await fetch(`/api/animals/find?q=${encodeURIComponent(ex.chip)}`, {
           cache: "no-store",
+          headers: {
+            "x-unimalia-app": "professionisti",
+          },
         });
         const json = await res.json().catch(() => ({}));
 
@@ -299,7 +302,12 @@ export default function ScannerPage() {
 
         const grantRes = await fetch(
           `/api/professionisti/grants/check?animal_id=${encodeURIComponent(resolvedAnimalId)}`,
-          { cache: "no-store" }
+          {
+            cache: "no-store",
+            headers: {
+              "x-unimalia-app": "professionisti",
+            },
+          }
         );
         const grantJson = await grantRes.json().catch(() => ({}));
 
@@ -328,7 +336,12 @@ export default function ScannerPage() {
 
         const findRes = await fetch(
           `/api/animals/find?q=${encodeURIComponent(String(ex.animalId ?? normalized ?? raw ?? ""))}`,
-          { cache: "no-store" }
+          {
+            cache: "no-store",
+            headers: {
+              "x-unimalia-app": "professionisti",
+            },
+          }
         );
         const findJson = await findRes.json().catch(() => ({}));
 
@@ -353,7 +366,12 @@ export default function ScannerPage() {
 
         const grantRes = await fetch(
           `/api/professionisti/grants/check?animal_id=${encodeURIComponent(resolvedAnimalId)}`,
-          { cache: "no-store" }
+          {
+            cache: "no-store",
+            headers: {
+              "x-unimalia-app": "professionisti",
+            },
+          }
         );
         const grantJson = await grantRes.json().catch(() => ({}));
 
@@ -385,6 +403,9 @@ export default function ScannerPage() {
 
         const findRes = await fetch(`/api/animals/find?q=${encodeURIComponent(ex.q)}`, {
           cache: "no-store",
+          headers: {
+            "x-unimalia-app": "professionisti",
+          },
         });
         const findJson = await findRes.json().catch(() => ({}));
 
@@ -407,7 +428,12 @@ export default function ScannerPage() {
 
         const grantRes = await fetch(
           `/api/professionisti/grants/check?animal_id=${encodeURIComponent(resolvedAnimalId)}`,
-          { cache: "no-store" }
+          {
+            cache: "no-store",
+            headers: {
+              "x-unimalia-app": "professionisti",
+            },
+          }
         );
         const grantJson = await grantRes.json().catch(() => ({}));
 
