@@ -24,6 +24,12 @@ function buildTitle(params: {
   return `Avvistamento - ${who} - ${place}`;
 }
 
+function addDaysIso(days: number) {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString();
+}
+
 async function verifyTurnstileToken(token: string, ip?: string) {
   const secret = process.env.TURNSTILE_SECRET_KEY;
 
@@ -201,6 +207,7 @@ export async function POST(req: Request) {
       consent,
       lat,
       lng,
+      expires_at: addDaysIso(90),
     };
 
     const { data, error } = await admin

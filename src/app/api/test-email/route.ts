@@ -1,12 +1,23 @@
 import { NextResponse } from "next/server";
+import { supabaseServer } from "@/lib/supabaseServer";
+import { isAdminUser } from "@/lib/adminAccess";
 import { sendProfessionalApprovedEmail } from "@/lib/email/sendProfessionalApprovedEmail";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  const auth = await supabaseServer();
+  const {
+    data: { user },
+  } = await auth.auth.getUser();
+
+  if (!user || !isAdminUser(user)) {
+    return NextResponse.json({ error: "Non autorizzato" }, { status: 403 });
+  }
+
   try {
     await sendProfessionalApprovedEmail({
-      to: "valentinomct@gmail.com",
+      to: user.email!,
       displayName: "Test UNIMALIA",
       isVet: true,
     });
