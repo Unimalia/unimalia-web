@@ -160,9 +160,9 @@ export default async function SuperAdminProfessionalDetailPage({
 }) {
   const { id } = await params;
 
-  const admin = supabaseAdmin();
+  const supabase = supabaseAdmin();
 
-  const { data, error } = await admin
+  const { data, error } = await supabase
     .from("professionals")
     .select("*")
     .eq("id", id)
