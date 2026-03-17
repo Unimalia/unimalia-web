@@ -1,4 +1,5 @@
 import "server-only";
+import { resend, EMAIL_FROM_NO_REPLY } from "@/lib/email/resend";
 
 type Params = {
   to: string;
@@ -20,16 +21,10 @@ export async function sendProfessionalApprovedEmail({
   displayName,
   isVet = false,
 }: Params) {
-  const apiKey = process.env.RESEND_API_KEY;
-
-  if (!apiKey) {
-    throw new Error("RESEND_API_KEY mancante");
-  }
-
   const safeName = escapeHtml((displayName || "Professionista").trim() || "Professionista");
   const roleLabel = isVet ? "profilo veterinario" : "profilo professionista";
 
-  const subject = "UNIMALIA — Profilo approvato";
+  const subject = "UNIMALIA - Profilo approvato";
 
   const html = `
 <!doctype html>
@@ -109,30 +104,24 @@ export async function sendProfessionalApprovedEmail({
     "",
     `Ciao ${displayName || "Professionista"},`,
     "",
-    `il tuo ${roleLabel} su UNIMALIA è stato verificato e approvato.`,
+    `Il tuo ${roleLabel} su UNIMALIA è stato verificato e approvato.`,
     "Da questo momento puoi accedere al Portale Professionisti e utilizzare le funzioni abilitate per il tuo profilo.",
     "",
     "Accedi qui:",
     "https://unimalia.it/professionisti/login",
   ].join("\n");
 
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from: "UNIMALIA <no-reply@unimalia.it>",
-      to: [to],
-      subject,
-      html,
-      text,
-    }),
+  const result = await resend.emails.send({
+    from: EMAIL_FROM_NO_REPLY,
+    to,
+    subject,
+    html,
+    text,
   });
 
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(`Invio email approvazione fallito: ${response.status} ${body}`);
+  if ((result as any)?.error) {
+    throw new Error((result as any).error.message || "Invio email approvazione fallito");
   }
+
+  return result;
 }
