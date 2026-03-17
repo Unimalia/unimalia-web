@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { isAdminUser } from "@/lib/adminAccess";
 import { syncProfessionalAuth } from "@/lib/syncProfessionalAuth";
 import { writeAdminAuditLog } from "@/lib/adminAudit";
+import { sendProfessionalApprovedEmail } from "@/lib/email/sendProfessionalApprovedEmail";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +35,19 @@ export async function POST(req: Request) {
 
   const admin = supabaseAdmin();
 
+  const { data: professionalBefore, error: professionalReadError } = await admin
+    .from("professionals")
+    .select("id, email, display_name, first_name, last_name, business_name, is_vet")
+    .eq("id", professionalId)
+    .single();
+
+  if (professionalReadError || !professionalBefore) {
+    return NextResponse.json(
+      { error: professionalReadError?.message || "Professionista non trovato" },
+      { status: 404 }
+    );
+  }
+
   const { error } = await admin
     .from("professionals")
     .update({
@@ -51,19 +65,19 @@ export async function POST(req: Request) {
 
   const syncResult = await syncProfessionalAuth(professionalId);
 
-  await writeAdminAuditLog({
-    adminId: user.id,
-    action: "professional_approved",
-    targetType: "professional",
-    targetId: professionalId,
-    meta: {
-      redirectTo,
-      sync_ok: syncResult.ok,
-      sync_result: syncResult,
-    },
-  });
-
   if (!syncResult.ok) {
+    await writeAdminAuditLog({
+      adminId: user.id,
+      action: "professional_approved_sync_failed",
+      targetType: "professional",
+      targetId: professionalId,
+      meta: {
+        redirectTo,
+        sync_ok: false,
+        sync_result: syncResult,
+      },
+    });
+
     return NextResponse.json(
       {
         error: `Professionista aggiornato, ma sync Auth fallita: ${syncResult.error}`,
@@ -71,6 +85,51 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
+
+  const displayName =
+    professionalBefore.display_name ||
+    [professionalBefore.first_name, professionalBefore.last_name].filter(Boolean).join(" ").trim() ||
+    professionalBefore.business_name ||
+    "Professionista";
+
+  const email = String(professionalBefore.email || "").trim().toLowerCase();
+
+  let emailResult:
+    | { ok: true }
+    | { ok: false; error: string } = { ok: true };
+
+  if (email) {
+    try {
+      await sendProfessionalApprovedEmail({
+        to: email,
+        displayName,
+        isVet: professionalBefore.is_vet === true,
+      });
+    } catch (e: any) {
+      emailResult = {
+        ok: false,
+        error: e?.message || "Errore invio email approvazione",
+      };
+    }
+  } else {
+    emailResult = {
+      ok: false,
+      error: "Email professionista assente",
+    };
+  }
+
+  await writeAdminAuditLog({
+    adminId: user.id,
+    action: "professional_approved",
+    targetType: "professional",
+    targetId: professionalId,
+    meta: {
+      redirectTo,
+      sync_ok: true,
+      sync_result: syncResult,
+      approval_email: emailResult,
+    },
+  });
 
   return NextResponse.redirect(new URL(redirectTo, req.url), 303);
 }
