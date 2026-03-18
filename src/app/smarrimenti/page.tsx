@@ -13,20 +13,35 @@ type LostReport = {
   created_at: string;
   type: "lost";
   status: string;
-  title: string;
+  title: string | null;
   animal_name: string | null;
-  species: string;
-  region: string;
-  province: string;
-  location_text: string;
-  event_date: string;
+  species: string | null;
+  region: string | null;
+  province: string | null;
+  location_text: string | null;
+  event_date: string | null;
   description: string | null;
-  photo_urls: string[];
-  contact_mode: "protected" | "phone_public";
+  photo_urls: string[] | null;
+  contact_mode: "protected" | "phone_public" | null;
   public_phone?: string | null;
   lat: number | null;
   lng: number | null;
 };
+
+function safeDate(value: string | null | undefined) {
+  if (!value) return "Data non disponibile";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "Data non disponibile";
+  return d.toLocaleDateString("it-IT");
+}
+
+function safeCardTitle(item: LostReport) {
+  if (item.animal_name && item.species) return `${item.animal_name} – ${item.species}`;
+  if (item.animal_name) return item.animal_name;
+  if (item.species) return item.species;
+  if (item.title) return item.title;
+  return "Annuncio smarrimento";
+}
 
 export default function SmarrimentiPage() {
   const [items, setItems] = useState<LostReport[]>([]);
@@ -81,8 +96,7 @@ export default function SmarrimentiPage() {
         (item.region || "").toLowerCase().includes(locationQ) ||
         (item.province || "").toLowerCase().includes(locationQ);
 
-      const provinceOk =
-        !provinceQ || (item.province || "").toLowerCase() === provinceQ;
+      const provinceOk = !provinceQ || (item.province || "").toLowerCase() === provinceQ;
 
       return locationOk && provinceOk;
     });
@@ -208,7 +222,7 @@ export default function SmarrimentiPage() {
               >
                 <img
                   src={imgSrc}
-                  alt={item.animal_name || item.species || item.title}
+                  alt={safeCardTitle(item)}
                   className="h-48 w-full object-cover"
                   onError={(e) => {
                     (e.currentTarget as HTMLImageElement).src = "/placeholder-animal.jpg";
@@ -218,8 +232,7 @@ export default function SmarrimentiPage() {
                 <div className="p-5">
                   <div className="flex items-start justify-between gap-3">
                     <h2 className="text-lg font-semibold text-zinc-900">
-                      {item.animal_name ? `${item.animal_name} – ` : ""}
-                      {item.species}
+                      {safeCardTitle(item)}
                     </h2>
 
                     <span className="shrink-0 rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">
@@ -228,12 +241,14 @@ export default function SmarrimentiPage() {
                   </div>
 
                   <p className="mt-1 text-sm text-zinc-600">
-                    {item.location_text} {item.province ? `(${item.province})` : ""} –{" "}
-                    {new Date(item.event_date).toLocaleDateString("it-IT")}
+                    {item.location_text || "Località non specificata"}{" "}
+                    {item.province ? `(${item.province})` : ""} – {safeDate(item.event_date)}
                   </p>
 
                   {item.description ? (
-                    <p className="mt-3 text-sm text-zinc-700">{item.description}</p>
+                    <p className="mt-3 line-clamp-3 text-sm text-zinc-700">
+                      {item.description}
+                    </p>
                   ) : null}
 
                   <div className="mt-4 flex flex-wrap gap-2">
