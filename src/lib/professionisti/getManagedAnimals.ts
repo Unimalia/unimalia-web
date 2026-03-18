@@ -1,3 +1,4 @@
+import "server-only";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
 export type ManagedAnimalRow = {
@@ -25,8 +26,28 @@ async function getProfessionalRefs(userId: string) {
     .eq("user_id", userId)
     .maybeSingle();
 
+  if (profileResult.error) {
+    throw profileResult.error;
+  }
+
   if (profileResult.data?.org_id) {
     refs.add(profileResult.data.org_id);
+  }
+
+  const professionalResult = await admin
+    .from("professionals")
+    .select("id, owner_id")
+    .eq("owner_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (professionalResult.error) {
+    throw professionalResult.error;
+  }
+
+  if (professionalResult.data?.id) {
+    refs.add(professionalResult.data.id);
   }
 
   return Array.from(refs).filter(Boolean);
@@ -34,134 +55,93 @@ async function getProfessionalRefs(userId: string) {
 
 export async function getManagedAnimals(userId: string): Promise<ManagedAnimalRow[]> {
   const admin = supabaseAdmin();
-
   const refs = await getProfessionalRefs(userId);
 
   if (refs.length === 0) {
-    console.error("[GET_MANAGED_ANIMALS] no professional refs found", { userId });
     return [];
   }
 
-  const allAnimalIds = new Set<string>();
-  const directAnimals = new Map<string, Omit<ManagedAnimalRow, "owner_name">>();
+  const nowIso = new Date().toISOString();
 
-  for (const ref of refs) {
-    const { data: grantRows, error: grantsError } = await admin
-      .from("animal_access_grants")
-      .select("animal_id, status")
-      .eq("grantee_id", ref)
-      .in("status", ["active", "approved"]);
+  // 1) grant attivi verso i riferimenti professionali/org
+  const { data: grants, error: grantsError } = await admin
+    .from("animal_access_grants")
+    .select("animal_id, grantee_id, status, valid_to, revoked_at, scope_read, scope_write")
+    .eq("grantee_type", "org")
+    .in("grantee_id", refs)
+    .is("revoked_at", null);
 
-    if (grantsError) {
-      console.error("[GET_MANAGED_ANIMALS] grants error", { ref, grantsError });
-    }
-
-    for (const row of grantRows ?? []) {
-      if ((row as any).animal_id) {
-        allAnimalIds.add((row as any).animal_id);
-      }
-    }
-
-    const { data: orgAnimals, error: orgAnimalsError } = await admin
-      .from("animals")
-      .select(`
-        id,
-        name,
-        species,
-        breed,
-        chip_number,
-        unimalia_code,
-        owner_id,
-        owner_claim_status,
-        created_by_org_id,
-        origin_org_id
-      `)
-      .or(`created_by_org_id.eq.${ref},origin_org_id.eq.${ref}`);
-
-    if (orgAnimalsError) {
-      console.error("[GET_MANAGED_ANIMALS] org animals error", { ref, orgAnimalsError });
-    }
-
-    for (const animal of orgAnimals ?? []) {
-      if ((animal as any).id) {
-        allAnimalIds.add((animal as any).id);
-        directAnimals.set((animal as any).id, {
-          ...(animal as any),
-          microchip: (animal as any).chip_number ?? null,
-        });
-      }
-    }
+  if (grantsError) {
+    throw grantsError;
   }
 
-  if (allAnimalIds.size === 0) {
+  const grantedAnimalIds = Array.from(
+    new Set(
+      (grants ?? [])
+        .filter((g: any) => {
+          if (g.status !== "active" && g.status !== "approved") return false;
+          if (!g.scope_read && !g.scope_write) return false;
+          if (!g.valid_to) return true;
+          return String(g.valid_to) > nowIso;
+        })
+        .map((g: any) => g.animal_id)
+        .filter(Boolean)
+    )
+  );
+
+  // 2) animali creati/originati dai riferimenti clinica/professionista
+  const createdOrOriginatedIds = new Set<string>();
+
+  const { data: createdOrOriginated, error: createdError } = await admin
+    .from("animals")
+    .select(
+      "id, created_by_org_id, origin_org_id"
+    )
+    .or(
+      refs
+        .map((ref) => `created_by_org_id.eq.${ref},origin_org_id.eq.${ref}`)
+        .join(",")
+    )
+    .limit(5000);
+
+  if (createdError) {
+    throw createdError;
+  }
+
+  for (const row of createdOrOriginated ?? []) {
+    if (row.id) createdOrOriginatedIds.add(row.id);
+  }
+
+  const animalIds = Array.from(new Set([...grantedAnimalIds, ...Array.from(createdOrOriginatedIds)]));
+
+  if (animalIds.length === 0) {
     return [];
   }
-
-  const ids = Array.from(allAnimalIds);
 
   const { data: animals, error: animalsError } = await admin
     .from("animals")
-    .select(`
-      id,
-      name,
-      species,
-      breed,
-      chip_number,
-      unimalia_code,
-      owner_id,
-      owner_claim_status,
-      created_by_org_id,
-      origin_org_id
-    `)
-    .in("id", ids);
+    .select(
+      "id, name, species, breed, chip_number, unimalia_code, owner_id, owner_claim_status, created_by_org_id, origin_org_id"
+    )
+    .in("id", animalIds)
+    .order("name", { ascending: true });
 
   if (animalsError) {
-    console.error("[GET_MANAGED_ANIMALS] animals error", animalsError);
-
-    const fallbackRows = Array.from(directAnimals.values());
-    return fallbackRows
-      .map((row) => ({
-        ...row,
-        owner_name: null,
-      }))
-      .sort((a, b) => (a.name ?? "").localeCompare(b.name ?? "", "it"));
+    throw animalsError;
   }
 
-  const rows = ((animals ?? []).length
-    ? animals.map((animal: any) => ({
-        ...animal,
-        microchip: animal.chip_number ?? null,
-      }))
-    : Array.from(directAnimals.values())) as Omit<ManagedAnimalRow, "owner_name">[];
-
-  const ownerIds = Array.from(
-    new Set(rows.map((row) => row.owner_id).filter((id): id is string => !!id))
-  );
-
-  let ownerMap = new Map<string, string>();
-
-  if (ownerIds.length > 0) {
-    const { data: owners, error: ownersError } = await admin
-      .from("profiles")
-      .select("id, full_name")
-      .in("id", ownerIds);
-
-    if (ownersError) {
-      console.error("[GET_MANAGED_ANIMALS] owners error", ownersError);
-    } else {
-      ownerMap = new Map(
-        (owners ?? []).map((owner: { id: string; full_name: string | null }) => [
-          owner.id,
-          owner.full_name ?? "",
-        ])
-      );
-    }
-  }
-
-  return rows
-    .map((row) => ({
-      ...row,
-      owner_name: row.owner_id ? ownerMap.get(row.owner_id) ?? null : null,
-    }))
-    .sort((a, b) => (a.name ?? "").localeCompare(b.name ?? "", "it"));
+  // Niente join rischiosi: owner_name nullo se non hai una fonte affidabile nello schema attuale
+  return (animals ?? []).map((row: any) => ({
+    id: row.id,
+    name: row.name ?? null,
+    species: row.species ?? null,
+    breed: row.breed ?? null,
+    microchip: row.chip_number ?? null,
+    unimalia_code: row.unimalia_code ?? null,
+    owner_id: row.owner_id ?? null,
+    owner_claim_status: row.owner_claim_status ?? null,
+    created_by_org_id: row.created_by_org_id ?? null,
+    origin_org_id: row.origin_org_id ?? null,
+    owner_name: null,
+  }));
 }
