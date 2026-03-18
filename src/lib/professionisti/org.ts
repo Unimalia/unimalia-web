@@ -16,7 +16,7 @@ export async function getProfessionalOrgId(): Promise<string | null> {
 
   if (!user) return null;
 
-  // 1) Fonte primaria: profilo professionale collegato all'utente
+  // Fonte primaria: professional_profiles.org_id
   const profileResult = await admin
     .from("professional_profiles")
     .select("user_id, org_id")
@@ -30,10 +30,11 @@ export async function getProfessionalOrgId(): Promise<string | null> {
   const profileOrgId = (profileResult.data as any)?.org_id ?? null;
   if (profileOrgId) return profileOrgId;
 
-  // 2) Fallback: tabella professionals collegata all'utente
+  // Fallback operativo: professionista collegato all'utente.
+  // NON leggiamo org_id da professionals perché nel tuo schema potrebbe non esistere.
   const professionalResult = await admin
     .from("professionals")
-    .select("id, owner_id, org_id")
+    .select("id, owner_id")
     .eq("owner_id", user.id)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -43,10 +44,6 @@ export async function getProfessionalOrgId(): Promise<string | null> {
     throw professionalResult.error;
   }
 
-  const professionalOrgId = (professionalResult.data as any)?.org_id ?? null;
-  if (professionalOrgId) return professionalOrgId;
-
-  // 3) Fallback operativo: usa l'id del professionista se presente
   const professionalId = (professionalResult.data as any)?.id ?? null;
   if (professionalId) return professionalId;
 
