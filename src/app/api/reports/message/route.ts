@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { resend, EMAIL_FROM_NO_REPLY, getBaseUrl } from "@/lib/email/resend";
-import { newMessageRelayEmail } from "@/lib/email/templates";
+import { resend, EMAIL_FROM_MESSAGES, getBaseUrl } from "@/lib/email/resend";
+import { protectedConversationEmail } from "@/lib/email/templates";
 
 function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -52,19 +52,77 @@ export async function POST(req: Request) {
       );
     }
 
+    let conversationId: string | null = null;
+    let requesterToken: string | null = null;
+    let ownerToken: string | null = null;
+
+    const { data: existingConversation } = await admin
+      .from("report_conversations")
+      .select("id, requester_token, owner_token")
+      .eq("report_id", report.id)
+      .eq("requester_email", senderEmail)
+      .maybeSingle();
+
+    if (existingConversation) {
+      conversationId = existingConversation.id;
+      requesterToken = existingConversation.requester_token;
+      ownerToken = existingConversation.owner_token;
+    } else {
+      const { data: createdConversation, error: conversationError } = await admin
+        .from("report_conversations")
+        .insert({
+          report_id: report.id,
+          owner_email: report.contact_email,
+          requester_email: senderEmail,
+        })
+        .select("id, requester_token, owner_token")
+        .single();
+
+      if (conversationError || !createdConversation) {
+        return NextResponse.json(
+          { error: conversationError?.message || "Errore creazione conversazione." },
+          { status: 500 }
+        );
+      }
+
+      conversationId = createdConversation.id;
+      requesterToken = createdConversation.requester_token;
+      ownerToken = createdConversation.owner_token;
+    }
+
+    const { error: messageInsertError } = await admin
+      .from("report_conversation_messages")
+      .insert({
+        conversation_id: conversationId,
+        sender_role: "requester",
+        sender_email: senderEmail,
+        message,
+      });
+
+    if (messageInsertError) {
+      return NextResponse.json({ error: messageInsertError.message }, { status: 500 });
+    }
+
+    await admin
+      .from("report_conversations")
+      .update({ last_message_at: new Date().toISOString() })
+      .eq("id", conversationId);
+
     const reportUrl = `${getBaseUrl()}/annuncio/${report.id}`;
-    const email = newMessageRelayEmail({
+    const ownerConversationUrl = `${getBaseUrl()}/messaggi-protetti/${ownerToken}`;
+
+    const email = protectedConversationEmail({
+      heading: "Hai un nuovo messaggio protetto",
       reportTitle: report.title || "Annuncio UNIMALIA",
       reportUrl,
-      senderEmail,
       message,
+      conversationUrl: ownerConversationUrl,
     });
 
     await resend.emails.send({
-      from: EMAIL_FROM_NO_REPLY,
+      from: EMAIL_FROM_MESSAGES,
       to: report.contact_email,
       subject: email.subject,
-      replyTo: senderEmail,
       html: email.html,
     });
 
