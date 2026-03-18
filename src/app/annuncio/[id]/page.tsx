@@ -48,8 +48,10 @@ function formatTypeLabel(type: string) {
 }
 
 function formatStatusLabel(type: string, status: string) {
-  if (status === "found" && type === "lost") return "Lieto fine";
-  if (status === "found") return "Chiuso";
+  if (status === "closed_found" && type === "lost") return "Lieto fine";
+  if (status === "closed_found") return "Chiuso";
+  if (status === "closed_other") return "Chiuso";
+  if (status === "expired") return "Scaduto";
   return "Attivo";
 }
 
@@ -81,10 +83,10 @@ function ogTitle(data: ReportPublicRow) {
     type === "lost"
       ? "smarrito"
       : type === "found"
-      ? "trovato"
-      : type === "sighted"
-      ? "avvistato"
-      : "segnalato";
+        ? "trovato"
+        : type === "sighted"
+          ? "avvistato"
+          : "segnalato";
 
   const place = locationLabel(data);
 

@@ -71,6 +71,8 @@ export default function ManageReportActions({
     }
   }
 
+  const isClosedFound = status === "closed_found";
+
   return (
     <div className="grid gap-4">
       <div className="rounded-2xl border border-zinc-200 bg-white p-5">
@@ -115,7 +117,7 @@ export default function ManageReportActions({
           </p>
 
           <div className="mt-4">
-            {status === "active" ? (
+            {!isClosedFound && status === "active" ? (
               <button
                 type="button"
                 onClick={markFound}
