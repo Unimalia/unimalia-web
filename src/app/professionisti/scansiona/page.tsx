@@ -245,6 +245,54 @@ export default function ScannerPage() {
     }
   }
 
+  async function checkGrantAndRoute(resolvedAnimalId: string, extraParams?: Record<string, string>) {
+    const grantRes = await fetch(
+      `/api/professionisti/grants/check?animal_id=${encodeURIComponent(resolvedAnimalId)}`,
+      {
+        cache: "no-store",
+        headers: {
+          "x-unimalia-app": "professionisti",
+        },
+      }
+    );
+
+    const grantJson = await grantRes.json().catch(() => ({}));
+
+    if (!grantRes.ok) {
+      showBanner({ kind: "error", text: grantJson?.error || "Errore verifica accesso" }, 2500);
+      return;
+    }
+
+    const hasGrant = Boolean(grantJson?.hasGrant);
+
+    if (!hasGrant) {
+      const params = new URLSearchParams({
+        animalId: resolvedAnimalId,
+        auto: "1",
+      });
+
+      if (extraParams) {
+        Object.entries(extraParams).forEach(([key, value]) => {
+          if (value) params.set(key, value);
+        });
+      }
+
+      showBanner(
+        {
+          kind: "info",
+          text: "Animale trovato, ma accesso clinico non attivo. Apro richiesta accesso…",
+        },
+        1200
+      );
+
+      safePush(`/professionisti/richieste-accesso?${params.toString()}`);
+      return;
+    }
+
+    showBanner({ kind: "success", text: "Accesso attivo. Apro la scheda animale…" }, 1000);
+    safePush(`/professionisti/animali/${encodeURIComponent(resolvedAnimalId)}`);
+  }
+
   async function handleScan(raw: string) {
     const normalized = normalizeScanResult(raw);
 
@@ -300,34 +348,9 @@ export default function ScannerPage() {
 
         showBanner({ kind: "success", text: "Animale trovato. Controllo accesso…" }, 1200);
 
-        const grantRes = await fetch(
-          `/api/professionisti/grants/check?animal_id=${encodeURIComponent(resolvedAnimalId)}`,
-          {
-            cache: "no-store",
-            headers: {
-              "x-unimalia-app": "professionisti",
-            },
-          }
-        );
-        const grantJson = await grantRes.json().catch(() => ({}));
-
-        if (!grantRes.ok) {
-          showBanner({ kind: "error", text: grantJson?.error || "Errore verifica accesso" }, 2500);
-          return;
-        }
-
-        const hasGrant = Boolean(grantJson?.ok);
-
-        if (!hasGrant) {
-          safePush(
-            `/professionisti/richieste-accesso?animalId=${encodeURIComponent(
-              resolvedAnimalId
-            )}&chip=${encodeURIComponent(String(ex.chip ?? ""))}&auto=1`
-          );
-          return;
-        }
-
-        safePush(`/professionisti/animali/${encodeURIComponent(resolvedAnimalId)}`);
+        await checkGrantAndRoute(resolvedAnimalId, {
+          chip: String(ex.chip ?? ""),
+        });
         return;
       }
 
@@ -364,34 +387,7 @@ export default function ScannerPage() {
 
         showBanner({ kind: "success", text: "Animale trovato. Controllo accesso…" }, 1200);
 
-        const grantRes = await fetch(
-          `/api/professionisti/grants/check?animal_id=${encodeURIComponent(resolvedAnimalId)}`,
-          {
-            cache: "no-store",
-            headers: {
-              "x-unimalia-app": "professionisti",
-            },
-          }
-        );
-        const grantJson = await grantRes.json().catch(() => ({}));
-
-        if (!grantRes.ok) {
-          showBanner({ kind: "error", text: grantJson?.error || "Errore verifica accesso" }, 2500);
-          return;
-        }
-
-        const hasGrant = Boolean(grantJson?.ok);
-
-        if (!hasGrant) {
-          safePush(
-            `/professionisti/richieste-accesso?animalId=${encodeURIComponent(
-              resolvedAnimalId
-            )}&auto=1`
-          );
-          return;
-        }
-
-        safePush(`/professionisti/animali/${encodeURIComponent(resolvedAnimalId)}`);
+        await checkGrantAndRoute(resolvedAnimalId);
         return;
       }
 
@@ -426,34 +422,7 @@ export default function ScannerPage() {
           return;
         }
 
-        const grantRes = await fetch(
-          `/api/professionisti/grants/check?animal_id=${encodeURIComponent(resolvedAnimalId)}`,
-          {
-            cache: "no-store",
-            headers: {
-              "x-unimalia-app": "professionisti",
-            },
-          }
-        );
-        const grantJson = await grantRes.json().catch(() => ({}));
-
-        if (!grantRes.ok) {
-          showBanner({ kind: "error", text: grantJson?.error || "Errore verifica accesso" }, 2500);
-          return;
-        }
-
-        const hasGrant = Boolean(grantJson?.ok);
-
-        if (!hasGrant) {
-          safePush(
-            `/professionisti/richieste-accesso?animalId=${encodeURIComponent(
-              resolvedAnimalId
-            )}&auto=1`
-          );
-          return;
-        }
-
-        safePush(`/professionisti/animali/${encodeURIComponent(resolvedAnimalId)}`);
+        await checkGrantAndRoute(resolvedAnimalId);
         return;
       }
 
