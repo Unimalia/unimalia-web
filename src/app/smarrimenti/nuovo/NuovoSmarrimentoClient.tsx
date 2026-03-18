@@ -1,16 +1,27 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { Turnstile } from "@marsidev/react-turnstile";
+import { useRouter, useSearchParams } from "next/navigation";
+import { supabase } from "@/lib/supabaseClient";
 import LocationPicker from "../../_components/LocationPicker";
 
 type ContactMode = "protected" | "phone_public";
 
-type SubmitStage =
-  | "idle"
-  | "uploading-photo"
-  | "creating-report";
+type SubmitStage = "idle" | "uploading-photo" | "creating-report";
+
+type AnimalRow = {
+  id: string;
+  owner_id: string;
+  name: string;
+  species: string | null;
+  breed: string | null;
+  color: string | null;
+  size: string | null;
+  photo_url: string | null;
+  status: string;
+};
 
 function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
@@ -28,9 +39,21 @@ function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promi
   });
 }
 
+function normalizeSpecies(value: string | null | undefined) {
+  const v = String(value || "").trim().toLowerCase();
+  if (v === "cane") return "cane";
+  if (v === "gatto") return "gatto";
+  return "altro";
+}
+
 export default function NuovoSmarrimentoClient() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
   const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "";
+
+  const animalId = (searchParams.get("animalId") || "").trim();
 
   const [coords, setCoords] = useState<{ lat: number | null; lng: number | null }>({
     lat: null,
@@ -52,19 +75,81 @@ export default function NuovoSmarrimentoClient() {
 
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [existingPhotoUrl, setExistingPhotoUrl] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(false);
+  const [prefilling, setPrefilling] = useState(false);
   const [stage, setStage] = useState<SubmitStage>("idle");
   const [resultMsg, setResultMsg] = useState<string | null>(null);
 
-  const canSubmit = useMemo(() => !loading, [loading]);
+  const canSubmit = useMemo(() => !loading && !prefilling, [loading, prefilling]);
+  const ownerPrefillMode = Boolean(animalId);
+
+  useEffect(() => {
+    let alive = true;
+
+    async function prefillFromAnimal() {
+      if (!animalId) return;
+
+      setPrefilling(true);
+      setResultMsg(null);
+
+      const { data: authData } = await supabase.auth.getUser();
+      const user = authData.user;
+
+      if (!user) {
+        router.replace(`/login?next=${encodeURIComponent(`/smarrimenti/nuovo?animalId=${animalId}`)}`);
+        return;
+      }
+
+      const [{ data: animal, error: animalError }, { data: profile }] = await Promise.all([
+        supabase.from("animals").select("*").eq("id", animalId).single(),
+        supabase.from("profiles").select("phone").eq("id", user.id).maybeSingle(),
+      ]);
+
+      if (!alive) return;
+
+      if (animalError || !animal) {
+        setResultMsg("Non sono riuscito a caricare i dati dell’animale.");
+        setPrefilling(false);
+        return;
+      }
+
+      if (animal.owner_id !== user.id) {
+        setResultMsg("Questo animale non appartiene al tuo profilo.");
+        setPrefilling(false);
+        return;
+      }
+
+      setAnimalName(animal.name || "");
+      setSpecies(normalizeSpecies(animal.species));
+      setDescription(
+        [animal.breed, animal.color, animal.size]
+          .filter(Boolean)
+          .join(" • ")
+      );
+      setExistingPhotoUrl(animal.photo_url || null);
+      setPhotoPreview(animal.photo_url || null);
+      setContactEmail(user.email || "");
+      setContactPhone(String(profile?.phone || "").trim());
+      setContactMode("protected");
+
+      setPrefilling(false);
+    }
+
+    void prefillFromAnimal();
+
+    return () => {
+      alive = false;
+    };
+  }, [animalId, router]);
 
   function onPhotoChange(file: File | null) {
     setPhoto(file);
     setResultMsg(null);
 
     if (!file) {
-      setPhotoPreview(null);
+      setPhotoPreview(existingPhotoUrl);
       return;
     }
 
@@ -82,6 +167,7 @@ export default function NuovoSmarrimentoClient() {
 
   async function uploadPhoto(): Promise<string> {
     if (!photo) {
+      if (existingPhotoUrl) return existingPhotoUrl;
       throw new Error("Carica una foto dell’animale.");
     }
 
@@ -134,7 +220,7 @@ export default function NuovoSmarrimentoClient() {
       return;
     }
 
-    if (!photo) {
+    if (!photo && !existingPhotoUrl) {
       setResultMsg("Carica una foto dell’animale.");
       return;
     }
@@ -177,12 +263,19 @@ export default function NuovoSmarrimentoClient() {
 
       setStage("creating-report");
 
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token || "";
+
       const res = await withTimeout(
         fetch("/api/reports/create", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+          },
           body: JSON.stringify({
             type: "lost",
+            animal_id: animalId || null,
             animal_name: animalName.trim(),
             species: species.trim(),
             region: region.trim(),
@@ -211,6 +304,11 @@ export default function NuovoSmarrimentoClient() {
         return;
       }
 
+      if (ownerPrefillMode && data?.report?.claim_token) {
+        router.push(`/gestisci-annuncio/${data.report.claim_token}`);
+        return;
+      }
+
       setResultMsg(
         "✅ Ti abbiamo inviato una email per verificare l’annuncio. Apri la mail e conferma per metterlo online."
       );
@@ -229,6 +327,7 @@ export default function NuovoSmarrimentoClient() {
       setCoords({ lat: null, lng: null });
       setPhoto(null);
       setPhotoPreview(null);
+      setExistingPhotoUrl(null);
       setTurnstileToken(null);
       setStage("idle");
     } catch (error: any) {
@@ -244,13 +343,20 @@ export default function NuovoSmarrimentoClient() {
       ? "Caricamento foto..."
       : stage === "creating-report"
       ? "Pubblicazione..."
+      : ownerPrefillMode
+      ? "Pubblica smarrimento"
       : "Invia e verifica email";
 
   return (
     <div className="mx-auto w-full max-w-2xl px-4 py-8">
-      <h1 className="text-2xl font-extrabold text-zinc-900">Pubblica smarrimento</h1>
+      <h1 className="text-2xl font-extrabold text-zinc-900">
+        {ownerPrefillMode ? "Segnala come smarrito" : "Pubblica smarrimento"}
+      </h1>
+
       <p className="mt-2 text-sm text-zinc-600">
-        Inserisci i dati essenziali, carica una foto e conferma via email per pubblicare l’annuncio.
+        {ownerPrefillMode
+          ? "Abbiamo precompilato i dati dell’animale registrato. Completa luogo e data dello smarrimento."
+          : "Inserisci i dati essenziali, carica una foto e conferma via email per pubblicare l’annuncio."}
       </p>
 
       <form onSubmit={onSubmit} className="mt-6 grid gap-4">
@@ -285,10 +391,11 @@ export default function NuovoSmarrimentoClient() {
             accept="image/jpeg,image/png,image/webp,image/gif"
             onChange={(e) => onPhotoChange(e.target.files?.[0] || null)}
             className="block w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-100 file:px-3 file:py-2 file:text-sm file:font-medium"
-            required
           />
           <span className="text-xs font-normal text-zinc-500">
-            Usa una foto JPG, PNG o WEBP. Su iPhone evita HEIC/HEIF.
+            {existingPhotoUrl
+              ? "Puoi tenere la foto già presente oppure sostituirla con una nuova."
+              : "Usa una foto JPG, PNG o WEBP. Su iPhone evita HEIC/HEIF."}
           </span>
         </label>
 

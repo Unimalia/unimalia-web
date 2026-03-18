@@ -164,6 +164,8 @@ export default function AnimalProfilePage() {
     );
   }
 
+  const isLost = animal.status === "lost";
+
   return (
     <PageShell
       title={animal.name}
@@ -175,6 +177,12 @@ export default function AnimalProfilePage() {
         <>
           <ButtonSecondary href={`/identita/${animal.id}/modifica`}>Modifica</ButtonSecondary>
           <ButtonSecondary href={`/identita/${animal.id}/stampa`}>Stampa</ButtonSecondary>
+
+          <ButtonSecondary
+            href={`/smarrimenti/nuovo?animalId=${encodeURIComponent(animal.id)}`}
+          >
+            {isLost ? "Aggiorna annuncio smarrimento" : "Segnala come smarrito"}
+          </ButtonSecondary>
 
           <ButtonSecondary
             href="#"
@@ -204,11 +212,19 @@ export default function AnimalProfilePage() {
             Creato il {new Date(animal.created_at).toLocaleDateString("it-IT")}
           </p>
 
-          {premiumOk ? (
-            <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">
-              Premium attivo
-            </span>
-          ) : null}
+          <div className="flex flex-wrap gap-2">
+            {isLost ? (
+              <span className="inline-flex items-center rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">
+                Questo animale risulta attualmente segnalato come smarrito
+              </span>
+            ) : null}
+
+            {premiumOk ? (
+              <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">
+                Premium attivo
+              </span>
+            ) : null}
+          </div>
         </div>
 
         <div className="grid gap-4 md:grid-cols-3">

@@ -18,7 +18,7 @@ export async function POST(req: Request) {
 
     const { data: report, error } = await admin
       .from("reports")
-      .select("id, status, type, contact_email, claim_token")
+      .select("id, status, type, contact_email, claim_token, created_by_user_id, animal_id")
       .eq("claim_token", token)
       .single();
 
@@ -54,7 +54,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: updateError.message }, { status: 400 });
     }
 
-    if (report.contact_email) {
+    if (report.animal_id) {
+      await admin
+        .from("animals")
+        .update({ status: "home" })
+        .eq("id", report.animal_id);
+    }
+
+    const shouldInviteToRegister = !report.created_by_user_id;
+
+    if (shouldInviteToRegister && report.contact_email) {
       try {
         const registerUrl = `${getBaseUrl()}/login?mode=signup&returnTo=%2Fidentita`;
         const email = inviteToRegisterAfterFoundEmail({
