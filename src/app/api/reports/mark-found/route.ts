@@ -3,6 +3,14 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { resend, EMAIL_FROM_NO_REPLY, getBaseUrl } from "@/lib/email/resend";
 import { inviteToRegisterAfterFoundEmail } from "@/lib/email/templates";
 
+const CANDIDATE_CLOSED_STATUSES = [
+  "closed",
+  "found",
+  "resolved",
+  "inactive",
+  "archived",
+] as const;
+
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}));
@@ -31,17 +39,39 @@ export async function POST(req: Request) {
       );
     }
 
-    if (report.status === "found") {
-      return NextResponse.json({ ok: true, already: true });
+    if (report.status !== "active") {
+      return NextResponse.json({ ok: true, already: true, status: report.status });
     }
 
-    const { error: updateError } = await admin
-      .from("reports")
-      .update({ status: "found" })
-      .eq("id", report.id);
+    let appliedStatus: string | null = null;
+    let lastErrorMessage = "";
 
-    if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 400 });
+    for (const candidate of CANDIDATE_CLOSED_STATUSES) {
+      const { error: updateError } = await admin
+        .from("reports")
+        .update({ status: candidate })
+        .eq("id", report.id)
+        .eq("status", "active");
+
+      if (!updateError) {
+        appliedStatus = candidate;
+        break;
+      }
+
+      lastErrorMessage = updateError.message || "";
+      if (!lastErrorMessage.toLowerCase().includes("invalid input value for enum")) {
+        return NextResponse.json({ error: updateError.message }, { status: 400 });
+      }
+    }
+
+    if (!appliedStatus) {
+      return NextResponse.json(
+        {
+          error:
+            "Non sono riuscito a chiudere l’annuncio perché il valore di stato previsto dal database non è tra quelli supportati dal sito al momento.",
+        },
+        { status: 400 }
+      );
     }
 
     if (report.contact_email) {
@@ -64,7 +94,11 @@ export async function POST(req: Request) {
       }
     }
 
-    return NextResponse.json({ ok: true, reportId: report.id });
+    return NextResponse.json({
+      ok: true,
+      reportId: report.id,
+      status: appliedStatus,
+    });
   } catch (e: any) {
     return NextResponse.json(
       { error: e?.message || "Errore server" },
