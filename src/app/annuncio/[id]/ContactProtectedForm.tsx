@@ -114,8 +114,7 @@ export default function ContactProtectedForm({ reportId }: Props) {
       </label>
 
       <p className="text-xs leading-5 text-zinc-500">
-        Il tuo messaggio verrà inoltrato al segnalatore senza mostrare pubblicamente
-        il suo indirizzo email.
+        Il tuo messaggio verrà inoltrato al segnalatore senza mostrare pubblicamente il suo indirizzo email.
       </p>
 
       <button

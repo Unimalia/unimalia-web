@@ -1,0 +1,74 @@
+import { NextResponse } from "next/server";
+import { supabaseAdmin } from "@/lib/supabase/server";
+import { resend, EMAIL_FROM_NO_REPLY, getBaseUrl } from "@/lib/email/resend";
+import { inviteToRegisterAfterFoundEmail } from "@/lib/email/templates";
+
+export async function POST(req: Request) {
+  try {
+    const body = await req.json().catch(() => ({}));
+    const token = typeof body?.token === "string" ? body.token.trim() : "";
+
+    if (!token) {
+      return NextResponse.json({ error: "Token mancante." }, { status: 400 });
+    }
+
+    const admin = supabaseAdmin();
+
+    const { data: report, error } = await admin
+      .from("reports")
+      .select("id, status, type, contact_email, claim_token")
+      .eq("claim_token", token)
+      .single();
+
+    if (error || !report) {
+      return NextResponse.json({ error: "Annuncio non valido." }, { status: 404 });
+    }
+
+    if (report.type !== "lost") {
+      return NextResponse.json(
+        { error: "Questa azione è disponibile solo per gli smarrimenti." },
+        { status: 400 }
+      );
+    }
+
+    if (report.status === "found") {
+      return NextResponse.json({ ok: true, already: true });
+    }
+
+    const { error: updateError } = await admin
+      .from("reports")
+      .update({ status: "found" })
+      .eq("id", report.id);
+
+    if (updateError) {
+      return NextResponse.json({ error: updateError.message }, { status: 400 });
+    }
+
+    if (report.contact_email) {
+      try {
+        const registerUrl = `${getBaseUrl()}/login?mode=signup&returnTo=%2Fidentita`;
+        const email = inviteToRegisterAfterFoundEmail({
+          registerUrl,
+          alreadyRegistered: false,
+          donateUrl: null,
+        });
+
+        await resend.emails.send({
+          from: EMAIL_FROM_NO_REPLY,
+          to: report.contact_email,
+          subject: email.subject,
+          html: email.html,
+        });
+      } catch (mailError) {
+        console.error("AFTER FOUND EMAIL ERROR:", mailError);
+      }
+    }
+
+    return NextResponse.json({ ok: true, reportId: report.id });
+  } catch (e: any) {
+    return NextResponse.json(
+      { error: e?.message || "Errore server" },
+      { status: 500 }
+    );
+  }
+}

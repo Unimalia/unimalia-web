@@ -1,15 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { resend, EMAIL_FROM_NO_REPLY } from "@/lib/email/resend";
-
-function escapeHtml(value: string) {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
+import { resend, EMAIL_FROM_NO_REPLY, getBaseUrl } from "@/lib/email/resend";
+import { newMessageRelayEmail } from "@/lib/email/templates";
 
 function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -38,17 +30,14 @@ export async function POST(req: Request) {
     }
 
     if (message.length < 10) {
-      return NextResponse.json(
-        { error: "Messaggio troppo corto" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Messaggio troppo corto" }, { status: 400 });
     }
 
     const admin = supabaseAdmin();
 
     const { data: report, error } = await admin
       .from("reports")
-      .select("id, title, contact_email, status, type")
+      .select("id, title, contact_email, status")
       .eq("id", reportId)
       .single();
 
@@ -56,43 +45,27 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Annuncio non valido" }, { status: 404 });
     }
 
-    if (report.status && report.status !== "active") {
+    if (report.status !== "active") {
       return NextResponse.json(
-        { error: "Questo annuncio non è più attivo" },
+        { error: "Questo annuncio non è più attivo." },
         { status: 400 }
       );
     }
 
-    const safeTitle = escapeHtml(report.title || "Annuncio UNIMALIA");
-    const safeMessage = escapeHtml(message).replaceAll("\n", "<br />");
-    const safeSender = escapeHtml(senderEmail);
+    const reportUrl = `${getBaseUrl()}/annuncio/${report.id}`;
+    const email = newMessageRelayEmail({
+      reportTitle: report.title || "Annuncio UNIMALIA",
+      reportUrl,
+      senderEmail,
+      message,
+    });
 
     await resend.emails.send({
       from: EMAIL_FROM_NO_REPLY,
       to: report.contact_email,
-      subject: `Nuovo messaggio per il tuo annuncio su UNIMALIA`,
+      subject: email.subject,
       replyTo: senderEmail,
-      html: `
-        <div style="font-family:Arial,Helvetica,sans-serif;color:#111;line-height:1.6;">
-          <p>Hai ricevuto un nuovo messaggio relativo al tuo annuncio su <b>UNIMALIA</b>.</p>
-
-          <p style="margin-top:16px;"><b>Annuncio:</b> ${safeTitle}</p>
-          <p><b>Email mittente:</b> ${safeSender}</p>
-
-          <p style="margin-top:16px;"><b>Messaggio:</b></p>
-          <div style="padding:12px;border:1px solid #e4e4e7;border-radius:12px;background:#fafafa;">
-            ${safeMessage}
-          </div>
-
-          <p style="margin-top:20px;">
-            Puoi rispondere direttamente a questa email per contattare la persona.
-          </p>
-
-          <p style="font-size:12px;color:#666;margin-top:24px;">
-            UNIMALIA protegge i tuoi dati: il tuo indirizzo email non viene mostrato pubblicamente.
-          </p>
-        </div>
-      `,
+      html: email.html,
     });
 
     return NextResponse.json({ ok: true });

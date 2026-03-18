@@ -16,7 +16,7 @@ export default async function VerifyPage({ params }: PageProps) {
 
   const { data: report, error } = await admin
     .from("reports")
-    .select("id, title, contact_email, email_verified")
+    .select("id, title, contact_email, email_verified, claim_token")
     .eq("verify_token", token)
     .single();
 
@@ -32,8 +32,10 @@ export default async function VerifyPage({ params }: PageProps) {
 
     if (!updErr) {
       const reportUrl = `${getBaseUrl()}/annuncio/${report.id}`;
+      const manageUrl = `${getBaseUrl()}/gestisci-annuncio/${report.claim_token}`;
       const email = reportPublishedEmail({
         reportUrl,
+        manageUrl,
         reportTitle: report.title,
       });
 
@@ -50,5 +52,5 @@ export default async function VerifyPage({ params }: PageProps) {
     }
   }
 
-  redirect(`/annuncio/${report.id}`);
+  redirect(`/gestisci-annuncio/${report.claim_token}`);
 }

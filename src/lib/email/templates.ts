@@ -22,12 +22,15 @@ export function wrapEmailHtml(title: string, contentHtml: string) {
   </div>`;
 }
 
-export function verificationEmail(params: { verifyUrl: string; reportTitle: string }) {
+export function verificationEmail(params: {
+  verifyUrl: string;
+  reportTitle: string;
+}) {
   const html = wrapEmailHtml(
     "Conferma il tuo annuncio",
     `
       <p>Abbiamo ricevuto il tuo annuncio: <b>${escapeHtml(params.reportTitle)}</b>.</p>
-      <p>Per pubblicarlo e poterlo gestire, conferma la tua email:</p>
+      <p>Per pubblicarlo e poterlo poi gestire senza registrarti, conferma la tua email:</p>
       <p>
         <a href="${params.verifyUrl}" style="display:inline-block;padding:10px 14px;border-radius:10px;text-decoration:none;background:#111;color:#fff;">
           Conferma annuncio
@@ -39,14 +42,30 @@ export function verificationEmail(params: { verifyUrl: string; reportTitle: stri
   return { subject: "Conferma il tuo annuncio su UNIMALIA", html };
 }
 
-export function reportPublishedEmail(params: { reportUrl: string; reportTitle: string }) {
+export function reportPublishedEmail(params: {
+  reportUrl: string;
+  manageUrl: string;
+  reportTitle: string;
+}) {
   const html = wrapEmailHtml(
     "Il tuo annuncio è online",
     `
       <p>Il tuo annuncio è stato pubblicato: <b>${escapeHtml(params.reportTitle)}</b>.</p>
-      <p>Link diretto per condividerlo:</p>
+
+      <p><b>Link pubblico annuncio:</b></p>
       <p><a href="${params.reportUrl}">${escapeHtml(params.reportUrl)}</a></p>
-      <p style="color:#666;font-size:12px;">Tip: usa il pulsante “Condividi su Facebook” nella pagina per pubblicare nei gruppi.</p>
+
+      <p style="margin-top:18px;"><b>Link privato per gestire l’annuncio:</b></p>
+      <p><a href="${params.manageUrl}">${escapeHtml(params.manageUrl)}</a></p>
+
+      <p style="margin-top:18px;">
+        Da questa pagina privata potrai:
+      </p>
+      <ul style="padding-left:18px;">
+        <li>copiare il link da condividere</li>
+        <li>copiare un testo pronto per Facebook</li>
+        <li>segnare l’annuncio come ritrovato</li>
+      </ul>
     `
   );
   return { subject: "Il tuo annuncio è online ✅", html };
