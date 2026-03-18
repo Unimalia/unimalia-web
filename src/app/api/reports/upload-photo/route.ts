@@ -26,35 +26,6 @@ function randomSuffix() {
   return Math.random().toString(36).slice(2, 10);
 }
 
-async function verifyTurnstileToken(token: string, ip?: string) {
-  const secret = process.env.TURNSTILE_SECRET_KEY;
-
-  if (!secret) {
-    return { ok: false, error: "TURNSTILE_SECRET_KEY mancante." };
-  }
-
-  const formData = new FormData();
-  formData.append("secret", secret);
-  formData.append("response", token);
-  if (ip && ip !== "unknown") formData.append("remoteip", ip);
-
-  const res = await fetch(
-    "https://challenges.cloudflare.com/turnstile/v0/siteverify",
-    {
-      method: "POST",
-      body: formData,
-    }
-  );
-
-  const data = await res.json().catch(() => null);
-
-  if (!res.ok || !data?.success) {
-    return { ok: false, error: "Controllo sicurezza non valido." };
-  }
-
-  return { ok: true };
-}
-
 export async function POST(req: Request) {
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -67,35 +38,18 @@ export async function POST(req: Request) {
       );
     }
 
-    const ip =
-      req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-
     const form = await req.formData();
-
     const file = form.get("file") as File | null;
-    const turnstileToken = String(form.get("turnstileToken") || "").trim();
-
-    if (!turnstileToken) {
-      return NextResponse.json(
-        { error: "Controllo sicurezza mancante." },
-        { status: 400 }
-      );
-    }
-
-    const turnstile = await verifyTurnstileToken(turnstileToken, ip);
-    if (!turnstile.ok) {
-      return NextResponse.json(
-        { error: turnstile.error || "Controllo sicurezza non valido." },
-        { status: 400 }
-      );
-    }
 
     if (!file) {
       return NextResponse.json({ error: "Missing file" }, { status: 400 });
     }
 
     if (!ALLOWED_MIME_TYPES.has(file.type || "")) {
-      return NextResponse.json({ error: "Formato file non valido" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Formato file non valido" },
+        { status: 400 }
+      );
     }
 
     if (file.size <= 0 || file.size > MAX_FILE_SIZE_BYTES) {
