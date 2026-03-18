@@ -1,22 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, supabaseAdmin } from "@/lib/supabase/server";
 import { getCoreSystemFlags } from "@/lib/systemFlags";
-
-async function getProfessionalOrgId(userId: string) {
-  const admin = supabaseAdmin();
-
-  const profileResult = await admin
-    .from("professional_profiles")
-    .select("user_id, org_id")
-    .eq("user_id", userId)
-    .maybeSingle();
-
-  if (profileResult.data?.org_id) {
-    return profileResult.data.org_id as string;
-  }
-
-  return null;
-}
+import { getProfessionalOrgId } from "@/lib/professionisti/org";
 
 export async function POST(req: NextRequest) {
   try {
@@ -41,16 +26,28 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Non autorizzato" }, { status: 401 });
     }
 
-    const orgId = await getProfessionalOrgId(user.id);
+    const orgId = await getProfessionalOrgId();
 
     if (!orgId) {
-      return NextResponse.json({ error: "Profilo professionista non valido" }, { status: 403 });
+      return NextResponse.json(
+        {
+          error:
+            "Profilo professionista non valido o organizzazione non associata.",
+        },
+        { status: 403 }
+      );
     }
 
     const body = await req.json().catch(() => null);
 
-    const animalId = String(body?.animalId ?? "").trim();
-    const permissions = Array.isArray(body?.permissions) ? body.permissions : [];
+    const animalId = String(body?.animalId ?? body?.animal_id ?? "").trim();
+    const permissions = Array.isArray(body?.permissions)
+      ? body.permissions
+      : Array.isArray(body?.requestedScope)
+        ? body.requestedScope
+        : Array.isArray(body?.requested_scope)
+          ? body.requested_scope
+          : [];
 
     if (!animalId) {
       return NextResponse.json({ error: "animalId mancante" }, { status: 400 });
@@ -107,10 +104,6 @@ export async function POST(req: NextRequest) {
         ok: true,
         alreadyPending: true,
       });
-    }
-
-    if (!user.id) {
-      return NextResponse.json({ error: "Utente professionista non valido" }, { status: 500 });
     }
 
     const insertResult = await admin

@@ -113,7 +113,7 @@ export default function RequestAccessClient() {
       throw new Error(j?.error || "Errore controllo accesso");
     }
 
-    return Boolean(j?.ok);
+    return Boolean(j?.hasGrant);
   }
 
   async function sendRequest() {
