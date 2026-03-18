@@ -1,4 +1,5 @@
 import { SupabaseClient } from "@supabase/supabase-js";
+import { supabaseAdmin } from "@/lib/supabase/server";
 
 type Scope = "read" | "write" | "upload";
 
@@ -6,13 +7,53 @@ type GrantCheckResult =
   | { ok: true; actor_org_id: string | null; mode: "owner" | "grant_user" | "grant_org" }
   | { ok: false; reason: string };
 
+async function resolveProfessionalRefs(userId: string) {
+  const admin = supabaseAdmin();
+  const refs = new Set<string>();
+  refs.add(userId);
+
+  const profileResult = await admin
+    .from("professional_profiles")
+    .select("user_id, org_id")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (profileResult.error) {
+    throw profileResult.error;
+  }
+
+  if (profileResult.data?.org_id) {
+    refs.add(profileResult.data.org_id);
+  }
+
+  const professionalResult = await admin
+    .from("professionals")
+    .select("id, owner_id")
+    .eq("owner_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (professionalResult.error) {
+    throw professionalResult.error;
+  }
+
+  if (professionalResult.data?.id) {
+    refs.add(professionalResult.data.id);
+  }
+
+  return Array.from(refs).filter(Boolean);
+}
+
 export async function requireOwnerOrGrant(
   supabase: SupabaseClient,
   userId: string,
   animalId: string,
   scope: Scope
 ): Promise<GrantCheckResult> {
-  const { data: animal, error: aErr } = await supabase
+  const admin = supabaseAdmin();
+
+  const { data: animal, error: aErr } = await admin
     .from("animals")
     .select("id, owner_id")
     .eq("id", animalId)
@@ -29,11 +70,14 @@ export async function requireOwnerOrGrant(
   const scopeCol =
     scope === "read" ? "scope_read" : scope === "write" ? "scope_write" : "scope_upload";
 
-  const { data: grants, error: gErr } = await supabase
+  const { data: grants, error: gErr } = await admin
     .from("animal_access_grants")
-    .select("id, grantee_type, grantee_id, scope_read, scope_write, scope_upload, valid_from, valid_to, status")
+    .select(
+      "id, grantee_type, grantee_id, scope_read, scope_write, scope_upload, valid_from, valid_to, status, revoked_at"
+    )
     .eq("animal_id", animalId)
-    .eq("status", "active");
+    .in("status", ["active", "approved"])
+    .is("revoked_at", null);
 
   if (gErr) {
     return { ok: false, reason: "Errore permessi (grants)." };
@@ -59,28 +103,26 @@ export async function requireOwnerOrGrant(
     return { ok: true, actor_org_id: null, mode: "grant_user" };
   }
 
-  const orgGrants = (grants || []).filter(
-    (g: any) => g.grantee_type === "org" && isTimeOk(g) && g[scopeCol] === true
+  const refs = await resolveProfessionalRefs(userId);
+
+  const orgGrant = (grants || []).find(
+    (g: any) =>
+      g.grantee_type === "org" &&
+      refs.includes(String(g.grantee_id)) &&
+      isTimeOk(g) &&
+      g[scopeCol] === true
   );
 
-  if (orgGrants.length > 0) {
-    const orgIds = orgGrants.map((g: any) => g.grantee_id);
-
-    const { data: memberships, error: mErr } = await supabase
-      .from("organization_members")
-      .select("org_id, user_id, role, status")
-      .eq("user_id", userId)
-      .eq("status", "active")
-      .in("org_id", orgIds);
-
-    if (!mErr && memberships && memberships.length > 0) {
-      return {
-        ok: true,
-        actor_org_id: (memberships[0] as any).org_id,
-        mode: "grant_org",
-      };
-    }
+  if (orgGrant) {
+    return {
+      ok: true,
+      actor_org_id: String(orgGrant.grantee_id),
+      mode: "grant_org",
+    };
   }
 
-  return { ok: false, reason: "Accesso negato: nessun consenso attivo (grant) per questo animale." };
+  return {
+    ok: false,
+    reason: "Accesso negato: nessun consenso attivo (grant) per questo animale.",
+  };
 }
