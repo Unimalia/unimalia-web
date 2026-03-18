@@ -9,67 +9,81 @@ function isUuid(value: string) {
 }
 
 export async function GET(req: Request) {
-  const url = new URL(req.url);
-  const animalId = (url.searchParams.get("animal_id") || "").trim();
+  try {
+    const url = new URL(req.url);
+    const animalId = (url.searchParams.get("animal_id") || "").trim();
 
-  if (!animalId) {
+    if (!animalId) {
+      return NextResponse.json(
+        { ok: false, hasGrant: false, error: "Missing animal_id" },
+        { status: 400 }
+      );
+    }
+
+    if (!isUuid(animalId)) {
+      return NextResponse.json(
+        { ok: false, hasGrant: false, error: "Invalid animal_id" },
+        { status: 400 }
+      );
+    }
+
+    const supabase = await createServerSupabaseClient();
+    const {
+      data: { user },
+      error: authErr,
+    } = await supabase.auth.getUser();
+
+    if (authErr) {
+      return NextResponse.json(
+        { ok: false, hasGrant: false, error: authErr.message },
+        { status: 401 }
+      );
+    }
+
+    if (!user) {
+      return NextResponse.json(
+        { ok: false, hasGrant: false, error: "Not authenticated" },
+        { status: 401 }
+      );
+    }
+
+    const orgId = await getProfessionalOrgId();
+
+    if (!orgId) {
+      return NextResponse.json({
+        ok: true,
+        hasGrant: false,
+        reason: "missing_org",
+      });
+    }
+
+    const { data, error } = await supabase.rpc("is_grant_active", {
+      p_animal: animalId,
+      p_org: orgId,
+    });
+
+    if (error) {
+      return NextResponse.json(
+        { ok: false, hasGrant: false, error: error.message },
+        { status: 500 }
+      );
+    }
+
+    const hasGrant = Boolean(data);
+
+    return NextResponse.json({
+      ok: true,
+      hasGrant,
+      reason: hasGrant ? "active" : "not_active",
+    });
+  } catch (error) {
     return NextResponse.json(
-      { ok: false, error: "Missing animal_id" },
-      { status: 400 }
-    );
-  }
-
-  if (!isUuid(animalId)) {
-    return NextResponse.json(
-      { ok: false, error: "Invalid animal_id" },
-      { status: 400 }
-    );
-  }
-
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-    error: authErr,
-  } = await supabase.auth.getUser();
-
-  if (authErr) {
-    return NextResponse.json(
-      { ok: false, error: authErr.message },
-      { status: 401 }
-    );
-  }
-
-  if (!user) {
-    return NextResponse.json(
-      { ok: false, error: "Not authenticated" },
-      { status: 401 }
-    );
-  }
-
-  const orgId = await getProfessionalOrgId();
-  if (!orgId) {
-    return NextResponse.json(
-      { ok: false, hasGrant: false, reason: "missing_org" },
-      { status: 403 }
-    );
-  }
-
-  const { data, error } = await supabase.rpc("is_grant_active", {
-    p_animal: animalId,
-    p_org: orgId,
-  });
-
-  if (error) {
-    return NextResponse.json(
-      { ok: false, error: error.message },
+      {
+        ok: false,
+        hasGrant: false,
+        error: error instanceof Error ? error.message : "Errore verifica grant",
+      },
       { status: 500 }
     );
   }
-
-  const hasGrant = Boolean(data);
-
-  return NextResponse.json({
-    ok: hasGrant,
-    hasGrant,
-  });
 }
