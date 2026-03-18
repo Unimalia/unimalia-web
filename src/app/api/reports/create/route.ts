@@ -66,6 +66,28 @@ async function verifyTurnstileToken(token: string, ip?: string) {
   return { ok: true };
 }
 
+async function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+  fallbackLabel: string
+): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`${fallbackLabel} timeout`));
+    }, ms);
+
+    promise
+      .then((value) => {
+        clearTimeout(timer);
+        resolve(value);
+      })
+      .catch((err) => {
+        clearTimeout(timer);
+        reject(err);
+      });
+  });
+}
+
 export async function POST(req: Request) {
   try {
     const admin = supabaseAdmin();
@@ -139,7 +161,15 @@ export async function POST(req: Request) {
 
     const photo_urls = Array.isArray(body?.photo_urls) ? body.photo_urls : [];
 
-    if (!contact_email || !type || !species || !region || !province || !location_text || !event_date) {
+    if (
+      !contact_email ||
+      !type ||
+      !species ||
+      !region ||
+      !province ||
+      !location_text ||
+      !event_date
+    ) {
       return NextResponse.json({ error: "Dati mancanti" }, { status: 400 });
     }
 
@@ -234,49 +264,66 @@ export async function POST(req: Request) {
       .single();
 
     if (error || !data) {
-      return NextResponse.json({ error: error?.message || "Errore creazione annuncio" }, { status: 400 });
+      return NextResponse.json(
+        { error: error?.message || "Errore creazione annuncio" },
+        { status: 400 }
+      );
     }
 
     const reportUrl = `${getBaseUrl()}/annuncio/${data.id}`;
     const manageUrl = `${getBaseUrl()}/gestisci-annuncio/${data.claim_token}`;
 
-    if (type === "lost") {
-      try {
+    let emailQueued = true;
+
+    try {
+      if (type === "lost") {
         const verifyUrl = `${getBaseUrl()}/verifica/${verify_token}`;
         const email = verificationEmail({
           verifyUrl,
           reportTitle: title,
         });
 
-        await resend.emails.send({
-          from: EMAIL_FROM_NO_REPLY,
-          to: contact_email,
-          subject: email.subject,
-          html: email.html,
-        });
-      } catch (mailError) {
-        console.error("VERIFY EMAIL ERROR:", mailError);
-      }
-    } else {
-      try {
+        await withTimeout(
+          resend.emails.send({
+            from: EMAIL_FROM_NO_REPLY,
+            to: contact_email,
+            subject: email.subject,
+            html: email.html,
+          }),
+          8000,
+          "verification email"
+        );
+      } else {
         const email = reportPublishedEmail({
           reportUrl,
           manageUrl,
           reportTitle: title,
         });
 
-        await resend.emails.send({
-          from: EMAIL_FROM_NO_REPLY,
-          to: contact_email,
-          subject: email.subject,
-          html: email.html,
-        });
-      } catch (mailError) {
-        console.error("REPORT PUBLISHED EMAIL ERROR:", mailError);
+        await withTimeout(
+          resend.emails.send({
+            from: EMAIL_FROM_NO_REPLY,
+            to: contact_email,
+            subject: email.subject,
+            html: email.html,
+          }),
+          8000,
+          "published email"
+        );
       }
+    } catch (mailError) {
+      emailQueued = false;
+      console.error("REPORT EMAIL ERROR:", mailError);
     }
 
-    return NextResponse.json({ ok: true, report: data }, { status: 200 });
+    return NextResponse.json(
+      {
+        ok: true,
+        report: data,
+        emailQueued,
+      },
+      { status: 200 }
+    );
   } catch (e: any) {
     return NextResponse.json(
       { error: e?.message || "Errore server" },
