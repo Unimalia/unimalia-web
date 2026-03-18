@@ -38,7 +38,7 @@ export async function GET(req: Request) {
 
   let q = supabase
     .from("animal_access_requests")
-    .select("id, created_at, animal_id, owner_id, org_id, status, requested_scope, expires_at")
+    .select("id, created_at, animal_id, owner_id, org_id, status, requested_scope")
     .eq("owner_id", user.id)
     .order("created_at", { ascending: false })
     .limit(100);
@@ -55,7 +55,7 @@ export async function GET(req: Request) {
 
   const admin = supabaseAdmin();
 
-  const [{ data: animals }, { data: orgs }] = await Promise.all([
+  const [{ data: animals }, { data: orgs }, { data: grants }] = await Promise.all([
     animalIds.length
       ? admin.from("animals").select("id, name").in("id", animalIds)
       : Promise.resolve({ data: [] as any[] }),
@@ -64,6 +64,14 @@ export async function GET(req: Request) {
           .from("organizations")
           .select("id, name, display_name, ragione_sociale")
           .in("id", orgIds)
+      : Promise.resolve({ data: [] as any[] }),
+    animalIds.length && orgIds.length
+      ? admin
+          .from("animal_access_grants")
+          .select("animal_id, grantee_id, valid_to, status, revoked_at")
+          .eq("grantee_type", "org")
+          .in("animal_id", animalIds)
+          .in("grantee_id", orgIds)
       : Promise.resolve({ data: [] as any[] }),
   ]);
 
@@ -77,11 +85,29 @@ export async function GET(req: Request) {
     orgNameById.set(o.id, o.name ?? o.display_name ?? o.ragione_sociale ?? o.id);
   }
 
-  const enriched = rows.map((r: any) => ({
-    ...r,
-    animal_name: animalNameById.get(r.animal_id) ?? r.animal_id,
-    org_name: orgNameById.get(r.org_id) ?? r.org_id,
-  }));
+  const grantByPair = new Map<string, { valid_to: string | null; status: string | null }>();
+  for (const g of grants ?? []) {
+    const key = `${g.animal_id}::${g.grantee_id}`;
+    const prev = grantByPair.get(key);
+
+    if (!prev) {
+      grantByPair.set(key, {
+        valid_to: g.valid_to ?? null,
+        status: g.status ?? null,
+      });
+    }
+  }
+
+  const enriched = rows.map((r: any) => {
+    const grant = grantByPair.get(`${r.animal_id}::${r.org_id}`);
+
+    return {
+      ...r,
+      expires_at: grant?.valid_to ?? null,
+      animal_name: animalNameById.get(r.animal_id) ?? r.animal_id,
+      org_name: orgNameById.get(r.org_id) ?? r.org_id,
+    };
+  });
 
   return NextResponse.json({ rows: enriched });
 }
@@ -187,7 +213,6 @@ export async function POST(req: Request) {
       .from("animal_access_requests")
       .update({
         status: "approved",
-        expires_at: validTo,
       })
       .eq("id", id);
 
