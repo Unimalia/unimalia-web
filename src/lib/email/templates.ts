@@ -71,6 +71,40 @@ export function reportPublishedEmail(params: {
   return { subject: "Il tuo annuncio è online ✅", html };
 }
 
+export function protectedConversationEmail(params: {
+  heading: string;
+  reportTitle: string;
+  reportUrl: string;
+  message: string;
+  conversationUrl: string;
+}) {
+  const html = wrapEmailHtml(
+    params.heading,
+    `
+      <p>Annuncio: <b>${escapeHtml(params.reportTitle)}</b></p>
+
+      <div style="padding:12px;border:1px solid #eee;border-radius:12px;background:#fafafa;margin:12px 0;">
+        ${escapeHtml(params.message).replace(/\n/g, "<br/>")}
+      </div>
+
+      <p>Per leggere e rispondere senza mostrare il tuo indirizzo email:</p>
+
+      <p>
+        <a href="${params.conversationUrl}" style="display:inline-block;padding:10px 14px;border-radius:10px;text-decoration:none;background:#111;color:#fff;">
+          Apri conversazione protetta
+        </a>
+      </p>
+
+      <p style="margin-top:16px;">
+        Link annuncio pubblico:
+        <br />
+        <a href="${params.reportUrl}">${escapeHtml(params.reportUrl)}</a>
+      </p>
+    `
+  );
+  return { subject: "Nuovo messaggio protetto su UNIMALIA", html };
+}
+
 export function newMessageRelayEmail(params: {
   reportTitle: string;
   reportUrl: string;
