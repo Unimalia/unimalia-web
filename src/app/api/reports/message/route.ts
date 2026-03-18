@@ -1,4 +1,3 @@
-// src/app/api/reports/message/route.ts
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { supabaseAdmin } from "@/lib/supabase/server";
@@ -11,6 +10,10 @@ function hashIp(ip: string) {
   return crypto.createHash("sha256").update(ip).digest("hex");
 }
 
+function isValidEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
 export async function POST(req: Request) {
   try {
     const admin = supabaseAdmin();
@@ -19,15 +22,27 @@ export async function POST(req: Request) {
     const ip_hash = hashIp(ip);
 
     const body = await req.json().catch(() => ({}));
+
     const report_id = String(body?.report_id || "").trim();
-    const sender_email = String(body?.sender_email || "").trim();
+    const sender_email = String(body?.sender_email || "").trim().toLowerCase();
     const message = String(body?.message || "").trim();
 
     if (!report_id || !sender_email || !message) {
       return NextResponse.json({ error: "Dati mancanti" }, { status: 400 });
     }
 
-    // Rate limit: max 10/24h per ip_hash
+    if (!isValidEmail(sender_email)) {
+      return NextResponse.json({ error: "Email non valida" }, { status: 400 });
+    }
+
+    if (message.length < 5) {
+      return NextResponse.json({ error: "Messaggio troppo corto" }, { status: 400 });
+    }
+
+    if (message.length > 3000) {
+      return NextResponse.json({ error: "Messaggio troppo lungo" }, { status: 400 });
+    }
+
     const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
 
     const { count, error: countErr } = await admin
@@ -49,16 +64,21 @@ export async function POST(req: Request) {
 
     const { data: report, error: repErr } = await admin
       .from("reports")
-      .select("id, title, contact_email, email_verified")
+      .select("id, title, contact_email, email_verified, status")
       .eq("id", report_id)
       .single();
 
-    if (repErr || !report || !report.email_verified) {
+    if (repErr || !report || !report.email_verified || report.status !== "active") {
       return NextResponse.json({ error: "Annuncio non disponibile" }, { status: 404 });
     }
 
     const { error: insErr } = await admin.from("report_messages").insert([
-      { report_id, sender_email, message, ip_hash },
+      {
+        report_id,
+        sender_email,
+        message,
+        ip_hash,
+      },
     ]);
 
     if (insErr) {
@@ -83,6 +103,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message || "Errore server" }, { status: 500 });
+    return NextResponse.json(
+      { error: e?.message || "Errore server" },
+      { status: 500 }
+    );
   }
 }
