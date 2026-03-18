@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { createClient } from "@supabase/supabase-js";
 import Link from "next/link";
 import ContactProtectedForm from "./ContactProtectedForm";
@@ -44,6 +45,12 @@ function formatTypeLabel(type: string) {
   if (type === "found") return "Trovato";
   if (type === "sighted") return "Avvistato";
   return "Annuncio";
+}
+
+function formatStatusLabel(type: string, status: string) {
+  if (status === "found" && type === "lost") return "Lieto fine";
+  if (status === "found") return "Chiuso";
+  return "Attivo";
 }
 
 function pageTitle(data: ReportPublicRow) {
@@ -107,17 +114,77 @@ function getOsmEmbedUrl(lat: number, lng: number) {
   return `https://www.openstreetmap.org/export/embed.html?bbox=${left}%2C${bottom}%2C${right}%2C${top}&layer=mapnik&marker=${lat}%2C${lng}`;
 }
 
-export default async function AnnuncioPage({ params }: PageProps) {
-  const { id } = await params;
-
-  const { data, error } = await supabasePublic
+async function loadReport(id: string) {
+  const { data } = await supabasePublic
     .from("reports_public")
     .select("*")
     .eq("id", id)
-    .eq("status", "active")
     .single();
 
-  if (error || !data) {
+  return (data as ReportPublicRow | null) ?? null;
+}
+
+function buildMetaDescription(report: ReportPublicRow) {
+  const typeLabel = formatTypeLabel(safeText(report.type));
+  const title = pageTitle(report);
+  const place = [safeText(report.location_text), safeText(report.province), safeText(report.region)]
+    .filter(Boolean)
+    .join(", ");
+  const date = formatEventDate(report.event_date);
+
+  return `${typeLabel}: ${title}. Zona: ${place || "non specificata"}. Data: ${date}. Pubblicato su UNIMALIA.`;
+}
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { id } = await params;
+  const report = await loadReport(id);
+
+  if (!report) {
+    return {
+      title: "Annuncio non disponibile",
+      description: "Questo annuncio non è disponibile.",
+    };
+  }
+
+  const title = pageTitle(report);
+  const description = buildMetaDescription(report);
+  const image = safePhotoUrls(report.photo_urls)[0] || "/placeholder-animal.jpg";
+  const url = `${process.env.PUBLIC_BASE_URL || "https://www.unimalia.it"}/annuncio/${report.id}`;
+
+  return {
+    title,
+    description,
+    alternates: {
+      canonical: `/annuncio/${report.id}`,
+    },
+    openGraph: {
+      title,
+      description,
+      url,
+      type: "article",
+      images: [
+        {
+          url: image,
+          alt: title,
+        },
+      ],
+      locale: "it_IT",
+      siteName: "UNIMALIA",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [image],
+    },
+  };
+}
+
+export default async function AnnuncioPage({ params }: PageProps) {
+  const { id } = await params;
+  const report = await loadReport(id);
+
+  if (!report) {
     return (
       <main className="mx-auto w-full max-w-3xl px-4 py-10">
         <div className="rounded-3xl border border-zinc-200 bg-white p-8 shadow-sm">
@@ -125,8 +192,7 @@ export default async function AnnuncioPage({ params }: PageProps) {
             Annuncio non disponibile
           </h1>
           <p className="mt-3 text-sm leading-6 text-zinc-600">
-            Questo annuncio potrebbe non essere più attivo, essere stato rimosso
-            oppure non essere disponibile pubblicamente.
+            Questo annuncio potrebbe non essere più disponibile pubblicamente.
           </p>
 
           <div className="mt-6 flex flex-wrap gap-3">
@@ -149,9 +215,8 @@ export default async function AnnuncioPage({ params }: PageProps) {
     );
   }
 
-  const report = data as ReportPublicRow;
-
   const reportType = safeText(report.type);
+  const reportStatus = safeText(report.status);
   const title = pageTitle(report);
   const reportUrl = `${process.env.PUBLIC_BASE_URL || "https://www.unimalia.it"}/annuncio/${report.id}`;
   const mapsHref = mapsUrl(report);
@@ -159,6 +224,8 @@ export default async function AnnuncioPage({ params }: PageProps) {
   const mainPhoto = photoUrls[0] || "/placeholder-animal.jpg";
   const showMap = hasMeaningfulLocation(report);
   const showEmbeddedMap = hasCoordinates(report);
+  const isActive = reportStatus === "active";
+  const isClosed = !isActive;
 
   return (
     <main className="mx-auto w-full max-w-4xl px-4 py-8">
@@ -181,8 +248,20 @@ export default async function AnnuncioPage({ params }: PageProps) {
         <div className="p-6 sm:p-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <div className="mb-3 inline-flex rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-semibold text-zinc-700">
-                {formatTypeLabel(reportType)}
+              <div className="mb-3 flex flex-wrap gap-2">
+                <span className="inline-flex rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-semibold text-zinc-700">
+                  {formatTypeLabel(reportType)}
+                </span>
+
+                <span
+                  className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
+                    isActive
+                      ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
+                      : "border border-amber-200 bg-amber-50 text-amber-700"
+                  }`}
+                >
+                  {formatStatusLabel(reportType, reportStatus)}
+                </span>
               </div>
 
               <h1 className="text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl">
@@ -250,8 +329,7 @@ export default async function AnnuncioPage({ params }: PageProps) {
             <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
               <h3 className="text-sm font-semibold text-zinc-900">Link annuncio</h3>
               <p className="mt-3 text-sm text-zinc-700">
-                Questo è il link pubblico dell’annuncio. La condivisione diretta sui social
-                verrà gestita solo dal proprietario dall’area dedicata.
+                Questo è il link pubblico dell’annuncio.
               </p>
 
               <div className="mt-4 flex flex-wrap gap-2">
@@ -262,10 +340,14 @@ export default async function AnnuncioPage({ params }: PageProps) {
                   Apri link annuncio
                 </a>
               </div>
+
+              <p className="mt-3 text-xs text-zinc-500">
+                La condivisione guidata dal sito è riservata solo al proprietario dall’area privata di gestione.
+              </p>
             </div>
           </div>
 
-          {safeText(report.public_phone) ? (
+          {safeText(report.public_phone) && isActive ? (
             <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
               <h3 className="text-sm font-semibold text-emerald-900">Contatto diretto</h3>
               <p className="mt-2 text-sm text-emerald-800">
@@ -277,16 +359,25 @@ export default async function AnnuncioPage({ params }: PageProps) {
             </div>
           ) : null}
 
-          <div className="mt-6 rounded-2xl border border-zinc-200 bg-white p-5">
-            <h2 className="text-lg font-semibold text-zinc-900">Contatto protetto</h2>
-            <p className="mt-2 text-sm text-zinc-600">
-              Scrivi un messaggio senza mostrare pubblicamente l’email del segnalatore.
-            </p>
+          {isActive ? (
+            <div className="mt-6 rounded-2xl border border-zinc-200 bg-white p-5">
+              <h2 className="text-lg font-semibold text-zinc-900">Contatto protetto</h2>
+              <p className="mt-2 text-sm text-zinc-600">
+                Scrivi un messaggio senza mostrare pubblicamente l’email del segnalatore.
+              </p>
 
-            <div className="mt-4">
-              <ContactProtectedForm reportId={report.id} />
+              <div className="mt-4">
+                <ContactProtectedForm reportId={report.id} />
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+              <h2 className="text-lg font-semibold text-amber-900">Annuncio chiuso</h2>
+              <p className="mt-2 text-sm text-amber-800">
+                Questo annuncio non è più attivo, quindi i contatti pubblici e il contatto protetto non sono più disponibili.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </main>

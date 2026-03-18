@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { resend, EMAIL_FROM_NO_REPLY, getBaseUrl } from "@/lib/email/resend";
-import { verificationEmail } from "@/lib/email/templates";
+import { reportPublishedEmail, verificationEmail } from "@/lib/email/templates";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +28,10 @@ function addDaysIso(days: number) {
   const d = new Date();
   d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString();
+}
+
+function isValidEmail(email: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
 async function verifyTurnstileToken(token: string, ip?: string) {
@@ -139,9 +143,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Dati mancanti" }, { status: 400 });
     }
 
+    if (!isValidEmail(contact_email)) {
+      return NextResponse.json({ error: "Email non valida." }, { status: 400 });
+    }
+
     if (type === "lost" && !animal_name) {
       return NextResponse.json(
         { error: "Per lo smarrimento il nome animale è obbligatorio." },
+        { status: 400 }
+      );
+    }
+
+    if (!Array.isArray(photo_urls) || photo_urls.length === 0) {
+      return NextResponse.json(
+        { error: "Carica almeno una foto." },
         { status: 400 }
       );
     }
@@ -218,36 +233,46 @@ export async function POST(req: Request) {
       .select("*")
       .single();
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+    if (error || !data) {
+      return NextResponse.json({ error: error?.message || "Errore creazione annuncio" }, { status: 400 });
     }
+
+    const reportUrl = `${getBaseUrl()}/annuncio/${data.id}`;
+    const manageUrl = `${getBaseUrl()}/gestisci-annuncio/${data.claim_token}`;
 
     if (type === "lost") {
       try {
         const verifyUrl = `${getBaseUrl()}/verifica/${verify_token}`;
+        const email = verificationEmail({
+          verifyUrl,
+          reportTitle: title,
+        });
 
         await resend.emails.send({
           from: EMAIL_FROM_NO_REPLY,
           to: contact_email,
-          subject: "Conferma il tuo annuncio su UNIMALIA",
-          html: `
-            <h2>Conferma il tuo annuncio</h2>
-
-            <p>Clicca qui per pubblicarlo:</p>
-
-            <p>
-              <a href="${verifyUrl}" style="color:#fff;background:#000;padding:10px 14px;border-radius:6px;text-decoration:none;">
-                Conferma annuncio
-              </a>
-            </p>
-
-            <p style="margin-top:20px;font-size:12px;color:#666;">
-              Se non hai richiesto tu questo annuncio, ignora questa email.
-            </p>
-          `,
+          subject: email.subject,
+          html: email.html,
         });
       } catch (mailError) {
         console.error("VERIFY EMAIL ERROR:", mailError);
+      }
+    } else {
+      try {
+        const email = reportPublishedEmail({
+          reportUrl,
+          manageUrl,
+          reportTitle: title,
+        });
+
+        await resend.emails.send({
+          from: EMAIL_FROM_NO_REPLY,
+          to: contact_email,
+          subject: email.subject,
+          html: email.html,
+        });
+      } catch (mailError) {
+        console.error("REPORT PUBLISHED EMAIL ERROR:", mailError);
       }
     }
 
