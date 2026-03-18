@@ -51,7 +51,7 @@ function buildCsp(nonce: string) {
     style-src-elem 'self' 'unsafe-inline' https://cdn.iubenda.com;
     style-src-attr 'unsafe-inline';
 
-    img-src 'self' data: https: https://*.googleusercontent.com https://*.gstatic.com https://www.google-analytics.com https://www.googletagmanager.com;
+    img-src 'self' data: blob: https: https://*.googleusercontent.com https://*.gstatic.com https://www.google-analytics.com https://www.googletagmanager.com;
     font-src 'self' data: https:;
     connect-src 'self'
       https://*.supabase.co
