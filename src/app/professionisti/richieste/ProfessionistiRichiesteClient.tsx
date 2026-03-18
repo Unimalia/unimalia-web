@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type BoxType = "received" | "sent" | "archive";
 
@@ -17,6 +17,7 @@ type ConsultItem = {
   status: "pending" | "accepted" | "replied" | "closed" | "rejected" | "expired";
   created_at: string;
   expires_at: string;
+  last_message_at?: string;
 };
 
 function statusLabel(status: string) {
@@ -42,6 +43,58 @@ function shareModeLabel(mode: string) {
   return mode === "full_record" ? "Cartella completa" : "Eventi selezionati";
 }
 
+function boxTitle(box: BoxType) {
+  switch (box) {
+    case "received":
+      return "Consulti ricevuti";
+    case "sent":
+      return "Consulti inviati";
+    case "archive":
+      return "Archivio consulti";
+    default:
+      return "Consulti veterinari";
+  }
+}
+
+function boxDescription(box: BoxType) {
+  switch (box) {
+    case "received":
+      return "Richieste di consulto ricevute da altre cliniche o professionisti.";
+    case "sent":
+      return "Richieste di consulto inviate dalla tua struttura ad altri professionisti.";
+    case "archive":
+      return "Storico dei consulti chiusi, rifiutati o scaduti.";
+    default:
+      return "Inbox clinica interna tra professionisti UNIMALIA.";
+  }
+}
+
+function counterpartLabel(box: BoxType) {
+  switch (box) {
+    case "received":
+      return "Ricevuto da";
+    case "sent":
+      return "Inviato a";
+    case "archive":
+      return "Controparte";
+    default:
+      return "Controparte";
+  }
+}
+
+function counterpartName(item: ConsultItem, box: BoxType) {
+  if (box === "sent") return item.receiver_display_name;
+  if (box === "received") return item.sender_display_name;
+  return `${item.sender_display_name} → ${item.receiver_display_name}`;
+}
+
+function formatDate(value?: string | null) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleString("it-IT");
+}
+
 export default function ProfessionistiRichiesteClient() {
   const [box, setBox] = useState<BoxType>("received");
   const [status, setStatus] = useState("");
@@ -50,6 +103,9 @@ export default function ProfessionistiRichiesteClient() {
   const [items, setItems] = useState<ConsultItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  const pageTitle = useMemo(() => boxTitle(box), [box]);
+  const pageDescription = useMemo(() => boxDescription(box), [box]);
 
   async function load() {
     try {
@@ -83,10 +139,8 @@ export default function ProfessionistiRichiesteClient() {
   return (
     <main className="mx-auto max-w-6xl p-6">
       <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <h1 className="text-2xl font-semibold text-zinc-900">Consulti veterinari</h1>
-        <p className="mt-2 text-sm text-zinc-600">
-          Inbox clinica interna tra professionisti UNIMALIA.
-        </p>
+        <h1 className="text-2xl font-semibold text-zinc-900">{pageTitle}</h1>
+        <p className="mt-2 text-sm text-zinc-600">{pageDescription}</p>
       </div>
 
       <div className="mt-6 grid gap-4 lg:grid-cols-[1fr_auto]">
@@ -96,7 +150,9 @@ export default function ProfessionistiRichiesteClient() {
               type="button"
               onClick={() => setBox("received")}
               className={`rounded-2xl px-4 py-2 text-sm font-semibold ${
-                box === "received" ? "bg-black text-white" : "border border-zinc-200 bg-white text-zinc-800"
+                box === "received"
+                  ? "bg-black text-white"
+                  : "border border-zinc-200 bg-white text-zinc-800"
               }`}
             >
               Ricevute
@@ -106,7 +162,9 @@ export default function ProfessionistiRichiesteClient() {
               type="button"
               onClick={() => setBox("sent")}
               className={`rounded-2xl px-4 py-2 text-sm font-semibold ${
-                box === "sent" ? "bg-black text-white" : "border border-zinc-200 bg-white text-zinc-800"
+                box === "sent"
+                  ? "bg-black text-white"
+                  : "border border-zinc-200 bg-white text-zinc-800"
               }`}
             >
               Inviate
@@ -116,7 +174,9 @@ export default function ProfessionistiRichiesteClient() {
               type="button"
               onClick={() => setBox("archive")}
               className={`rounded-2xl px-4 py-2 text-sm font-semibold ${
-                box === "archive" ? "bg-black text-white" : "border border-zinc-200 bg-white text-zinc-800"
+                box === "archive"
+                  ? "bg-black text-white"
+                  : "border border-zinc-200 bg-white text-zinc-800"
               }`}
             >
               Archivio
@@ -188,53 +248,62 @@ export default function ProfessionistiRichiesteClient() {
         </div>
       ) : (
         <div className="mt-6 space-y-3">
-          {items.map((item) => (
-            <Link
-              key={item.id}
-              href={`/professionisti/richieste/${item.id}`}
-              className={`block rounded-3xl border p-5 shadow-sm transition hover:bg-zinc-50 ${
-                item.priority === "emergency" ? "border-red-300 bg-red-50" : "border-zinc-200 bg-white"
-              }`}
-            >
-              <div className="flex flex-wrap items-center gap-2">
-                {item.priority === "emergency" ? (
-                  <span className="rounded-full border border-red-200 bg-red-100 px-2 py-1 text-xs font-semibold text-red-800">
-                    EMERGENZA
-                  </span>
-                ) : null}
+          {items.map((item) => {
+            const counterpart = counterpartName(item, box);
+            const activityDate = item.last_message_at || item.created_at;
 
-                <span className="rounded-full border border-zinc-200 bg-zinc-50 px-2 py-1 text-xs font-semibold text-zinc-700">
-                  {statusLabel(item.status)}
-                </span>
-
-                <span className="rounded-full border border-zinc-200 bg-zinc-50 px-2 py-1 text-xs font-semibold text-zinc-700">
-                  {shareModeLabel(item.share_mode)}
-                </span>
-              </div>
-
-              <div className="mt-3 grid gap-3 md:grid-cols-[1fr_auto]">
-                <div className="min-w-0">
-                  <div className="text-lg font-semibold text-zinc-900">
-                    {item.animal_name} — {item.subject}
-                  </div>
-                  <div className="mt-1 text-sm text-zinc-600">
-                    {box === "sent" ? "A" : "Da"}{" "}
-                    {box === "sent" ? item.receiver_display_name : item.sender_display_name}
-                  </div>
-                  {item.initial_message ? (
-                    <div className="mt-2 line-clamp-2 text-sm text-zinc-700">
-                      {item.initial_message}
-                    </div>
+            return (
+              <Link
+                key={item.id}
+                href={`/professionisti/richieste/${item.id}`}
+                className={`block rounded-3xl border p-5 shadow-sm transition hover:bg-zinc-50 ${
+                  item.priority === "emergency"
+                    ? "border-red-300 bg-red-50"
+                    : "border-zinc-200 bg-white"
+                }`}
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  {item.priority === "emergency" ? (
+                    <span className="rounded-full border border-red-200 bg-red-100 px-2 py-1 text-xs font-semibold text-red-800">
+                      EMERGENZA
+                    </span>
                   ) : null}
+
+                  <span className="rounded-full border border-zinc-200 bg-zinc-50 px-2 py-1 text-xs font-semibold text-zinc-700">
+                    {statusLabel(item.status)}
+                  </span>
+
+                  <span className="rounded-full border border-zinc-200 bg-zinc-50 px-2 py-1 text-xs font-semibold text-zinc-700">
+                    {shareModeLabel(item.share_mode)}
+                  </span>
                 </div>
 
-                <div className="text-sm text-zinc-500 md:text-right">
-                  <div>{new Date(item.created_at).toLocaleString("it-IT")}</div>
-                  <div>Scade: {new Date(item.expires_at).toLocaleString("it-IT")}</div>
+                <div className="mt-3 grid gap-3 md:grid-cols-[1fr_auto]">
+                  <div className="min-w-0">
+                    <div className="text-lg font-semibold text-zinc-900">
+                      {item.animal_name} — {item.subject}
+                    </div>
+
+                    <div className="mt-1 text-sm text-zinc-600">
+                      {counterpartLabel(box)} {counterpart}
+                    </div>
+
+                    {item.initial_message ? (
+                      <div className="mt-2 line-clamp-2 text-sm text-zinc-700">
+                        {item.initial_message}
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="text-sm text-zinc-500 md:text-right">
+                    <div>Aperto: {formatDate(item.created_at)}</div>
+                    <div>Ultima attività: {formatDate(activityDate)}</div>
+                    <div>Scade: {formatDate(item.expires_at)}</div>
+                  </div>
                 </div>
-              </div>
-            </Link>
-          ))}
+              </Link>
+            );
+          })}
         </div>
       )}
     </main>
