@@ -50,7 +50,7 @@ export default function LietiFinePage() {
         .from("reports_public")
         .select("*")
         .eq("type", "lost")
-        .eq("status", "found")
+        .eq("status", "closed_found")
         .order("created_at", { ascending: false });
 
       if (error) {

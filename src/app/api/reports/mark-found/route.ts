@@ -3,13 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { resend, EMAIL_FROM_NO_REPLY, getBaseUrl } from "@/lib/email/resend";
 import { inviteToRegisterAfterFoundEmail } from "@/lib/email/templates";
 
-const CANDIDATE_CLOSED_STATUSES = [
-  "closed",
-  "found",
-  "resolved",
-  "inactive",
-  "archived",
-] as const;
+const FOUND_STATUS = "closed_found";
 
 export async function POST(req: Request) {
   try {
@@ -39,39 +33,25 @@ export async function POST(req: Request) {
       );
     }
 
-    if (report.status !== "active") {
+    if (report.status === FOUND_STATUS) {
       return NextResponse.json({ ok: true, already: true, status: report.status });
     }
 
-    let appliedStatus: string | null = null;
-    let lastErrorMessage = "";
-
-    for (const candidate of CANDIDATE_CLOSED_STATUSES) {
-      const { error: updateError } = await admin
-        .from("reports")
-        .update({ status: candidate })
-        .eq("id", report.id)
-        .eq("status", "active");
-
-      if (!updateError) {
-        appliedStatus = candidate;
-        break;
-      }
-
-      lastErrorMessage = updateError.message || "";
-      if (!lastErrorMessage.toLowerCase().includes("invalid input value for enum")) {
-        return NextResponse.json({ error: updateError.message }, { status: 400 });
-      }
-    }
-
-    if (!appliedStatus) {
+    if (report.status !== "active") {
       return NextResponse.json(
-        {
-          error:
-            "Non sono riuscito a chiudere l’annuncio perché il valore di stato previsto dal database non è tra quelli supportati dal sito al momento.",
-        },
+        { error: "Questo annuncio non è più in uno stato aggiornabile da questa pagina." },
         { status: 400 }
       );
+    }
+
+    const { error: updateError } = await admin
+      .from("reports")
+      .update({ status: FOUND_STATUS })
+      .eq("id", report.id)
+      .eq("status", "active");
+
+    if (updateError) {
+      return NextResponse.json({ error: updateError.message }, { status: 400 });
     }
 
     if (report.contact_email) {
@@ -97,7 +77,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       ok: true,
       reportId: report.id,
-      status: appliedStatus,
+      status: FOUND_STATUS,
     });
   } catch (e: any) {
     return NextResponse.json(
