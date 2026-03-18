@@ -74,21 +74,6 @@ function formatEventDate(value: string | null | undefined) {
   return d.toLocaleDateString("it-IT");
 }
 
-function facebookShareUrl(reportUrl: string, type: string) {
-  const shareText =
-    type === "lost"
-      ? "Aiutaci a condividere questo smarrimento pubblicato su UNIMALIA"
-      : type === "found"
-      ? "Aiutaci a condividere questo animale trovato pubblicato su UNIMALIA"
-      : type === "sighted"
-      ? "Aiutaci a condividere questo avvistamento pubblicato su UNIMALIA"
-      : "Aiutaci a condividere questo annuncio pubblicato su UNIMALIA";
-
-  return `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(reportUrl)}&quote=${encodeURIComponent(
-    shareText
-  )}`;
-}
-
 function backHrefByType(type: string) {
   if (type === "lost") return "/smarrimenti";
   return "/trovati";
@@ -106,6 +91,20 @@ function hasMeaningfulLocation(report: ReportPublicRow) {
       safeText(report.region).trim() ||
       (typeof report.lat === "number" && typeof report.lng === "number")
   );
+}
+
+function hasCoordinates(report: ReportPublicRow) {
+  return typeof report.lat === "number" && typeof report.lng === "number";
+}
+
+function getOsmEmbedUrl(lat: number, lng: number) {
+  const delta = 0.008;
+  const left = lng - delta;
+  const right = lng + delta;
+  const top = lat + delta;
+  const bottom = lat - delta;
+
+  return `https://www.openstreetmap.org/export/embed.html?bbox=${left}%2C${bottom}%2C${right}%2C${top}&layer=mapnik&marker=${lat}%2C${lng}`;
 }
 
 export default async function AnnuncioPage({ params }: PageProps) {
@@ -155,11 +154,11 @@ export default async function AnnuncioPage({ params }: PageProps) {
   const reportType = safeText(report.type);
   const title = pageTitle(report);
   const reportUrl = `${process.env.PUBLIC_BASE_URL || "https://www.unimalia.it"}/annuncio/${report.id}`;
-  const shareHref = facebookShareUrl(reportUrl, reportType);
   const mapsHref = mapsUrl(report);
   const photoUrls = safePhotoUrls(report.photo_urls);
   const mainPhoto = photoUrls[0] || "/placeholder-animal.jpg";
   const showMap = hasMeaningfulLocation(report);
+  const showEmbeddedMap = hasCoordinates(report);
 
   return (
     <main className="mx-auto w-full max-w-4xl px-4 py-8">
@@ -221,6 +220,17 @@ export default async function AnnuncioPage({ params }: PageProps) {
                 {safeText(report.province) ? ` (${safeText(report.province)})` : ""}
               </p>
 
+              {showEmbeddedMap ? (
+                <div className="mt-4 overflow-hidden rounded-xl border border-zinc-200 bg-white">
+                  <iframe
+                    title="Mappa posizione annuncio"
+                    src={getOsmEmbedUrl(report.lat as number, report.lng as number)}
+                    className="h-64 w-full border-0"
+                    loading="lazy"
+                  />
+                </div>
+              ) : null}
+
               {showMap ? (
                 <a
                   href={mapsHref}
@@ -238,26 +248,18 @@ export default async function AnnuncioPage({ params }: PageProps) {
             </div>
 
             <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-              <h3 className="text-sm font-semibold text-zinc-900">Condivisione</h3>
+              <h3 className="text-sm font-semibold text-zinc-900">Link annuncio</h3>
               <p className="mt-3 text-sm text-zinc-700">
-                Condividi questo annuncio per aumentare la visibilità.
+                Questo è il link pubblico dell’annuncio. La condivisione diretta sui social
+                verrà gestita solo dal proprietario dall’area dedicata.
               </p>
 
               <div className="mt-4 flex flex-wrap gap-2">
                 <a
-                  href={shareHref}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center justify-center rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-100"
-                >
-                  Condividi su Facebook
-                </a>
-
-                <a
                   href={reportUrl}
                   className="inline-flex items-center justify-center rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-100"
                 >
-                  Copia / apri link annuncio
+                  Apri link annuncio
                 </a>
               </div>
             </div>
