@@ -1,107 +1,101 @@
 import { NextResponse } from "next/server";
-import crypto from "crypto";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { resend, EMAIL_FROM_MESSAGES, getBaseUrl } from "@/lib/email/resend";
-import { newMessageRelayEmail } from "@/lib/email/templates";
+import { resend, EMAIL_FROM_NO_REPLY } from "@/lib/email/resend";
 
-export const dynamic = "force-dynamic";
-
-function hashIp(ip: string) {
-  return crypto.createHash("sha256").update(ip).digest("hex");
+function escapeHtml(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
 
-function isValidEmail(value: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+function isValidEmail(email: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
 export async function POST(req: Request) {
   try {
-    const admin = supabaseAdmin();
+    const body = await req.json();
 
-    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-    const ip_hash = hashIp(ip);
+    const reportId = typeof body?.report_id === "string" ? body.report_id.trim() : "";
+    const message = typeof body?.message === "string" ? body.message.trim() : "";
+    const senderEmail =
+      typeof body?.sender_email === "string" ? body.sender_email.trim().toLowerCase() : "";
+    const website = typeof body?.website === "string" ? body.website.trim() : "";
 
-    const body = await req.json().catch(() => ({}));
+    if (website) {
+      return NextResponse.json({ error: "Invio non valido" }, { status: 400 });
+    }
 
-    const report_id = String(body?.report_id || "").trim();
-    const sender_email = String(body?.sender_email || "").trim().toLowerCase();
-    const message = String(body?.message || "").trim();
-
-    if (!report_id || !sender_email || !message) {
+    if (!reportId || !message || !senderEmail) {
       return NextResponse.json({ error: "Dati mancanti" }, { status: 400 });
     }
 
-    if (!isValidEmail(sender_email)) {
+    if (!isValidEmail(senderEmail)) {
       return NextResponse.json({ error: "Email non valida" }, { status: 400 });
     }
 
-    if (message.length < 5) {
-      return NextResponse.json({ error: "Messaggio troppo corto" }, { status: 400 });
-    }
-
-    if (message.length > 3000) {
-      return NextResponse.json({ error: "Messaggio troppo lungo" }, { status: 400 });
-    }
-
-    const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
-
-    const { count, error: countErr } = await admin
-      .from("report_messages")
-      .select("*", { count: "exact", head: true })
-      .eq("ip_hash", ip_hash)
-      .gte("created_at", since);
-
-    if (countErr) {
-      return NextResponse.json({ error: countErr.message }, { status: 400 });
-    }
-
-    if ((count || 0) >= 10) {
+    if (message.length < 10) {
       return NextResponse.json(
-        { error: "Limite messaggi raggiunto. Riprova più tardi." },
-        { status: 429 }
+        { error: "Messaggio troppo corto" },
+        { status: 400 }
       );
     }
 
-    const { data: report, error: repErr } = await admin
+    const admin = supabaseAdmin();
+
+    const { data: report, error } = await admin
       .from("reports")
-      .select("id, title, contact_email, email_verified, status")
-      .eq("id", report_id)
+      .select("id, title, contact_email, status, type")
+      .eq("id", reportId)
       .single();
 
-    if (repErr || !report || !report.email_verified || report.status !== "active") {
-      return NextResponse.json({ error: "Annuncio non disponibile" }, { status: 404 });
+    if (error || !report?.contact_email) {
+      return NextResponse.json({ error: "Annuncio non valido" }, { status: 404 });
     }
 
-    const { error: insErr } = await admin.from("report_messages").insert([
-      {
-        report_id,
-        sender_email,
-        message,
-        ip_hash,
-      },
-    ]);
-
-    if (insErr) {
-      return NextResponse.json({ error: insErr.message }, { status: 400 });
+    if (report.status && report.status !== "active") {
+      return NextResponse.json(
+        { error: "Questo annuncio non è più attivo" },
+        { status: 400 }
+      );
     }
 
-    const reportUrl = `${getBaseUrl()}/annuncio/${report_id}`;
-    const email = newMessageRelayEmail({
-      reportTitle: report.title,
-      reportUrl,
-      senderEmail: sender_email,
-      message,
-    });
+    const safeTitle = escapeHtml(report.title || "Annuncio UNIMALIA");
+    const safeMessage = escapeHtml(message).replaceAll("\n", "<br />");
+    const safeSender = escapeHtml(senderEmail);
 
     await resend.emails.send({
-      from: EMAIL_FROM_MESSAGES,
+      from: EMAIL_FROM_NO_REPLY,
       to: report.contact_email,
-      subject: email.subject,
-      html: email.html,
-      replyTo: sender_email,
+      subject: `Nuovo messaggio per il tuo annuncio su UNIMALIA`,
+      replyTo: senderEmail,
+      html: `
+        <div style="font-family:Arial,Helvetica,sans-serif;color:#111;line-height:1.6;">
+          <p>Hai ricevuto un nuovo messaggio relativo al tuo annuncio su <b>UNIMALIA</b>.</p>
+
+          <p style="margin-top:16px;"><b>Annuncio:</b> ${safeTitle}</p>
+          <p><b>Email mittente:</b> ${safeSender}</p>
+
+          <p style="margin-top:16px;"><b>Messaggio:</b></p>
+          <div style="padding:12px;border:1px solid #e4e4e7;border-radius:12px;background:#fafafa;">
+            ${safeMessage}
+          </div>
+
+          <p style="margin-top:20px;">
+            Puoi rispondere direttamente a questa email per contattare la persona.
+          </p>
+
+          <p style="font-size:12px;color:#666;margin-top:24px;">
+            UNIMALIA protegge i tuoi dati: il tuo indirizzo email non viene mostrato pubblicamente.
+          </p>
+        </div>
+      `,
     });
 
-    return NextResponse.json({ ok: true }, { status: 200 });
+    return NextResponse.json({ ok: true });
   } catch (e: any) {
     return NextResponse.json(
       { error: e?.message || "Errore server" },
