@@ -9,18 +9,14 @@ type MyLostEvent = {
   id: string;
   created_at: string;
   reporter_id: string;
-
   animal_id: string | null;
-
   species: string;
   animal_name: string | null;
   city: string;
   province: string;
   lost_date: string;
   primary_photo_url: string;
-
   status: "active" | "found";
-
   animals?: { name: string; species: string }[] | null;
 };
 
@@ -56,15 +52,20 @@ export default function MieiAnnunciPage() {
 
       const { data: rows, error: e2 } = await supabase
         .from("lost_events")
-        .select(
-          `
-          id, created_at, reporter_id,
+        .select(`
+          id,
+          created_at,
+          reporter_id,
           animal_id,
-          species, animal_name, city, province, lost_date, primary_photo_url,
+          species,
+          animal_name,
+          city,
+          province,
+          lost_date,
+          primary_photo_url,
           status,
           animals:animal_id ( name, species )
-        `
-        )
+        `)
         .eq("reporter_id", u.id)
         .order("created_at", { ascending: false });
 
@@ -74,13 +75,14 @@ export default function MieiAnnunciPage() {
         setError(e2.message);
         setItems([]);
       } else {
-        setItems(((rows as unknown) as MyLostEvent[]) ?? []);
+        setItems((rows as MyLostEvent[]) ?? []);
       }
 
       setLoading(false);
     }
 
     boot();
+
     return () => {
       alive = false;
     };
@@ -90,7 +92,9 @@ export default function MieiAnnunciPage() {
     if (!userId) return;
     if (item.reporter_id !== userId) return;
 
-    const ok = window.confirm("Confermi che l’animale è stato ritrovato e vuoi chiudere l’annuncio?");
+    const ok = window.confirm(
+      "Confermi che l’animale è stato ritrovato e vuoi chiudere l’annuncio?"
+    );
     if (!ok) return;
 
     const { error: e1 } = await supabase
@@ -112,7 +116,10 @@ export default function MieiAnnunciPage() {
     );
   }
 
-  const activeCount = useMemo(() => items.filter((x) => x.status === "active").length, [items]);
+  const activeCount = useMemo(
+    () => items.filter((x) => x.status === "active").length,
+    [items]
+  );
 
   if (loading) {
     return (
@@ -129,7 +136,8 @@ export default function MieiAnnunciPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">I miei annunci</h1>
           <p className="mt-3 text-zinc-700">
-            Annunci pubblicati da te. Attivi: <span className="font-medium">{activeCount}</span>
+            Annunci pubblicati da te. Attivi:{" "}
+            <span className="font-medium">{activeCount}</span>
           </p>
         </div>
 
@@ -200,10 +208,10 @@ export default function MieiAnnunciPage() {
 
                   <div className="mt-4 flex flex-wrap gap-2">
                     <Link
-                      href={`/smarrimenti/${item.id}`}
+                      href={`/annuncio/${item.id}`}
                       className="inline-flex items-center justify-center rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
                     >
-                      Apri annuncio
+                      Apri annuncio pubblico
                     </Link>
 
                     {item.status === "active" && (
@@ -221,7 +229,9 @@ export default function MieiAnnunciPage() {
                   {item.animal_id ? (
                     <p className="mt-3 text-xs text-zinc-500">Collegato al profilo animale ✅</p>
                   ) : (
-                    <p className="mt-3 text-xs text-zinc-500">Smarrimento rapido (non collegato a profilo)</p>
+                    <p className="mt-3 text-xs text-zinc-500">
+                      Smarrimento rapido (non collegato a profilo)
+                    </p>
                   )}
                 </div>
               </div>

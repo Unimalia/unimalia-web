@@ -9,6 +9,7 @@ type Props = {
 export default function ContactProtectedForm({ reportId }: Props) {
   const [senderEmail, setSenderEmail] = useState("");
   const [message, setMessage] = useState("");
+  const [honeypot, setHoneypot] = useState("");
   const [loading, setLoading] = useState(false);
   const [resultMsg, setResultMsg] = useState<string | null>(null);
   const [isError, setIsError] = useState(false);
@@ -18,9 +19,21 @@ export default function ContactProtectedForm({ reportId }: Props) {
     setResultMsg(null);
     setIsError(false);
 
+    if (honeypot.trim()) {
+      setIsError(true);
+      setResultMsg("Invio non valido.");
+      return;
+    }
+
     if (!senderEmail.trim() || !message.trim()) {
       setIsError(true);
       setResultMsg("Inserisci email e messaggio.");
+      return;
+    }
+
+    if (message.trim().length < 10) {
+      setIsError(true);
+      setResultMsg("Scrivi un messaggio un po’ più completo.");
       return;
     }
 
@@ -34,6 +47,7 @@ export default function ContactProtectedForm({ reportId }: Props) {
           report_id: reportId,
           sender_email: senderEmail.trim(),
           message: message.trim(),
+          website: honeypot,
         }),
       });
 
@@ -47,8 +61,11 @@ export default function ContactProtectedForm({ reportId }: Props) {
 
       setSenderEmail("");
       setMessage("");
+      setHoneypot("");
       setIsError(false);
-      setResultMsg("✅ Messaggio inviato correttamente. Il segnalatore riceverà la tua comunicazione.");
+      setResultMsg(
+        "✅ Messaggio inviato correttamente. Il segnalatore riceverà la tua comunicazione."
+      );
     } catch {
       setIsError(true);
       setResultMsg("Errore di rete o server.");
@@ -59,6 +76,20 @@ export default function ContactProtectedForm({ reportId }: Props) {
 
   return (
     <form onSubmit={onSubmit} className="grid gap-4">
+      <div className="hidden" aria-hidden="true">
+        <label className="grid gap-2 text-sm font-semibold text-zinc-800">
+          Website
+          <input
+            type="text"
+            tabIndex={-1}
+            autoComplete="off"
+            value={honeypot}
+            onChange={(e) => setHoneypot(e.target.value)}
+            className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm"
+          />
+        </label>
+      </div>
+
       <label className="grid gap-2 text-sm font-semibold text-zinc-800">
         La tua email
         <input
@@ -77,10 +108,15 @@ export default function ContactProtectedForm({ reportId }: Props) {
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           placeholder="Scrivi qui le informazioni utili da inviare al segnalatore..."
-          className="min-h-[120px] w-full rounded-xl border border-zinc-200 bg-white px-3 py-3 text-sm"
+          className="min-h-[140px] w-full rounded-xl border border-zinc-200 bg-white px-3 py-3 text-sm"
           required
         />
       </label>
+
+      <p className="text-xs leading-5 text-zinc-500">
+        Il tuo messaggio verrà inoltrato al segnalatore senza mostrare pubblicamente
+        il suo indirizzo email.
+      </p>
 
       <button
         type="submit"
