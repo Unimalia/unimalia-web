@@ -56,8 +56,28 @@ async function getProfessionalRefs(userId: string) {
     .eq("user_id", userId)
     .maybeSingle();
 
+  if (profileResult.error) {
+    throw profileResult.error;
+  }
+
   if (profileResult.data?.org_id) {
     refs.add(profileResult.data.org_id);
+  }
+
+  const professionalResult = await admin
+    .from("professionals")
+    .select("id, owner_id")
+    .eq("owner_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (professionalResult.error) {
+    throw professionalResult.error;
+  }
+
+  if (professionalResult.data?.id) {
+    refs.add(professionalResult.data.id);
   }
 
   return Array.from(refs).filter(Boolean);
@@ -150,10 +170,9 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Non autorizzato" }, { status: 401 });
     }
 
-    const orgLookup = await getProfessionalOrgId(user.id);
     const refs = await getProfessionalRefs(user.id);
 
-    if (!orgLookup.orgId) {
+    if (refs.length === 0) {
       return NextResponse.json(
         { error: "Profilo professionista non valido o organizzazione non trovata" },
         { status: 403 }
@@ -186,10 +205,11 @@ export async function GET(req: NextRequest) {
 
     const grantResult = await admin
       .from("animal_access_grants")
-      .select("id, grantee_id, status")
+      .select("id, grantee_id, status, valid_to, revoked_at, scope_read, scope_write")
       .eq("animal_id", animal.id)
+      .eq("grantee_type", "org")
       .in("grantee_id", refs)
-      .in("status", ["active", "approved"]);
+      .is("revoked_at", null);
 
     if (grantResult.error) {
       return NextResponse.json(
@@ -198,7 +218,21 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const hasGrant = (grantResult.data?.length ?? 0) > 0;
+    const now = Date.now();
+
+    const activeGrant =
+      (grantResult.data ?? []).find((g: any) => {
+        if (g.status !== "active" && g.status !== "approved") return false;
+        if (!g.scope_read && !g.scope_write) return false;
+        if (!g.valid_to) return true;
+
+        const validToMs = new Date(g.valid_to).getTime();
+        if (Number.isNaN(validToMs)) return true;
+
+        return validToMs > now;
+      }) ?? null;
+
+    const hasGrant = Boolean(activeGrant);
 
     const canAccess =
       hasGrant ||
@@ -206,10 +240,7 @@ export async function GET(req: NextRequest) {
       refs.includes(String(animal.origin_org_id ?? ""));
 
     if (!canAccess) {
-      return NextResponse.json(
-        { error: "Accesso negato" },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: "Accesso negato" }, { status: 403 });
     }
 
     return NextResponse.json({
