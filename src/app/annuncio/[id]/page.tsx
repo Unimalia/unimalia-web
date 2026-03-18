@@ -65,6 +65,36 @@ function pageTitle(data: ReportPublicRow) {
   return "Annuncio";
 }
 
+function locationLabel(data: ReportPublicRow) {
+  const location = safeText(data.location_text).trim();
+  const province = safeText(data.province).trim();
+  const region = safeText(data.region).trim();
+
+  const parts = [location, province, region].filter(Boolean);
+  return parts.join(", ");
+}
+
+function ogTitle(data: ReportPublicRow) {
+  const base = pageTitle(data);
+  const type = safeText(data.type);
+  const typeText =
+    type === "lost"
+      ? "smarrito"
+      : type === "found"
+      ? "trovato"
+      : type === "sighted"
+      ? "avvistato"
+      : "segnalato";
+
+  const place = locationLabel(data);
+
+  if (place) {
+    return `${base} ${typeText} – ${place}`;
+  }
+
+  return `${base} ${typeText}`;
+}
+
 function mapsUrl(data: ReportPublicRow) {
   if (typeof data.lat === "number" && typeof data.lng === "number") {
     return `https://www.google.com/maps?q=${data.lat},${data.lng}`;
@@ -127,12 +157,10 @@ async function loadReport(id: string) {
 function buildMetaDescription(report: ReportPublicRow) {
   const typeLabel = formatTypeLabel(safeText(report.type));
   const title = pageTitle(report);
-  const place = [safeText(report.location_text), safeText(report.province), safeText(report.region)]
-    .filter(Boolean)
-    .join(", ");
+  const place = locationLabel(report);
   const date = formatEventDate(report.event_date);
 
-  return `${typeLabel}: ${title}. Zona: ${place || "non specificata"}. Data: ${date}. Pubblicato su UNIMALIA.`;
+  return `${typeLabel}: ${title}. Località: ${place || "non specificata"}. Data evento: ${date}. Pubblicato su UNIMALIA.`;
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -146,7 +174,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     };
   }
 
-  const title = pageTitle(report);
+  const title = ogTitle(report);
   const description = buildMetaDescription(report);
   const image = safePhotoUrls(report.photo_urls)[0] || "/placeholder-animal.jpg";
   const url = `${process.env.PUBLIC_BASE_URL || "https://www.unimalia.it"}/annuncio/${report.id}`;
@@ -269,9 +297,7 @@ export default async function AnnuncioPage({ params }: PageProps) {
               </h1>
 
               <p className="mt-2 text-sm text-zinc-600">
-                {[safeText(report.region), safeText(report.province), safeText(report.location_text)]
-                  .filter(Boolean)
-                  .join(" • ") || "Località non disponibile"}
+                {locationLabel(report) || "Località non disponibile"}
               </p>
 
               <p className="mt-1 text-sm text-zinc-500">
