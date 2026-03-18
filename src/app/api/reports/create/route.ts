@@ -116,6 +116,21 @@ export async function POST(req: Request) {
       );
     }
 
+    const authHeader = req.headers.get("authorization") || "";
+    const accessToken = authHeader.startsWith("Bearer ")
+      ? authHeader.slice("Bearer ".length).trim()
+      : "";
+
+    let authenticatedUserId: string | null = null;
+
+    if (accessToken) {
+      const { data: authUserData } = await admin.auth.getUser(accessToken);
+      authenticatedUserId = authUserData.user?.id || null;
+    }
+
+    const animal_id =
+      body?.animal_id == null ? null : String(body.animal_id).trim() || null;
+
     const contact_email = String(body?.contact_email || "")
       .trim()
       .toLowerCase();
@@ -219,6 +234,38 @@ export async function POST(req: Request) {
       );
     }
 
+    let linkedAnimalId: string | null = null;
+    let createdByUserId: string | null = null;
+    let ownerVerifiedFlow = false;
+
+    if (animal_id && authenticatedUserId) {
+      const { data: animalRow, error: animalError } = await admin
+        .from("animals")
+        .select("id, owner_id")
+        .eq("id", animal_id)
+        .single();
+
+      if (animalError || !animalRow) {
+        return NextResponse.json(
+          { error: "Animale collegato non valido." },
+          { status: 400 }
+        );
+      }
+
+      if (animalRow.owner_id !== authenticatedUserId) {
+        return NextResponse.json(
+          { error: "Questo animale non appartiene al tuo profilo." },
+          { status: 403 }
+        );
+      }
+
+      linkedAnimalId = animalRow.id;
+      createdByUserId = authenticatedUserId;
+      ownerVerifiedFlow = true;
+    } else if (authenticatedUserId) {
+      createdByUserId = authenticatedUserId;
+    }
+
     const verify_token = crypto.randomUUID();
     const claim_token = crypto.randomUUID();
 
@@ -229,12 +276,14 @@ export async function POST(req: Request) {
       province,
     });
 
-    const email_verified = type === "found" || type === "sighted";
+    const email_verified =
+      type === "found" || type === "sighted" || ownerVerifiedFlow;
 
     const insertRow = {
       type,
       status: "active",
       title,
+      animal_id: linkedAnimalId,
       animal_name,
       species,
       region,
@@ -249,7 +298,7 @@ export async function POST(req: Request) {
       email_verified,
       verify_token,
       claim_token,
-      created_by_user_id: null,
+      created_by_user_id: createdByUserId,
       ip_hash,
       consent,
       lat,
@@ -270,13 +319,20 @@ export async function POST(req: Request) {
       );
     }
 
+    if (linkedAnimalId) {
+      await admin
+        .from("animals")
+        .update({ status: "lost" })
+        .eq("id", linkedAnimalId);
+    }
+
     const reportUrl = `${getBaseUrl()}/annuncio/${data.id}`;
     const manageUrl = `${getBaseUrl()}/gestisci-annuncio/${data.claim_token}`;
 
     let emailQueued = true;
 
     try {
-      if (type === "lost") {
+      if (type === "lost" && !ownerVerifiedFlow) {
         const verifyUrl = `${getBaseUrl()}/verifica/${verify_token}`;
         const email = verificationEmail({
           verifyUrl,
