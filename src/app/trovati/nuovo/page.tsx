@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import Image from "next/image";
 import { Turnstile } from "@marsidev/react-turnstile";
 import LocationPicker from "../../_components/LocationPicker";
 
@@ -24,15 +25,62 @@ export default function NuovoTrovatoPage() {
   const [locationText, setLocationText] = useState("");
   const [eventDate, setEventDate] = useState("");
   const [description, setDescription] = useState("");
-  const [photo, setPhoto] = useState<File | null>(null);
   const [contactEmail, setContactEmail] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [contactMode, setContactMode] = useState<ContactMode>("protected");
   const [consent, setConsent] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+
   const [loading, setLoading] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [resultMsg, setResultMsg] = useState<string | null>(null);
+
+  const canSubmit = useMemo(() => !loading && !uploadingPhoto, [loading, uploadingPhoto]);
+
+  function onPhotoChange(file: File | null) {
+    setPhoto(file);
+
+    if (!file) {
+      setPhotoPreview(null);
+      return;
+    }
+
+    const url = URL.createObjectURL(file);
+    setPhotoPreview(url);
+  }
+
+  async function uploadPhoto(): Promise<string | null> {
+    if (!photo) return null;
+
+    setUploadingPhoto(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", photo);
+
+      const uploadRes = await fetch("/api/reports/upload-photo", {
+        method: "POST",
+        body: formData,
+      });
+
+      const uploadData = await uploadRes.json().catch(() => ({}));
+
+      if (!uploadRes.ok) {
+        throw new Error(uploadData?.error || "Errore upload foto.");
+      }
+
+      if (!uploadData?.publicUrl) {
+        throw new Error("Foto caricata ma URL non disponibile.");
+      }
+
+      return uploadData.publicUrl as string;
+    } finally {
+      setUploadingPhoto(false);
+    }
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -71,27 +119,7 @@ export default function NuovoTrovatoPage() {
     setLoading(true);
 
     try {
-      let photoUrl: string | null = null;
-
-      if (photo) {
-        const formData = new FormData();
-        formData.append("file", photo);
-
-        const uploadRes = await fetch("/api/upload/animal-photo", {
-          method: "POST",
-          body: formData,
-        });
-
-        const uploadData = await uploadRes.json();
-
-        if (!uploadRes.ok) {
-          setResultMsg(uploadData.error || "Errore upload foto");
-          setLoading(false);
-          return;
-        }
-
-        photoUrl = uploadData.publicUrl;
-      }
+      const uploadedPhotoUrl = await uploadPhoto();
 
       const res = await fetch("/api/reports/create", {
         method: "POST",
@@ -105,7 +133,7 @@ export default function NuovoTrovatoPage() {
           location_text: locationText.trim(),
           event_date: eventDate,
           description: description.trim() || null,
-          photo_urls: photoUrl ? [photoUrl] : [],
+          photo_urls: uploadedPhotoUrl ? [uploadedPhotoUrl] : [],
           contact_email: contactEmail.trim(),
           contact_phone: contactPhone.trim() || null,
           contact_mode: contactMode,
@@ -123,10 +151,30 @@ export default function NuovoTrovatoPage() {
         return;
       }
 
-      setResultMsg("✅ Segnalazione pubblicata correttamente!");
+      setResultMsg(
+        type === "found"
+          ? "✅ Segnalazione di animale trovato pubblicata correttamente."
+          : "✅ Avvistamento pubblicato correttamente."
+      );
+
+      setType("found");
+      setAnimalName("");
+      setSpecies("cane");
+      setRegion("");
+      setProvince("");
+      setLocationText("");
+      setEventDate("");
+      setDescription("");
+      setContactEmail("");
+      setContactPhone("");
+      setContactMode("protected");
+      setConsent(false);
+      setCoords({ lat: null, lng: null });
+      setPhoto(null);
+      setPhotoPreview(null);
       setTurnstileToken(null);
-    } catch {
-      setResultMsg("Errore di rete o server.");
+    } catch (error: any) {
+      setResultMsg(error?.message || "Errore di rete o server.");
     } finally {
       setLoading(false);
     }
@@ -136,7 +184,7 @@ export default function NuovoTrovatoPage() {
     <div className="mx-auto w-full max-w-2xl px-4 py-8">
       <h1 className="text-2xl font-extrabold text-zinc-900">Segnala animale trovato / avvistato</h1>
       <p className="mt-2 text-sm text-zinc-600">
-        Inserisci i dati essenziali e conferma via email per pubblicare la segnalazione.
+        Inserisci i dati essenziali per aiutare a far tornare un animale a casa.
       </p>
 
       <form onSubmit={onSubmit} className="mt-6 grid gap-4">
@@ -176,6 +224,30 @@ export default function NuovoTrovatoPage() {
         </label>
 
         <label className="grid gap-2 text-sm font-semibold text-zinc-800">
+          Foto (opzionale)
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => onPhotoChange(e.target.files?.[0] || null)}
+            className="block w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-100 file:px-3 file:py-2 file:text-sm file:font-medium"
+          />
+        </label>
+
+        {photoPreview ? (
+          <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white">
+            <div className="relative h-64 w-full">
+              <Image
+                src={photoPreview}
+                alt="Anteprima foto animale"
+                fill
+                className="object-cover"
+                unoptimized
+              />
+            </div>
+          </div>
+        ) : null}
+
+        <label className="grid gap-2 text-sm font-semibold text-zinc-800">
           Data evento
           <input
             type="date"
@@ -197,7 +269,7 @@ export default function NuovoTrovatoPage() {
               apiKey={apiKey}
               value={coords}
               onChange={setCoords}
-              onAddress={(a) => {
+              onAddress={(a: any) => {
                 if (a.formattedAddress) setLocationText(a.formattedAddress);
                 if (a.province) setProvince(a.province);
                 if (a.region) setRegion(a.region);
@@ -232,16 +304,6 @@ export default function NuovoTrovatoPage() {
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Dove l’hai visto, se è in sicurezza, se ha collare, condizioni apparenti..."
             className="min-h-[100px] w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm"
-          />
-        </label>
-
-        <label className="grid gap-2 text-sm font-semibold text-zinc-800">
-          Foto (opzionale)
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(e) => setPhoto(e.target.files?.[0] || null)}
-            className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm"
           />
         </label>
 
@@ -317,10 +379,14 @@ export default function NuovoTrovatoPage() {
         </div>
 
         <button
-          disabled={loading}
+          disabled={!canSubmit}
           className="h-11 rounded-xl bg-black text-sm font-semibold text-white disabled:opacity-60"
         >
-          {loading ? "Pubblicazione..." : "Pubblica segnalazione"}
+          {loading
+            ? "Pubblicazione..."
+            : uploadingPhoto
+            ? "Caricamento foto..."
+            : "Pubblica segnalazione"}
         </button>
 
         {resultMsg ? (
