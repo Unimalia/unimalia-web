@@ -7,6 +7,27 @@ import LocationPicker from "../../_components/LocationPicker";
 
 type ContactMode = "protected" | "phone_public";
 
+type SubmitStage =
+  | "idle"
+  | "uploading-photo"
+  | "creating-report";
+
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(message)), ms);
+
+    promise
+      .then((value) => {
+        clearTimeout(timer);
+        resolve(value);
+      })
+      .catch((err) => {
+        clearTimeout(timer);
+        reject(err);
+      });
+  });
+}
+
 export default function NuovoSmarrimentoClient() {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
   const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "";
@@ -33,17 +54,26 @@ export default function NuovoSmarrimentoClient() {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(false);
-  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [stage, setStage] = useState<SubmitStage>("idle");
   const [resultMsg, setResultMsg] = useState<string | null>(null);
 
-  const canSubmit = useMemo(() => !loading && !uploadingPhoto, [loading, uploadingPhoto]);
+  const canSubmit = useMemo(() => !loading, [loading]);
 
   function onPhotoChange(file: File | null) {
     setPhoto(file);
+    setResultMsg(null);
 
     if (!file) {
       setPhotoPreview(null);
       return;
+    }
+
+    const mime = String(file.type || "").toLowerCase();
+
+    if (mime === "image/heic" || mime === "image/heif") {
+      setResultMsg(
+        "La foto selezionata è in formato HEIC/HEIF (tipico di iPhone). Al momento carica una foto JPG/PNG/WEBP."
+      );
     }
 
     const url = URL.createObjectURL(file);
@@ -59,32 +89,40 @@ export default function NuovoSmarrimentoClient() {
       throw new Error("Completa il controllo di sicurezza prima di caricare la foto.");
     }
 
-    setUploadingPhoto(true);
+    const mime = String(photo.type || "").toLowerCase();
 
-    try {
-      const formData = new FormData();
-      formData.append("file", photo);
-      formData.append("turnstileToken", turnstileToken);
+    if (mime === "image/heic" || mime === "image/heif") {
+      throw new Error(
+        "La foto selezionata è in formato HEIC/HEIF (tipico di iPhone). Al momento carica una foto JPG/PNG/WEBP."
+      );
+    }
 
-      const uploadRes = await fetch("/api/reports/upload-photo", {
+    setStage("uploading-photo");
+
+    const formData = new FormData();
+    formData.append("file", photo);
+    formData.append("turnstileToken", turnstileToken);
+
+    const uploadRes = await withTimeout(
+      fetch("/api/reports/upload-photo", {
         method: "POST",
         body: formData,
-      });
+      }),
+      45000,
+      "Upload foto troppo lento o non completato. Riprova."
+    );
 
-      const uploadData = await uploadRes.json().catch(() => ({}));
+    const uploadData = await uploadRes.json().catch(() => ({}));
 
-      if (!uploadRes.ok) {
-        throw new Error(uploadData?.error || "Errore upload foto.");
-      }
-
-      if (!uploadData?.publicUrl) {
-        throw new Error("Foto caricata ma URL non disponibile.");
-      }
-
-      return uploadData.publicUrl as string;
-    } finally {
-      setUploadingPhoto(false);
+    if (!uploadRes.ok) {
+      throw new Error(uploadData?.error || "Errore upload foto.");
     }
+
+    if (!uploadData?.publicUrl) {
+      throw new Error("Foto caricata ma URL non disponibile.");
+    }
+
+    return uploadData.publicUrl as string;
   }
 
   async function onSubmit(e: React.FormEvent) {
@@ -132,32 +170,39 @@ export default function NuovoSmarrimentoClient() {
     }
 
     setLoading(true);
+    setStage("uploading-photo");
 
     try {
       const uploadedPhotoUrl = await uploadPhoto();
 
-      const res = await fetch("/api/reports/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: "lost",
-          animal_name: animalName.trim(),
-          species: species.trim(),
-          region: region.trim(),
-          province: province.trim(),
-          location_text: locationText.trim(),
-          event_date: eventDate,
-          description: description.trim() || null,
-          photo_urls: [uploadedPhotoUrl],
-          contact_email: contactEmail.trim(),
-          contact_phone: contactPhone.trim() || null,
-          contact_mode: contactMode,
-          consent,
-          lat: coords.lat,
-          lng: coords.lng,
-          turnstileToken,
+      setStage("creating-report");
+
+      const res = await withTimeout(
+        fetch("/api/reports/create", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: "lost",
+            animal_name: animalName.trim(),
+            species: species.trim(),
+            region: region.trim(),
+            province: province.trim(),
+            location_text: locationText.trim(),
+            event_date: eventDate,
+            description: description.trim() || null,
+            photo_urls: [uploadedPhotoUrl],
+            contact_email: contactEmail.trim(),
+            contact_phone: contactPhone.trim() || null,
+            contact_mode: contactMode,
+            consent,
+            lat: coords.lat,
+            lng: coords.lng,
+            turnstileToken,
+          }),
         }),
-      });
+        45000,
+        "Creazione annuncio troppo lenta o non completata. Riprova."
+      );
 
       const data = await res.json().catch(() => ({}));
 
@@ -185,12 +230,21 @@ export default function NuovoSmarrimentoClient() {
       setPhoto(null);
       setPhotoPreview(null);
       setTurnstileToken(null);
+      setStage("idle");
     } catch (error: any) {
       setResultMsg(error?.message || "Errore di rete o server.");
+      setStage("idle");
     } finally {
       setLoading(false);
     }
   }
+
+  const submitLabel =
+    stage === "uploading-photo"
+      ? "Caricamento foto..."
+      : stage === "creating-report"
+      ? "Pubblicazione..."
+      : "Invia e verifica email";
 
   return (
     <div className="mx-auto w-full max-w-2xl px-4 py-8">
@@ -228,13 +282,13 @@ export default function NuovoSmarrimentoClient() {
           Foto animale
           <input
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/png,image/webp,image/gif"
             onChange={(e) => onPhotoChange(e.target.files?.[0] || null)}
             className="block w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-100 file:px-3 file:py-2 file:text-sm file:font-medium"
             required
           />
           <span className="text-xs font-normal text-zinc-500">
-            La foto è obbligatoria: aiuta moltissimo il riconoscimento.
+            Usa una foto JPG, PNG o WEBP. Su iPhone evita HEIC/HEIF.
           </span>
         </label>
 
@@ -387,11 +441,7 @@ export default function NuovoSmarrimentoClient() {
           disabled={!canSubmit}
           className="h-11 rounded-xl bg-black text-sm font-semibold text-white disabled:opacity-60"
         >
-          {loading
-            ? "Pubblicazione..."
-            : uploadingPhoto
-            ? "Caricamento foto..."
-            : "Invia e verifica email"}
+          {submitLabel}
         </button>
 
         {resultMsg ? (
