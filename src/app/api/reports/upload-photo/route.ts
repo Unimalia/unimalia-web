@@ -16,6 +16,11 @@ const ALLOWED_MIME_TYPES = new Set([
   "image/gif",
 ]);
 
+const EXPLICITLY_UNSUPPORTED_IOS_TYPES = new Set([
+  "image/heic",
+  "image/heif",
+]);
+
 function extFromFileName(name: string) {
   const n = (name || "").toLowerCase();
   const m = n.match(/\.([a-z0-9]+)$/);
@@ -33,7 +38,7 @@ export async function POST(req: Request) {
 
     if (!supabaseUrl || !serviceKey) {
       return NextResponse.json(
-        { error: "Missing Supabase env vars" },
+        { error: "Configurazione Supabase mancante." },
         { status: 500 }
       );
     }
@@ -42,19 +47,31 @@ export async function POST(req: Request) {
     const file = form.get("file") as File | null;
 
     if (!file) {
-      return NextResponse.json({ error: "Missing file" }, { status: 400 });
+      return NextResponse.json({ error: "File mancante." }, { status: 400 });
     }
 
-    if (!ALLOWED_MIME_TYPES.has(file.type || "")) {
+    const mime = String(file.type || "").toLowerCase();
+
+    if (EXPLICITLY_UNSUPPORTED_IOS_TYPES.has(mime)) {
       return NextResponse.json(
-        { error: "Formato file non valido" },
+        {
+          error:
+            "La foto selezionata è in formato HEIC/HEIF (tipico di iPhone) e al momento non è supportata. Salva o esporta la foto come JPG/PNG e riprova.",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (!ALLOWED_MIME_TYPES.has(mime)) {
+      return NextResponse.json(
+        { error: "Formato file non valido. Usa JPG, PNG, WEBP o GIF." },
         { status: 400 }
       );
     }
 
     if (file.size <= 0 || file.size > MAX_FILE_SIZE_BYTES) {
       return NextResponse.json(
-        { error: "File troppo grande (max 8MB)" },
+        { error: "File troppo grande (max 8 MB)." },
         { status: 400 }
       );
     }
@@ -75,7 +92,7 @@ export async function POST(req: Request) {
       .from(BUCKET)
       .upload(path, buffer, {
         upsert: false,
-        contentType: file.type || "image/jpeg",
+        contentType: mime || "image/jpeg",
         cacheControl: "3600",
       });
 
@@ -88,7 +105,7 @@ export async function POST(req: Request) {
 
     if (!publicUrl) {
       return NextResponse.json(
-        { error: "Uploaded but public URL not available" },
+        { error: "Foto caricata ma URL pubblico non disponibile." },
         { status: 500 }
       );
     }
@@ -97,7 +114,7 @@ export async function POST(req: Request) {
   } catch (e: any) {
     console.error("REPORT PHOTO UPLOAD ERROR:", e);
     return NextResponse.json(
-      { error: e?.message || "Server upload error" },
+      { error: e?.message || "Errore server durante upload foto." },
       { status: 500 }
     );
   }
