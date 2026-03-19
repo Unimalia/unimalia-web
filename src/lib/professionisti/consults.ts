@@ -543,7 +543,7 @@ export async function getProfessionalConsultDetail(id: string) {
 
   const { data: animal, error: animalError } = await admin
     .from("animals")
-    .select("id,name,species,breed,sex,birth_date,owner_id")
+    .select("id,name,species,breed,sex,birth_date,owner_id,microchip,weight_kg,allergies")
     .eq("id", consult.animal_id)
     .maybeSingle();
 
@@ -618,7 +618,6 @@ export async function getProfessionalConsultDetail(id: string) {
     animal: animal
       ? {
           ...animal,
-          microchip: null,
           owner_name: null,
           owner_email: null,
         }
