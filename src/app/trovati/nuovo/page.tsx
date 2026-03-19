@@ -42,6 +42,7 @@ export default function NuovoTrovatoPage() {
 
   function onPhotoChange(file: File | null) {
     setPhoto(file);
+    setResultMsg(null);
 
     if (!file) {
       setPhotoPreview(null);
@@ -180,25 +181,63 @@ export default function NuovoTrovatoPage() {
     }
   }
 
+  const isFound = type === "found";
+
   return (
     <div className="mx-auto w-full max-w-2xl px-4 py-8">
-      <h1 className="text-2xl font-extrabold text-zinc-900">Segnala animale trovato / avvistato</h1>
+      <h1 className="text-2xl font-extrabold text-zinc-900">
+        Segnala animale trovato / avvistato
+      </h1>
       <p className="mt-2 text-sm text-zinc-600">
-        Inserisci i dati essenziali per aiutare a far tornare un animale a casa.
+        Scegli prima il tipo di segnalazione. Il contatto resta protetto, come negli smarrimenti.
       </p>
 
       <form onSubmit={onSubmit} className="mt-6 grid gap-4">
-        <label className="grid gap-2 text-sm font-semibold text-zinc-800">
-          Tipo segnalazione
-          <select
-            value={type}
-            onChange={(e) => setType(e.target.value as ReportType)}
-            className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm font-medium"
+        <div className="grid gap-3 sm:grid-cols-2">
+          <button
+            type="button"
+            onClick={() => setType("found")}
+            className={`rounded-2xl border p-4 text-left transition ${
+              isFound
+                ? "border-zinc-900 bg-zinc-900 text-white"
+                : "border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50"
+            }`}
           >
-            <option value="found">Animale trovato</option>
-            <option value="sighted">Animale avvistato</option>
-          </select>
-        </label>
+            <div className="text-sm font-semibold">Animale trovato</div>
+            <div className={`mt-1 text-xs ${isFound ? "text-zinc-200" : "text-zinc-600"}`}>
+              Hai recuperato l’animale oppure sai esattamente dove si trova.
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setType("sighted")}
+            className={`rounded-2xl border p-4 text-left transition ${
+              !isFound
+                ? "border-zinc-900 bg-zinc-900 text-white"
+                : "border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50"
+            }`}
+          >
+            <div className="text-sm font-semibold">Animale avvistato</div>
+            <div className={`mt-1 text-xs ${!isFound ? "text-zinc-200" : "text-zinc-600"}`}>
+              Lo hai visto, ma non lo hai recuperato.
+            </div>
+          </button>
+        </div>
+
+        <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-700">
+          {isFound ? (
+            <>
+              <span className="font-semibold text-zinc-900">Animale trovato:</span> descrivi dove si trova,
+              se è al sicuro e qualsiasi dettaglio utile. La foto è facoltativa ma molto consigliata.
+            </>
+          ) : (
+            <>
+              <span className="font-semibold text-zinc-900">Animale avvistato:</span> segnala comunque anche senza
+              foto. Più sono precisi luogo, orario e direzione, meglio è.
+            </>
+          )}
+        </div>
 
         <label className="grid gap-2 text-sm font-semibold text-zinc-800">
           Nome animale (se noto)
@@ -224,13 +263,18 @@ export default function NuovoTrovatoPage() {
         </label>
 
         <label className="grid gap-2 text-sm font-semibold text-zinc-800">
-          Foto (opzionale)
+          Foto (facoltativa)
           <input
             type="file"
             accept="image/*"
             onChange={(e) => onPhotoChange(e.target.files?.[0] || null)}
             className="block w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-100 file:px-3 file:py-2 file:text-sm file:font-medium"
           />
+          <span className="text-xs font-normal text-zinc-500">
+            {isFound
+              ? "Molto utile per aiutare il riconoscimento, ma non obbligatoria."
+              : "Facoltativa. Se non hai foto, pubblica comunque l’avvistamento."}
+          </span>
         </label>
 
         {photoPreview ? (
@@ -302,7 +346,11 @@ export default function NuovoTrovatoPage() {
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Dove l’hai visto, se è in sicurezza, se ha collare, condizioni apparenti..."
+            placeholder={
+              isFound
+                ? "Dove si trova, se è in sicurezza, se ha collare, condizioni apparenti..."
+                : "Dove l’hai visto, in che direzione andava, orario, particolari utili..."
+            }
             className="min-h-[100px] w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm"
           />
         </label>
