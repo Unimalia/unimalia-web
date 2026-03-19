@@ -203,6 +203,26 @@ export default function AnimaleSmarritoCosaFarePage() {
             </ol>
           </Section>
 
+          <Section title="Come aiuta UNIMALIA contro la frammentazione degli smarrimenti online">
+            <p>
+              Quando un animale si perde, le informazioni finiscono spesso sparse tra
+              gruppi Facebook, chat, bacheche locali, portali e messaggi privati.
+              Questo crea confusione, duplicazioni e perdita di tempo proprio quando
+              servirebbe il massimo ordine.
+            </p>
+            <p>
+              UNIMALIA nasce anche per ridurre questa frammentazione: puoi creare qui
+              una scheda di smarrimento completa, ordinata e già pronta da usare come
+              base per tutte le altre pubblicazioni.
+            </p>
+            <p>
+              In pratica, compili una volta sola le informazioni essenziali e poi puoi
+              copiarle e riutilizzarle dove vuoi. In questo senso UNIMALIA può diventare
+              un vero ponte tra i diversi canali online e un punto unico di riferimento
+              per gestire meglio il caso.
+            </p>
+          </Section>
+
           <Section title="Come aiuta UNIMALIA">
             <p>
               UNIMALIA non sostituisce i canali ufficiali di identificazione, ma aiuta
@@ -213,6 +233,7 @@ export default function AnimaleSmarritoCosaFarePage() {
               <li>puoi raccogliere i dati essenziali in una scheda ordinata</li>
               <li>puoi pubblicare uno smarrimento in modo più chiaro</li>
               <li>puoi aggiornare più facilmente lo stato del caso</li>
+              <li>puoi usare la scheda come base pronta da condividere altrove</li>
               <li>
                 puoi rendere più immediata la consultazione delle informazioni utili
               </li>
@@ -271,12 +292,14 @@ export default function AnimaleSmarritoCosaFarePage() {
               </Link>
 
               <Link
-                href="/identita"
+                href="/identita-animale/cos-e-identita-animale-digitale"
                 className="rounded-2xl border border-zinc-200 bg-zinc-50 p-5 transition hover:bg-zinc-100"
               >
-                <p className="text-lg font-semibold text-zinc-900">Identità animale</p>
+                <p className="text-lg font-semibold text-zinc-900">
+                  Cos’è l’identità animale digitale
+                </p>
                 <p className="mt-2 text-sm text-zinc-600">
-                  Accedi all’area dedicata all’identità digitale animale.
+                  Guida dedicata al significato e all’utilità dell’identità digitale animale.
                 </p>
               </Link>
             </div>
