@@ -378,7 +378,7 @@ export async function sendOwnerAnimalUpdateEmail(
   `;
 
   const fromEmail =
-    process.env.RESEND_FROM_EMAIL?.trim() || "UNIMALIA <onboarding@resend.dev>";
+    process.env.RESEND_FROM_EMAIL?.trim() || "UNIMALIA <no-reply@unimalia.it>";
 
   const emailResult = await resend.emails.send({
     from: fromEmail,
