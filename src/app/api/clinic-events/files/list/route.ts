@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireOwnerOrGrant } from "@/lib/server/requireOwnerOrGrant";
 import { writeAudit } from "@/lib/server/audit";
 
@@ -17,10 +18,13 @@ function isUuid(value: string) {
 
 export async function GET(req: Request) {
   const token = getBearerToken(req);
-  if (!token) return NextResponse.json({ error: "Missing Bearer token" }, { status: 401 });
+  if (!token) {
+    return NextResponse.json({ error: "Missing Bearer token" }, { status: 401 });
+  }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
   if (!supabaseUrl || !supabaseAnon) {
     return NextResponse.json(
       { error: "Server misconfigured (Supabase env missing)" },
@@ -32,9 +36,14 @@ export async function GET(req: Request) {
     global: { headers: { Authorization: `Bearer ${token}` } },
   });
 
+  const admin = supabaseAdmin();
+
   const { data: userData, error: userErr } = await supabase.auth.getUser(token);
   const user = userData?.user;
-  if (userErr || !user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  if (userErr || !user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   const url = new URL(req.url);
   const eventId = (url.searchParams.get("eventId") || "").trim();
@@ -47,7 +56,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "eventId invalid" }, { status: 400 });
   }
 
-  const { data: ev, error: evErr } = await supabase
+  const { data: ev, error: evErr } = await admin
     .from("animal_clinic_events")
     .select("id, animal_id, status")
     .eq("id", eventId)
@@ -58,7 +67,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Event not found" }, { status: 404 });
   }
 
-  const animalId = (ev as any).animal_id as string;
+  const animalId = String(ev.animal_id);
 
   const grant = await requireOwnerOrGrant(supabase, user.id, animalId, "read");
   if (!grant.ok) {
@@ -72,10 +81,11 @@ export async function GET(req: Request) {
       result: "denied",
       reason: grant.reason,
     });
+
     return NextResponse.json({ error: grant.reason }, { status: 403 });
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await admin
     .from("animal_clinic_event_files")
     .select("id, event_id, animal_id, path, filename, mime, size, created_by, created_at")
     .eq("event_id", eventId)
@@ -93,6 +103,7 @@ export async function GET(req: Request) {
       result: "error",
       reason: error.message,
     });
+
     return NextResponse.json({ error: error.message || "Query failed" }, { status: 400 });
   }
 

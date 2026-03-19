@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireOwnerOrGrant } from "@/lib/server/requireOwnerOrGrant";
 import { writeAudit } from "@/lib/server/audit";
 
@@ -17,10 +18,13 @@ function isUuid(value: string) {
 
 export async function GET(req: Request) {
   const token = getBearerToken(req);
-  if (!token) return NextResponse.json({ error: "Missing Bearer token" }, { status: 401 });
+  if (!token) {
+    return NextResponse.json({ error: "Missing Bearer token" }, { status: 401 });
+  }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
   if (!supabaseUrl || !supabaseAnon) {
     return NextResponse.json(
       { error: "Server misconfigured (Supabase env missing)" },
@@ -32,9 +36,14 @@ export async function GET(req: Request) {
     global: { headers: { Authorization: `Bearer ${token}` } },
   });
 
+  const admin = supabaseAdmin();
+
   const { data: userData, error: userErr } = await supabase.auth.getUser(token);
   const user = userData?.user;
-  if (userErr || !user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  if (userErr || !user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   const url = new URL(req.url);
   const fileId = (url.searchParams.get("fileId") || "").trim();
@@ -47,7 +56,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "fileId invalid" }, { status: 400 });
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await admin
       .from("animal_clinic_event_files")
       .select("id, animal_id, event_id, path, filename")
       .eq("id", fileId)
@@ -59,7 +68,7 @@ export async function GET(req: Request) {
 
     fileRow = data;
   } else if (pathParam) {
-    const { data, error } = await supabase
+    const { data, error } = await admin
       .from("animal_clinic_event_files")
       .select("id, animal_id, event_id, path, filename")
       .eq("path", pathParam)
@@ -74,7 +83,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "fileId or path required" }, { status: 400 });
   }
 
-  const animalId = String(fileRow.animal_id || "");
+  const animalId = String(fileRow.animal_id);
 
   const grant = await requireOwnerOrGrant(supabase, user.id, animalId, "read");
   if (!grant.ok) {
@@ -88,10 +97,11 @@ export async function GET(req: Request) {
       result: "denied",
       reason: grant.reason,
     });
+
     return NextResponse.json({ error: grant.reason }, { status: 403 });
   }
 
-  const { data, error } = await supabase.storage
+  const { data, error } = await admin.storage
     .from("clinic-event-files")
     .createSignedUrl(fileRow.path, 60);
 
@@ -107,6 +117,7 @@ export async function GET(req: Request) {
       result: "error",
       reason: error?.message || "signed url failed",
     });
+
     return NextResponse.json({ error: "Impossibile generare link download." }, { status: 500 });
   }
 
