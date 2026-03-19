@@ -269,6 +269,50 @@ function normalizeChip(raw?: string | null) {
   return String(raw || "").replace(/\s+/g, "").trim();
 }
 
+function getRapidItemDisplay(item: unknown): { eventDate: string | null; text: string } {
+  if (!item) {
+    return { eventDate: null, text: "" };
+  }
+
+  if (typeof item === "string") {
+    return { eventDate: null, text: item };
+  }
+
+  if (typeof item === "object") {
+    const obj = item as Record<string, unknown>;
+    const raw =
+      obj.raw && typeof obj.raw === "object"
+        ? (obj.raw as Record<string, unknown>)
+        : null;
+
+    const eventDate =
+      (typeof obj.event_date === "string" ? obj.event_date : null) ??
+      (typeof obj.date === "string" ? obj.date : null) ??
+      (raw && typeof raw.event_date === "string" ? raw.event_date : null) ??
+      null;
+
+    const title =
+      (typeof obj.title === "string" ? obj.title : null) ??
+      (raw && typeof raw.title === "string" ? raw.title : null) ??
+      null;
+
+    const description =
+      (typeof obj.description === "string" ? obj.description : null) ??
+      (raw && typeof raw.description === "string" ? raw.description : null) ??
+      null;
+
+    const text =
+      title ||
+      description ||
+      (typeof obj.text === "string" ? obj.text : "") ||
+      "";
+
+    return { eventDate, text };
+  }
+
+  return { eventDate: null, text: "" };
+}
+
 export default function ProfessionistiRichiestaDettaglioPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -455,25 +499,13 @@ export default function ProfessionistiRichiestaDettaglioPage() {
           ? data.quickSummary.allergies.slice(0, 3)
           : [],
         activeTherapies: Array.isArray(data.quickSummary.activeTherapies)
-          ? data.quickSummary.activeTherapies.slice(0, 3).map((text) => ({
-              title: text,
-              description: text,
-              event_date: null,
-            }))
+          ? data.quickSummary.activeTherapies.slice(0, 3)
           : [],
         lastTherapies: Array.isArray(data.quickSummary.lastTherapies)
-          ? data.quickSummary.lastTherapies.slice(0, 3).map((text) => ({
-              title: text,
-              description: text,
-              event_date: null,
-            }))
+          ? data.quickSummary.lastTherapies.slice(0, 3)
           : [],
         chronicPathologies: Array.isArray(data.quickSummary.chronicPathologies)
-          ? data.quickSummary.chronicPathologies.slice(0, 3).map((text) => ({
-              title: text,
-              description: text,
-              event_date: null,
-            }))
+          ? data.quickSummary.chronicPathologies.slice(0, 3)
           : [],
         nextRecall: data.quickSummary.nextRecall,
         latestVisit: data.quickSummary.latestVisit,
@@ -628,12 +660,7 @@ export default function ProfessionistiRichiestaDettaglioPage() {
       age: animalAge || "—",
       weight: animalWeight || "—",
       bloodType: bloodType || "Non rilevato",
-      sterilizationStatus:
-        data?.animal?.sterilized === true
-          ? "Sterilizzato / castrato"
-          : data?.animal?.sterilized === false
-            ? "Non sterilizzato / non castrato"
-            : "—",
+      sterilizationStatus: "—",
       allergies: allergies.slice(0, 3),
       activeTherapies: activeTherapies.slice(0, 3),
       lastTherapies,
@@ -927,7 +954,7 @@ export default function ProfessionistiRichiestaDettaglioPage() {
           <div>
             <h2 className="text-lg font-semibold text-slate-900">Stato clinico rapido</h2>
             <p className="text-sm text-slate-500">
-              Riepilogo dinamico derivato dagli eventi condivisi.
+              Riepilogo dinamico derivato dalla cartella clinica e dagli eventi condivisi.
             </p>
           </div>
         </div>
@@ -947,6 +974,10 @@ export default function ProfessionistiRichiestaDettaglioPage() {
               <div>
                 <span className="font-medium">Gruppo sanguigno:</span> {rapidClinicalState.bloodType}
               </div>
+              <div>
+                <span className="font-medium">Sterilizzazione:</span>{" "}
+                {rapidClinicalState.sterilizationStatus}
+              </div>
             </div>
           </div>
 
@@ -956,15 +987,17 @@ export default function ProfessionistiRichiestaDettaglioPage() {
             </div>
             <div className="mt-2 text-sm text-slate-800">
               {rapidClinicalState.allergies.length > 0 ? (
-                rapidClinicalState.allergies.map((item, index) => (
-                  <div key={index}>
-                    {typeof item === "string"
-                      ? item
-                      : item.title || item.description || "Allergia registrata"}
-                  </div>
-                ))
+                rapidClinicalState.allergies.map((item, index) => {
+                  const normalized = getRapidItemDisplay(item);
+                  return (
+                    <div key={index}>
+                      {normalized.eventDate ? `${formatDate(normalized.eventDate)} · ` : ""}
+                      {normalized.text || "Allergia registrata"}
+                    </div>
+                  );
+                })
               ) : (
-                <div className="text-slate-500">Nessuna evidenza negli eventi condivisi</div>
+                <div className="text-slate-500">Nessuna evidenza disponibile</div>
               )}
             </div>
           </div>
@@ -975,9 +1008,15 @@ export default function ProfessionistiRichiestaDettaglioPage() {
             </div>
             <div className="mt-2 text-sm text-slate-800">
               {rapidClinicalState.activeTherapies.length > 0 ? (
-                rapidClinicalState.activeTherapies.map((item, index) => (
-                  <div key={index}>{item.title || item.description || "Terapia attiva"}</div>
-                ))
+                rapidClinicalState.activeTherapies.map((item, index) => {
+                  const normalized = getRapidItemDisplay(item);
+                  return (
+                    <div key={index}>
+                      {normalized.eventDate ? `${formatDate(normalized.eventDate)} · ` : ""}
+                      {normalized.text || "Terapia attiva"}
+                    </div>
+                  );
+                })
               ) : (
                 <div className="text-slate-500">Nessuna terapia attiva rilevata</div>
               )}
@@ -990,12 +1029,15 @@ export default function ProfessionistiRichiestaDettaglioPage() {
             </div>
             <div className="mt-2 text-sm text-slate-800">
               {rapidClinicalState.lastTherapies.length > 0 ? (
-                rapidClinicalState.lastTherapies.map((item, index) => (
-                  <div key={index}>
-                    {item.event_date ? `${formatDate(item.event_date)} · ` : ""}
-                    {item.title || item.description || "Terapia"}
-                  </div>
-                ))
+                rapidClinicalState.lastTherapies.map((item, index) => {
+                  const normalized = getRapidItemDisplay(item);
+                  return (
+                    <div key={index}>
+                      {normalized.eventDate ? `${formatDate(normalized.eventDate)} · ` : ""}
+                      {normalized.text || "Terapia"}
+                    </div>
+                  );
+                })
               ) : (
                 <div className="text-slate-500">Nessuna terapia recente</div>
               )}
@@ -1008,9 +1050,15 @@ export default function ProfessionistiRichiestaDettaglioPage() {
             </div>
             <div className="mt-2 text-sm text-slate-800">
               {rapidClinicalState.chronicPathologies.length > 0 ? (
-                rapidClinicalState.chronicPathologies.map((item, index) => (
-                  <div key={index}>{item.title || item.description || "Patologia cronica"}</div>
-                ))
+                rapidClinicalState.chronicPathologies.map((item, index) => {
+                  const normalized = getRapidItemDisplay(item);
+                  return (
+                    <div key={index}>
+                      {normalized.eventDate ? `${formatDate(normalized.eventDate)} · ` : ""}
+                      {normalized.text || "Patologia cronica"}
+                    </div>
+                  );
+                })
               ) : (
                 <div className="text-slate-500">Nessuna patologia cronica rilevata</div>
               )}
@@ -1023,7 +1071,7 @@ export default function ProfessionistiRichiestaDettaglioPage() {
             </div>
             <div className="mt-2 text-sm text-slate-800">
               {rapidClinicalState.nextRecall ? (
-                <div>{rapidClinicalState.nextRecall}</div>
+                <div>{extractText(rapidClinicalState.nextRecall) || "Ricontrollo"}</div>
               ) : (
                 <div className="text-slate-500">Nessun ricontrollo futuro rilevato</div>
               )}
@@ -1036,16 +1084,7 @@ export default function ProfessionistiRichiestaDettaglioPage() {
             </div>
             <div className="mt-2 text-sm text-slate-800">
               {rapidClinicalState.latestVisit ? (
-                typeof rapidClinicalState.latestVisit === "string" ? (
-                  <div>{rapidClinicalState.latestVisit}</div>
-                ) : (
-                  <div>
-                    {formatDate(rapidClinicalState.latestVisit.date)} ·{" "}
-                    {rapidClinicalState.latestVisit.title ||
-                      rapidClinicalState.latestVisit.description ||
-                      "Visita"}
-                  </div>
-                )
+                <div>{extractText(rapidClinicalState.latestVisit) || "Visita"}</div>
               ) : (
                 <div className="text-slate-500">Nessuna visita rilevata</div>
               )}
@@ -1058,16 +1097,7 @@ export default function ProfessionistiRichiestaDettaglioPage() {
             </div>
             <div className="mt-2 text-sm text-slate-800">
               {rapidClinicalState.latestVaccination ? (
-                typeof rapidClinicalState.latestVaccination === "string" ? (
-                  <div>{rapidClinicalState.latestVaccination}</div>
-                ) : (
-                  <div>
-                    {formatDate(rapidClinicalState.latestVaccination.date)} ·{" "}
-                    {rapidClinicalState.latestVaccination.title ||
-                      rapidClinicalState.latestVaccination.description ||
-                      "Vaccinazione"}
-                  </div>
-                )
+                <div>{extractText(rapidClinicalState.latestVaccination) || "Vaccinazione"}</div>
               ) : (
                 <div className="text-slate-500">Nessuna vaccinazione rilevata</div>
               )}
@@ -1080,16 +1110,7 @@ export default function ProfessionistiRichiestaDettaglioPage() {
             </div>
             <div className="mt-2 text-sm text-slate-800">
               {rapidClinicalState.vaccinationExpiry ? (
-                typeof rapidClinicalState.vaccinationExpiry === "string" ? (
-                  <div>{rapidClinicalState.vaccinationExpiry}</div>
-                ) : (
-                  <div>
-                    {formatDate(rapidClinicalState.vaccinationExpiry.date)} ·{" "}
-                    {rapidClinicalState.vaccinationExpiry.title ||
-                      rapidClinicalState.vaccinationExpiry.description ||
-                      "Richiamo / scadenza vaccinale"}
-                  </div>
-                )
+                <div>{extractText(rapidClinicalState.vaccinationExpiry) || "Richiamo vaccinale"}</div>
               ) : (
                 <div className="text-slate-500">
                   Nessuna scadenza vaccinale futura rilevata
