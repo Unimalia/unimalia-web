@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { requireOwnerOrGrant } from "@/lib/server/requireOwnerOrGrant";
 import { writeAudit } from "@/lib/server/audit";
+import { sendOwnerAnimalUpdateEmail } from "@/lib/email/sendOwnerAnimalUpdateEmail";
 
 function getBearerToken(req: Request) {
   const h = req.headers.get("authorization") || req.headers.get("Authorization") || "";
@@ -24,7 +25,10 @@ export async function POST(req: Request) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!supabaseUrl || !supabaseAnon) {
-    return NextResponse.json({ error: "Server misconfigured (Supabase env missing)" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Server misconfigured (Supabase env missing)" },
+      { status: 500 }
+    );
   }
 
   const supabase = createClient(supabaseUrl, supabaseAnon, {
@@ -57,7 +61,6 @@ export async function POST(req: Request) {
 
   const animalId = (current as any).animal_id as string;
 
-  // ✅ GRANT CHECK (WRITE)
   const grant = await requireOwnerOrGrant(supabase, user.id, animalId, "write");
   if (!grant.ok) {
     await writeAudit(supabase, {
@@ -125,6 +128,43 @@ export async function POST(req: Request) {
     previous_data: current,
     next_data: { ...(current as any), status: "void" },
   });
+
+  try {
+    const currentTitle =
+      typeof (current as any).title === "string" && (current as any).title.trim()
+        ? (current as any).title.trim()
+        : "Evento clinico annullato";
+
+    const currentDate =
+      typeof (current as any).event_date === "string" && (current as any).event_date.trim()
+        ? (current as any).event_date.trim()
+        : null;
+
+    const currentType =
+      typeof (current as any).type === "string" && (current as any).type.trim()
+        ? (current as any).type.trim()
+        : null;
+
+    const currentDescription =
+      typeof (current as any).description === "string" && (current as any).description.trim()
+        ? (current as any).description.trim()
+        : null;
+
+    const notesParts = [
+      "Questo evento clinico è stato annullato.",
+      currentType ? `Tipo: ${currentType}` : null,
+      currentDescription ? `Note originali: ${currentDescription}` : null,
+    ].filter(Boolean);
+
+    await sendOwnerAnimalUpdateEmail({
+      animalId,
+      eventTitle: `${currentTitle} (annullato)`,
+      eventDate: currentDate,
+      eventNotes: notesParts.join(" • "),
+    });
+  } catch (emailError) {
+    console.error("[CLINIC_EVENT_OWNER_EMAIL_DELETE]", emailError);
+  }
 
   await writeAudit(supabase, {
     req,

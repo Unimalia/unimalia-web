@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { requireOwnerOrGrant } from "@/lib/server/requireOwnerOrGrant";
 import { writeAudit } from "@/lib/server/audit";
+import { sendOwnerAnimalUpdateEmail } from "@/lib/email/sendOwnerAnimalUpdateEmail";
 
 function getBearerToken(req: Request) {
   const h = req.headers.get("authorization") || req.headers.get("Authorization") || "";
@@ -80,7 +81,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "eventDate must be YYYY-MM-DD" }, { status: 400 });
   }
 
-  // read current
   const { data: current, error: readErr } = await supabase
     .from("animal_clinic_events")
     .select("*")
@@ -93,7 +93,6 @@ export async function POST(req: Request) {
 
   const animalId = (current as any).animal_id as string;
 
-  // ✅ GRANT CHECK (WRITE)
   const grant = await requireOwnerOrGrant(supabase, user.id, animalId, "write");
   if (!grant.ok) {
     await writeAudit(supabase, {
@@ -109,7 +108,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: grant.reason }, { status: 403 });
   }
 
-  // regola X non modifica Y: pro può modificare owner + i propri (created_by)
   const source = (current as any).source as string;
   const createdBy = ((current as any).created_by as string | null) ?? null;
 
@@ -215,6 +213,17 @@ export async function POST(req: Request) {
     previous_data: current,
     next_data: { ...current, ...updateData },
   });
+
+  try {
+    await sendOwnerAnimalUpdateEmail({
+      animalId,
+      eventTitle: title || "Evento clinico aggiornato",
+      eventDate: eventDate || null,
+      eventNotes: description || null,
+    });
+  } catch (emailError) {
+    console.error("[CLINIC_EVENT_OWNER_EMAIL_UPDATE]", emailError);
+  }
 
   const after = {
     title: (updated as any).title,
