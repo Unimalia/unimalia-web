@@ -3,6 +3,7 @@ import "server-only";
 import { createServerSupabaseClient, supabaseAdmin } from "@/lib/supabase/server";
 import { getProfessionalOrgId } from "@/lib/professionisti/org";
 import { hasActiveGrantForAnimal } from "@/lib/professionisti/grants";
+import { buildClinicalQuickSummary } from "@/lib/clinic/quickSummary";
 
 export type ConsultBox = "received" | "sent" | "archive";
 export type ConsultStatus =
@@ -543,7 +544,7 @@ export async function getProfessionalConsultDetail(id: string) {
 
   const { data: animal, error: animalError } = await admin
     .from("animals")
-    .select("id,name,species,breed,sex,birth_date,owner_id")
+    .select("id,name,species,breed,sex,birth_date,owner_id,chip_number,sterilized")
     .eq("id", consult.animal_id)
     .maybeSingle();
 
@@ -560,12 +561,22 @@ export async function getProfessionalConsultDetail(id: string) {
 
   const { data: events, error: eventsError } = await admin
     .from("animal_clinic_events")
-    .select("id,event_date,type,title,description,visibility,status,priority,created_at,meta,weight_kg")
+    .select("id,event_date,type,title,description,visibility,status,priority,created_at,meta")
     .in("id", eventIds.length ? eventIds : ["00000000-0000-0000-0000-000000000000"])
     .order("event_date", { ascending: false })
     .order("created_at", { ascending: false });
 
   if (eventsError) throw new Error(eventsError.message);
+
+  const { data: quickSummaryEvents, error: quickSummaryEventsError } = await admin
+    .from("animal_clinic_events")
+    .select("id,event_date,type,title,description,visibility,status,priority,created_at,meta")
+    .eq("animal_id", consult.animal_id)
+    .neq("status", "void")
+    .order("event_date", { ascending: false })
+    .order("created_at", { ascending: false });
+
+  if (quickSummaryEventsError) throw new Error(quickSummaryEventsError.message);
 
   const { data: files, error: filesError } = await admin
     .from("animal_clinic_event_files")
@@ -612,17 +623,25 @@ export async function getProfessionalConsultDetail(id: string) {
     filesByMessage[file.message_id].push(file);
   }
 
+  const normalizedAnimal = animal
+    ? {
+        ...animal,
+        microchip: null,
+        owner_name: null,
+        owner_email: null,
+      }
+    : null;
+
+  const quickSummary = buildClinicalQuickSummary({
+    animal: normalizedAnimal,
+    events: quickSummaryEvents ?? [],
+  });
+
   return {
     consult: normalizeStatus(consult),
     currentProfessionalId: ctx.professional.id,
-    animal: animal
-      ? {
-          ...animal,
-          microchip: null,
-          owner_name: null,
-          owner_email: null,
-        }
-      : null,
+    animal: normalizedAnimal,
+    quickSummary,
     events: (events ?? []).map((event) => ({
       ...event,
       files: filesByEvent[event.id] ?? [],

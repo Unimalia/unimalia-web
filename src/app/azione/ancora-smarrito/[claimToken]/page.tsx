@@ -12,9 +12,10 @@ function addDaysIso(days: number) {
 export default async function AncoraSmarritoPage({
   params,
 }: {
-  params: { claimToken: string };
+  params: Promise<{ claimToken: string }>;
 }) {
-  const token = params.claimToken;
+  const { claimToken } = await params;
+  const token = claimToken;
   const admin = supabaseAdmin();
 
   const { data: report, error: repErr } = await admin
