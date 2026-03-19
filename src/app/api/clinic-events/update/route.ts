@@ -217,9 +217,22 @@ export async function POST(req: Request) {
   try {
     await sendOwnerAnimalUpdateEmail({
       animalId,
+      action: "updated",
       eventTitle: title || "Evento clinico aggiornato",
       eventDate: eventDate || null,
       eventNotes: description || null,
+      eventType: type || null,
+      priority:
+        priority === "low" ||
+        priority === "normal" ||
+        priority === "high" ||
+        priority === "urgent"
+          ? priority
+          : null,
+      therapyStartDate: therapyStartDate ?? null,
+      therapyEndDate: therapyEndDate ?? null,
+      meta: nextMeta ?? null,
+      attachments: null,
     });
   } catch (emailError) {
     console.error("[CLINIC_EVENT_OWNER_EMAIL_UPDATE]", emailError);
