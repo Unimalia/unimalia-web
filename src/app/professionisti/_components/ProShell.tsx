@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ProfessionistiBrand } from "./ProfessionistiBrand";
+import ConsultsSidebarBadge from "./ConsultsSidebarBadge";
 import { supabase } from "@/lib/supabaseClient";
 
 function cx(...classes: Array<string | false | null | undefined>) {
@@ -17,7 +18,7 @@ function isActive(pathname: string, href: string) {
 
 type Item = {
   href: string;
-  label: string;
+  label: React.ReactNode;
   description?: string;
 };
 
@@ -44,7 +45,7 @@ function SideLink({
   onClick,
 }: {
   href: string;
-  label: string;
+  label: React.ReactNode;
   description?: string;
   onClick?: () => void;
 }) {
@@ -196,7 +197,12 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
       },
       {
         href: "/professionisti/richieste",
-        label: "Consulti",
+        label: (
+          <span className="inline-flex items-center">
+            <span>Consulti</span>
+            <ConsultsSidebarBadge />
+          </span>
+        ),
         description: "Consulti clinici ricevuti e inviati tra professionisti.",
       },
       {
@@ -231,7 +237,7 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
       <div className="flex flex-col gap-1">
         {items.map((it) => (
           <SideLink
-            key={`${it.href}:${it.label}`}
+            key={`${it.href}:${String(typeof it.label === "string" ? it.label : it.href)}`}
             href={it.href}
             label={it.label}
             description={it.description}
@@ -336,7 +342,7 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
               <div className="flex flex-col gap-1">
                 {items.map((it) => (
                   <SideLink
-                    key={`${it.href}:${it.label}:mobile`}
+                    key={`${it.href}:${String(typeof it.label === "string" ? it.label : it.href)}:mobile`}
                     href={it.href}
                     label={it.label}
                     description={it.description}
