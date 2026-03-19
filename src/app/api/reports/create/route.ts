@@ -199,9 +199,9 @@ export async function POST(req: Request) {
       );
     }
 
-    if (!Array.isArray(photo_urls) || photo_urls.length === 0) {
+    if (type === "lost" && (!Array.isArray(photo_urls) || photo_urls.length === 0)) {
       return NextResponse.json(
-        { error: "Carica almeno una foto." },
+        { error: "Per uno smarrimento è obbligatorio caricare almeno una foto." },
         { status: 400 }
       );
     }
