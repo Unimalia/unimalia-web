@@ -24,9 +24,13 @@ function getSupabaseAdmin() {
 }
 
 function isAuthorized(req: Request) {
-   return true;
-  
+  const expected = process.env.CRON_SECRET;
+  if (!expected) return false;
+
+  const got = req.headers.get("x-cron-secret");
+  return got === expected;
 }
+
 
 function utcTodayISODate() {
   const d = new Date();
