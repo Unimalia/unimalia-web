@@ -24,6 +24,7 @@ export default function ManageReportActions({
   const [resultMsg, setResultMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [loadingFound, setLoadingFound] = useState(false);
+  const [loadingCloseOther, setLoadingCloseOther] = useState(false);
 
   async function copyText(value: string, successMessage: string) {
     setResultMsg(null);
@@ -39,6 +40,7 @@ export default function ManageReportActions({
 
   async function markFound() {
     if (type !== "lost") return;
+
     const ok = window.confirm(
       "Confermi che l’animale è stato ritrovato e vuoi chiudere l’annuncio?"
     );
@@ -71,7 +73,45 @@ export default function ManageReportActions({
     }
   }
 
+  async function closeOther() {
+    if (type !== "lost") return;
+
+    const ok = window.confirm(
+      "Confermi di voler chiudere questo annuncio per un motivo diverso dal ritrovamento?"
+    );
+    if (!ok) return;
+
+    setLoadingCloseOther(true);
+    setResultMsg(null);
+    setErrorMsg(null);
+
+    try {
+      const res = await fetch("/api/reports/close-other", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setErrorMsg(data?.error || "Errore durante la chiusura dell’annuncio.");
+        return;
+      }
+
+      setResultMsg("✅ Annuncio chiuso correttamente.");
+      router.refresh();
+    } catch {
+      setErrorMsg("Errore di rete o server.");
+    } finally {
+      setLoadingCloseOther(false);
+    }
+  }
+
   const isClosedFound = status === "closed_found";
+  const isClosedOther = status === "closed_other";
+  const isExpired = status === "expired";
+  const isActive = status === "active";
 
   return (
     <div className="grid gap-4">
@@ -113,25 +153,44 @@ export default function ManageReportActions({
         <div className="rounded-2xl border border-zinc-200 bg-white p-5">
           <h3 className="text-lg font-semibold text-zinc-900">Stato annuncio</h3>
           <p className="mt-2 text-sm text-zinc-600">
-            Quando l’animale torna a casa, chiudi l’annuncio da qui.
+            Da qui puoi chiudere l’annuncio se l’animale è stato ritrovato oppure se non deve più restare online.
           </p>
 
-          <div className="mt-4">
-            {!isClosedFound && status === "active" ? (
-              <button
-                type="button"
-                onClick={markFound}
-                disabled={loadingFound}
-                className="inline-flex items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-60"
-              >
-                {loadingFound ? "Aggiornamento..." : "Segna come ritrovato"}
-              </button>
-            ) : (
-              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-                Questo annuncio risulta già chiuso / ritrovato.
-              </div>
-            )}
+          <div className="mt-4 flex flex-wrap gap-2">
+            {isActive ? (
+              <>
+                <button
+                  type="button"
+                  onClick={markFound}
+                  disabled={loadingFound || loadingCloseOther}
+                  className="inline-flex items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-60"
+                >
+                  {loadingFound ? "Aggiornamento..." : "Segna come ritrovato"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={closeOther}
+                  disabled={loadingFound || loadingCloseOther}
+                  className="inline-flex items-center justify-center rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50 disabled:opacity-60"
+                >
+                  {loadingCloseOther ? "Chiusura..." : "Chiudi annuncio"}
+                </button>
+              </>
+            ) : null}
           </div>
+
+          {!isActive ? (
+            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+              {isClosedFound
+                ? "Questo annuncio risulta già chiuso come ritrovato."
+                : isClosedOther
+                ? "Questo annuncio risulta già chiuso."
+                : isExpired
+                ? "Questo annuncio risulta scaduto."
+                : "Questo annuncio non è più attivo."}
+            </div>
+          ) : null}
         </div>
       ) : null}
 
