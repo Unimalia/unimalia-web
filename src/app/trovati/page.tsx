@@ -119,7 +119,7 @@ export default function TrovatiPage() {
         subtitle="Segnalazioni pubbliche attive di animali trovati o avvistati."
         backFallbackHref="/"
         boxed
-        actions={<ButtonPrimary href="/trovati/nuovo">Segnala animale trovato</ButtonPrimary>}
+        actions={<ButtonPrimary href="/trovati/nuovo">Segnala trovato / avvistato</ButtonPrimary>}
       >
         <div className="grid gap-4 sm:grid-cols-2">
           {Array.from({ length: 6 }).map((_, i) => (
@@ -139,7 +139,7 @@ export default function TrovatiPage() {
       subtitle="Animali trovati o avvistati da cittadini nella zona."
       backFallbackHref="/"
       boxed={false}
-      actions={<ButtonPrimary href="/trovati/nuovo">Segnala animale trovato</ButtonPrimary>}
+      actions={<ButtonPrimary href="/trovati/nuovo">Segnala trovato / avvistato</ButtonPrimary>}
     >
       <Card>
         <div className="space-y-4">
