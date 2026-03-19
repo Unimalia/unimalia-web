@@ -158,9 +158,18 @@ export async function POST(req: Request) {
 
     await sendOwnerAnimalUpdateEmail({
       animalId,
+      action: "deleted",
       eventTitle: `${currentTitle} (annullato)`,
       eventDate: currentDate,
       eventNotes: notesParts.join(" • "),
+      eventType: currentType,
+      priority:
+        typeof (current as any).priority === "string" ? (current as any).priority : null,
+      meta:
+        (current as any).meta && typeof (current as any).meta === "object"
+          ? (current as any).meta
+          : null,
+      attachments: null,
     });
   } catch (emailError) {
     console.error("[CLINIC_EVENT_OWNER_EMAIL_DELETE]", emailError);

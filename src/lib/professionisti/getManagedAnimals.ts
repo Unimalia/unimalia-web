@@ -53,66 +53,21 @@ async function getProfessionalRefs(userId: string) {
   return Array.from(refs).filter(Boolean);
 }
 
-function normalizeOwnerNameFromMetadata(metadata: Record<string, any> | null | undefined) {
-  if (!metadata || typeof metadata !== "object") return null;
+function buildOwnerName(profile: any): string | null {
+  if (!profile) return null;
 
-  const firstName =
-    typeof metadata.first_name === "string" ? metadata.first_name.trim() : "";
-  const lastName =
-    typeof metadata.last_name === "string" ? metadata.last_name.trim() : "";
   const fullName =
-    typeof metadata.full_name === "string" ? metadata.full_name.trim() : "";
-  const name =
-    typeof metadata.name === "string" ? metadata.name.trim() : "";
-  const givenName =
-    typeof metadata.given_name === "string" ? metadata.given_name.trim() : "";
-  const familyName =
-    typeof metadata.family_name === "string" ? metadata.family_name.trim() : "";
-
-  const combinedFirstLast = [firstName, lastName].filter(Boolean).join(" ").trim();
-  if (combinedFirstLast) return combinedFirstLast;
+    typeof profile.full_name === "string" ? profile.full_name.trim() : "";
 
   if (fullName) return fullName;
-  if (name) return name;
 
-  const combinedGivenFamily = [givenName, familyName].filter(Boolean).join(" ").trim();
-  if (combinedGivenFamily) return combinedGivenFamily;
+  const firstName =
+    typeof profile.first_name === "string" ? profile.first_name.trim() : "";
+  const lastName =
+    typeof profile.last_name === "string" ? profile.last_name.trim() : "";
 
-  return null;
-}
-
-async function getOwnerNamesMap(ownerIds: string[]) {
-  const admin = supabaseAdmin();
-  const ownerNames = new Map<string, string | null>();
-
-  for (const ownerId of ownerIds) {
-    if (!ownerId) continue;
-
-    try {
-      const { data, error } = await admin.auth.admin.getUserById(ownerId);
-
-      if (error) {
-        ownerNames.set(ownerId, null);
-        continue;
-      }
-
-      const user = data?.user;
-      const metadata = (user?.user_metadata ?? {}) as Record<string, any>;
-      const appMetadata = (user?.app_metadata ?? {}) as Record<string, any>;
-
-      const normalized =
-        normalizeOwnerNameFromMetadata(metadata) ||
-        normalizeOwnerNameFromMetadata(appMetadata) ||
-        (typeof user?.email === "string" ? user.email.trim() : null) ||
-        null;
-
-      ownerNames.set(ownerId, normalized);
-    } catch {
-      ownerNames.set(ownerId, null);
-    }
-  }
-
-  return ownerNames;
+  const combined = [firstName, lastName].filter(Boolean).join(" ").trim();
+  return combined || null;
 }
 
 export async function getManagedAnimals(userId: string): Promise<ManagedAnimalRow[]> {
@@ -194,11 +149,26 @@ export async function getManagedAnimals(userId: string): Promise<ManagedAnimalRo
     new Set(
       (animals ?? [])
         .map((row: any) => row.owner_id)
-        .filter((value: unknown): value is string => typeof value === "string" && value.length > 0)
+        .filter((v: unknown): v is string => typeof v === "string" && v.length > 0)
     )
   );
 
-  const ownerNamesMap = await getOwnerNamesMap(ownerIds);
+  const ownerNameById = new Map<string, string | null>();
+
+  if (ownerIds.length > 0) {
+    const { data: profilesById, error: profilesError } = await admin
+      .from("profiles")
+      .select("id, first_name, last_name, full_name")
+      .in("id", ownerIds);
+
+    if (profilesError) {
+      throw profilesError;
+    }
+
+    for (const profile of profilesById ?? []) {
+      ownerNameById.set(profile.id, buildOwnerName(profile));
+    }
+  }
 
   return (animals ?? []).map((row: any) => ({
     id: row.id,
@@ -211,6 +181,6 @@ export async function getManagedAnimals(userId: string): Promise<ManagedAnimalRo
     owner_claim_status: row.owner_claim_status ?? null,
     created_by_org_id: row.created_by_org_id ?? null,
     origin_org_id: row.origin_org_id ?? null,
-    owner_name: row.owner_id ? ownerNamesMap.get(row.owner_id) ?? null : null,
+    owner_name: row.owner_id ? ownerNameById.get(row.owner_id) ?? null : null,
   }));
 }
