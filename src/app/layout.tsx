@@ -5,7 +5,7 @@ import "./globals.css";
 import AppShell from "../_components/AppShell";
 
 const GA_MEASUREMENT_ID = "G-YE91HM8ZLW";
-const SITE_URL = "https://www.www.unimalia.it".replace("www.www", "www");
+const SITE_URL = "https://www.unimalia.it";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -14,7 +14,7 @@ export const metadata: Metadata = {
     template: "%s | UNIMALIA",
   },
   description:
-    "UNIMALIA è un ecosistema digitale per proteggere la vita dell’animale: identità digitale, smarrimenti e strumenti per proprietari e professionisti.",
+    "UNIMALIA è la piattaforma per identità digitale animale, smarrimenti, accessi clinici controllati, consulti veterinari e ricerca di professionisti del settore animale.",
   alternates: {
     canonical: "/",
   },
@@ -25,12 +25,12 @@ export const metadata: Metadata = {
   openGraph: {
     title: "UNIMALIA",
     description:
-      "Un ecosistema digitale per proteggere la vita dell’animale: identità digitale, smarrimenti e strumenti per proprietari e professionisti.",
+      "Piattaforma per identità digitale animale, smarrimenti, accessi clinici controllati, consulti veterinari e servizi per proprietari e professionisti.",
     url: SITE_URL,
     siteName: "UNIMALIA",
     images: [
       {
-        url: "/logo-512.png",
+        url: `${SITE_URL}/logo-512.png`,
         width: 512,
         height: 512,
         alt: "Logo UNIMALIA",
@@ -43,8 +43,8 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "UNIMALIA",
     description:
-      "Un ecosistema digitale per proteggere la vita dell’animale: identità digitale, smarrimenti e strumenti per proprietari e professionisti.",
-    images: ["/logo-512.png"],
+      "Piattaforma per identità digitale animale, smarrimenti, accessi clinici controllati, consulti veterinari e servizi per proprietari e professionisti.",
+    images: [`${SITE_URL}/logo-512.png`],
   },
 };
 
@@ -56,12 +56,27 @@ export default async function RootLayout({
   const headersList = await headers();
   const nonce = headersList.get("x-nonce") ?? undefined;
 
-  const orgJsonLd = {
+  const jsonLd = {
     "@context": "https://schema.org",
-    "@type": "Organization",
-    name: "UNIMALIA",
-    url: SITE_URL,
-    logo: `${SITE_URL}/logo-512.png`,
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": `${SITE_URL}/#organization`,
+        name: "UNIMALIA",
+        url: SITE_URL,
+        logo: `${SITE_URL}/logo-512.png`,
+      },
+      {
+        "@type": "WebSite",
+        "@id": `${SITE_URL}/#website`,
+        url: SITE_URL,
+        name: "UNIMALIA",
+        inLanguage: "it-IT",
+        publisher: {
+          "@id": `${SITE_URL}/#organization`,
+        },
+      },
+    ],
   };
 
   return (
@@ -70,7 +85,7 @@ export default async function RootLayout({
         <script
           nonce={nonce}
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
 
         <Script
