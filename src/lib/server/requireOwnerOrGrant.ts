@@ -45,6 +45,21 @@ async function resolveProfessionalRefs(userId: string) {
   return Array.from(refs).filter(Boolean);
 }
 
+function hasRequiredScope(grant: any, scope: Scope) {
+  if (scope === "read") {
+    return grant.scope_read === true || grant.scope_write === true || grant.scope_upload === true;
+  }
+
+  if (scope === "write") {
+    return grant.scope_write === true;
+  }
+
+  // upload: compatibilità retroattiva
+  // se un grant storico ha write=true ma upload=false/null,
+  // consideriamo comunque valido l'upload
+  return grant.scope_upload === true || grant.scope_write === true;
+}
+
 export async function requireOwnerOrGrant(
   supabase: SupabaseClient,
   userId: string,
@@ -66,9 +81,6 @@ export async function requireOwnerOrGrant(
   if ((animal as any).owner_id === userId) {
     return { ok: true, actor_org_id: null, mode: "owner" };
   }
-
-  const scopeCol =
-    scope === "read" ? "scope_read" : scope === "write" ? "scope_write" : "scope_upload";
 
   const { data: grants, error: gErr } = await admin
     .from("animal_access_grants")
@@ -96,7 +108,7 @@ export async function requireOwnerOrGrant(
       g.grantee_type === "user" &&
       g.grantee_id === userId &&
       isTimeOk(g) &&
-      g[scopeCol] === true
+      hasRequiredScope(g, scope)
   );
 
   if (userGrant) {
@@ -110,7 +122,7 @@ export async function requireOwnerOrGrant(
       g.grantee_type === "org" &&
       refs.includes(String(g.grantee_id)) &&
       isTimeOk(g) &&
-      g[scopeCol] === true
+      hasRequiredScope(g, scope)
   );
 
   if (orgGrant) {
