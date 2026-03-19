@@ -315,6 +315,50 @@ export default function HomePage() {
         </Container>
       </section>
 
+      <section className="mt-8 rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
+        <h2 className="text-xl font-bold text-zinc-900">Risposte rapide</h2>
+
+        <div className="mt-4 space-y-4 text-zinc-700">
+          <p>
+            <strong>Cosa fare subito se un animale si smarrisce?</strong>
+            <br />
+            Tornare nell’ultima zona vista, cercare con metodo e preparare subito una segnalazione
+            chiara con foto e posizione precisa.
+          </p>
+
+          <p>
+            <strong>Qual è la prima cosa da fare?</strong>
+            <br />
+            Tornare immediatamente sul punto in cui è stato visto l’ultima volta e controllare le
+            aree vicine.
+          </p>
+
+          <p>
+            <strong>Serve il microchip?</strong>
+            <br />
+            Il microchip è fondamentale per l’identificazione ufficiale, ma non sostituisce una
+            segnalazione chiara e aggiornata.
+          </p>
+
+          <p>
+            <strong>Come aiuta UNIMALIA?</strong>
+            <br />
+            Permette di creare una scheda completa dello smarrimento, già pronta da condividere
+            ovunque, riducendo la frammentazione online.
+          </p>
+        </div>
+      </section>
+
+      <section className="mt-6 rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
+        <h2 className="text-xl font-bold text-zinc-900">Cos’è uno smarrimento animale</h2>
+
+        <p className="mt-3 text-zinc-700">
+          Uno smarrimento animale è una situazione in cui un animale domestico si perde o si
+          allontana dal proprio proprietario, rendendo necessaria una ricerca immediata e una
+          segnalazione chiara per aumentare le possibilità di ritrovamento.
+        </p>
+      </section>
+
       <section className="bg-zinc-50">
         <Container>
           <div className="py-16 sm:py-20">
