@@ -1,9 +1,25 @@
 import "server-only";
-import { supabaseAdmin } from "@/lib/supabase/server";
+import { createServerSupabaseClient, supabaseAdmin } from "@/lib/supabase/server";
+
+async function getAuthenticatedUserId() {
+  const supabase = await createServerSupabaseClient();
+
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+
+  if (error || !user) {
+    return null;
+  }
+
+  return user.id;
+}
 
 async function resolveProfessionalRefs(userId: string) {
   const admin = supabaseAdmin();
   const refs = new Set<string>();
+
   refs.add(userId);
 
   const profileResult = await admin
@@ -40,17 +56,15 @@ async function resolveProfessionalRefs(userId: string) {
 }
 
 export async function hasActiveGrantForAnimal(animalId: string) {
+  const userId = await getAuthenticatedUserId();
+  if (!userId) return false;
+
   const admin = supabaseAdmin();
-
-  const { data: authUserResult, error: authUserError } = await admin.auth.getUser();
-  if (authUserError || !authUserResult?.user) {
-    return false;
-  }
-
-  const userId = authUserResult.user.id;
   const refs = await resolveProfessionalRefs(userId);
 
-  if (refs.length === 0) return false;
+  if (refs.length === 0) {
+    return false;
+  }
 
   const { data: animal, error: animalError } = await admin
     .from("animals")
@@ -62,7 +76,9 @@ export async function hasActiveGrantForAnimal(animalId: string) {
     throw animalError;
   }
 
-  if (!animal) return false;
+  if (!animal) {
+    return false;
+  }
 
   const createdOrOriginAccess =
     refs.includes(String(animal.created_by_org_id ?? "")) ||
@@ -91,13 +107,18 @@ export async function hasActiveGrantForAnimal(animalId: string) {
     const validFrom = g.valid_from ? new Date(g.valid_from).getTime() : 0;
     const validTo = g.valid_to ? new Date(g.valid_to).getTime() : Infinity;
 
-    if (now < validFrom) return false;
-    if (now > validTo) return false;
+    if (Number.isFinite(validFrom) && now < validFrom) return false;
+    if (Number.isFinite(validTo) && now > validTo) return false;
 
     if (!g.scope_read && !g.scope_write) return false;
 
-    if (g.grantee_type === "user" && g.grantee_id === userId) return true;
-    if (g.grantee_type === "org" && refs.includes(String(g.grantee_id))) return true;
+    if (g.grantee_type === "user" && g.grantee_id === userId) {
+      return true;
+    }
+
+    if (g.grantee_type === "org" && refs.includes(String(g.grantee_id))) {
+      return true;
+    }
 
     return false;
   });
