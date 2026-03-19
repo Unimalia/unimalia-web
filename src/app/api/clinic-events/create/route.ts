@@ -85,12 +85,18 @@ export async function POST(req: Request) {
     global: { headers: { Authorization: `Bearer ${token}` } },
   });
 
+  const admin = supabaseAdmin();
+
   const { data: userData, error: userErr } = await supabase.auth.getUser(token);
   const user = userData?.user;
-  if (userErr || !user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (userErr || !user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   const body = (await req.json().catch(() => null)) as Body | null;
-  if (!body) return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  if (!body) {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
 
   const animalId = (body.animalId || "").trim();
   if (!animalId) {
@@ -134,28 +140,28 @@ export async function POST(req: Request) {
       : "professional";
 
   const dateStr = (body.eventDate || "").trim();
-  if (!type || !title) return NextResponse.json({ error: "type/title required" }, { status: 400 });
+  if (!type || !title) {
+    return NextResponse.json({ error: "type/title required" }, { status: 400 });
+  }
   if (!dateStr || !isValidDateYYYYMMDD(dateStr)) {
     return NextResponse.json({ error: "eventDate must be YYYY-MM-DD" }, { status: 400 });
   }
 
-  const weightKg = parseWeightKg((body as any).weightKg);
-  const therapyStartDate = parseDateOnly((body as any).therapyStartDate);
-  const therapyEndDate = parseDateOnly((body as any).therapyEndDate);
+  const weightKg = parseWeightKg(body.weightKg);
+  const therapyStartDate = parseDateOnly(body.therapyStartDate);
+  const therapyEndDate = parseDateOnly(body.therapyEndDate);
 
   const vetSignature =
-    typeof (body as any).vetSignature === "string"
-      ? (body as any).vetSignature.trim() || null
-      : null;
+    typeof body.vetSignature === "string" ? body.vetSignature.trim() || null : null;
 
   const vetSignatureMemberId =
-    typeof (body as any).vetSignatureMemberId === "string"
-      ? (body as any).vetSignatureMemberId.trim() || null
+    typeof body.vetSignatureMemberId === "string"
+      ? body.vetSignatureMemberId.trim() || null
       : null;
 
   const priority =
-    ["low", "normal", "high", "urgent"].includes(String((body as any).priority || ""))
-      ? String((body as any).priority)
+    ["low", "normal", "high", "urgent"].includes(String(body.priority || ""))
+      ? String(body.priority)
       : null;
 
   const meta: Record<string, any> = {};
@@ -169,7 +175,7 @@ export async function POST(req: Request) {
     Object.assign(meta, incomingMeta);
   }
 
-  if (weightKg) meta.weight_kg = weightKg;
+  if (weightKg !== null) meta.weight_kg = weightKg;
   if (vetSignature) meta.created_by_member_label = vetSignature;
   if (vetSignatureMemberId) meta.created_by_member_id = vetSignatureMemberId;
   if (priority) meta.priority = priority;
@@ -180,7 +186,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { data, error } = await supabase
+    const { data, error } = await admin
       .from("animal_clinic_events")
       .insert({
         animal_id: animalId,
@@ -218,7 +224,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: error?.message || "Create failed" }, { status: 400 });
     }
 
-    await supabase.from("animal_clinic_event_audit").insert({
+    await admin.from("animal_clinic_event_audit").insert({
       event_id: data.id,
       animal_id: animalId,
       actor_user_id: user.id,
@@ -230,8 +236,6 @@ export async function POST(req: Request) {
     });
 
     try {
-      const admin = supabaseAdmin();
-
       const { data: animalRow, error: animalRowError } = await admin
         .from("animals")
         .select("id, name, owner_id")
@@ -266,8 +270,6 @@ export async function POST(req: Request) {
 
     if (type === "vaccine" && body.reminderEnabled && body.remindEmail !== false) {
       try {
-        const admin = supabaseAdmin();
-
         const { data: animalRow } = await admin
           .from("animals")
           .select("owner_id,name")
@@ -323,7 +325,7 @@ export async function POST(req: Request) {
       actor_org_id: grant.actor_org_id,
       action: "event.create",
       target_type: "event",
-      target_id: (data as any).id,
+      target_id: data.id,
       animal_id: animalId,
       result: "success",
     });
