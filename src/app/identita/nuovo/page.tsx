@@ -62,7 +62,7 @@ function withTimeout<T>(p: Promise<T>, ms: number, msg: string) {
   return Promise.race([p, timeout]).finally(() => clearTimeout(t));
 }
 
-async function compressImageToJpeg(file: File, maxSide = 1600, quality = 0.85): Promise<File> {
+async function compressImageToJpeg(file: File, maxSide = 2200, quality = 0.92): Promise<File> {
   const blobUrl = URL.createObjectURL(file);
   try {
     const img = await new Promise<HTMLImageElement>((resolve, reject) => {
@@ -355,7 +355,7 @@ function NuovoProfiloAnimalePageInner() {
       const wasAlreadySet = !!photoUrl;
 
       const compressed = await withTimeout(
-        compressImageToJpeg(file, 1600, 0.85),
+        compressImageToJpeg(file, 2200, 0.92),
         15000,
         "Compressione immagine bloccata (timeout 15s)."
       );
@@ -648,6 +648,18 @@ function NuovoProfiloAnimalePageInner() {
               <span className="truncate text-xs text-zinc-600">{selectedFileName}</span>
             ) : null}
           </div>
+
+          {photoUrl ? (
+            <div className="mt-2 overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-100 p-3">
+              <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white">
+                <img
+                  src={photoUrl}
+                  alt="Anteprima foto animale"
+                  className="h-64 w-full object-contain"
+                />
+              </div>
+            </div>
+          ) : null}
 
           {notice ? <p className="text-xs text-emerald-700">{notice}</p> : null}
 
