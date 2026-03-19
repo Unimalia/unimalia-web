@@ -26,12 +26,18 @@ const ALLOWED_MIME_TYPES = new Set([
 
 export async function POST(req: Request) {
   const token = getBearerToken(req);
-  if (!token) return NextResponse.json({ error: "Missing Bearer token" }, { status: 401 });
+  if (!token) {
+    return NextResponse.json({ error: "Missing Bearer token" }, { status: 401 });
+  }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
   if (!supabaseUrl || !supabaseAnon) {
-    return NextResponse.json({ error: "Server misconfigured (Supabase env missing)" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Server misconfigured (Supabase env missing)" },
+      { status: 500 }
+    );
   }
 
   const supabase = createClient(supabaseUrl, supabaseAnon, {
@@ -40,31 +46,41 @@ export async function POST(req: Request) {
 
   const { data: userData, error: userErr } = await supabase.auth.getUser(token);
   const user = userData?.user;
-  if (userErr || !user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  if (userErr || !user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   const form = await req.formData();
 
   const eventId = String(form.get("eventId") || "").trim();
   const files = form.getAll("files");
 
-  if (!eventId) return NextResponse.json({ error: "eventId required" }, { status: 400 });
+  if (!eventId) {
+    return NextResponse.json({ error: "eventId required" }, { status: 400 });
+  }
+
   if (!isUuid(eventId)) {
     return NextResponse.json({ error: "eventId invalid" }, { status: 400 });
   }
-  if (!files.length) return NextResponse.json({ error: "files required" }, { status: 400 });
 
-  // ✅ ricava animalId dall'evento (robusto, non dipende dal client)
+  if (!files.length) {
+    return NextResponse.json({ error: "files required" }, { status: 400 });
+  }
+
   const { data: ev, error: evErr } = await supabase
     .from("animal_clinic_events")
-    .select("id, animal_id")
+    .select("id, animal_id, status")
     .eq("id", eventId)
+    .neq("status", "void")
     .single();
 
-  if (evErr || !ev) return NextResponse.json({ error: "Event not found" }, { status: 404 });
+  if (evErr || !ev) {
+    return NextResponse.json({ error: "Event not found" }, { status: 404 });
+  }
 
-  const animalId = (ev as any).animal_id as string;
+  const animalId = (ev as { animal_id: string }).animal_id;
 
-  // ✅ GRANT CHECK (UPLOAD)
   const grant = await requireOwnerOrGrant(supabase, user.id, animalId, "upload");
   if (!grant.ok) {
     await writeAudit(supabase, {
@@ -77,34 +93,47 @@ export async function POST(req: Request) {
       result: "denied",
       reason: grant.reason,
     });
+
     return NextResponse.json({ error: grant.reason }, { status: 403 });
   }
 
   const bucket = "clinic-event-files";
-  const uploaded: any[] = [];
+  const uploaded: Array<{
+    id: string;
+    event_id: string;
+    animal_id: string;
+    path: string;
+    filename: string | null;
+    mime: string | null;
+    size: number | null;
+    created_by: string | null;
+    created_at: string;
+  }> = [];
 
-  for (const f of files) {
-    if (!(f instanceof File)) continue;
+  for (const entry of files) {
+    if (!(entry instanceof File)) continue;
 
-    if (f.size <= 0 || f.size > MAX_FILE_SIZE_BYTES) {
+    if (entry.size <= 0 || entry.size > MAX_FILE_SIZE_BYTES) {
       return NextResponse.json(
         { error: "File non valido o troppo grande (max 10 MB)" },
         { status: 400 }
       );
     }
 
-    if (f.type && !ALLOWED_MIME_TYPES.has(f.type)) {
-      return NextResponse.json(
-        { error: "Tipo file non consentito" },
-        { status: 400 }
-      );
+    if (entry.type && !ALLOWED_MIME_TYPES.has(entry.type)) {
+      return NextResponse.json({ error: "Tipo file non consentito" }, { status: 400 });
     }
 
-    const safeName = (f.name || "documento").replace(/[^\w.\-() ]+/g, "_").slice(0, 120);
+    const safeName = (entry.name || "documento")
+      .replace(/[^\w.\-() ]+/g, "_")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 120);
+
     const path = `${animalId}/${eventId}/${Date.now()}_${safeName}`;
 
-    const { error: upErr } = await supabase.storage.from(bucket).upload(path, f, {
-      contentType: f.type || undefined,
+    const { error: upErr } = await supabase.storage.from(bucket).upload(path, entry, {
+      contentType: entry.type || undefined,
       upsert: false,
     });
 
@@ -120,26 +149,31 @@ export async function POST(req: Request) {
         result: "error",
         reason: upErr.message,
       });
+
       return NextResponse.json({ error: upErr.message || "Upload failed" }, { status: 400 });
     }
 
     const { data: row, error: insErr } = await supabase
       .from("animal_clinic_event_files")
-      .insert([
-        {
-          event_id: eventId,
-          animal_id: animalId,
-          path,
-          filename: f.name || safeName,
-          mime: f.type || null,
-          size: f.size || null,
-          created_by: user.id,
-        },
-      ])
-      .select("id, event_id, animal_id, filename, mime, size, created_by, created_at")
+      .insert({
+        event_id: eventId,
+        animal_id: animalId,
+        path,
+        filename: entry.name || safeName,
+        mime: entry.type || null,
+        size: entry.size || null,
+        created_by: user.id,
+      })
+      .select("id, event_id, animal_id, path, filename, mime, size, created_by, created_at")
       .single();
 
-    if (insErr) {
+    if (insErr || !row) {
+      try {
+        await supabase.storage.from(bucket).remove([path]);
+      } catch {
+        // ignore rollback error
+      }
+
       await writeAudit(supabase, {
         req,
         actor_user_id: user.id,
@@ -149,9 +183,13 @@ export async function POST(req: Request) {
         target_id: eventId,
         animal_id: animalId,
         result: "error",
-        reason: insErr.message,
+        reason: insErr?.message || "DB insert failed",
       });
-      return NextResponse.json({ error: insErr.message || "DB insert failed" }, { status: 400 });
+
+      return NextResponse.json(
+        { error: insErr?.message || "DB insert failed" },
+        { status: 400 }
+      );
     }
 
     uploaded.push(row);
