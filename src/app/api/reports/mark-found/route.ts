@@ -69,7 +69,7 @@ export async function POST(req: Request) {
         const email = inviteToRegisterAfterFoundEmail({
           registerUrl,
           alreadyRegistered: false,
-          donateUrl: null,
+          donateUrl: `${getBaseUrl()}/sostieni`,
         });
 
         await resend.emails.send({
