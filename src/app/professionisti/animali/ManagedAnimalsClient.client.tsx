@@ -91,9 +91,9 @@ export default function ManagedAnimalsClient({
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
-                  {row.owner_name ? (
+                  {row.owner_id ? (
                     <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-800">
-                      {row.owner_name}
+                      Proprietario collegato
                     </span>
                   ) : (
                     <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-800">
