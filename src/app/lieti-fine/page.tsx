@@ -172,14 +172,18 @@ export default function LietiFinePage() {
                 key={item.id}
                 className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm"
               >
-                <img
-                  src={imgSrc}
-                  alt={safeCardTitle(item)}
-                  className="h-48 w-full object-cover"
-                  onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).src = "/placeholder-animal.jpg";
-                  }}
-                />
+                <div className="bg-zinc-100 p-3">
+                  <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white">
+                    <img
+                      src={imgSrc}
+                      alt={safeCardTitle(item)}
+                      className="h-48 w-full object-contain"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = "/placeholder-animal.jpg";
+                      }}
+                    />
+                  </div>
+                </div>
 
                 <div className="p-4">
                   <div className="flex items-start justify-between gap-3">
