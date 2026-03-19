@@ -68,6 +68,39 @@ function parseWeightKg(v: unknown): number | null {
   return null;
 }
 
+async function resolveVerifiedByOrgId(userId: string): Promise<string | null> {
+  const admin = supabaseAdmin();
+
+  const profileResult = await admin
+    .from("professional_profiles")
+    .select("org_id")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (profileResult.error) {
+    return null;
+  }
+
+  const orgId =
+    profileResult.data?.org_id && isUuid(String(profileResult.data.org_id))
+      ? String(profileResult.data.org_id)
+      : null;
+
+  if (!orgId) return null;
+
+  const orgCheck = await admin
+    .from("organizations")
+    .select("id")
+    .eq("id", orgId)
+    .maybeSingle();
+
+  if (orgCheck.error || !orgCheck.data?.id) {
+    return null;
+  }
+
+  return orgId;
+}
+
 export async function POST(req: Request) {
   const token = getBearerToken(req);
   if (!token) return NextResponse.json({ error: "Missing Bearer token" }, { status: 401 });
@@ -164,6 +197,9 @@ export async function POST(req: Request) {
       ? String(body.priority)
       : null;
 
+  const verifiedByOrgId =
+    source === "veterinarian" ? await resolveVerifiedByOrgId(user.id) : null;
+
   const meta: Record<string, any> = {};
 
   const incomingMeta =
@@ -199,7 +235,7 @@ export async function POST(req: Request) {
         event_date: dateStr,
         verified_at: source === "veterinarian" ? new Date().toISOString() : null,
         verified_by: source === "veterinarian" ? user.id : null,
-        verified_by_org_id: grant.actor_org_id,
+        verified_by_org_id: verifiedByOrgId,
         meta,
         priority: priority || null,
         status: "active",

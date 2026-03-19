@@ -45,6 +45,23 @@ function normalizeAnimalRef(value: string) {
   return raw;
 }
 
+function buildOwnerFullName(profile: Record<string, any> | null | undefined) {
+  if (!profile) return null;
+
+  const firstName = String(profile.first_name || "").trim();
+  const lastName = String(profile.last_name || "").trim();
+  const fullName = [firstName, lastName].filter(Boolean).join(" ").trim();
+
+  if (fullName) return fullName;
+
+  const fallback =
+    String(profile.full_name || "").trim() ||
+    String(profile.display_name || "").trim() ||
+    String(profile.name || "").trim();
+
+  return fallback || null;
+}
+
 async function getProfessionalRefs(userId: string) {
   const admin = supabaseAdmin();
   const refs = new Set<string>();
@@ -125,11 +142,7 @@ async function resolveAnimalByRef(animalRef: string) {
   }
 
   if (isUuid(ref)) {
-    const byId = await admin
-      .from("animals")
-      .select("*")
-      .eq("id", ref)
-      .maybeSingle();
+    const byId = await admin.from("animals").select("*").eq("id", ref).maybeSingle();
 
     if (byId.error) return byId;
     if (byId.data) return byId;
@@ -137,11 +150,7 @@ async function resolveAnimalByRef(animalRef: string) {
 
   const chip = digitsOnly(ref);
   if (chip.length === 15 || chip.length === 10) {
-    const byChip = await admin
-      .from("animals")
-      .select("*")
-      .eq("chip_number", chip)
-      .maybeSingle();
+    const byChip = await admin.from("animals").select("*").eq("chip_number", chip).maybeSingle();
 
     if (byChip.error) return byChip;
     if (byChip.data) return byChip;
@@ -243,17 +252,44 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Accesso negato" }, { status: 403 });
     }
 
+    let owner_name: string | null = null;
+    let owner_email: string | null = null;
+    let owner_phone: string | null = null;
+
+    if (animal.owner_id && isUuid(String(animal.owner_id))) {
+      const ownerId = String(animal.owner_id);
+
+      const { data: profile } = await admin
+        .from("profiles")
+        .select("first_name,last_name,full_name,display_name,name,phone")
+        .eq("id", ownerId)
+        .maybeSingle();
+
+      owner_name = buildOwnerFullName(profile as Record<string, any> | null);
+      owner_phone =
+        profile && typeof (profile as any).phone === "string"
+          ? String((profile as any).phone).trim() || null
+          : null;
+
+      try {
+        const authResp = await admin.auth.admin.getUserById(ownerId);
+        owner_email = authResp?.data?.user?.email ?? null;
+      } catch {
+        owner_email = null;
+      }
+    }
+
     return NextResponse.json({
       animal: {
         ...animal,
         microchip: animal.chip_number ?? null,
+        owner_name,
+        owner_email,
+        owner_phone,
       },
     });
   } catch (error: any) {
-    return NextResponse.json(
-      { error: error?.message || "Errore interno" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error?.message || "Errore interno" }, { status: 500 });
   }
 }
 
@@ -330,8 +366,7 @@ export async function POST(req: NextRequest) {
       color: body.color?.trim() || null,
       size: body.size?.trim() || null,
       sex: body.sex?.trim() || null,
-      sterilized:
-        typeof body.sterilized === "boolean" ? body.sterilized : null,
+      sterilized: typeof body.sterilized === "boolean" ? body.sterilized : null,
       birth_date: body.birth_date || null,
       chip_number: chipNumber,
       photo_url: body.photo_url || null,
@@ -342,11 +377,7 @@ export async function POST(req: NextRequest) {
       owner_claim_status: "pending",
     };
 
-    const created = await admin
-      .from("animals")
-      .insert(insertPayload)
-      .select("*")
-      .single();
+    const created = await admin.from("animals").insert(insertPayload).select("*").single();
 
     if (created.error || !created.data) {
       return NextResponse.json(
@@ -360,14 +391,14 @@ export async function POST(req: NextRequest) {
         animal: {
           ...created.data,
           microchip: created.data.chip_number ?? null,
+          owner_name: null,
+          owner_email: null,
+          owner_phone: null,
         },
       },
       { status: 201 }
     );
   } catch (error: any) {
-    return NextResponse.json(
-      { error: error?.message || "Errore interno" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error?.message || "Errore interno" }, { status: 500 });
   }
 }
