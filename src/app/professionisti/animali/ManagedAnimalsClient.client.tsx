@@ -87,6 +87,7 @@ export default function ManagedAnimalsClient({
                   <div className="mt-2 space-y-1 text-sm text-zinc-500">
                     <div>Microchip: {row.microchip || "—"}</div>
                     {row.unimalia_code ? <div>UNIMALIA: {row.unimalia_code}</div> : null}
+                    <div>Proprietario: {row.owner_name || "—"}</div>
                   </div>
                 </div>
 
