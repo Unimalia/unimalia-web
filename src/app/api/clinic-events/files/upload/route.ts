@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { requireOwnerOrGrant } from "@/lib/server/requireOwnerOrGrant";
 import { writeAudit } from "@/lib/server/audit";
+import { supabaseAdmin } from "@/lib/supabase/server";
 
 function getBearerToken(req: Request) {
   const h = req.headers.get("authorization") || req.headers.get("Authorization") || "";
@@ -44,6 +45,8 @@ export async function POST(req: Request) {
     global: { headers: { Authorization: `Bearer ${token}` } },
   });
 
+  const admin = supabaseAdmin();
+
   const { data: userData, error: userErr } = await supabase.auth.getUser(token);
   const user = userData?.user;
 
@@ -68,7 +71,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "files required" }, { status: 400 });
   }
 
-  const { data: ev, error: evErr } = await supabase
+  const { data: ev, error: evErr } = await admin
     .from("animal_clinic_events")
     .select("id, animal_id, status")
     .eq("id", eventId)
@@ -79,7 +82,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Event not found" }, { status: 404 });
   }
 
-  const animalId = (ev as { animal_id: string }).animal_id;
+  const animalId = ev.animal_id as string;
 
   const grant = await requireOwnerOrGrant(supabase, user.id, animalId, "upload");
   if (!grant.ok) {
@@ -132,7 +135,7 @@ export async function POST(req: Request) {
 
     const path = `${animalId}/${eventId}/${Date.now()}_${safeName}`;
 
-    const { error: upErr } = await supabase.storage.from(bucket).upload(path, entry, {
+    const { error: upErr } = await admin.storage.from(bucket).upload(path, entry, {
       contentType: entry.type || undefined,
       upsert: false,
     });
@@ -153,7 +156,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: upErr.message || "Upload failed" }, { status: 400 });
     }
 
-    const { data: row, error: insErr } = await supabase
+    const { data: row, error: insErr } = await admin
       .from("animal_clinic_event_files")
       .insert({
         event_id: eventId,
@@ -169,7 +172,7 @@ export async function POST(req: Request) {
 
     if (insErr || !row) {
       try {
-        await supabase.storage.from(bucket).remove([path]);
+        await admin.storage.from(bucket).remove([path]);
       } catch {
         // ignore rollback error
       }
