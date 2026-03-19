@@ -64,6 +64,34 @@ export function buildDogLostCityMetadata(city: SeoCity): Metadata {
   };
 }
 
+export function buildCatLostCityMetadata(city: SeoCity): Metadata {
+  const title = `Gatto smarrito a ${city.name}: cosa fare subito`;
+  const description = `Guida pratica su cosa fare se hai un gatto smarrito a ${city.name}: passaggi immediati, errori da evitare, microchip, identità digitale animale e segnalazione tramite UNIMALIA.`;
+
+  return {
+    title,
+    description,
+    alternates: {
+      canonical: buildAbsoluteUrl(`/smarriti/gatto-smarrito/${city.slug}`),
+    },
+    openGraph: {
+      title: `${title} | UNIMALIA`,
+      description,
+      url: buildAbsoluteUrl(`/smarriti/gatto-smarrito/${city.slug}`),
+      siteName: "UNIMALIA",
+      locale: "it_IT",
+      type: "article",
+      images: [buildAbsoluteUrl("/logo-512.png")],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${title} | UNIMALIA`,
+      description,
+      images: [buildAbsoluteUrl("/logo-512.png")],
+    },
+  };
+}
+
 export function buildBreadcrumbJsonLd(items: Array<{ name: string; item: string }>) {
   return {
     "@context": "https://schema.org",
