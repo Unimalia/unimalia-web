@@ -2,7 +2,8 @@ import crypto from "crypto";
 import { Resend } from "resend";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const resendApiKey = process.env.RESEND_API_KEY || "";
+const resend = resendApiKey ? new Resend(resendApiKey) : null;
 
 type SendOwnerAnimalUpdateEmailInput = {
   animalId: string;
@@ -21,11 +22,6 @@ type SendOwnerAnimalUpdateEmailInput = {
   vetSignature?: string | null;
   meta?: Record<string, any> | null;
 
-  /**
-   * Per ora gestiamo allegati come link.
-   * Quando mi mandi il punto esatto dove salvi i file,
-   * possiamo trasformarli in allegati veri o link firmati.
-   */
   attachments?: Array<{
     name: string;
     url: string;
@@ -125,22 +121,25 @@ function renderMetaRows(meta: Record<string, any> | null | undefined) {
     "created_by_member_id",
   ]);
 
-  const rows = Object.entries(meta)
-    .filter(([key, value]) => !excludedKeys.has(key) && value !== null && value !== undefined && value !== "")
+  return Object.entries(meta)
+    .filter(
+      ([key, value]) =>
+        !excludedKeys.has(key) &&
+        value !== null &&
+        value !== undefined &&
+        value !== ""
+    )
     .map(([key, value]) => {
-      let printable: string;
-
-      if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
-        printable = String(value);
-      } else {
-        printable = JSON.stringify(value);
-      }
+      const printable =
+        typeof value === "string" ||
+        typeof value === "number" ||
+        typeof value === "boolean"
+          ? String(value)
+          : JSON.stringify(value);
 
       return renderDetailRow(`Meta · ${key}`, printable);
     })
     .join("");
-
-  return rows;
 }
 
 function renderAttachments(
@@ -173,9 +172,40 @@ function renderAttachments(
   `;
 }
 
+async function resolveOwnerEmail(ownerId: string): Promise<string | null> {
+  const admin = supabaseAdmin();
+
+  try {
+    const authResp = await admin.auth.admin.getUserById(ownerId);
+    const authEmail = authResp?.data?.user?.email ?? null;
+    if (authEmail) return authEmail;
+  } catch (error) {
+    console.error("[OWNER_EMAIL_AUTH_LOOKUP_ERROR]", error);
+  }
+
+  try {
+    const ownerProfileResult = await admin
+      .from("profiles")
+      .select("id, email")
+      .eq("id", ownerId)
+      .maybeSingle();
+
+    const ownerProfile = ownerProfileResult.data as OwnerProfileRow | null;
+    return ownerProfile?.email ?? null;
+  } catch (error) {
+    console.error("[OWNER_EMAIL_PROFILE_LOOKUP_ERROR]", error);
+    return null;
+  }
+}
+
 export async function sendOwnerAnimalUpdateEmail(
   input: SendOwnerAnimalUpdateEmailInput
 ) {
+  if (!resend) {
+    console.error("[CLINIC_EVENT_OWNER_EMAIL] Missing RESEND_API_KEY");
+    return { skipped: true as const, reason: "missing_resend_api_key" as const };
+  }
+
   const {
     animalId,
     eventTitle,
@@ -221,14 +251,12 @@ export async function sendOwnerAnimalUpdateEmail(
   const inviteCount = animal.invite_email_count ?? 0;
 
   if (animal.owner_id) {
-    const ownerProfileResult = await admin
-      .from("profiles")
-      .select("id, email")
-      .eq("id", animal.owner_id)
-      .maybeSingle();
-
-    const ownerProfile = ownerProfileResult.data as OwnerProfileRow | null;
-    destinationEmail = ownerProfile?.email ?? null;
+    destinationEmail = await resolveOwnerEmail(animal.owner_id);
+    console.log("[OWNER_EMAIL_RESOLVED]", {
+      animalId: animal.id,
+      ownerId: animal.owner_id,
+      destinationEmail,
+    });
   } else if (animal.pending_owner_email) {
     destinationEmail = animal.pending_owner_email;
 
@@ -283,7 +311,12 @@ export async function sendOwnerAnimalUpdateEmail(
   }
 
   if (!destinationEmail) {
-    return { skipped: true, reason: "no_destination_email" as const };
+    console.warn("[CLINIC_EVENT_OWNER_EMAIL_SKIPPED_NO_DESTINATION]", {
+      animalId: animal.id,
+      ownerId: animal.owner_id,
+      pendingOwnerEmail: animal.pending_owner_email,
+    });
+    return { skipped: true as const, reason: "no_destination_email" as const };
   }
 
   const detailsRows = [
@@ -344,19 +377,30 @@ export async function sendOwnerAnimalUpdateEmail(
     </div>
   `;
 
+  const fromEmail =
+    process.env.RESEND_FROM_EMAIL?.trim() || "UNIMALIA <onboarding@resend.dev>";
+
   const emailResult = await resend.emails.send({
-    from: "UNIMALIA <onboarding@resend.dev>",
+    from: fromEmail,
     to: destinationEmail,
     subject: subjectForAction(action, animal.name),
     html,
   });
 
   if ((emailResult as { error?: { message?: string } })?.error) {
+    console.error("[CLINIC_EVENT_OWNER_EMAIL_SEND_ERROR]", emailResult);
     throw new Error(
       (emailResult as { error?: { message?: string } }).error?.message ||
         "Errore invio email aggiornamento"
     );
   }
+
+  console.log("[CLINIC_EVENT_OWNER_EMAIL_SENT]", {
+    animalId: animal.id,
+    to: destinationEmail,
+    action,
+    result: emailResult,
+  });
 
   return { ok: true as const };
 }
