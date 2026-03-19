@@ -1,36 +1,41 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  createProfessionalConsult,
-  getComposeData,
-  listProfessionalConsults,
-} from "@/lib/professionisti/consults";
-import { getCoreSystemFlags } from "@/lib/systemFlags";
+import { listProfessionalConsults, getComposeData, createProfessionalConsult } from "@/lib/professionisti/consults";
+
+type ConsultBoxParam = "received" | "responses" | "waiting" | "archive";
+
+function normalizeBoxParam(value: string | null): ConsultBoxParam {
+  switch (value) {
+    case "received":
+      return "received";
+    case "responses":
+      return "responses";
+    case "waiting":
+      return "waiting";
+    case "archive":
+      return "archive";
+    case "sent":
+      return "waiting";
+    default:
+      return "received";
+  }
+}
 
 export async function GET(req: NextRequest) {
   try {
-    const flags = await getCoreSystemFlags();
-
-    if (!flags.consults_enabled || flags.emergency_mode || flags.maintenance_mode) {
-      return NextResponse.json(
-        { error: "Modulo consulti temporaneamente non disponibile" },
-        { status: 403 }
-      );
-    }
-
-    const { searchParams } = new URL(req.url);
+    const searchParams = req.nextUrl.searchParams;
     const mode = searchParams.get("mode");
 
     if (mode === "compose") {
       const animalId = searchParams.get("animalId");
       if (!animalId) {
-        return NextResponse.json({ error: "animalId mancante" }, { status: 400 });
+        return NextResponse.json({ error: "animalId obbligatorio" }, { status: 400 });
       }
 
       const data = await getComposeData(animalId);
       return NextResponse.json(data);
     }
 
-    const box = (searchParams.get("box") ?? "received") as "received" | "sent" | "archive";
+    const box = normalizeBoxParam(searchParams.get("box"));
     const status = searchParams.get("status") ?? "";
     const priority = searchParams.get("priority") ?? "";
     const q = searchParams.get("q") ?? "";
@@ -39,41 +44,33 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ items });
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Errore caricamento consulti" },
-      { status: 400 }
-    );
+    const message =
+      error instanceof Error ? error.message : "Errore caricamento consulti";
+    return NextResponse.json({ error: message }, { status: 400 });
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const flags = await getCoreSystemFlags();
-
-    if (!flags.consults_enabled || flags.emergency_mode || flags.maintenance_mode) {
-      return NextResponse.json(
-        { error: "Modulo consulti temporaneamente non disponibile" },
-        { status: 403 }
-      );
-    }
-
     const body = await req.json();
 
     const result = await createProfessionalConsult({
-      animalId: body.animalId,
-      receiverProfessionalId: body.receiverProfessionalId,
-      subject: body.subject,
-      message: body.message,
-      shareMode: body.shareMode,
-      priority: body.priority,
-      selectedEventIds: body.selectedEventIds ?? [],
+      animalId: String(body?.animalId || ""),
+      receiverProfessionalId: String(body?.receiverProfessionalId || ""),
+      subject: String(body?.subject || ""),
+      message: String(body?.message || ""),
+      shareMode:
+        body?.shareMode === "selected_events" ? "selected_events" : "full_record",
+      priority: body?.priority === "emergency" ? "emergency" : "normal",
+      selectedEventIds: Array.isArray(body?.selectedEventIds)
+        ? body.selectedEventIds.map((id: unknown) => String(id))
+        : [],
     });
 
     return NextResponse.json(result);
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Errore creazione consulto" },
-      { status: 400 }
-    );
+    const message =
+      error instanceof Error ? error.message : "Errore creazione consulto";
+    return NextResponse.json({ error: message }, { status: 400 });
   }
 }

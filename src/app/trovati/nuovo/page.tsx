@@ -154,8 +154,8 @@ export default function NuovoTrovatoPage() {
 
       setResultMsg(
         type === "found"
-          ? "✅ Segnalazione di animale trovato pubblicata correttamente."
-          : "✅ Avvistamento pubblicato correttamente."
+          ? "✅ Segnalazione di animale trovato pubblicata correttamente. Ora può essere contattato in modo protetto."
+          : "✅ Avvistamento pubblicato correttamente. Anche senza foto, il luogo preciso aiuta molto."
       );
 
       setType("found");
@@ -186,7 +186,7 @@ export default function NuovoTrovatoPage() {
   return (
     <div className="mx-auto w-full max-w-2xl px-4 py-8">
       <h1 className="text-2xl font-extrabold text-zinc-900">
-        Segnala animale trovato / avvistato
+        Segnala trovato / avvistato
       </h1>
       <p className="mt-2 text-sm text-zinc-600">
         Scegli prima il tipo di segnalazione. Il contatto resta protetto, come negli smarrimenti.

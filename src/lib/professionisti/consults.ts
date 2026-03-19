@@ -5,7 +5,7 @@ import { getProfessionalOrgId } from "@/lib/professionisti/org";
 import { hasActiveGrantForAnimal } from "@/lib/professionisti/grants";
 import { buildClinicalQuickSummary } from "@/lib/clinic/quickSummary";
 
-export type ConsultBox = "received" | "sent" | "archive";
+export type ConsultBox = "received" | "responses" | "waiting" | "archive";
 export type ConsultStatus =
   | "pending"
   | "accepted"
@@ -453,28 +453,17 @@ export async function listProfessionalConsults(params: {
     .select(
       "id,animal_id,animal_name,sender_professional_id,sender_display_name,receiver_professional_id,receiver_display_name,subject,initial_message,share_mode,priority,status,expires_at,last_message_at,accepted_at,rejected_at,replied_at,closed_at,created_at"
     )
+    .or(
+      `sender_professional_id.eq.${ctx.professional.id},receiver_professional_id.eq.${ctx.professional.id}`
+    )
     .order("priority", { ascending: false })
     .order("last_message_at", { ascending: false })
-    .limit(100);
+    .limit(200);
 
-  if (box === "received") {
-    query = query.eq("receiver_professional_id", ctx.professional.id).in("status", [
-      "pending",
-      "accepted",
-      "replied",
-    ]);
-  } else if (box === "sent") {
-    query = query.eq("sender_professional_id", ctx.professional.id).in("status", [
-      "pending",
-      "accepted",
-      "replied",
-    ]);
+  if (box === "archive") {
+    query = query.in("status", ["closed", "rejected", "expired"]);
   } else {
-    query = query
-      .or(
-        `sender_professional_id.eq.${ctx.professional.id},receiver_professional_id.eq.${ctx.professional.id}`
-      )
-      .in("status", ["closed", "rejected", "expired"]);
+    query = query.in("status", ["pending", "accepted", "replied"]);
   }
 
   if (params.status) {
@@ -488,24 +477,103 @@ export async function listProfessionalConsults(params: {
   const { data, error } = await query;
   if (error) throw new Error(error.message);
 
+  const consults = (data ?? []).map((item) => normalizeStatus(item));
+
+  if (consults.length === 0) {
+    return [];
+  }
+
+  const consultIds = consults.map((item) => item.id);
+
+  const { data: messages, error: messagesError } = await admin
+    .from("professional_consult_messages")
+    .select(
+      "consult_id,sender_professional_id,sender_display_name,message,created_at,message_type"
+    )
+    .in("consult_id", consultIds)
+    .order("created_at", { ascending: false });
+
+  if (messagesError) throw new Error(messagesError.message);
+
+  const latestMessageByConsultId = new Map<
+    string,
+    {
+      consult_id: string;
+      sender_professional_id: string | null;
+      sender_display_name: string | null;
+      message: string | null;
+      created_at: string;
+      message_type: string | null;
+    }
+  >();
+
+  for (const message of messages ?? []) {
+    if (!latestMessageByConsultId.has(message.consult_id)) {
+      latestMessageByConsultId.set(message.consult_id, message);
+    }
+  }
+
+  const enriched = consults.map((item) => {
+    const latestMessage = latestMessageByConsultId.get(item.id) ?? null;
+
+    const isSender = item.sender_professional_id === ctx.professional.id;
+    const isReceiver = item.receiver_professional_id === ctx.professional.id;
+
+    const lastMessageSenderProfessionalId =
+      latestMessage?.sender_professional_id ?? item.sender_professional_id;
+
+    const lastMessageSenderDisplayName =
+      latestMessage?.sender_display_name ??
+      (lastMessageSenderProfessionalId === item.sender_professional_id
+        ? item.sender_display_name
+        : item.receiver_display_name);
+
+    const lastMessagePreview =
+      (latestMessage?.message ?? item.initial_message ?? "").trim() || null;
+
+    let inboxBucket: ConsultBox = "archive";
+
+    if (["closed", "rejected", "expired"].includes(item.status)) {
+      inboxBucket = "archive";
+    } else if (isReceiver) {
+      inboxBucket = "received";
+    } else if (isSender && lastMessageSenderProfessionalId !== ctx.professional.id) {
+      inboxBucket = "responses";
+    } else {
+      inboxBucket = "waiting";
+    }
+
+    const needsMyAction = inboxBucket === "received" || inboxBucket === "responses";
+
+    return {
+      ...item,
+      last_message_preview: lastMessagePreview,
+      last_message_sender_display_name: lastMessageSenderDisplayName,
+      last_message_sender_professional_id: lastMessageSenderProfessionalId,
+      needs_my_action: needsMyAction,
+      inbox_bucket: inboxBucket,
+    };
+  });
+
   const q = (params.q ?? "").trim().toLowerCase();
 
-  const filtered = (data ?? [])
-    .map((x) => normalizeStatus(x))
+  return enriched
+    .filter((item) => item.inbox_bucket === box)
     .filter((item) => {
       if (!q) return true;
+
       return [
         item.animal_name,
         item.subject,
         item.sender_display_name,
         item.receiver_display_name,
         item.initial_message,
+        item.last_message_preview,
+        item.last_message_sender_display_name,
       ]
         .filter(Boolean)
         .some((v) => String(v).toLowerCase().includes(q));
     });
-
-  return filtered;
 }
 
 export async function getProfessionalConsultDetail(id: string) {

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
-type BoxType = "received" | "sent" | "archive";
+type BoxType = "received" | "responses" | "waiting" | "archive";
 
 type ConsultItem = {
   id: string;
@@ -18,6 +18,11 @@ type ConsultItem = {
   created_at: string;
   expires_at: string;
   last_message_at?: string;
+  last_message_preview?: string | null;
+  last_message_sender_display_name?: string | null;
+  last_message_sender_professional_id?: string | null;
+  needs_my_action?: boolean;
+  inbox_bucket?: BoxType;
 };
 
 function statusLabel(status: string) {
@@ -46,9 +51,11 @@ function shareModeLabel(mode: string) {
 function boxTitle(box: BoxType) {
   switch (box) {
     case "received":
-      return "Consulti ricevuti";
-    case "sent":
-      return "Consulti inviati";
+      return "Richieste ricevute";
+    case "responses":
+      return "Risposte ricevute";
+    case "waiting":
+      return "In attesa";
     case "archive":
       return "Archivio consulti";
     default:
@@ -59,9 +66,11 @@ function boxTitle(box: BoxType) {
 function boxDescription(box: BoxType) {
   switch (box) {
     case "received":
-      return "Richieste di consulto ricevute da altre cliniche o professionisti.";
-    case "sent":
-      return "Richieste di consulto inviate dalla tua struttura ad altri professionisti.";
+      return "Consulti che altri veterinari o cliniche hanno aperto verso di te.";
+    case "responses":
+      return "Risposte ricevute su consulti che avevi aperto tu.";
+    case "waiting":
+      return "Thread dove l’ultima azione è tua e stai aspettando l’altro professionista.";
     case "archive":
       return "Storico dei consulti chiusi, rifiutati o scaduti.";
     default:
@@ -72,9 +81,11 @@ function boxDescription(box: BoxType) {
 function counterpartLabel(box: BoxType) {
   switch (box) {
     case "received":
-      return "Ricevuto da";
-    case "sent":
-      return "Inviato a";
+      return "Richiesto da";
+    case "responses":
+      return "Ha risposto";
+    case "waiting":
+      return "In attesa di";
     case "archive":
       return "Controparte";
     default:
@@ -83,8 +94,11 @@ function counterpartLabel(box: BoxType) {
 }
 
 function counterpartName(item: ConsultItem, box: BoxType) {
-  if (box === "sent") return item.receiver_display_name;
   if (box === "received") return item.sender_display_name;
+  if (box === "responses") {
+    return item.last_message_sender_display_name || item.receiver_display_name;
+  }
+  if (box === "waiting") return item.receiver_display_name;
   return `${item.sender_display_name} → ${item.receiver_display_name}`;
 }
 
@@ -155,19 +169,31 @@ export default function ProfessionistiRichiesteClient() {
                   : "border border-zinc-200 bg-white text-zinc-800"
               }`}
             >
-              Ricevute
+              Richieste ricevute
             </button>
 
             <button
               type="button"
-              onClick={() => setBox("sent")}
+              onClick={() => setBox("responses")}
               className={`rounded-2xl px-4 py-2 text-sm font-semibold ${
-                box === "sent"
+                box === "responses"
                   ? "bg-black text-white"
                   : "border border-zinc-200 bg-white text-zinc-800"
               }`}
             >
-              Inviate
+              Risposte ricevute
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setBox("waiting")}
+              className={`rounded-2xl px-4 py-2 text-sm font-semibold ${
+                box === "waiting"
+                  ? "bg-black text-white"
+                  : "border border-zinc-200 bg-white text-zinc-800"
+              }`}
+            >
+              In attesa
             </button>
 
             <button
@@ -251,6 +277,7 @@ export default function ProfessionistiRichiesteClient() {
           {items.map((item) => {
             const counterpart = counterpartName(item, box);
             const activityDate = item.last_message_at || item.created_at;
+            const preview = item.last_message_preview || item.initial_message || "";
 
             return (
               <Link
@@ -276,6 +303,18 @@ export default function ProfessionistiRichiesteClient() {
                   <span className="rounded-full border border-zinc-200 bg-zinc-50 px-2 py-1 text-xs font-semibold text-zinc-700">
                     {shareModeLabel(item.share_mode)}
                   </span>
+
+                  {item.needs_my_action ? (
+                    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-800">
+                      Da gestire
+                    </span>
+                  ) : null}
+
+                  {box === "responses" ? (
+                    <span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-800">
+                      Nuova risposta
+                    </span>
+                  ) : null}
                 </div>
 
                 <div className="mt-3 grid gap-3 md:grid-cols-[1fr_auto]">
@@ -288,9 +327,15 @@ export default function ProfessionistiRichiesteClient() {
                       {counterpartLabel(box)} {counterpart}
                     </div>
 
-                    {item.initial_message ? (
+                    {item.last_message_sender_display_name ? (
+                      <div className="mt-2 text-xs uppercase tracking-wide text-zinc-500">
+                        Ultimo messaggio: {item.last_message_sender_display_name}
+                      </div>
+                    ) : null}
+
+                    {preview ? (
                       <div className="mt-2 line-clamp-2 text-sm text-zinc-700">
-                        {item.initial_message}
+                        {preview}
                       </div>
                     ) : null}
                   </div>
