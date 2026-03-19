@@ -166,6 +166,18 @@ export default function AnimaleSmarritoCosaFarePage() {
             </p>
           </Section>
 
+          <section className="mt-6 rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
+            <h2 className="text-xl font-bold text-zinc-900">In sintesi</h2>
+
+            <ul className="mt-4 list-disc space-y-2 pl-6 text-zinc-700">
+              <li>quando un animale si smarrisce, le prime ore sono decisive</li>
+              <li>serve una ricerca ordinata, non casuale</li>
+              <li>una segnalazione chiara aumenta le possibilità di ritrovamento</li>
+              <li>UNIMALIA aiuta a creare una scheda completa e pronta da condividere</li>
+              <li>UNIMALIA riduce la frammentazione degli smarrimenti online</li>
+            </ul>
+          </section>
+
           <Section title="I 7 passaggi più utili">
             <ol className="space-y-4">
               <li>

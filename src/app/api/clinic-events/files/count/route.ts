@@ -9,14 +9,34 @@ function getBearerToken(req: Request) {
   return m?.[1] || null;
 }
 
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value
+  );
+}
+
 export async function GET(req: Request) {
   const token = getBearerToken(req);
   if (!token) return NextResponse.json({ error: "Missing Bearer token" }, { status: 401 });
 
+  const url = new URL(req.url);
+  const animalId = String(url.searchParams.get("animalId") ?? "").trim();
+
+  if (!animalId) {
+    return NextResponse.json({ error: "animalId required" }, { status: 400 });
+  }
+
+  if (!isUuid(animalId)) {
+    return NextResponse.json({ error: "animalId invalid" }, { status: 400 });
+  }
+
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!supabaseUrl || !supabaseAnon) {
-    return NextResponse.json({ error: "Server misconfigured (Supabase env missing)" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Server misconfigured (Supabase env missing)" },
+      { status: 500 }
+    );
   }
 
   const supabase = createClient(supabaseUrl, supabaseAnon, {
@@ -27,11 +47,6 @@ export async function GET(req: Request) {
   const user = userData?.user;
   if (userErr || !user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const url = new URL(req.url);
-  const animalId = (url.searchParams.get("animalId") || "").trim();
-  if (!animalId) return NextResponse.json({ error: "animalId required" }, { status: 400 });
-
-  // ✅ GRANT CHECK (READ)
   const grant = await requireOwnerOrGrant(supabase, user.id, animalId, "read");
   if (!grant.ok) {
     await writeAudit(supabase, {
@@ -47,49 +62,12 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: grant.reason }, { status: 403 });
   }
 
-  try {
-    // group-by semplice lato app (evitiamo rpc)
-    const { data, error } = await supabase
-      .from("animal_clinic_event_files")
-      .select("event_id")
-      .eq("animal_id", animalId);
+  const { data: files, error } = await supabase
+    .from("animal_clinic_event_files")
+    .select("id, event_id, animal_id")
+    .eq("animal_id", animalId);
 
-    if (error) {
-      await writeAudit(supabase, {
-        req,
-        actor_user_id: user.id,
-        actor_org_id: grant.actor_org_id,
-        action: "file.count",
-        target_type: "animal",
-        target_id: animalId,
-        animal_id: animalId,
-        result: "error",
-        reason: error.message,
-      });
-      return NextResponse.json({ error: "Impossibile leggere conteggio allegati." }, { status: 500 });
-    }
-
-    const counts: Record<string, number> = {};
-    for (const row of data ?? []) {
-      const eid = (row as any).event_id as string;
-      if (!eid) continue;
-      counts[eid] = (counts[eid] ?? 0) + 1;
-    }
-
-    await writeAudit(supabase, {
-      req,
-      actor_user_id: user.id,
-      actor_org_id: grant.actor_org_id,
-      action: "file.count",
-      target_type: "animal",
-      target_id: animalId,
-      animal_id: animalId,
-      result: "success",
-      diff: { eventIds: Object.keys(counts).length },
-    });
-
-    return NextResponse.json({ ok: true, counts }, { status: 200 });
-  } catch {
+  if (error) {
     await writeAudit(supabase, {
       req,
       actor_user_id: user.id,
@@ -99,8 +77,29 @@ export async function GET(req: Request) {
       target_id: animalId,
       animal_id: animalId,
       result: "error",
-      reason: "Unhandled server error",
+      reason: error.message,
     });
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+    return NextResponse.json({ error: error.message || "Count failed" }, { status: 400 });
   }
+
+  const counts: Record<string, number> = {};
+
+  for (const file of files ?? []) {
+    const eventId = String((file as any).event_id || "");
+    if (!eventId) continue;
+    counts[eventId] = (counts[eventId] ?? 0) + 1;
+  }
+
+  await writeAudit(supabase, {
+    req,
+    actor_user_id: user.id,
+    actor_org_id: grant.actor_org_id,
+    action: "file.count",
+    target_type: "animal",
+    target_id: animalId,
+    animal_id: animalId,
+    result: "success",
+  });
+
+  return NextResponse.json({ ok: true, counts }, { status: 200 });
 }

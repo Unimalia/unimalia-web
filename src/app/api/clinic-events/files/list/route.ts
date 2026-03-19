@@ -17,13 +17,10 @@ function isUuid(value: string) {
 
 export async function GET(req: Request) {
   const token = getBearerToken(req);
-  if (!token) {
-    return NextResponse.json({ error: "Missing Bearer token" }, { status: 401 });
-  }
+  if (!token) return NextResponse.json({ error: "Missing Bearer token" }, { status: 401 });
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
   if (!supabaseUrl || !supabaseAnon) {
     return NextResponse.json(
       { error: "Server misconfigured (Supabase env missing)" },
@@ -37,10 +34,7 @@ export async function GET(req: Request) {
 
   const { data: userData, error: userErr } = await supabase.auth.getUser(token);
   const user = userData?.user;
-
-  if (userErr || !user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  if (userErr || !user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const url = new URL(req.url);
   const eventId = (url.searchParams.get("eventId") || "").trim();
@@ -64,7 +58,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Event not found" }, { status: 404 });
   }
 
-  const animalId = (ev as { animal_id: string }).animal_id;
+  const animalId = (ev as any).animal_id as string;
 
   const grant = await requireOwnerOrGrant(supabase, user.id, animalId, "read");
   if (!grant.ok) {
@@ -78,7 +72,6 @@ export async function GET(req: Request) {
       result: "denied",
       reason: grant.reason,
     });
-
     return NextResponse.json({ error: grant.reason }, { status: 403 });
   }
 
@@ -100,7 +93,6 @@ export async function GET(req: Request) {
       result: "error",
       reason: error.message,
     });
-
     return NextResponse.json({ error: error.message || "Query failed" }, { status: 400 });
   }
 
