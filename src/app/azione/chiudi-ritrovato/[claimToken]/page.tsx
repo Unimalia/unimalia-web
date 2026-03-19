@@ -5,6 +5,8 @@ import { inviteToRegisterAfterFoundEmail } from "@/lib/email/templates";
 
 export const dynamic = "force-dynamic";
 
+const FOUND_STATUS = "closed_found";
+
 export default async function ChiudiRitrovatoPage({
   params,
 }: {
@@ -15,58 +17,53 @@ export default async function ChiudiRitrovatoPage({
 
   const { data: report, error: repErr } = await admin
     .from("reports")
-    .select("id, contact_email, email_verified, animal_name")
+    .select("id, contact_email, created_by_user_id, animal_id, status, type")
     .eq("claim_token", token)
     .single();
 
   if (repErr || !report) {
-    return (
-      <div style={{ padding: 24 }}>
-        Token non valido o annuncio inesistente.
-      </div>
-    );
+    return <div style={{ padding: 24 }}>Token non valido o annuncio inesistente.</div>;
   }
 
-  const { error: updErr } = await admin
-    .from("reports")
-    .update({
-      status: "closed",
-      closed_at: new Date().toISOString(),
-    })
-    .eq("id", report.id);
-
-  if (updErr) {
-    return (
-      <div style={{ padding: 24 }}>
-        Errore aggiornamento annuncio: {updErr.message}
-      </div>
-    );
+  if (report.type !== "lost") {
+    return <div style={{ padding: 24 }}>Questa azione è disponibile solo per gli smarrimenti.</div>;
   }
+
+  if (report.status !== FOUND_STATUS) {
+    const { error: updErr } = await admin
+      .from("reports")
+      .update({
+        status: FOUND_STATUS,
+      })
+      .eq("id", report.id);
+
+    if (updErr) {
+      return <div style={{ padding: 24 }}>Errore aggiornamento annuncio: {updErr.message}</div>;
+    }
+  }
+
+  if (report.animal_id) {
+    await admin
+      .from("animals")
+      .update({ status: "home" })
+      .eq("id", report.animal_id);
+  }
+
+  const shouldInviteToRegister = !report.created_by_user_id;
 
   try {
-    if (report.contact_email && report.email_verified) {
+    if (shouldInviteToRegister && report.contact_email) {
       const normalizedEmail = String(report.contact_email).trim().toLowerCase();
 
-      const { data: existingProfile } = await admin
-        .from("profiles")
-        .select("id")
-        .eq("email", normalizedEmail)
-        .maybeSingle();
-
-      const alreadyRegistered = !!existingProfile;
-
-      const registerUrl = alreadyRegistered
-        ? `${getBaseUrl()}/identita/nuovo`
-        : `${getBaseUrl()}/login?mode=signup&next=/identita/nuovo`;
-
+      const registerUrl = `${getBaseUrl()}/login?mode=signup&returnTo=%2Fidentita`;
       const donateUrl =
         process.env.STRIPE_DONATION_URL ||
         process.env.NEXT_PUBLIC_STRIPE_DONATION_URL ||
-        null;
+        `${getBaseUrl()}/sostieni`;
 
       const email = inviteToRegisterAfterFoundEmail({
         registerUrl,
-        alreadyRegistered,
+        alreadyRegistered: false,
         donateUrl,
       });
 
@@ -81,5 +78,5 @@ export default async function ChiudiRitrovatoPage({
     console.error("FOUND FOLLOWUP EMAIL ERROR:", mailErr);
   }
 
-  redirect(`/annuncio/${report.id}`);
+  redirect(`/gestisci-annuncio/${token}`);
 }
