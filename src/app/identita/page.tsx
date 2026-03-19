@@ -36,10 +36,6 @@ type OwnerProfile = {
   city: string | null;
 };
 
-function normalizeChip(raw: string) {
-  return (raw || "").replace(/\s+/g, "").trim();
-}
-
 function normalizeCF(s: string) {
   return (s || "").replace(/\s+/g, "").trim().toUpperCase();
 }
@@ -295,6 +291,36 @@ export default function IdentitaPage() {
           </div>
         </Card>
       ) : null}
+
+      <div className="mb-6">
+        <Card>
+          <div className="rounded-2xl border border-teal-200 bg-gradient-to-br from-teal-50 via-white to-amber-50 p-5">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="max-w-2xl">
+                <p className="text-sm font-semibold text-teal-800">UNIMALIA Premium</p>
+                <h2 className="mt-1 text-lg font-semibold text-zinc-900">
+                  Il controllo completo della vita del tuo animale, a un prezzo minimo
+                </h2>
+                <p className="mt-2 text-sm leading-relaxed text-zinc-700">
+                  Cartella clinica organizzata, storico sempre accessibile, promemoria,
+                  funzioni avanzate e più ordine in un unico posto.
+                </p>
+                <p className="mt-2 text-sm leading-relaxed text-zinc-700">
+                  <span className="font-semibold text-zinc-900">Solo 6€ all’anno</span>,
+                  meno di <span className="font-semibold text-zinc-900">0,50€ al mese</span>.
+                  Un piccolo contributo per avere molto di più e aiutare UNIMALIA a crescere
+                  e migliorare nel tempo.
+                </p>
+              </div>
+
+              <div className="flex shrink-0 flex-col gap-2 sm:items-end">
+                <ButtonPrimary href="/prezzi">Scopri Premium</ButtonPrimary>
+                <p className="text-xs text-zinc-500">Piano annuale semplice e trasparente</p>
+              </div>
+            </div>
+          </div>
+        </Card>
+      </div>
 
       {!err && animals.length === 0 ? (
         <Card>
