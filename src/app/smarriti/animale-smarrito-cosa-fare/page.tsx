@@ -233,6 +233,11 @@ export default function AnimaleSmarritoCosaFarePage() {
               un vero ponte tra i diversi canali online e un punto unico di riferimento
               per gestire meglio il caso.
             </p>
+            <p>
+              Questo significa meno confusione, meno duplicazioni e una gestione più
+              efficace delle informazioni proprio nel momento in cui ogni dettaglio può
+              fare la differenza.
+            </p>
           </Section>
 
           <Section title="Come aiuta UNIMALIA">

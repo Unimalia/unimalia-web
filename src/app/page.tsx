@@ -534,6 +534,12 @@ export default function HomePage() {
                 <PrimaryCTA href="/identita/nuovo">Crea identità animale</PrimaryCTA>
                 <SecondaryCTA href="/smarrimenti">Vai agli smarrimenti</SecondaryCTA>
                 <SecondaryCTA href="/trovati">Vai a trovati / avvistati</SecondaryCTA>
+                <Link
+                  href="/prezzi"
+                  className="text-sm text-zinc-600 hover:text-zinc-900 underline"
+                >
+                  Prezzi
+                </Link>
               </div>
             </div>
           </div>
