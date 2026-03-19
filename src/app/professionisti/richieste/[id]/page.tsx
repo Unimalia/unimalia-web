@@ -192,6 +192,21 @@ type ConsultDetail = {
     age?: string | null;
     eta?: string | null;
     birth_date?: string | null;
+    sterilized?: boolean | null;
+  } | null;
+  quickSummary?: {
+    age: string;
+    weight: string;
+    bloodType: string;
+    sterilizationStatus: string;
+    allergies: string[];
+    activeTherapies: string[];
+    lastTherapies: string[];
+    chronicPathologies: string[];
+    nextRecall: string | null;
+    latestVisit: string | null;
+    latestVaccination: string | null;
+    vaccinationExpiry: string | null;
   } | null;
 };
 
@@ -430,6 +445,43 @@ export default function ProfessionistiRichiestaDettaglioPage() {
   }
 
   const rapidClinicalState = useMemo(() => {
+    if (data?.quickSummary) {
+      return {
+        age: data.quickSummary.age || "—",
+        weight: data.quickSummary.weight || "—",
+        bloodType: data.quickSummary.bloodType || "Non rilevato",
+        sterilizationStatus: data.quickSummary.sterilizationStatus || "—",
+        allergies: Array.isArray(data.quickSummary.allergies)
+          ? data.quickSummary.allergies.slice(0, 3)
+          : [],
+        activeTherapies: Array.isArray(data.quickSummary.activeTherapies)
+          ? data.quickSummary.activeTherapies.slice(0, 3).map((text) => ({
+              title: text,
+              description: text,
+              event_date: null,
+            }))
+          : [],
+        lastTherapies: Array.isArray(data.quickSummary.lastTherapies)
+          ? data.quickSummary.lastTherapies.slice(0, 3).map((text) => ({
+              title: text,
+              description: text,
+              event_date: null,
+            }))
+          : [],
+        chronicPathologies: Array.isArray(data.quickSummary.chronicPathologies)
+          ? data.quickSummary.chronicPathologies.slice(0, 3).map((text) => ({
+              title: text,
+              description: text,
+              event_date: null,
+            }))
+          : [],
+        nextRecall: data.quickSummary.nextRecall,
+        latestVisit: data.quickSummary.latestVisit,
+        latestVaccination: data.quickSummary.latestVaccination,
+        vaccinationExpiry: data.quickSummary.vaccinationExpiry,
+      };
+    }
+
     const events = Array.isArray(sharedEvents) ? sharedEvents : [];
 
     const normalized = events.map((event) => {
@@ -576,6 +628,12 @@ export default function ProfessionistiRichiestaDettaglioPage() {
       age: animalAge || "—",
       weight: animalWeight || "—",
       bloodType: bloodType || "Non rilevato",
+      sterilizationStatus:
+        data?.animal?.sterilized === true
+          ? "Sterilizzato / castrato"
+          : data?.animal?.sterilized === false
+            ? "Non sterilizzato / non castrato"
+            : "—",
       allergies: allergies.slice(0, 3),
       activeTherapies: activeTherapies.slice(0, 3),
       lastTherapies,
@@ -899,7 +957,11 @@ export default function ProfessionistiRichiestaDettaglioPage() {
             <div className="mt-2 text-sm text-slate-800">
               {rapidClinicalState.allergies.length > 0 ? (
                 rapidClinicalState.allergies.map((item, index) => (
-                  <div key={index}>{item.title || item.description || "Allergia registrata"}</div>
+                  <div key={index}>
+                    {typeof item === "string"
+                      ? item
+                      : item.title || item.description || "Allergia registrata"}
+                  </div>
                 ))
               ) : (
                 <div className="text-slate-500">Nessuna evidenza negli eventi condivisi</div>
@@ -930,7 +992,8 @@ export default function ProfessionistiRichiestaDettaglioPage() {
               {rapidClinicalState.lastTherapies.length > 0 ? (
                 rapidClinicalState.lastTherapies.map((item, index) => (
                   <div key={index}>
-                    {formatDate(item.date)} · {item.title || item.description || "Terapia"}
+                    {item.event_date ? `${formatDate(item.event_date)} · ` : ""}
+                    {item.title || item.description || "Terapia"}
                   </div>
                 ))
               ) : (
@@ -960,12 +1023,7 @@ export default function ProfessionistiRichiestaDettaglioPage() {
             </div>
             <div className="mt-2 text-sm text-slate-800">
               {rapidClinicalState.nextRecall ? (
-                <div>
-                  {formatDate(rapidClinicalState.nextRecall.date)} ·{" "}
-                  {rapidClinicalState.nextRecall.title ||
-                    rapidClinicalState.nextRecall.description ||
-                    "Ricontrollo"}
-                </div>
+                <div>{rapidClinicalState.nextRecall}</div>
               ) : (
                 <div className="text-slate-500">Nessun ricontrollo futuro rilevato</div>
               )}
@@ -978,12 +1036,16 @@ export default function ProfessionistiRichiestaDettaglioPage() {
             </div>
             <div className="mt-2 text-sm text-slate-800">
               {rapidClinicalState.latestVisit ? (
-                <div>
-                  {formatDate(rapidClinicalState.latestVisit.date)} ·{" "}
-                  {rapidClinicalState.latestVisit.title ||
-                    rapidClinicalState.latestVisit.description ||
-                    "Visita"}
-                </div>
+                typeof rapidClinicalState.latestVisit === "string" ? (
+                  <div>{rapidClinicalState.latestVisit}</div>
+                ) : (
+                  <div>
+                    {formatDate(rapidClinicalState.latestVisit.date)} ·{" "}
+                    {rapidClinicalState.latestVisit.title ||
+                      rapidClinicalState.latestVisit.description ||
+                      "Visita"}
+                  </div>
+                )
               ) : (
                 <div className="text-slate-500">Nessuna visita rilevata</div>
               )}
@@ -996,12 +1058,16 @@ export default function ProfessionistiRichiestaDettaglioPage() {
             </div>
             <div className="mt-2 text-sm text-slate-800">
               {rapidClinicalState.latestVaccination ? (
-                <div>
-                  {formatDate(rapidClinicalState.latestVaccination.date)} ·{" "}
-                  {rapidClinicalState.latestVaccination.title ||
-                    rapidClinicalState.latestVaccination.description ||
-                    "Vaccinazione"}
-                </div>
+                typeof rapidClinicalState.latestVaccination === "string" ? (
+                  <div>{rapidClinicalState.latestVaccination}</div>
+                ) : (
+                  <div>
+                    {formatDate(rapidClinicalState.latestVaccination.date)} ·{" "}
+                    {rapidClinicalState.latestVaccination.title ||
+                      rapidClinicalState.latestVaccination.description ||
+                      "Vaccinazione"}
+                  </div>
+                )
               ) : (
                 <div className="text-slate-500">Nessuna vaccinazione rilevata</div>
               )}
@@ -1014,12 +1080,16 @@ export default function ProfessionistiRichiestaDettaglioPage() {
             </div>
             <div className="mt-2 text-sm text-slate-800">
               {rapidClinicalState.vaccinationExpiry ? (
-                <div>
-                  {formatDate(rapidClinicalState.vaccinationExpiry.date)} ·{" "}
-                  {rapidClinicalState.vaccinationExpiry.title ||
-                    rapidClinicalState.vaccinationExpiry.description ||
-                    "Richiamo / scadenza vaccinale"}
-                </div>
+                typeof rapidClinicalState.vaccinationExpiry === "string" ? (
+                  <div>{rapidClinicalState.vaccinationExpiry}</div>
+                ) : (
+                  <div>
+                    {formatDate(rapidClinicalState.vaccinationExpiry.date)} ·{" "}
+                    {rapidClinicalState.vaccinationExpiry.title ||
+                      rapidClinicalState.vaccinationExpiry.description ||
+                      "Richiamo / scadenza vaccinale"}
+                  </div>
+                )
               ) : (
                 <div className="text-slate-500">
                   Nessuna scadenza vaccinale futura rilevata
