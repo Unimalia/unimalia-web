@@ -19,7 +19,7 @@ export default async function AncoraSmarritoPage({
 
   const { data: report, error: repErr } = await admin
     .from("reports")
-    .select("id")
+    .select("id, status")
     .eq("claim_token", token)
     .single();
 
@@ -27,18 +27,30 @@ export default async function AncoraSmarritoPage({
     return <div style={{ padding: 24 }}>Token non valido o annuncio inesistente.</div>;
   }
 
-  const { error: updErr } = await admin
-    .from("reports")
-    .update({
-      status: "active",
-      closed_at: null,
-      expires_at: addDaysIso(30),
-    })
-    .eq("id", report.id);
+  if (report.status !== "active") {
+    const { error: updErr } = await admin
+      .from("reports")
+      .update({
+        status: "active",
+        expires_at: addDaysIso(30),
+      })
+      .eq("id", report.id);
 
-  if (updErr) {
-    return <div style={{ padding: 24 }}>Errore aggiornamento annuncio: {updErr.message}</div>;
+    if (updErr) {
+      return <div style={{ padding: 24 }}>Errore aggiornamento annuncio: {updErr.message}</div>;
+    }
+  } else {
+    const { error: updErr } = await admin
+      .from("reports")
+      .update({
+        expires_at: addDaysIso(30),
+      })
+      .eq("id", report.id);
+
+    if (updErr) {
+      return <div style={{ padding: 24 }}>Errore aggiornamento annuncio: {updErr.message}</div>;
+    }
   }
 
-  redirect(`/annuncio/${report.id}`);
+  redirect(`/gestisci-annuncio/${token}`);
 }
