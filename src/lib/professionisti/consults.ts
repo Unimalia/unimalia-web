@@ -543,7 +543,7 @@ export async function getProfessionalConsultDetail(id: string) {
 
   const { data: animal, error: animalError } = await admin
     .from("animals")
-    .select("id,name,species,breed,sex,birth_date,owner_id,weight_kg,allergies")
+    .select("id,name,species,breed,sex,birth_date,owner_id")
     .eq("id", consult.animal_id)
     .maybeSingle();
 
@@ -560,7 +560,7 @@ export async function getProfessionalConsultDetail(id: string) {
 
   const { data: events, error: eventsError } = await admin
     .from("animal_clinic_events")
-    .select("id,event_date,type,title,description,visibility,status,priority,created_at,meta")
+    .select("id,event_date,type,title,description,visibility,status,priority,created_at,meta,weight_kg")
     .in("id", eventIds.length ? eventIds : ["00000000-0000-0000-0000-000000000000"])
     .order("event_date", { ascending: false })
     .order("created_at", { ascending: false });

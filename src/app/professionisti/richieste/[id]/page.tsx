@@ -173,6 +173,7 @@ type ConsultDetail = {
     scheduled_for?: string | null;
     created_at?: string | null;
     weight?: string | number | null;
+    weight_kg?: string | number | null;
     data?: unknown;
     payload?: unknown;
     meta?: unknown;
@@ -524,11 +525,13 @@ export default function ProfessionistiRichiestaDettaglioPage() {
           const dataObj = (event?.data as Record<string, unknown> | undefined) ?? {};
 
           return (
+            extractText(event?.weight_kg) ||
             extractText(event?.weight) ||
             extractText(payload?.weight) ||
             extractText(payload?.peso) ||
             extractText(dataObj?.weight) ||
             extractText(dataObj?.peso) ||
+            extractText(meta?.weight_kg) ||
             extractText(meta?.weight) ||
             extractText(meta?.peso)
           );
@@ -545,9 +548,11 @@ export default function ProfessionistiRichiestaDettaglioPage() {
       extractText(data?.animal?.peso) ||
       extractText(animal?.weight) ||
       latestDetectedWeight ||
+      extractText(latestVisit?.raw?.weight_kg) ||
       extractText(latestVisit?.raw?.weight) ||
       extractText(latestVisitPayload?.weight) ||
       extractText(latestVisitData?.weight) ||
+      extractText(latestVisitMeta?.weight_kg) ||
       extractText(latestVisitMeta?.weight) ||
       extractText(latestVisitMeta?.peso);
 
@@ -1093,6 +1098,7 @@ export default function ProfessionistiRichiestaDettaglioPage() {
                 const files = Array.isArray(event?.files) ? event.files : [];
                 const preview = extractText(event?.description);
                 const weightLabel =
+                  extractText(event?.weight_kg) ||
                   extractText(event?.weight) ||
                   extractText((event?.payload as { weight?: unknown } | undefined)?.weight) ||
                   extractText((event?.data as { weight?: unknown } | undefined)?.weight);
@@ -1353,7 +1359,8 @@ export default function ProfessionistiRichiestaDettaglioPage() {
                   <div>
                     <span className="font-medium">Peso:</span>{" "}
                     {extractText(
-                      selectedEvent?.weight ||
+                      selectedEvent?.weight_kg ||
+                        selectedEvent?.weight ||
                         (selectedEvent?.payload as { weight?: unknown } | undefined)?.weight ||
                         (selectedEvent?.data as { weight?: unknown } | undefined)?.weight
                     ) || "—"}
