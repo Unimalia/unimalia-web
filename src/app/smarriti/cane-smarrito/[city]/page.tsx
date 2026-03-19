@@ -114,7 +114,10 @@ export default async function CaneSmarritoCityPage({ params }: PageProps) {
   const breadcrumbJsonLd = buildBreadcrumbJsonLd([
     { name: "Home", item: buildAbsoluteUrl("/") },
     { name: "Smarriti", item: buildAbsoluteUrl("/smarrimenti") },
-    { name: "Cane smarrito", item: buildAbsoluteUrl("/smarriti/cane-smarrito/firenze").replace("/firenze", "") },
+    {
+      name: "Cane smarrito",
+      item: buildAbsoluteUrl("/smarriti/cane-smarrito/firenze").replace("/firenze", ""),
+    },
     { name: city.name, item: buildAbsoluteUrl(pagePath) },
   ]);
 
@@ -172,11 +175,10 @@ export default async function CaneSmarritoCityPage({ params }: PageProps) {
           </h1>
 
           <p className="mt-5 max-w-3xl text-lg leading-relaxed text-zinc-600">
-            Se hai perso un cane a {city.name}, le prime ore sono decisive. Agire
-            rapidamente, organizzare bene la ricerca e pubblicare una segnalazione
-            chiara aumenta le possibilità di ritrovamento. UNIMALIA ti aiuta a
-            segnalare l’animale smarrito, raccogliere le informazioni utili e rendere
-            più immediata la consultazione dei dati dell’animale.
+            Se hai perso un cane a {city.name}, le prime ore sono decisive. Agire rapidamente,
+            organizzare bene la ricerca e pubblicare una segnalazione chiara aumenta le possibilità
+            di ritrovamento. UNIMALIA ti aiuta a segnalare l’animale smarrito, raccogliere le
+            informazioni utili e rendere più immediata la consultazione dei dati dell’animale.
           </p>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
@@ -187,58 +189,82 @@ export default async function CaneSmarritoCityPage({ params }: PageProps) {
           </div>
         </header>
 
+        <section className="mt-8 rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
+          <h2 className="text-xl font-bold text-zinc-900">Risposte rapide</h2>
+
+          <div className="mt-4 space-y-4 text-zinc-700">
+            <p>
+              <strong>Cosa fare se ho perso un cane a {city.name}?</strong>
+              <br />
+              Tornare subito nell’ultima zona vista e cercare nelle aree vicine con metodo.
+            </p>
+
+            <p>
+              <strong>Dove cercare un cane smarrito?</strong>
+              <br />
+              Nelle immediate vicinanze, in zone tranquille, parcheggi, aree verdi e percorsi
+              abituali.
+            </p>
+
+            <p>
+              <strong>Come pubblicare uno smarrimento?</strong>
+              <br />
+              Creando una scheda completa con foto, posizione e contatti aggiornati.
+            </p>
+          </div>
+        </section>
+
         <div className="mt-8 grid gap-6">
           <Section title={`Cosa fare subito se il tuo cane è sparito a ${city.name}`}>
             <p>
-              La prima cosa da fare è tornare nel punto esatto in cui il cane è stato
-              visto l’ultima volta. Molti cani spaventati restano nelle vicinanze,
-              seguono percorsi conosciuti o si rifugiano in zone tranquille.
+              La prima cosa da fare è tornare nel punto esatto in cui il cane è stato visto
+              l’ultima volta. Molti cani spaventati restano nelle vicinanze, seguono percorsi
+              conosciuti o si rifugiano in zone tranquille.
             </p>
             <p>
-              Subito dopo conviene preparare una segnalazione completa con foto
-              recente, nome del cane, zona precisa della scomparsa, data, ora, segni
-              distintivi ed eventuale collare o pettorina.
+              Subito dopo conviene preparare una segnalazione completa con foto recente, nome del
+              cane, zona precisa della scomparsa, data, ora, segni distintivi ed eventuale collare
+              o pettorina.
             </p>
           </Section>
 
           <Section title={`Cane smarrito a ${city.name}: i 7 passaggi più utili`}>
             <ol className="space-y-4">
               <li>
-                <strong>1. Torna subito nell’ultima zona vista.</strong> Controlla
-                strade vicine, parcheggi, giardini, ingressi condominiali e aree verdi.
+                <strong>1. Torna subito nell’ultima zona vista.</strong> Controlla strade vicine,
+                parcheggi, giardini, ingressi condominiali e aree verdi.
               </li>
               <li>
-                <strong>2. Chiama il cane con calma.</strong> Se l’animale è spaventato,
-                urla e inseguimenti possono peggiorare la situazione.
+                <strong>2. Chiama il cane con calma.</strong> Se l’animale è spaventato, urla e
+                inseguimenti possono peggiorare la situazione.
               </li>
               <li>
-                <strong>3. Coinvolgi rapidamente le persone presenti.</strong> Passanti,
-                negozianti, bar, portieri e residenti possono averlo visto.
+                <strong>3. Coinvolgi rapidamente le persone presenti.</strong> Passanti, negozianti,
+                bar, portieri e residenti possono averlo visto.
               </li>
               <li>
-                <strong>4. Prepara una segnalazione chiara.</strong> Foto leggibile,
-                zona precisa e contatto immediato fanno la differenza.
+                <strong>4. Prepara una segnalazione chiara.</strong> Foto leggibile, zona precisa e
+                contatto immediato fanno la differenza.
               </li>
               <li>
-                <strong>5. Pubblica la segnalazione su UNIMALIA.</strong> Ti aiuta a
-                centralizzare i dati utili in modo ordinato.
+                <strong>5. Pubblica la segnalazione su UNIMALIA.</strong> Ti aiuta a centralizzare
+                i dati utili in modo ordinato.
               </li>
               <li>
-                <strong>6. Verifica i dati identificativi disponibili.</strong> Microchip,
-                segni distintivi e informazioni già pronte aiutano a muoversi meglio.
+                <strong>6. Verifica i dati identificativi disponibili.</strong> Microchip, segni
+                distintivi e informazioni già pronte aiutano a muoversi meglio.
               </li>
               <li>
-                <strong>7. Aggiorna rapidamente il caso.</strong> Se ricevi
-                avvistamenti o il cane viene ritrovato, aggiorna subito la scheda.
+                <strong>7. Aggiorna rapidamente il caso.</strong> Se ricevi avvistamenti o il cane
+                viene ritrovato, aggiorna subito la scheda.
               </li>
             </ol>
           </Section>
 
           <Section title="Come può aiutarti UNIMALIA">
             <p>
-              UNIMALIA non sostituisce i canali ufficiali di identificazione, ma può
-              aiutarti a gestire meglio la parte informativa e digitale dello
-              smarrimento.
+              UNIMALIA non sostituisce i canali ufficiali di identificazione, ma può aiutarti a
+              gestire meglio la parte informativa e digitale dello smarrimento.
             </p>
 
             <ul className="list-disc space-y-2 pl-6">
@@ -252,8 +278,8 @@ export default async function CaneSmarritoCityPage({ params }: PageProps) {
 
           <Section title={`Dove cercare un cane smarrito a ${city.name}`}>
             <p>
-              In una città come {city.name}, conviene concentrare la ricerca in modo
-              pratico e non dispersivo:
+              In una città come {city.name}, conviene concentrare la ricerca in modo pratico e non
+              dispersivo:
             </p>
             <ul className="list-disc space-y-2 pl-6">
               <li>ultima area di avvistamento</li>
@@ -264,24 +290,24 @@ export default async function CaneSmarritoCityPage({ params }: PageProps) {
               <li>zone in cui il cane si sente normalmente sicuro</li>
             </ul>
             <p>
-              Se il cane è molto spaventato, una ricerca metodica è spesso più utile di
-              una ricerca ampia ma disordinata.
+              Se il cane è molto spaventato, una ricerca metodica è spesso più utile di una ricerca
+              ampia ma disordinata.
             </p>
           </Section>
 
           <Section title="Microchip e identità digitale: non sono la stessa cosa">
             <p>
-              Il microchip è il riferimento ufficiale per l’identificazione del cane.
-              L’identità digitale animale non lo sostituisce.
+              Il microchip è il riferimento ufficiale per l’identificazione del cane. L’identità
+              digitale animale non lo sostituisce.
             </p>
             <p>
-              L’identità digitale serve a rendere più accessibili e aggiornabili online
-              le informazioni utili: dati essenziali, note pratiche, riferimenti rapidi
-              e gestione del caso.
+              L’identità digitale serve a rendere più accessibili e aggiornabili online le
+              informazioni utili: dati essenziali, note pratiche, riferimenti rapidi e gestione del
+              caso.
             </p>
             <p>
-              In sintesi: il microchip identifica formalmente; l’identità digitale aiuta
-              nella gestione pratica delle informazioni.
+              In sintesi: il microchip identifica formalmente; l’identità digitale aiuta nella
+              gestione pratica delle informazioni.
             </p>
           </Section>
 
