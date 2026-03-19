@@ -166,6 +166,27 @@ function AudienceCard({
   );
 }
 
+function GuideCard({
+  title,
+  description,
+  href,
+}: {
+  title: string;
+  description: string;
+  href: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="block rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm transition hover:bg-zinc-50"
+    >
+      <h3 className="text-lg font-semibold text-zinc-900">{title}</h3>
+      <p className="mt-3 text-sm leading-relaxed text-zinc-600">{description}</p>
+      <div className="mt-5 text-sm font-semibold text-zinc-900">Apri guida →</div>
+    </Link>
+  );
+}
+
 export default function HomePage() {
   return (
     <main className="bg-zinc-50">
@@ -312,6 +333,36 @@ export default function HomePage() {
                 description="Concedi accessi controllati e prepara un ecosistema utile anche per altri operatori del settore animale."
                 href="/professionisti"
                 cta="Vai ai professionisti"
+              />
+            </div>
+          </div>
+        </Container>
+      </section>
+
+      <section className="border-y border-zinc-200 bg-white">
+        <Container>
+          <div className="py-16 sm:py-20">
+            <SectionTitle
+              eyebrow="Guide utili"
+              title="Risorse pubbliche utili per proprietari e ricerche SEO"
+              description="Queste guide aiutano sia gli utenti sia la visibilità organica di UNIMALIA nelle ricerche informative e locali."
+            />
+
+            <div className="mt-10 grid gap-6 lg:grid-cols-3">
+              <GuideCard
+                title="Animale smarrito: cosa fare subito"
+                description="Guida pratica con passaggi immediati, errori da evitare e uso corretto di identità digitale e segnalazione."
+                href="/smarriti/animale-smarrito-cosa-fare"
+              />
+              <GuideCard
+                title="Cane smarrito a Firenze"
+                description="Prima pagina local costruita per query territoriali come “cane smarrito Firenze”."
+                href="/smarriti/cane-smarrito/firenze"
+              />
+              <GuideCard
+                title="Smarrimenti attivi"
+                description="Vai alla sezione pubblica con le segnalazioni attive pubblicate sulla piattaforma."
+                href="/smarrimenti"
               />
             </div>
           </div>
