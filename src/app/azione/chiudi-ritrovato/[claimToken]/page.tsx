@@ -50,21 +50,21 @@ export default async function ChiudiRitrovatoPage({
       .eq("id", report.animal_id);
   }
 
-  const shouldInviteToRegister = !report.created_by_user_id;
-
   try {
-    if (shouldInviteToRegister && report.contact_email) {
+    if (report.contact_email) {
       const normalizedEmail = String(report.contact_email).trim().toLowerCase();
 
       const registerUrl = `${getBaseUrl()}/login?mode=signup&returnTo=%2Fidentita`;
       const donateUrl =
         process.env.STRIPE_DONATION_URL ||
         process.env.NEXT_PUBLIC_STRIPE_DONATION_URL ||
-        `${getBaseUrl()}/sostieni`;
+        null;
+
+      const alreadyRegistered = !!report.created_by_user_id;
 
       const email = inviteToRegisterAfterFoundEmail({
         registerUrl,
-        alreadyRegistered: false,
+        alreadyRegistered,
         donateUrl,
       });
 
