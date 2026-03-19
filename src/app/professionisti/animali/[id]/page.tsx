@@ -39,6 +39,10 @@ type Animal = {
   created_by_role?: string | null;
   created_by_org_id?: string | null;
   origin_org_id?: string | null;
+
+  owner_name?: string | null;
+  owner_email?: string | null;
+  owner_phone?: string | null;
 };
 
 type ClinicEventType =
@@ -181,6 +185,10 @@ function formatEventDateIT(dateStr?: string | null) {
 
 function normalizeChip(raw: string | null) {
   return (raw || "").replace(/\s+/g, "").trim();
+}
+
+function normalizePhone(raw?: string | null) {
+  return String(raw || "").trim();
 }
 
 function formatAgeFromBirthDate(birthDateISO?: string | null) {
@@ -929,6 +937,46 @@ export default function ProAnimalPage() {
             ) : null}
           </div>
         </section>
+
+        <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+          <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+            Proprietario
+          </div>
+
+          <div className="mt-2 text-sm font-semibold text-zinc-900">
+            {animal?.owner_name || "Non disponibile"}
+          </div>
+
+          <div className="mt-3 space-y-2 text-sm">
+            <div>
+              <div className="text-xs text-zinc-500">Email</div>
+              {animal?.owner_email ? (
+                <a
+                  href={`mailto:${animal.owner_email}`}
+                  className="font-medium text-zinc-800 underline underline-offset-2 hover:text-zinc-950"
+                >
+                  {animal.owner_email}
+                </a>
+              ) : (
+                <div className="text-zinc-600">—</div>
+              )}
+            </div>
+
+            <div>
+              <div className="text-xs text-zinc-500">Telefono</div>
+              {animal?.owner_phone ? (
+                <a
+                  href={`tel:${normalizePhone(animal.owner_phone)}`}
+                  className="font-medium text-zinc-800 underline underline-offset-2 hover:text-zinc-950"
+                >
+                  {animal.owner_phone}
+                </a>
+              ) : (
+                <div className="text-zinc-600">—</div>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
       <AnimalCodes
