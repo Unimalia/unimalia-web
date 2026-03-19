@@ -269,11 +269,15 @@ export default async function AnnuncioPage({ params }: PageProps) {
       </div>
 
       <div className="overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm">
-        <img
-          src={mainPhoto}
-          alt={title}
-          className="h-72 w-full object-cover sm:h-96"
-        />
+        <div className="bg-zinc-100 p-4 sm:p-6">
+          <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white">
+            <img
+              src={mainPhoto}
+              alt={title}
+              className="h-72 w-full object-contain sm:h-96"
+            />
+          </div>
+        </div>
 
         <div className="p-6 sm:p-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">

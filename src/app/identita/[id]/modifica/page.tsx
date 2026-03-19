@@ -9,10 +9,11 @@ import { supabase } from "@/lib/supabaseClient";
 
 const BUCKET = "animal-photos";
 
-async function compressImageToMax1MB(file: File): Promise<File> {
-  const MAX_BYTES = 1024 * 1024; // 1 MB
-
-  if (file.size <= MAX_BYTES) return file;
+async function compressImageToMaxBytes(
+  file: File,
+  maxBytes = 2.5 * 1024 * 1024
+): Promise<File> {
+  if (file.size <= maxBytes) return file;
 
   const img = await new Promise<HTMLImageElement>((resolve, reject) => {
     const i = new Image();
@@ -23,7 +24,7 @@ async function compressImageToMax1MB(file: File): Promise<File> {
 
   const canvas = document.createElement("canvas");
 
-  const maxSide = 1600; // limite dimensione lato
+  const maxSide = 2200;
   const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
 
   canvas.width = Math.round(img.width * scale);
@@ -34,17 +35,17 @@ async function compressImageToMax1MB(file: File): Promise<File> {
 
   ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-  let quality = 0.9;
+  let quality = 0.95;
   let blob: Blob | null = null;
 
-  while (quality > 0.4) {
+  while (quality > 0.6) {
     blob = await new Promise((resolve) =>
       canvas.toBlob(resolve as any, "image/jpeg", quality)
     );
 
-    if (blob && blob.size <= MAX_BYTES) break;
+    if (blob && blob.size <= maxBytes) break;
 
-    quality -= 0.1;
+    quality -= 0.05;
   }
 
   if (!blob) throw new Error("Compressione immagine fallita");
@@ -140,7 +141,7 @@ export default function ModificaAnimalePage() {
     setSaving(true);
 
     try {
-      const compressed = await compressImageToMax1MB(file);
+      const compressed = await compressImageToMaxBytes(file);
 
       const { data: authData } = await supabase.auth.getUser();
       const user = authData.user;
@@ -155,7 +156,7 @@ export default function ModificaAnimalePage() {
 
       const { error } = await supabase.storage
         .from(BUCKET)
-        .upload(path, compressed, { upsert: true });
+        .upload(path, compressed, { upsert: true, contentType: "image/jpeg" });
 
       if (error) {
         setError(error.message);
@@ -286,11 +287,14 @@ export default function ModificaAnimalePage() {
 
         <div>
           <span className="text-sm font-medium">Foto</span>
-          <div className="mt-2">
-            <img
-              src={photoUrl || "/placeholder-animal.jpg"}
-              className="h-40 rounded-lg border"
-            />
+          <div className="mt-2 overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-100 p-3">
+            <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white">
+              <img
+                src={photoUrl || "/placeholder-animal.jpg"}
+                className="h-64 w-full object-contain"
+                alt="Foto animale"
+              />
+            </div>
           </div>
 
           <label className="mt-3 inline-block cursor-pointer rounded-lg bg-black px-4 py-2 text-sm text-white hover:bg-zinc-800">

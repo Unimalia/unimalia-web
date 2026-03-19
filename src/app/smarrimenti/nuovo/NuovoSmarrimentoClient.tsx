@@ -342,10 +342,10 @@ export default function NuovoSmarrimentoClient() {
     stage === "uploading-photo"
       ? "Caricamento foto..."
       : stage === "creating-report"
-      ? "Pubblicazione..."
-      : ownerPrefillMode
-      ? "Pubblica smarrimento"
-      : "Invia e verifica email";
+        ? "Pubblicazione..."
+        : ownerPrefillMode
+          ? "Pubblica smarrimento"
+          : "Invia e verifica email";
 
   return (
     <div className="mx-auto w-full max-w-2xl px-4 py-8">
@@ -400,13 +400,13 @@ export default function NuovoSmarrimentoClient() {
         </label>
 
         {photoPreview ? (
-          <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white">
-            <div className="relative h-64 w-full">
+          <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-100 p-3">
+            <div className="relative h-64 w-full overflow-hidden rounded-xl border border-zinc-200 bg-white">
               <Image
                 src={photoPreview}
                 alt="Anteprima foto animale"
                 fill
-                className="object-cover"
+                className="object-contain"
                 unoptimized
               />
             </div>
