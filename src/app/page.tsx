@@ -208,13 +208,16 @@ export default function HomePage() {
 
               <h1 className="mt-6 max-w-4xl text-4xl font-bold tracking-tight text-zinc-900 sm:text-5xl lg:text-6xl">
                 La piattaforma per{" "}
-                <span className="text-teal-700">identità animale, accessi clinici e segnalazioni utili</span>.
+                <span className="text-teal-700">
+                  identità animale, accessi clinici e segnalazioni utili
+                </span>
+                .
               </h1>
 
               <p className="mt-6 max-w-2xl text-lg leading-relaxed text-zinc-600">
-                UNIMALIA aiuta proprietari e professionisti a gestire in modo semplice dati essenziali,
-                accessi autorizzati, consulti, smarrimenti, segnalazioni di animali trovati o avvistati
-                e casi conclusi con lieto fine.
+                UNIMALIA aiuta proprietari e professionisti a gestire in modo semplice dati
+                essenziali, accessi autorizzati, consulti, smarrimenti, segnalazioni di animali
+                trovati o avvistati e casi conclusi con lieto fine.
               </p>
 
               <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
@@ -225,19 +228,25 @@ export default function HomePage() {
 
               <div className="mt-8 grid max-w-3xl gap-3 sm:grid-cols-3">
                 <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Per i proprietari</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                    Per i proprietari
+                  </p>
                   <p className="mt-2 text-sm font-medium text-zinc-900">
                     Identità digitale, QR code e strumenti rapidi quando serve agire subito.
                   </p>
                 </div>
                 <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Per i veterinari</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                    Per i veterinari
+                  </p>
                   <p className="mt-2 text-sm font-medium text-zinc-900">
                     Accessi clinici autorizzati, consulti e collaborazione più ordinata.
                   </p>
                 </div>
                 <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Per altri professionisti</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                    Per altri professionisti
+                  </p>
                   <p className="mt-2 text-sm font-medium text-zinc-900">
                     Spazio in evoluzione per toelettatori, pet sitter, pensioni e addestratori.
                   </p>
@@ -273,16 +282,22 @@ export default function HomePage() {
                   </div>
 
                   <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-                    <p className="text-sm font-semibold text-zinc-900">Smarrimenti, trovati e avvistamenti</p>
+                    <p className="text-sm font-semibold text-zinc-900">
+                      Smarrimenti, trovati e avvistamenti
+                    </p>
                     <p className="mt-1 text-sm text-zinc-600">
-                      Segnalazioni più ordinate per aiutare a ritrovare l’animale e raccogliere informazioni utili.
+                      Segnalazioni più ordinate per aiutare a ritrovare l’animale e raccogliere
+                      informazioni utili.
                     </p>
                   </div>
 
                   <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-                    <p className="text-sm font-semibold text-zinc-900">Cartella clinica e accessi</p>
+                    <p className="text-sm font-semibold text-zinc-900">
+                      Cartella clinica e accessi
+                    </p>
                     <p className="mt-1 text-sm text-zinc-600">
-                      Il proprietario autorizza, il veterinario lavora con dati pertinenti e tracciati.
+                      Il proprietario autorizza, il veterinario lavora con dati pertinenti e
+                      tracciati.
                     </p>
                   </div>
                 </div>
@@ -461,11 +476,13 @@ export default function HomePage() {
               <div className="max-w-3xl">
                 <p className="text-sm font-semibold text-teal-700">Chiusura forte</p>
                 <h2 className="mt-2 text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl">
-                  In pochi secondi deve essere chiaro: UNIMALIA serve a proteggere meglio l’animale.
+                  In pochi secondi deve essere chiaro: UNIMALIA serve a proteggere meglio
+                  l’animale.
                 </h2>
                 <p className="mt-4 text-base leading-relaxed text-zinc-600">
-                  Identità digitale, accessi clinici controllati, consulti, smarrimenti, animali trovati,
-                  avvistamenti e lieti fine: meno dispersione, più chiarezza, più fiducia tra proprietari e professionisti.
+                  Identità digitale, accessi clinici controllati, consulti, smarrimenti, animali
+                  trovati, avvistamenti e lieti fine: meno dispersione, più chiarezza, più fiducia
+                  tra proprietari e professionisti.
                 </p>
               </div>
 
@@ -477,6 +494,51 @@ export default function HomePage() {
             </div>
           </div>
         </Container>
+      </section>
+
+      <section className="mt-12">
+        <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
+          <h2 className="text-2xl font-bold text-zinc-900">Guide utili UNIMALIA</h2>
+
+          <p className="mt-2 text-zinc-600">
+            Scopri come gestire smarrimenti, identità animale digitale e organizzare meglio le
+            informazioni del tuo animale.
+          </p>
+
+          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+            <a
+              href="/smarriti/animale-smarrito-cosa-fare"
+              className="rounded-xl border p-4 hover:bg-zinc-50"
+            >
+              <p className="font-semibold">Animale smarrito: cosa fare</p>
+              <p className="text-sm text-zinc-500 mt-1">Guida completa per agire subito</p>
+            </a>
+
+            <a
+              href="/identita-animale/cos-e-identita-animale-digitale"
+              className="rounded-xl border p-4 hover:bg-zinc-50"
+            >
+              <p className="font-semibold">Cos’è l’identità animale digitale</p>
+              <p className="text-sm text-zinc-500 mt-1">Spiegazione semplice e utile</p>
+            </a>
+
+            <a
+              href="/smarriti/cane-smarrito/firenze"
+              className="rounded-xl border p-4 hover:bg-zinc-50"
+            >
+              <p className="font-semibold">Cane smarrito a Firenze</p>
+              <p className="text-sm text-zinc-500 mt-1">Esempio guida locale</p>
+            </a>
+
+            <a
+              href="/identita-animale/come-registrare-un-animale"
+              className="rounded-xl border p-4 hover:bg-zinc-50"
+            >
+              <p className="font-semibold">Come registrare un animale</p>
+              <p className="text-sm text-zinc-500 mt-1">Passaggi semplici</p>
+            </a>
+          </div>
+        </div>
       </section>
     </main>
   );
