@@ -5,7 +5,7 @@ import { getProfessionalOrgId } from "@/lib/professionisti/org";
 import { hasActiveGrantForAnimal } from "@/lib/professionisti/grants";
 import { buildClinicalQuickSummary } from "@/lib/clinic/quickSummary";
 
-export type ConsultBox = "received" | "responses" | "waiting" | "archive";
+export type ConsultBox = "received" | "sent" | "archive";
 export type ConsultStatus =
   | "pending"
   | "accepted"
@@ -458,13 +458,7 @@ export async function listProfessionalConsults(params: {
     )
     .order("priority", { ascending: false })
     .order("last_message_at", { ascending: false })
-    .limit(200);
-
-  if (box === "archive") {
-    query = query.in("status", ["closed", "rejected", "expired"]);
-  } else {
-    query = query.in("status", ["pending", "accepted", "replied"]);
-  }
+    .limit(100);
 
   if (params.status) {
     query = query.eq("status", params.status);
@@ -477,103 +471,106 @@ export async function listProfessionalConsults(params: {
   const { data, error } = await query;
   if (error) throw new Error(error.message);
 
-  const consults = (data ?? []).map((item) => normalizeStatus(item));
+  const normalized = (data ?? []).map((x) => normalizeStatus(x));
 
-  if (consults.length === 0) {
-    return [];
-  }
-
-  const consultIds = consults.map((item) => item.id);
-
-  const { data: messages, error: messagesError } = await admin
-    .from("professional_consult_messages")
-    .select(
-      "consult_id,sender_professional_id,sender_display_name,message,created_at,message_type"
-    )
-    .in("consult_id", consultIds)
-    .order("created_at", { ascending: false });
-
-  if (messagesError) throw new Error(messagesError.message);
+  const consultIds = normalized.map((item) => item.id);
 
   const latestMessageByConsultId = new Map<
     string,
     {
-      consult_id: string;
       sender_professional_id: string | null;
-      sender_display_name: string | null;
-      message: string | null;
       created_at: string;
       message_type: string | null;
     }
   >();
 
-  for (const message of messages ?? []) {
-    if (!latestMessageByConsultId.has(message.consult_id)) {
-      latestMessageByConsultId.set(message.consult_id, message);
+  if (consultIds.length > 0) {
+    const { data: messages, error: messagesError } = await admin
+      .from("professional_consult_messages")
+      .select("consult_id,sender_professional_id,created_at,message_type")
+      .in("consult_id", consultIds)
+      .order("created_at", { ascending: false });
+
+    if (messagesError) throw new Error(messagesError.message);
+
+    for (const message of messages ?? []) {
+      if (!latestMessageByConsultId.has(message.consult_id)) {
+        latestMessageByConsultId.set(message.consult_id, {
+          sender_professional_id: message.sender_professional_id ?? null,
+          created_at: message.created_at,
+          message_type: message.message_type ?? null,
+        });
+      }
     }
   }
 
-  const enriched = consults.map((item) => {
-    const latestMessage = latestMessageByConsultId.get(item.id) ?? null;
+  const enriched = normalized.map((item) => {
+    const latestMessage = latestMessageByConsultId.get(item.id);
 
     const isSender = item.sender_professional_id === ctx.professional.id;
     const isReceiver = item.receiver_professional_id === ctx.professional.id;
 
-    const lastMessageSenderProfessionalId =
-      latestMessage?.sender_professional_id ?? item.sender_professional_id;
+    const latestSenderProfessionalId = latestMessage?.sender_professional_id ?? null;
 
-    const lastMessageSenderDisplayName =
-      latestMessage?.sender_display_name ??
-      (lastMessageSenderProfessionalId === item.sender_professional_id
-        ? item.sender_display_name
-        : item.receiver_display_name);
+    const isArchived = ["closed", "rejected", "expired"].includes(item.status);
 
-    const lastMessagePreview =
-      (latestMessage?.message ?? item.initial_message ?? "").trim() || null;
+    const isActionRequired =
+      isReceiver &&
+      (item.status === "pending" ||
+        (["accepted", "replied"].includes(item.status) &&
+          latestSenderProfessionalId !== ctx.professional.id));
 
-    let inboxBucket: ConsultBox = "archive";
-
-    if (["closed", "rejected", "expired"].includes(item.status)) {
-      inboxBucket = "archive";
-    } else if (isReceiver) {
-      inboxBucket = "received";
-    } else if (isSender && lastMessageSenderProfessionalId !== ctx.professional.id) {
-      inboxBucket = "responses";
-    } else {
-      inboxBucket = "waiting";
-    }
-
-    const needsMyAction = inboxBucket === "received" || inboxBucket === "responses";
+    const isSentActive = isSender && ["pending", "accepted", "replied"].includes(item.status);
 
     return {
       ...item,
-      last_message_preview: lastMessagePreview,
-      last_message_sender_display_name: lastMessageSenderDisplayName,
-      last_message_sender_professional_id: lastMessageSenderProfessionalId,
-      needs_my_action: needsMyAction,
-      inbox_bucket: inboxBucket,
+      isSender,
+      isReceiver,
+      isArchived,
+      isActionRequired,
+      isSentActive,
+      latest_sender_professional_id: latestSenderProfessionalId,
+      latest_message_type: latestMessage?.message_type ?? null,
+      effective_last_message_at: latestMessage?.created_at ?? item.last_message_at ?? item.created_at,
     };
   });
 
   const q = (params.q ?? "").trim().toLowerCase();
 
-  return enriched
-    .filter((item) => item.inbox_bucket === box)
-    .filter((item) => {
-      if (!q) return true;
+  const byBox = enriched.filter((item) => {
+    if (box === "received") return item.isActionRequired;
+    if (box === "sent") return item.isSentActive;
+    return item.isArchived && (item.isSender || item.isReceiver);
+  });
 
-      return [
-        item.animal_name,
-        item.subject,
-        item.sender_display_name,
-        item.receiver_display_name,
-        item.initial_message,
-        item.last_message_preview,
-        item.last_message_sender_display_name,
-      ]
-        .filter(Boolean)
-        .some((v) => String(v).toLowerCase().includes(q));
-    });
+  const filtered = byBox.filter((item) => {
+    if (!q) return true;
+
+    return [
+      item.animal_name,
+      item.subject,
+      item.sender_display_name,
+      item.receiver_display_name,
+      item.initial_message,
+    ]
+      .filter(Boolean)
+      .some((v) => String(v).toLowerCase().includes(q));
+  });
+
+  return filtered.map(
+    ({
+      isSender,
+      isReceiver,
+      isArchived,
+      isActionRequired,
+      isSentActive,
+      effective_last_message_at,
+      ...item
+    }) => ({
+      ...item,
+      last_message_at: effective_last_message_at,
+    })
+  );
 }
 
 export async function getProfessionalConsultDetail(id: string) {

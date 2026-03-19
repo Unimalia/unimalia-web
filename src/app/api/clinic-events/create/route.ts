@@ -4,6 +4,7 @@ import { requireOwnerOrGrant } from "@/lib/server/requireOwnerOrGrant";
 import { writeAudit } from "@/lib/server/audit";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { sendOwnerAnimalUpdateEmail } from "@/lib/email/sendOwnerAnimalUpdateEmail";
+import { createClinicalEventOwnerNotification } from "@/lib/notifications/create-owner-notification";
 
 function getBearerToken(req: Request) {
   const h = req.headers.get("authorization") || req.headers.get("Authorization") || "";
@@ -227,6 +228,30 @@ export async function POST(req: Request) {
       previous_data: null,
       next_data: data,
     });
+
+    try {
+      const admin = supabaseAdmin();
+
+      const { data: animalRow, error: animalRowError } = await admin
+        .from("animals")
+        .select("id, name, owner_id")
+        .eq("id", animalId)
+        .single();
+
+      if (animalRowError) {
+        console.error("[OWNER_NOTIFICATION_ANIMAL_FETCH_ERROR]", animalRowError);
+      } else if (animalRow?.owner_id) {
+        await createClinicalEventOwnerNotification({
+          ownerId: animalRow.owner_id,
+          animalId: animalRow.id,
+          animalName: animalRow.name ?? "Animale",
+          eventType: type || "Evento clinico",
+          shortDescription: description || null,
+        });
+      }
+    } catch (notificationError) {
+      console.error("[OWNER_NOTIFICATION_CREATE_ERROR]", notificationError);
+    }
 
     try {
       await sendOwnerAnimalUpdateEmail({
