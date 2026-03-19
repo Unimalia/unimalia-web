@@ -57,7 +57,6 @@ function isLikelyFullName(s: string) {
   return parts.length >= 2;
 }
 
-// OGGI non blocchiamo per phone_verified
 const REQUIRE_PHONE_VERIFIED = false;
 
 function isProfileComplete(p: OwnerProfile | null) {
@@ -68,7 +67,7 @@ function isProfileComplete(p: OwnerProfile | null) {
   const cityOk = (p.city ?? "").trim().length >= 2;
 
   const cf = normalizeCF(p.fiscal_code ?? "");
-  const cfOk = !cf || cf.length === 16; // facoltativo
+  const cfOk = !cf || cf.length === 16;
 
   if (!fullNameOk || !phoneOk || !cityOk || !cfOk) return false;
 
@@ -102,11 +101,9 @@ export default function IdentitaPage() {
   const [profileOk, setProfileOk] = useState(true);
   const [phoneVerified, setPhoneVerified] = useState<boolean | null>(null);
 
-  // modal codici
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<Animal | null>(null);
 
-  // delete
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteErr, setDeleteErr] = useState<string | null>(null);
 
@@ -165,7 +162,6 @@ export default function IdentitaPage() {
         return;
       }
 
-      // nascondi archiviati
       const list = ((data as Animal[]) || []).filter(
         (a) => (a.status || "").toLowerCase() !== "deleted"
       );
@@ -201,7 +197,6 @@ export default function IdentitaPage() {
         return;
       }
 
-      // Soft delete: status = deleted
       const { error } = await supabase
         .from("animals")
         .update({ status: "deleted" })
@@ -214,7 +209,6 @@ export default function IdentitaPage() {
         return;
       }
 
-      // aggiorna UI
       setAnimals((prev) => prev.filter((x) => x.id !== a.id));
     } catch (e: any) {
       console.error("DELETE ANIMAL EXCEPTION:", e);
@@ -324,21 +318,23 @@ export default function IdentitaPage() {
                 key={a.id}
                 className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm"
               >
-                <div className="relative h-44 bg-zinc-100">
-                  <img
-                    src={a.photo_url || "/placeholder-animal.jpg"}
-                    alt={a.name}
-                    className="h-44 w-full object-cover"
-                    onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).src = "/placeholder-animal.jpg";
-                    }}
-                  />
-                  <div className="absolute left-3 top-3">
-                    <span
-                      className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${st.cls}`}
-                    >
-                      {st.label}
-                    </span>
+                <div className="bg-zinc-100 p-3">
+                  <div className="relative overflow-hidden rounded-xl border border-zinc-200 bg-white">
+                    <img
+                      src={a.photo_url || "/placeholder-animal.jpg"}
+                      alt={a.name}
+                      className="h-44 w-full object-contain"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = "/placeholder-animal.jpg";
+                      }}
+                    />
+                    <div className="absolute left-3 top-3">
+                      <span
+                        className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${st.cls}`}
+                      >
+                        {st.label}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
