@@ -61,15 +61,20 @@ export async function POST(req: Request) {
         .eq("id", report.animal_id);
     }
 
-    const shouldInviteToRegister = !report.created_by_user_id;
-
-    if (shouldInviteToRegister && report.contact_email) {
+    if (report.contact_email) {
       try {
         const registerUrl = `${getBaseUrl()}/login?mode=signup&returnTo=%2Fidentita`;
+        const donateUrl =
+          process.env.STRIPE_DONATION_URL ||
+          process.env.NEXT_PUBLIC_STRIPE_DONATION_URL ||
+          null;
+
+        const alreadyRegistered = !!report.created_by_user_id;
+
         const email = inviteToRegisterAfterFoundEmail({
           registerUrl,
-          alreadyRegistered: false,
-          donateUrl: `${getBaseUrl()}/sostieni`,
+          alreadyRegistered,
+          donateUrl,
         });
 
         await resend.emails.send({

@@ -173,18 +173,41 @@ export function inviteToRegisterAfterFoundEmail(params: {
   alreadyRegistered?: boolean;
   donateUrl?: string | null;
 }) {
-  const title = params.alreadyRegistered
-    ? "Crea la scheda animale su UNIMALIA"
+  const alreadyRegistered = params.alreadyRegistered === true;
+
+  const title = alreadyRegistered
+    ? "Felici che sia andata bene ❤️"
     : "Proteggi il tuo animale per sempre";
 
-  const actionLabel = params.alreadyRegistered
-    ? "Crea scheda animale"
-    : "Registrati e crea scheda animale";
+  const introHtml = alreadyRegistered
+    ? `
+      <p>Felici che sia andata bene ❤️</p>
+      <p>
+        Il tuo annuncio si è concluso positivamente. Se UNIMALIA ti è stato utile e vuoi sostenere il progetto,
+        puoi farlo in modo del tutto facoltativo.
+      </p>
+    `
+    : `
+      <p>Felici che sia andata bene ❤️</p>
+      <p>
+        Ora puoi registrarti e creare la scheda animale su UNIMALIA, così in futuro avrai tutto più pronto in caso di emergenza.
+      </p>
+    `;
+
+  const registerBlock = alreadyRegistered
+    ? ""
+    : `
+      <p>
+        <a href="${params.registerUrl}" style="display:inline-block;padding:10px 14px;border-radius:10px;text-decoration:none;background:#111;color:#fff;">
+          Registrati e crea scheda animale
+        </a>
+      </p>
+    `;
 
   const donateBlock = params.donateUrl
     ? `
       <p style="margin-top:18px;color:#555;font-size:13px;">
-        Se UNIMALIA ti è stato utile e vuoi sostenere il progetto, puoi farlo in modo del tutto facoltativo.
+        Vuoi sostenere UNIMALIA in modo facoltativo?
       </p>
       <p>
         <a href="${params.donateUrl}" style="font-size:13px;color:#111;">
@@ -197,21 +220,16 @@ export function inviteToRegisterAfterFoundEmail(params: {
   const html = wrapEmailHtml(
     title,
     `
-      <p>Felici che sia andata bene ❤️</p>
-      <p>
-        ${
-          params.alreadyRegistered
-            ? "Ora puoi creare la scheda animale su UNIMALIA, così avrai tutto più pronto in caso di emergenza."
-            : "Vuoi registrarti e creare l’identità digitale del tuo animale? Così, se succede di nuovo, fai tutto più velocemente."
-        }
-      </p>
-      <p>
-        <a href="${params.registerUrl}" style="display:inline-block;padding:10px 14px;border-radius:10px;text-decoration:none;background:#111;color:#fff;">
-          ${actionLabel}
-        </a>
-      </p>
+      ${introHtml}
+      ${registerBlock}
       ${donateBlock}
     `
   );
-  return { subject: "UNIMALIA · Dopo il lieto fine", html };
+
+  return {
+    subject: alreadyRegistered
+      ? "UNIMALIA · Felici che sia andata bene ❤️"
+      : "UNIMALIA · Dopo il lieto fine",
+    html,
+  };
 }
