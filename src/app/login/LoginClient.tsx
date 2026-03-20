@@ -315,10 +315,12 @@ export default function LoginClient() {
       </div>
 
       <p className="mt-3 text-zinc-700">
-        Per pubblicare uno smarrimento e creare l’identità animale serve un account.
+        Gli smarrimenti su UNIMALIA sono sempre gratuiti e puoi pubblicarli anche senza registrazione.
         <br />
         <span className="text-zinc-600">
-          Il telefono non è richiesto in questa fase: verrà gestito più avanti solo per funzioni premium e notifiche dedicate.
+          Creare un account ti permette di gestire l’identità animale e accedere alle funzioni complete
+          della piattaforma. Il telefono non è richiesto in questa fase: verrà gestito più avanti solo
+          per funzioni premium e notifiche dedicate.
         </span>
       </p>
 
