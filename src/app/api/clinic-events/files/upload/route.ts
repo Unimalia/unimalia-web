@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireOwnerOrGrant } from "@/lib/server/requireOwnerOrGrant";
 import { writeAudit } from "@/lib/server/audit";
+import { sendOwnerAnimalUpdateEmail } from "@/lib/email/sendOwnerAnimalUpdateEmail";
 
 function getBearerToken(req: Request) {
   const h = req.headers.get("authorization") || req.headers.get("Authorization") || "";
@@ -27,13 +27,10 @@ const ALLOWED_MIME_TYPES = new Set([
 
 export async function POST(req: Request) {
   const token = getBearerToken(req);
-  if (!token) {
-    return NextResponse.json({ error: "Missing Bearer token" }, { status: 401 });
-  }
+  if (!token) return NextResponse.json({ error: "Missing Bearer token" }, { status: 401 });
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
   if (!supabaseUrl || !supabaseAnon) {
     return NextResponse.json(
       { error: "Server misconfigured (Supabase env missing)" },
@@ -41,50 +38,34 @@ export async function POST(req: Request) {
     );
   }
 
-  // solo per autenticare l’utente e fare il grant check
   const supabase = createClient(supabaseUrl, supabaseAnon, {
     global: { headers: { Authorization: `Bearer ${token}` } },
   });
 
-  // per storage + insert DB
-  const admin = supabaseAdmin();
-
   const { data: userData, error: userErr } = await supabase.auth.getUser(token);
   const user = userData?.user;
-
-  if (userErr || !user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  if (userErr || !user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const form = await req.formData();
 
   const eventId = String(form.get("eventId") || "").trim();
   const files = form.getAll("files");
 
-  if (!eventId) {
-    return NextResponse.json({ error: "eventId required" }, { status: 400 });
-  }
-
+  if (!eventId) return NextResponse.json({ error: "eventId required" }, { status: 400 });
   if (!isUuid(eventId)) {
     return NextResponse.json({ error: "eventId invalid" }, { status: 400 });
   }
+  if (!files.length) return NextResponse.json({ error: "files required" }, { status: 400 });
 
-  if (!files.length) {
-    return NextResponse.json({ error: "files required" }, { status: 400 });
-  }
-
-  const { data: ev, error: evErr } = await admin
+  const { data: ev, error: evErr } = await supabase
     .from("animal_clinic_events")
-    .select("id, animal_id, status")
+    .select("id, animal_id, title, description, event_date, type, visibility, source, priority, meta")
     .eq("id", eventId)
-    .neq("status", "void")
     .single();
 
-  if (evErr || !ev) {
-    return NextResponse.json({ error: "Event not found" }, { status: 404 });
-  }
+  if (evErr || !ev) return NextResponse.json({ error: "Event not found" }, { status: 404 });
 
-  const animalId = String(ev.animal_id);
+  const animalId = (ev as any).animal_id as string;
 
   const grant = await requireOwnerOrGrant(supabase, user.id, animalId, "upload");
   if (!grant.ok) {
@@ -98,36 +79,31 @@ export async function POST(req: Request) {
       result: "denied",
       reason: grant.reason,
     });
-
     return NextResponse.json({ error: grant.reason }, { status: 403 });
   }
 
   const bucket = "clinic-event-files";
   const uploaded: any[] = [];
 
-  for (const entry of files) {
-    if (!(entry instanceof File)) continue;
+  for (const f of files) {
+    if (!(f instanceof File)) continue;
 
-    if (entry.size <= 0 || entry.size > MAX_FILE_SIZE_BYTES) {
+    if (f.size <= 0 || f.size > MAX_FILE_SIZE_BYTES) {
       return NextResponse.json(
         { error: "File non valido o troppo grande (max 10 MB)" },
         { status: 400 }
       );
     }
 
-    if (entry.type && !ALLOWED_MIME_TYPES.has(entry.type)) {
+    if (f.type && !ALLOWED_MIME_TYPES.has(f.type)) {
       return NextResponse.json({ error: "Tipo file non consentito" }, { status: 400 });
     }
 
-    const safeName = (entry.name || "documento")
-      .replace(/[^\w.\-() ]+/g, "_")
-      .slice(0, 120);
-
+    const safeName = (f.name || "documento").replace(/[^\w.\-() ]+/g, "_").slice(0, 120);
     const path = `${animalId}/${eventId}/${Date.now()}_${safeName}`;
-    const buffer = Buffer.from(await entry.arrayBuffer());
 
-    const { error: upErr } = await admin.storage.from(bucket).upload(path, buffer, {
-      contentType: entry.type || undefined,
+    const { error: upErr } = await supabase.storage.from(bucket).upload(path, f, {
+      contentType: f.type || undefined,
       upsert: false,
     });
 
@@ -143,31 +119,26 @@ export async function POST(req: Request) {
         result: "error",
         reason: upErr.message,
       });
-
-      return NextResponse.json(
-        { error: upErr.message || "Storage upload failed" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: upErr.message || "Upload failed" }, { status: 400 });
     }
 
-    const { data: row, error: insErr } = await admin
+    const { data: row, error: insErr } = await supabase
       .from("animal_clinic_event_files")
-      .insert({
-        event_id: eventId,
-        animal_id: animalId,
-        path,
-        filename: entry.name || safeName,
-        mime: entry.type || null,
-        size: entry.size || null,
-        created_by: user.id,
-      })
-      .select("id, event_id, animal_id, path, filename, mime, size, created_by, created_at")
+      .insert([
+        {
+          event_id: eventId,
+          animal_id: animalId,
+          path,
+          filename: f.name || safeName,
+          mime: f.type || null,
+          size: f.size || null,
+          created_by: user.id,
+        },
+      ])
+      .select("id, event_id, animal_id, filename, mime, size, path, created_by, created_at")
       .single();
 
-    if (insErr || !row) {
-      // rollback file su storage se DB fallisce
-      await admin.storage.from(bucket).remove([path]);
-
+    if (insErr) {
       await writeAudit(supabase, {
         req,
         actor_user_id: user.id,
@@ -177,16 +148,55 @@ export async function POST(req: Request) {
         target_id: eventId,
         animal_id: animalId,
         result: "error",
-        reason: insErr?.message || "DB insert failed",
+        reason: insErr.message,
       });
-
-      return NextResponse.json(
-        { error: insErr?.message || "DB insert failed" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: insErr.message || "DB insert failed" }, { status: 400 });
     }
 
     uploaded.push(row);
+  }
+
+  try {
+    if ((ev as any).source !== "owner") {
+      const attachments = uploaded
+        .filter((file) => file?.id)
+        .map((file) => ({
+          name: file.filename || "Allegato",
+          url: `${process.env.NEXT_PUBLIC_SITE_URL || "https://unimalia.it"}/api/clinic-events/files/download?fileId=${file.id}`,
+        }));
+
+      const meta = ((ev as any).meta as Record<string, any> | null) ?? null;
+
+      await sendOwnerAnimalUpdateEmail({
+        animalId,
+        eventTitle: String((ev as any).title || "Nuovo evento clinico"),
+        eventDate: (ev as any).event_date || null,
+        eventNotes: ((ev as any).description as string | null) ?? null,
+        action: "created",
+        eventType: ((ev as any).type as string | null) ?? null,
+        visibility: ((ev as any).visibility as any) ?? null,
+        source: ((ev as any).source as any) ?? null,
+        priority: ((ev as any).priority as any) ?? null,
+        weightKg:
+          typeof meta?.weight_kg === "number"
+            ? meta.weight_kg
+            : typeof meta?.weight_kg === "string"
+              ? Number(String(meta.weight_kg).replace(",", "."))
+              : null,
+        therapyStartDate:
+          typeof meta?.therapy_start_date === "string" ? meta.therapy_start_date : null,
+        therapyEndDate:
+          typeof meta?.therapy_end_date === "string" ? meta.therapy_end_date : null,
+        vetSignature:
+          typeof meta?.created_by_member_label === "string"
+            ? meta.created_by_member_label
+            : null,
+        meta,
+        attachments,
+      });
+    }
+  } catch (mailError) {
+    console.error("[CLINIC_EVENT_OWNER_EMAIL_WITH_ATTACHMENTS]", mailError);
   }
 
   await writeAudit(supabase, {

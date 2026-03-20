@@ -25,7 +25,7 @@ type Body = {
   description?: string | null;
   visibility?: "owner" | "professionals" | "emergency";
   eventDate?: string;
-  source?: "professional" | "veterinarian";
+  source?: "owner" | "professional" | "veterinarian";
   weightKg?: number | null;
   therapyStartDate?: string | null;
   therapyEndDate?: string | null;
@@ -36,6 +36,7 @@ type Body = {
   reminderEnabled?: boolean;
   remindAt?: string | null;
   remindEmail?: boolean;
+  hasAttachments?: boolean;
 };
 
 function isValidDateYYYYMMDD(s: string) {
@@ -68,39 +69,6 @@ function parseWeightKg(v: unknown): number | null {
   return null;
 }
 
-async function resolveVerifiedByOrgId(userId: string): Promise<string | null> {
-  const admin = supabaseAdmin();
-
-  const profileResult = await admin
-    .from("professional_profiles")
-    .select("org_id")
-    .eq("user_id", userId)
-    .maybeSingle();
-
-  if (profileResult.error) {
-    return null;
-  }
-
-  const orgId =
-    profileResult.data?.org_id && isUuid(String(profileResult.data.org_id))
-      ? String(profileResult.data.org_id)
-      : null;
-
-  if (!orgId) return null;
-
-  const orgCheck = await admin
-    .from("organizations")
-    .select("id")
-    .eq("id", orgId)
-    .maybeSingle();
-
-  if (orgCheck.error || !orgCheck.data?.id) {
-    return null;
-  }
-
-  return orgId;
-}
-
 export async function POST(req: Request) {
   const token = getBearerToken(req);
   if (!token) return NextResponse.json({ error: "Missing Bearer token" }, { status: 401 });
@@ -118,18 +86,12 @@ export async function POST(req: Request) {
     global: { headers: { Authorization: `Bearer ${token}` } },
   });
 
-  const admin = supabaseAdmin();
-
   const { data: userData, error: userErr } = await supabase.auth.getUser(token);
   const user = userData?.user;
-  if (userErr || !user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  if (userErr || !user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = (await req.json().catch(() => null)) as Body | null;
-  if (!body) {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
-  }
+  if (!body) return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
 
   const animalId = (body.animalId || "").trim();
   if (!animalId) {
@@ -168,17 +130,17 @@ export async function POST(req: Request) {
       : "professionals";
 
   const source =
-    body.source === "professional" || body.source === "veterinarian"
+    body.source === "owner" || body.source === "professional" || body.source === "veterinarian"
       ? body.source
       : "professional";
 
   const dateStr = (body.eventDate || "").trim();
-  if (!type || !title) {
-    return NextResponse.json({ error: "type/title required" }, { status: 400 });
-  }
+  if (!type || !title) return NextResponse.json({ error: "type/title required" }, { status: 400 });
   if (!dateStr || !isValidDateYYYYMMDD(dateStr)) {
     return NextResponse.json({ error: "eventDate must be YYYY-MM-DD" }, { status: 400 });
   }
+
+  const hasAttachments = body.hasAttachments === true;
 
   const weightKg = parseWeightKg(body.weightKg);
   const therapyStartDate = parseDateOnly(body.therapyStartDate);
@@ -197,21 +159,16 @@ export async function POST(req: Request) {
       ? String(body.priority)
       : null;
 
-  const verifiedByOrgId =
-    source === "veterinarian" ? await resolveVerifiedByOrgId(user.id) : null;
-
   const meta: Record<string, any> = {};
 
   const incomingMeta =
-    body.meta && typeof body.meta === "object" && !Array.isArray(body.meta)
-      ? body.meta
-      : null;
+    body.meta && typeof body.meta === "object" && !Array.isArray(body.meta) ? body.meta : null;
 
   if (incomingMeta) {
     Object.assign(meta, incomingMeta);
   }
 
-  if (weightKg !== null) meta.weight_kg = weightKg;
+  if (weightKg) meta.weight_kg = weightKg;
   if (vetSignature) meta.created_by_member_label = vetSignature;
   if (vetSignatureMemberId) meta.created_by_member_id = vetSignatureMemberId;
   if (priority) meta.priority = priority;
@@ -222,7 +179,10 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { data, error } = await admin
+    const verifiedByOrgId =
+      source === "veterinarian" && grant.actor_org_id ? grant.actor_org_id : null;
+
+    const { data, error } = await supabase
       .from("animal_clinic_events")
       .insert({
         animal_id: animalId,
@@ -260,7 +220,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: error?.message || "Create failed" }, { status: 400 });
     }
 
-    await admin.from("animal_clinic_event_audit").insert({
+    await supabase.from("animal_clinic_event_audit").insert({
       event_id: data.id,
       animal_id: animalId,
       actor_user_id: user.id,
@@ -272,6 +232,8 @@ export async function POST(req: Request) {
     });
 
     try {
+      const admin = supabaseAdmin();
+
       const { data: animalRow, error: animalRowError } = await admin
         .from("animals")
         .select("id, name, owner_id")
@@ -280,7 +242,7 @@ export async function POST(req: Request) {
 
       if (animalRowError) {
         console.error("[OWNER_NOTIFICATION_ANIMAL_FETCH_ERROR]", animalRowError);
-      } else if (animalRow?.owner_id) {
+      } else if (animalRow?.owner_id && source !== "owner") {
         await createClinicalEventOwnerNotification({
           ownerId: animalRow.owner_id,
           animalId: animalRow.id,
@@ -294,18 +256,33 @@ export async function POST(req: Request) {
     }
 
     try {
-      await sendOwnerAnimalUpdateEmail({
-        animalId,
-        eventTitle: title || "Nuovo evento clinico",
-        eventDate: dateStr || null,
-        eventNotes: description || null,
-      });
+      if (source !== "owner" && !hasAttachments) {
+        await sendOwnerAnimalUpdateEmail({
+          animalId,
+          eventTitle: title || "Nuovo evento clinico",
+          eventDate: dateStr || null,
+          eventNotes: description || null,
+          action: "created",
+          eventType: type || null,
+          visibility,
+          source,
+          priority: priority as any,
+          weightKg,
+          therapyStartDate,
+          therapyEndDate,
+          vetSignature,
+          meta,
+          attachments: null,
+        });
+      }
     } catch (emailError) {
-      console.error("[CLINIC_EVENT_OWNER_EMAIL]", emailError);
+      console.error("[CLINIC_EVENT_OWNER_EMAIL_CREATE]", emailError);
     }
 
     if (type === "vaccine" && body.reminderEnabled && body.remindEmail !== false) {
       try {
+        const admin = supabaseAdmin();
+
         const { data: animalRow } = await admin
           .from("animals")
           .select("owner_id,name")

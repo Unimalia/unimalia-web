@@ -251,7 +251,9 @@ export default function IdentitaPage() {
                     Inserisci nome e cognome, telefono e città per creare un’identità animale.
                   </p>
                 </div>
-                <ButtonSecondary href="/profilo?returnTo=/identita">Vai al profilo →</ButtonSecondary>
+                <ButtonSecondary href="/profilo?returnTo=/identita">
+                  Vai al profilo →
+                </ButtonSecondary>
               </div>
             </div>
           </Card>
@@ -326,7 +328,9 @@ export default function IdentitaPage() {
         <Card>
           <div className="p-2">
             <h2 className="text-base font-semibold text-zinc-900">Nessun profilo animale</h2>
-            <p className="mt-2 text-sm text-zinc-700">Crea la prima identità digitale del tuo animale.</p>
+            <p className="mt-2 text-sm text-zinc-700">
+              Crea la prima identità digitale del tuo animale.
+            </p>
             <div className="mt-5">
               <ButtonPrimary href="/identita/nuovo">+ Crea profilo</ButtonPrimary>
             </div>
@@ -418,6 +422,39 @@ export default function IdentitaPage() {
           })}
         </div>
       ) : null}
+
+      <div className="mt-8">
+        <Card>
+          <div className="rounded-2xl border border-zinc-200 bg-white p-6 text-sm text-zinc-900">
+            <p className="font-semibold">Cartella clinica e funzionalità avanzate</p>
+
+            <p className="mt-2 text-zinc-700">
+              Anche nella versione gratuita è disponibile una cartella clinica rapida con i dati
+              essenziali del tuo animale.
+            </p>
+
+            <p className="mt-2 text-zinc-700">
+              Con Premium hai una gestione completa: timeline clinica, archivio organizzato,
+              promemoria e storico sempre accessibile.
+            </p>
+
+            <p className="mt-4 font-semibold text-zinc-900">
+              Invita il tuo veterinario nella Rete UNIMALIA
+            </p>
+
+            <p className="mt-1 text-zinc-700">
+              I dati possono essere inseriti direttamente dal veterinario, così da avere
+              informazioni affidabili e aggiornate.
+            </p>
+
+            <p className="mt-2 text-zinc-600">
+              Se non utilizza ancora la piattaforma, può contattarci per maggiori informazioni:
+              <br />
+              professionisti@unimalia.it
+            </p>
+          </div>
+        </Card>
+      </div>
 
       {open && selected ? (
         <div

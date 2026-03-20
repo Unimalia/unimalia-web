@@ -154,12 +154,15 @@ function AudienceCard({
           </li>
         ))}
       </ul>
-      <div className="mt-6">
+      <div className="mt-6 flex flex-wrap items-center gap-4">
         <Link
           href={href}
           className="inline-flex items-center text-sm font-semibold text-zinc-900 transition hover:text-teal-700"
         >
           {cta} →
+        </Link>
+        <Link href="/prezzi" className="text-sm text-zinc-600 hover:text-zinc-900">
+          Prezzi
         </Link>
       </div>
     </div>
@@ -224,6 +227,9 @@ export default function HomePage() {
                 <PrimaryCTA href="/identita/nuovo">Crea identità animale</PrimaryCTA>
                 <SecondaryCTA href="/smarrimenti">Ho perso un animale</SecondaryCTA>
                 <SecondaryCTA href="/trovati">Ho trovato o avvistato un animale</SecondaryCTA>
+                <Link href="/prezzi" className="text-sm text-zinc-600 hover:text-zinc-900">
+                  Prezzi
+                </Link>
               </div>
 
               <div className="mt-8 grid max-w-3xl gap-3 sm:grid-cols-3">
