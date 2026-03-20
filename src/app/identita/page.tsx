@@ -428,6 +428,16 @@ export default function IdentitaPage() {
           <div className="rounded-2xl border border-zinc-200 bg-white p-6 text-sm text-zinc-900">
             <p className="font-semibold">Cartella clinica e funzionalità avanzate</p>
 
+            <p className="mt-2 text-sm text-zinc-700">
+              Gli smarrimenti su UNIMALIA sono sempre gratuiti e puoi pubblicarli anche senza
+              registrazione.
+            </p>
+
+            <p className="mt-2 text-sm text-zinc-700">
+              Creare un account ti permette anche di gestire l’identità animale e accedere alle
+              funzioni complete della piattaforma.
+            </p>
+
             <p className="mt-2 text-zinc-700">
               Anche nella versione gratuita è disponibile una cartella clinica rapida con i dati
               essenziali del tuo animale.
