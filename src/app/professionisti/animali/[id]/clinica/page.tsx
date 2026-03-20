@@ -657,17 +657,23 @@ export default function ClinicaPage() {
         return;
       }
 
-      setSaveOk("Evento salvato ✅");
+      const createdEvent = (json?.event as ClinicEventRow | undefined) ?? undefined;
 
-      if (json?.event) {
-        setEvents((prev) => [json.event as ClinicEventRow, ...prev]);
+      if (!createdEvent?.id) {
+        setSaveErr("Evento creato ma risposta incompleta.");
+        return;
       }
 
-      if (json?.event?.id && newFiles.length > 0) {
+      let uploadedCount = 0;
+
+      if (newFiles.length > 0) {
         const fd = new FormData();
-        fd.append("eventId", String(json.event.id));
+        fd.append("eventId", String(createdEvent.id));
         fd.append("animalId", String(id));
-        for (const f of newFiles) fd.append("files", f);
+
+        for (const f of newFiles) {
+          fd.append("files", f);
+        }
 
         const upRes = await fetch("/api/clinic-events/files/upload", {
           method: "POST",
@@ -677,10 +683,27 @@ export default function ClinicaPage() {
           body: fd,
         });
 
+        const upJson = await upRes.json().catch(() => ({}));
+
         if (!upRes.ok) {
-          setSaveErr("Evento salvato, ma caricamento allegati non riuscito.");
+          setSaveErr(upJson?.error || "Evento salvato, ma caricamento allegati non riuscito.");
+        } else {
+          uploadedCount = Array.isArray(upJson?.files) ? upJson.files.length : newFiles.length;
         }
       }
+
+      const mergedEvent: ClinicEventRow = createdEvent;
+
+      setEvents((prev) => [mergedEvent, ...prev]);
+
+      if (uploadedCount > 0) {
+        setFilesCountByEventId((prev) => ({
+          ...prev,
+          [createdEvent.id]: uploadedCount,
+        }));
+      }
+
+      setSaveOk("Evento salvato ✅");
 
       setNewNotes("");
       setNewFiles([]);
@@ -1908,7 +1931,7 @@ export default function ClinicaPage() {
 
                                   for (const f of files) fd.append("files", f);
 
-                                  await fetch("/api/clinic-events/files/upload", {
+                                  const uploadRes = await fetch("/api/clinic-events/files/upload", {
                                     method: "POST",
                                     headers: {
                                       ...(await authHeaders()),
@@ -1916,14 +1939,28 @@ export default function ClinicaPage() {
                                     body: fd,
                                   });
 
+                                  const uploadJson = await uploadRes.json().catch(() => ({}));
+
+                                  if (uploadRes.ok) {
+                                    const uploadedFiles = Array.isArray(uploadJson?.files)
+                                      ? uploadJson.files
+                                      : [];
+
+                                    setFilesCountByEventId((prev) => ({
+                                      ...prev,
+                                      [detailEvent.id]: Math.max(
+                                        prev[detailEvent.id] ?? 0,
+                                        (detailFiles?.length ?? 0) + uploadedFiles.length
+                                      ),
+                                    }));
+                                  }
+
                                   await loadClinicEvents();
                                   await loadFilesCount();
 
                                   try {
                                     const res = await fetch(
-                                      `/api/clinic-events/files/list?eventId=${encodeURIComponent(
-                                        detailEvent.id
-                                      )}`,
+                                      `/api/clinic-events/files/list?eventId=${encodeURIComponent(detailEvent.id)}`,
                                       {
                                         cache: "no-store",
                                         headers: {
@@ -1932,9 +1969,17 @@ export default function ClinicaPage() {
                                       }
                                     );
                                     const j = await res.json().catch(() => ({}));
-                                    setDetailFiles((j?.files as any[]) ?? []);
+                                    const refreshedFiles = (j?.files as any[]) ?? [];
+                                    setDetailFiles(refreshedFiles);
+
+                                    setFilesCountByEventId((prev) => ({
+                                      ...prev,
+                                      [detailEvent.id]: refreshedFiles.length,
+                                    }));
                                   } catch {
                                     // no-op
+                                  } finally {
+                                    e.currentTarget.value = "";
                                   }
                                 }}
                               />
