@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { requireOwnerOrGrant } from "@/lib/server/requireOwnerOrGrant";
 import { writeAudit } from "@/lib/server/audit";
+import { supabaseAdmin } from "@/lib/supabase/server";
+import { sendOwnerAnimalUpdateEmail } from "@/lib/email/sendOwnerAnimalUpdateEmail";
 
 function getBearerToken(req: Request) {
   const h = req.headers.get("authorization") || req.headers.get("Authorization") || "";
@@ -44,6 +46,8 @@ export async function POST(req: Request) {
     global: { headers: { Authorization: `Bearer ${token}` } },
   });
 
+  const admin = supabaseAdmin();
+
   const { data: userData, error: userErr } = await supabase.auth.getUser(token);
   const user = userData?.user;
 
@@ -68,9 +72,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "files required" }, { status: 400 });
   }
 
-  const { data: ev, error: evErr } = await supabase
+  const { data: ev, error: evErr } = await admin
     .from("animal_clinic_events")
-    .select("id, animal_id, status")
+    .select(
+      "id, animal_id, title, description, event_date, type, visibility, source, priority, meta, status"
+    )
     .eq("id", eventId)
     .neq("status", "void")
     .single();
@@ -79,10 +85,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Event not found" }, { status: 404 });
   }
 
-  const animalId = (ev as any).animal_id as string;
+  const animalId = String(ev.animal_id);
 
-  // FIX DEFINITIVO:
-  // per il tuo flusso, chi può SCRIVERE eventi clinici può anche caricare allegati
+  // Nel tuo flusso chi può scrivere evento può anche caricare allegati
   const grant = await requireOwnerOrGrant(supabase, user.id, animalId, "write");
 
   if (!grant.ok) {
@@ -102,7 +107,17 @@ export async function POST(req: Request) {
   }
 
   const bucket = "clinic-event-files";
-  const uploaded: any[] = [];
+  const uploaded: Array<{
+    id: string;
+    event_id: string;
+    animal_id: string;
+    path: string;
+    filename: string | null;
+    mime: string | null;
+    size: number | null;
+    created_by: string | null;
+    created_at: string;
+  }> = [];
 
   for (const f of files) {
     if (!(f instanceof File)) continue;
@@ -124,7 +139,7 @@ export async function POST(req: Request) {
 
     const path = `${animalId}/${eventId}/${Date.now()}_${safeName}`;
 
-    const { error: upErr } = await supabase.storage.from(bucket).upload(path, f, {
+    const { error: upErr } = await admin.storage.from(bucket).upload(path, f, {
       contentType: f.type || undefined,
       upsert: false,
     });
@@ -145,7 +160,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: upErr.message || "Upload failed" }, { status: 400 });
     }
 
-    const { data: row, error: insErr } = await supabase
+    const { data: row, error: insErr } = await admin
       .from("animal_clinic_event_files")
       .insert([
         {
@@ -161,7 +176,7 @@ export async function POST(req: Request) {
       .select("id, event_id, animal_id, path, filename, mime, size, created_by, created_at")
       .single();
 
-    if (insErr) {
+    if (insErr || !row) {
       await writeAudit(supabase, {
         req,
         actor_user_id: user.id,
@@ -171,10 +186,13 @@ export async function POST(req: Request) {
         target_id: eventId,
         animal_id: animalId,
         result: "error",
-        reason: insErr.message,
+        reason: insErr?.message || "DB insert failed",
       });
 
-      return NextResponse.json({ error: insErr.message || "DB insert failed" }, { status: 400 });
+      return NextResponse.json(
+        { error: insErr?.message || "DB insert failed" },
+        { status: 400 }
+      );
     }
 
     uploaded.push(row);
@@ -191,6 +209,57 @@ export async function POST(req: Request) {
     result: "success",
     diff: { uploadedCount: uploaded.length },
   });
+
+  // Una sola mail, solo per eventi creati da professionista/veterinario
+  // e solo dopo che gli allegati sono stati salvati davvero
+  try {
+    if (ev.source !== "owner" && uploaded.length > 0) {
+      const signedAttachments: Array<{ name: string; url: string }> = [];
+
+      for (const file of uploaded) {
+        const { data: signed, error: signedErr } = await admin.storage
+          .from(bucket)
+          .createSignedUrl(file.path, 60 * 60 * 24 * 7);
+
+        if (!signedErr && signed?.signedUrl) {
+          signedAttachments.push({
+            name: file.filename || "Allegato",
+            url: signed.signedUrl,
+          });
+        }
+      }
+
+      await sendOwnerAnimalUpdateEmail({
+        animalId,
+        eventTitle: ev.title || "Nuovo evento clinico",
+        eventDate: ev.event_date || null,
+        eventNotes: ev.description || null,
+        action: "created",
+        eventType: ev.type || null,
+        visibility: (ev.visibility as "owner" | "professionals" | "emergency" | null) ?? null,
+        source: (ev.source as "owner" | "professional" | "veterinarian" | null) ?? null,
+        priority: (ev.priority as "low" | "normal" | "high" | "urgent" | null) ?? null,
+        weightKg:
+          typeof ev.meta?.weight_kg === "number"
+            ? ev.meta.weight_kg
+            : ev.meta?.weight_kg
+              ? Number(ev.meta.weight_kg)
+              : null,
+        therapyStartDate:
+          typeof ev.meta?.therapy_start_date === "string" ? ev.meta.therapy_start_date : null,
+        therapyEndDate:
+          typeof ev.meta?.therapy_end_date === "string" ? ev.meta.therapy_end_date : null,
+        vetSignature:
+          typeof ev.meta?.created_by_member_label === "string"
+            ? ev.meta.created_by_member_label
+            : null,
+        meta: ev.meta ?? null,
+        attachments: signedAttachments,
+      });
+    }
+  } catch (emailError) {
+    console.error("[CLINIC_EVENT_OWNER_EMAIL_UPLOAD]", emailError);
+  }
 
   return NextResponse.json({ ok: true, files: uploaded }, { status: 200 });
 }
