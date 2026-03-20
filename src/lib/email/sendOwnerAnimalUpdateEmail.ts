@@ -2,8 +2,7 @@ import crypto from "crypto";
 import { Resend } from "resend";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
-const resendApiKey = process.env.RESEND_API_KEY || "";
-const resend = resendApiKey ? new Resend(resendApiKey) : null;
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 type SendOwnerAnimalUpdateEmailInput = {
   animalId: string;
@@ -40,6 +39,9 @@ type AnimalEmailRow = {
 type OwnerProfileRow = {
   id: string;
   email?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+  full_name?: string | null;
 };
 
 const LOGO_URL = "https://unimalia.it/logo-unimalia.png";
@@ -131,9 +133,7 @@ function renderMetaRows(meta: Record<string, any> | null | undefined) {
     )
     .map(([key, value]) => {
       const printable =
-        typeof value === "string" ||
-        typeof value === "number" ||
-        typeof value === "boolean"
+        typeof value === "string" || typeof value === "number" || typeof value === "boolean"
           ? String(value)
           : JSON.stringify(value);
 
@@ -175,37 +175,29 @@ function renderAttachments(
 async function resolveOwnerEmail(ownerId: string): Promise<string | null> {
   const admin = supabaseAdmin();
 
-  try {
-    const authResp = await admin.auth.admin.getUserById(ownerId);
-    const authEmail = authResp?.data?.user?.email ?? null;
-    if (authEmail) return authEmail;
-  } catch (error) {
-    console.error("[OWNER_EMAIL_AUTH_LOOKUP_ERROR]", error);
+  const ownerProfileResult = await admin
+    .from("profiles")
+    .select("id, email")
+    .eq("id", ownerId)
+    .maybeSingle();
+
+  const ownerProfile = ownerProfileResult.data as OwnerProfileRow | null;
+  const profileEmail =
+    typeof ownerProfile?.email === "string" ? ownerProfile.email.trim() : "";
+
+  if (profileEmail) {
+    return profileEmail;
   }
 
-  try {
-    const ownerProfileResult = await admin
-      .from("profiles")
-      .select("id, email")
-      .eq("id", ownerId)
-      .maybeSingle();
+  const authResp = await admin.auth.admin.getUserById(ownerId);
+  const authEmail = authResp?.data?.user?.email?.trim() || null;
 
-    const ownerProfile = ownerProfileResult.data as OwnerProfileRow | null;
-    return ownerProfile?.email ?? null;
-  } catch (error) {
-    console.error("[OWNER_EMAIL_PROFILE_LOOKUP_ERROR]", error);
-    return null;
-  }
+  return authEmail || null;
 }
 
 export async function sendOwnerAnimalUpdateEmail(
   input: SendOwnerAnimalUpdateEmailInput
 ) {
-  if (!resend) {
-    console.error("[CLINIC_EVENT_OWNER_EMAIL] Missing RESEND_API_KEY");
-    return { skipped: true as const, reason: "missing_resend_api_key" as const };
-  }
-
   const {
     animalId,
     eventTitle,
@@ -252,15 +244,10 @@ export async function sendOwnerAnimalUpdateEmail(
 
   if (animal.owner_id) {
     destinationEmail = await resolveOwnerEmail(animal.owner_id);
-    console.log("[OWNER_EMAIL_RESOLVED]", {
-      animalId: animal.id,
-      ownerId: animal.owner_id,
-      destinationEmail,
-    });
   } else if (animal.pending_owner_email) {
-    destinationEmail = animal.pending_owner_email;
+    destinationEmail = animal.pending_owner_email.trim() || null;
 
-    if (inviteCount < 3) {
+    if (destinationEmail && inviteCount < 3) {
       const token = crypto.randomUUID();
 
       const claimInsert = await admin
@@ -275,9 +262,7 @@ export async function sendOwnerAnimalUpdateEmail(
         .single();
 
       if (claimInsert.error) {
-        throw new Error(
-          claimInsert.error.message || "Errore creazione claim token"
-        );
+        throw new Error(claimInsert.error.message || "Errore creazione claim token");
       }
 
       const baseUrl = (process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "");
@@ -311,11 +296,6 @@ export async function sendOwnerAnimalUpdateEmail(
   }
 
   if (!destinationEmail) {
-    console.warn("[CLINIC_EVENT_OWNER_EMAIL_SKIPPED_NO_DESTINATION]", {
-      animalId: animal.id,
-      ownerId: animal.owner_id,
-      pendingOwnerEmail: animal.pending_owner_email,
-    });
     return { skipped: true as const, reason: "no_destination_email" as const };
   }
 
@@ -349,11 +329,17 @@ export async function sendOwnerAnimalUpdateEmail(
 
   const attachmentsBlock = renderAttachments(attachments);
 
-  const html = `
-    <div style="font-family: Arial, sans-serif; color: #222; line-height: 1.5; max-width: 720px; margin: 0 auto;">
+  const logoBlock = LOGO_URL
+    ? `
       <div style="margin-bottom: 24px;">
         <img src="${LOGO_URL}" alt="UNIMALIA" style="max-height: 56px;" />
       </div>
+    `
+    : "";
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; color: #222; line-height: 1.5; max-width: 720px; margin: 0 auto;">
+      ${logoBlock}
 
       <p>
         La clinica veterinaria ${labelForAction(action)} per
@@ -366,7 +352,6 @@ export async function sendOwnerAnimalUpdateEmail(
 
       ${notesBlock}
       ${attachmentsBlock}
-
       ${inviteBlock ? `<div style="margin-top: 24px;">${inviteBlock}</div>` : ""}
 
       <hr style="margin: 24px 0; border: 0; border-top: 1px solid #ddd;" />
@@ -377,30 +362,19 @@ export async function sendOwnerAnimalUpdateEmail(
     </div>
   `;
 
-  const fromEmail =
-    process.env.RESEND_FROM_EMAIL?.trim() || "UNIMALIA <no-reply@unimalia.it>";
-
   const emailResult = await resend.emails.send({
-    from: fromEmail,
+    from: process.env.RESEND_FROM_EMAIL || "UNIMALIA <no-reply@unimalia.it>",
     to: destinationEmail,
     subject: subjectForAction(action, animal.name),
     html,
   });
 
   if ((emailResult as { error?: { message?: string } })?.error) {
-    console.error("[CLINIC_EVENT_OWNER_EMAIL_SEND_ERROR]", emailResult);
     throw new Error(
       (emailResult as { error?: { message?: string } }).error?.message ||
         "Errore invio email aggiornamento"
     );
   }
-
-  console.log("[CLINIC_EVENT_OWNER_EMAIL_SENT]", {
-    animalId: animal.id,
-    to: destinationEmail,
-    action,
-    result: emailResult,
-  });
 
   return { ok: true as const };
 }
