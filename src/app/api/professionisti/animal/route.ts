@@ -227,8 +227,37 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Non autorizzato" }, { status: 401 });
     }
 
-    const orgId = await getProfessionalOrgId();
+    let orgId: string | null = null;
 
+    // 1) tentativo standard
+    try {
+      orgId = await getProfessionalOrgId();
+    } catch {
+      orgId = null;
+    }
+
+    // 2) fallback da professional_profiles
+    if (!orgId) {
+      const profileResult = await admin
+        .from("professional_profiles")
+        .select("org_id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (profileResult.data?.org_id) {
+        orgId = profileResult.data.org_id;
+      }
+    }
+
+    // 3) controllo finale
+    if (!orgId) {
+      return NextResponse.json(
+        { error: "Profilo professionista non collegato a una organizzazione." },
+        { status: 403 }
+      );
+    }
+
+    // 4) verifica esistenza organization
     const { data: orgRow, error: orgError } = await admin
       .from("organizations")
       .select("id")
@@ -244,14 +273,7 @@ export async function POST(req: NextRequest) {
 
     if (!orgRow) {
       return NextResponse.json(
-        { error: `Organizzazione non trovata per questo professionista (${orgId})` },
-        { status: 403 }
-      );
-    }
-
-    if (!orgId) {
-      return NextResponse.json(
-        { error: "Profilo professionista non valido o organizzazione non trovata" },
+        { error: "Organizzazione non valida o non esistente." },
         { status: 403 }
       );
     }
