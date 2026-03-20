@@ -1,4 +1,3 @@
-// app/adotta/_components/adotta-results.tsx
 import Link from "next/link";
 
 type ShelterType = "canile" | "gattile" | "rifugio";
@@ -29,11 +28,13 @@ function formatAge(ageMonths: number | null) {
   const years = Math.floor(ageMonths / 12);
   return years === 1 ? "1 anno" : `${years} anni`;
 }
+
 function formatSex(sex: Animal["sex"]) {
   if (sex === "m") return "Maschio";
   if (sex === "f") return "Femmina";
   return "Sesso non indicato";
 }
+
 function formatSize(size: Animal["size"]) {
   if (size === "s") return "Taglia piccola";
   if (size === "m") return "Taglia media";
@@ -85,13 +86,17 @@ export function AdottaResults({
           <Link
             key={a.id}
             href={`/adotta/${a.id}`}
-            className="group rounded-2xl border border-zinc-200 bg-white shadow-sm hover:border-zinc-300"
+            className="group rounded-2xl border border-zinc-200 bg-white shadow-sm transition hover:border-zinc-300"
           >
             <div className="overflow-hidden rounded-2xl">
               <div className="aspect-[16/10] w-full bg-zinc-100">
                 {a.photo_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={a.photo_url} alt={a.name ?? "Animale"} className="h-full w-full object-cover" />
+                  <img
+                    src={a.photo_url}
+                    alt={a.name ?? "Animale"}
+                    className="h-full w-full object-cover"
+                  />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center">
                     <span className="text-xs text-zinc-500">Nessuna foto</span>

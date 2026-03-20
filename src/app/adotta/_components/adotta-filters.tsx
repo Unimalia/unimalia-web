@@ -1,4 +1,3 @@
-// app/adotta/_components/adotta-filters.tsx
 "use client";
 
 import { useMemo, useTransition } from "react";
@@ -63,6 +62,11 @@ export function AdottaFilters({
       params.delete("urgent");
       params.delete("specialNeeds");
       params.delete("hasPhoto");
+      params.delete("shelterId");
+    }
+
+    if (key === "shelterType") {
+      params.delete("shelterId");
     }
 
     startTransition(() => router.replace(`${pathname}?${params.toString()}`));
@@ -282,7 +286,9 @@ function FilterPill({
       onClick={() => onChange(active ? "" : "true")}
       className={[
         "inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium",
-        active ? "border-zinc-900 bg-zinc-900 text-white" : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300",
+        active
+          ? "border-zinc-900 bg-zinc-900 text-white"
+          : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300",
       ].join(" ")}
       aria-pressed={active}
     >
