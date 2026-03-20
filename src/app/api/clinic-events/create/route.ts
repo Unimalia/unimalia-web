@@ -86,6 +86,8 @@ export async function POST(req: Request) {
     global: { headers: { Authorization: `Bearer ${token}` } },
   });
 
+  const admin = supabaseAdmin();
+
   const { data: userData, error: userErr } = await supabase.auth.getUser(token);
   const user = userData?.user;
   if (userErr || !user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -141,7 +143,6 @@ export async function POST(req: Request) {
   }
 
   const hasAttachments = body.hasAttachments === true;
-
   const weightKg = parseWeightKg(body.weightKg);
   const therapyStartDate = parseDateOnly(body.therapyStartDate);
   const therapyEndDate = parseDateOnly(body.therapyEndDate);
@@ -182,7 +183,7 @@ export async function POST(req: Request) {
     const verifiedByOrgId =
       source === "veterinarian" && grant.actor_org_id ? grant.actor_org_id : null;
 
-    const { data, error } = await supabase
+    const { data, error } = await admin
       .from("animal_clinic_events")
       .insert({
         animal_id: animalId,
@@ -220,7 +221,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: error?.message || "Create failed" }, { status: 400 });
     }
 
-    await supabase.from("animal_clinic_event_audit").insert({
+    await admin.from("animal_clinic_event_audit").insert({
       event_id: data.id,
       animal_id: animalId,
       actor_user_id: user.id,
@@ -232,8 +233,6 @@ export async function POST(req: Request) {
     });
 
     try {
-      const admin = supabaseAdmin();
-
       const { data: animalRow, error: animalRowError } = await admin
         .from("animals")
         .select("id, name, owner_id")
@@ -281,8 +280,6 @@ export async function POST(req: Request) {
 
     if (type === "vaccine" && body.reminderEnabled && body.remindEmail !== false) {
       try {
-        const admin = supabaseAdmin();
-
         const { data: animalRow } = await admin
           .from("animals")
           .select("owner_id,name")
