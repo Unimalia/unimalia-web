@@ -120,6 +120,22 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: grant.reason }, { status: 403 });
   }
 
+  let actorOrgName: string | null = null;
+
+  if (grant.actor_org_id) {
+    const { data: orgRow } = await admin
+      .from("organizations")
+      .select("id,name,display_name,ragione_sociale")
+      .eq("id", grant.actor_org_id)
+      .maybeSingle();
+
+    actorOrgName =
+      orgRow?.display_name?.trim() ||
+      orgRow?.name?.trim() ||
+      orgRow?.ragione_sociale?.trim() ||
+      null;
+  }
+
   const type = (body.type || "").trim();
   const title = (body.title || "").trim();
   const description = (body.description ?? "").toString().trim() || null;
@@ -173,6 +189,7 @@ export async function POST(req: Request) {
   if (vetSignature) meta.created_by_member_label = vetSignature;
   if (vetSignatureMemberId) meta.created_by_member_id = vetSignatureMemberId;
   if (priority) meta.priority = priority;
+  if (actorOrgName) meta.created_by_org_name = actorOrgName;
 
   if (type === "therapy") {
     if (therapyStartDate) meta.therapy_start_date = therapyStartDate;

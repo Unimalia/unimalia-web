@@ -44,7 +44,6 @@ type OwnerProfileRow = {
   full_name?: string | null;
 };
 
-const LOGO_URL = "https://unimalia.it/logo-unimalia.png";
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://unimalia.it").replace(/\/$/, "");
 
 function escapeHtml(value: unknown) {
@@ -64,7 +63,7 @@ function labelForAction(action: SendOwnerAnimalUpdateEmailInput["action"]) {
       return "ha annullato un evento sanitario";
     case "created":
     default:
-      return "ha registrato un nuovo evento sanitario";
+      return "ha registrato un nuovo aggiornamento sanitario";
   }
 }
 
@@ -169,6 +168,8 @@ function renderMetaRows(meta: Record<string, any> | null | undefined) {
     "weight_kg",
     "created_by_member_label",
     "created_by_member_id",
+    "created_by_org_name",
+    "org_name",
   ]);
 
   return Object.entries(meta)
@@ -255,7 +256,6 @@ export async function sendOwnerAnimalUpdateEmail(
     eventDate = null,
     eventNotes = null,
     action = "created",
-    eventType = null,
     priority = null,
     weightKg = null,
     therapyStartDate = null,
@@ -287,7 +287,6 @@ export async function sendOwnerAnimalUpdateEmail(
   const animal = animalResult.data as AnimalEmailRow;
 
   let destinationEmail: string | null = null;
-  let claimLink: string | null = null;
   let inviteBlock = "";
   const inviteCount = animal.invite_email_count ?? 0;
 
@@ -313,8 +312,6 @@ export async function sendOwnerAnimalUpdateEmail(
       if (claimInsert.error) {
         throw new Error(claimInsert.error.message || "Errore creazione claim token");
       }
-
-      claimLink = `${SITE_URL}/claim/${token}`;
 
       if (inviteCount === 0) {
         inviteBlock = `
@@ -346,17 +343,21 @@ export async function sendOwnerAnimalUpdateEmail(
     return { skipped: true as const, reason: "no_destination_email" as const };
   }
 
-  const displayOrigin = vetSignature || "Veterinario";
   const formattedEventDate = formatDateValue(eventDate);
   const formattedTherapyStartDate = formatDateValue(therapyStartDate);
   const formattedTherapyEndDate = formatDateValue(therapyEndDate);
 
+  const professionalLabel =
+    normalizeValue(meta?.created_by_org_name) ||
+    normalizeValue(meta?.org_name) ||
+    normalizeValue(vetSignature) ||
+    "Clinica veterinaria";
+
   const detailsRows = [
     renderDetailRow("Animale", animal.name ?? "il tuo animale"),
     renderDetailRow("Evento", eventTitle),
-    renderDetailRow("Tipo evento", eventType),
     renderDetailRow("Data evento", formattedEventDate),
-    renderDetailRow("Professionista", displayOrigin),
+    renderDetailRow("Professionista", professionalLabel),
     renderDetailRow("Priorità", priorityLabel(priority)),
     renderDetailRow("Peso (kg)", weightKg),
     renderDetailRow("Inizio terapia", formattedTherapyStartDate),
@@ -379,12 +380,6 @@ export async function sendOwnerAnimalUpdateEmail(
 
   const attachmentsBlock = renderAttachments(attachments);
 
-  const logoBlock = `
-    <div style="margin-bottom: 24px;">
-      <img src="${LOGO_URL}" alt="UNIMALIA" style="max-height: 56px; display:block;" />
-    </div>
-  `;
-
   const siteBlock = `
     <div style="margin-top: 24px;">
       <p style="margin: 0 0 6px 0; font-weight: 700;">Sito ufficiale</p>
@@ -396,8 +391,6 @@ export async function sendOwnerAnimalUpdateEmail(
 
   const html = `
     <div style="font-family: Arial, sans-serif; color: #222; line-height: 1.5; max-width: 720px; margin: 0 auto;">
-      ${logoBlock}
-
       <p>
         La clinica veterinaria ${labelForAction(action)} per
         <strong>${escapeHtml(animal.name ?? "il tuo animale")}</strong>.
