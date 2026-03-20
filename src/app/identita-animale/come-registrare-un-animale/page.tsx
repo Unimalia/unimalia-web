@@ -11,7 +11,7 @@ import {
 const pagePath = "/identita-animale/come-registrare-un-animale";
 const pageTitle = "Come registrare un animale";
 const pageDescription =
-  "Guida pratica su come registrare un animale in modo ordinato, quali dati preparare e come creare un’identità animale digitale con UNIMALIA.";
+  "Guida pratica su come registrare un animale con UNIMALIA, quali dati preparare e perché tutti gli animali possono avere un’identità animale digitale anche senza microchip.";
 
 export const metadata: Metadata = buildIdentityPageMetadata({
   title: pageTitle,
@@ -23,17 +23,27 @@ const faqItems = [
   {
     question: "Quali dati servono per registrare un animale?",
     answer:
-      "Di solito servono nome, specie, eventuale razza, foto, dati identificativi disponibili e altre informazioni utili per riconoscerlo e gestirlo meglio.",
+      "Di solito servono nome, specie, eventuale razza, foto recente e tutte le informazioni utili per riconoscerlo e gestirlo meglio nel tempo.",
   },
   {
     question: "Serve avere già il microchip?",
     answer:
-      "Il microchip è molto importante quando presente, ma la registrazione digitale aiuta soprattutto a organizzare e rendere più accessibili le informazioni utili.",
+      "No. Tutti gli animali possono avere un’identità animale digitale, anche senza microchip.",
+  },
+  {
+    question: "Cosa succede se l’animale non ha il microchip?",
+    answer:
+      "Per gli animali senza microchip, UNIMALIA può assegnare un’identità digitale con QR code e barcode, così da creare un riferimento chiaro e sempre disponibile.",
+  },
+  {
+    question: "Chi inserisce i dati sanitari più importanti?",
+    answer:
+      "I dati più utili possono essere inseriti dal veterinario, soprattutto se fa parte della Rete UNIMALIA, così da avere informazioni più affidabili e aggiornate.",
   },
   {
     question: "Perché registrare un animale online?",
     answer:
-      "Per avere una base unica, ordinata e aggiornabile, utile nella gestione quotidiana e in situazioni delicate come smarrimenti o accessi autorizzati.",
+      "Per avere una base unica, più ordinata e aggiornabile, utile nella gestione quotidiana e in situazioni delicate come smarrimenti o necessità improvvise.",
   },
 ];
 
@@ -55,7 +65,10 @@ function Section({
 export default function ComeRegistrareAnimalePage() {
   const breadcrumbJsonLd = buildIdentityBreadcrumbJsonLd([
     { name: "Home", item: "https://www.unimalia.it/" },
-    { name: "Come registrare un animale", item: "https://www.unimalia.it/identita-animale/come-registrare-un-animale" },
+    {
+      name: "Come registrare un animale",
+      item: "https://www.unimalia.it/identita-animale/come-registrare-un-animale",
+    },
   ]);
 
   const faqJsonLd = buildIdentityFaqJsonLd(faqItems);
@@ -94,38 +107,82 @@ export default function ComeRegistrareAnimalePage() {
           </h1>
 
           <p className="mt-5 max-w-3xl text-lg leading-relaxed text-zinc-600">
-            Registrare un animale in modo ordinato significa creare una base chiara e
-            aggiornata delle informazioni più utili. Con UNIMALIA puoi partire da una
-            scheda digitale che aiuta a ridurre dispersione, confusione e perdita di
-            tempo quando serve agire rapidamente.
+            Registrare un animale significa creare una base chiara e aggiornata delle
+            informazioni più utili. Con UNIMALIA tutti gli animali possono avere
+            un’identità animale digitale, anche senza microchip, così da avere un punto
+            unico più ordinato e sempre disponibile quando serve.
           </p>
         </header>
 
         <div className="mt-8 grid gap-6">
+          <Section title="Tutti gli animali possono essere registrati">
+            <p>
+              UNIMALIA non è pensata solo per animali con microchip. Tutti gli animali
+              possono avere un’identità animale digitale.
+            </p>
+            <p>
+              Per gli animali che non hanno microchip, UNIMALIA può assegnare
+              un’identità digitale con QR code e barcode, così da creare un riferimento
+              chiaro, consultabile e sempre disponibile dal telefono.
+            </p>
+          </Section>
+
           <Section title="Quali dati preparare">
             <ul className="list-disc space-y-2 pl-6">
               <li>nome dell’animale</li>
               <li>specie</li>
               <li>eventuale razza</li>
               <li>foto recente</li>
-              <li>elementi identificativi utili</li>
-              <li>dati disponibili come microchip o note pratiche</li>
+              <li>elementi utili per riconoscerlo</li>
+              <li>informazioni pratiche importanti da tenere ordinate</li>
             </ul>
           </Section>
 
           <Section title="Perché conviene farlo prima che serva">
             <p>
               Preparare in anticipo una scheda ordinata rende più semplice gestire
-              situazioni come smarrimenti, accessi autorizzati, consultazioni rapide e
-              aggiornamenti nel tempo.
+              situazioni quotidiane e momenti delicati, come smarrimenti, necessità
+              improvvise o consultazioni rapide.
+            </p>
+            <p>
+              Non solo in viaggio: anche durante una semplice passeggiata o quando sei
+              fuori casa con il tuo animale, avere accesso rapido alle informazioni
+              importanti dal telefono può essere molto utile.
+            </p>
+          </Section>
+
+          <Section title="Il ruolo della Rete UNIMALIA">
+            <p>
+              Se il veterinario fa parte della <strong>Rete UNIMALIA</strong>, può usare
+              questo sistema per inserire e condividere le informazioni utili in modo
+              più semplice e organizzato.
+            </p>
+            <p>
+              Questo aiuta ad avere dati più affidabili e aggiornati, soprattutto per la
+              cartella clinica rapida e per i referti inviati tramite questo canale.
+            </p>
+          </Section>
+
+          <Section title="Versione gratuita e Premium">
+            <p>
+              Anche nella versione gratuita UNIMALIA può offrire una base utile, compresa
+              una cartella clinica rapida con le informazioni essenziali.
+            </p>
+            <p>
+              Se il veterinario utilizza la Rete UNIMALIA, i referti possono arrivare via
+              email anche a chi non ha Premium.
+            </p>
+            <p>
+              Con Premium, oltre alla mail, puoi consultare una timeline completa e
+              organizzata, con archivio clinico, storico, reminder e funzioni avanzate.
             </p>
           </Section>
 
           <Section title="Come aiuta UNIMALIA">
             <p>
-              UNIMALIA ti permette di creare una base digitale unica, più chiara e più
+              UNIMALIA permette di creare una base digitale unica, più chiara e più
               facile da aggiornare. Questo riduce la frammentazione delle informazioni e
-              rende più semplice riutilizzarle quando serve.
+              rende più semplice consultarle o riutilizzarle quando serve davvero.
             </p>
           </Section>
 

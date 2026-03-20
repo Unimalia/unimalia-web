@@ -11,7 +11,7 @@ import {
 const pagePath = "/identita-animale/microchip-vs-identita-digitale";
 const pageTitle = "Microchip vs identità digitale";
 const pageDescription =
-  "Scopri la differenza tra microchip e identità digitale animale: cosa cambia, a cosa servono e perché non sono la stessa cosa.";
+  "Scopri la differenza tra microchip e identità digitale animale: cosa cambia, a cosa servono e perché non sono la stessa cosa in UNIMALIA.";
 
 export const metadata: Metadata = buildIdentityPageMetadata({
   title: pageTitle,
@@ -23,17 +23,27 @@ const faqItems = [
   {
     question: "Il microchip e l’identità digitale sono la stessa cosa?",
     answer:
-      "No. Il microchip è uno strumento ufficiale di identificazione; l’identità digitale serve a organizzare e rendere più accessibili online le informazioni utili.",
+      "No. Il microchip è uno strumento ufficiale di identificazione, mentre l’identità digitale serve a raccogliere e organizzare le informazioni utili dell’animale in modo più accessibile.",
   },
   {
     question: "L’identità digitale sostituisce il microchip?",
     answer:
-      "No. Non lo sostituisce. Può però affiancarlo migliorando la gestione pratica e digitale dei dati dell’animale.",
+      "No. Non lo sostituisce. Sono due cose diverse e non vanno confuse.",
   },
   {
-    question: "Perché usarli insieme?",
+    question: "Serve avere il microchip per usare UNIMALIA?",
     answer:
-      "Perché hanno funzioni diverse e complementari: il microchip identifica formalmente, l’identità digitale aiuta a gestire informazioni, aggiornamenti e consultazione.",
+      "No. Tutti gli animali possono avere un’identità animale digitale anche senza microchip.",
+  },
+  {
+    question: "Cosa succede se l’animale non ha il microchip?",
+    answer:
+      "Per gli animali senza microchip, UNIMALIA può assegnare un’identità digitale con QR code e barcode, così da creare un riferimento chiaro e sempre disponibile.",
+  },
+  {
+    question: "Quando il microchip c’è già, cosa cambia?",
+    answer:
+      "Il microchip continua a mantenere il suo ruolo. UNIMALIA aggiunge una gestione più ordinata e accessibile delle informazioni utili.",
   },
 ];
 
@@ -55,7 +65,10 @@ function Section({
 export default function MicrochipVsIdentitaDigitalePage() {
   const breadcrumbJsonLd = buildIdentityBreadcrumbJsonLd([
     { name: "Home", item: "https://www.unimalia.it/" },
-    { name: "Microchip vs identità digitale", item: "https://www.unimalia.it/identita-animale/microchip-vs-identita-digitale" },
+    {
+      name: "Microchip vs identità digitale",
+      item: "https://www.unimalia.it/identita-animale/microchip-vs-identita-digitale",
+    },
   ]);
 
   const faqJsonLd = buildIdentityFaqJsonLd(faqItems);
@@ -95,8 +108,9 @@ export default function MicrochipVsIdentitaDigitalePage() {
 
           <p className="mt-5 max-w-3xl text-lg leading-relaxed text-zinc-600">
             Microchip e identità digitale animale non sono la stessa cosa. Hanno ruoli
-            diversi e proprio per questo possono essere complementari. Capire bene la
-            differenza aiuta a spiegare meglio cosa fa UNIMALIA e perché può essere utile.
+            diversi e non vanno confusi. Capire bene la differenza aiuta a spiegare cosa
+            fa UNIMALIA, perché può essere utile anche senza microchip e come si inserisce
+            nella gestione dell’animale.
           </p>
         </header>
 
@@ -104,33 +118,67 @@ export default function MicrochipVsIdentitaDigitalePage() {
           <Section title="Cos’è il microchip">
             <p>
               Il microchip è uno strumento ufficiale di identificazione dell’animale.
-              Ha una funzione formale e non coincide con una scheda digitale consultabile
-              come contenuto informativo strutturato.
+              Ha un ruolo specifico e non coincide con una scheda digitale pensata per
+              raccogliere e organizzare contenuti informativi.
             </p>
           </Section>
 
           <Section title="Cos’è l’identità digitale animale">
             <p>
               L’identità digitale animale è una scheda online che aiuta a raccogliere e
-              organizzare informazioni utili in modo più accessibile, aggiornabile e
-              riutilizzabile.
+              organizzare le informazioni utili dell’animale in modo più semplice,
+              accessibile e aggiornabile.
+            </p>
+            <p>
+              In UNIMALIA questa identità può esistere per tutti gli animali, anche per
+              quelli che non hanno microchip.
             </p>
           </Section>
 
-          <Section title="Differenza reale">
+          <Section title="La differenza reale">
             <ul className="list-disc space-y-2 pl-6">
-              <li>il microchip identifica formalmente</li>
-              <li>l’identità digitale aiuta a gestire le informazioni</li>
-              <li>il microchip non viene sostituito</li>
-              <li>l’identità digitale può affiancare e migliorare la parte pratica</li>
+              <li>il microchip ha una funzione di identificazione ufficiale</li>
+              <li>l’identità digitale serve a organizzare le informazioni utili</li>
+              <li>non sono la stessa cosa</li>
+              <li>non devono essere confusi</li>
+              <li>UNIMALIA non è pensata solo per animali con microchip</li>
             </ul>
           </Section>
 
-          <Section title="Perché usarli insieme">
+          <Section title="UNIMALIA serve anche senza microchip">
             <p>
-              In una gestione moderna dell’animale, il valore sta proprio nella
-              complementarità: identificazione ufficiale da una parte, ordine e
-              accessibilità delle informazioni dall’altra.
+              Questo è un punto importante: non serve avere il microchip per usare
+              UNIMALIA.
+            </p>
+            <p>
+              Per gli animali che non ne hanno uno, UNIMALIA può assegnare un’identità
+              digitale con QR code e barcode, così da creare un riferimento chiaro,
+              consultabile e sempre disponibile dal telefono.
+            </p>
+          </Section>
+
+          <Section title="Quando il microchip c’è già">
+            <p>
+              Se l’animale ha già il microchip, questo continua a mantenere il suo ruolo.
+              UNIMALIA non lo sostituisce.
+            </p>
+            <p>
+              Quello che aggiunge è una gestione più ordinata e accessibile delle
+              informazioni: dati utili, consultazione rapida, referti e organizzazione
+              più semplice nel tempo.
+            </p>
+          </Section>
+
+          <Section title="Perché questa distinzione è utile">
+            <p>
+              Capire la differenza aiuta anche a capire il valore concreto del sistema:
+              da una parte c’è l’identificazione, dall’altra c’è l’organizzazione delle
+              informazioni.
+            </p>
+            <p>
+              In pratica, UNIMALIA non nasce per sostituire qualcosa di esistente, ma
+              per creare un punto unico più ordinato, più accessibile e più utile nella
+              vita quotidiana dell’animale.
             </p>
           </Section>
 
