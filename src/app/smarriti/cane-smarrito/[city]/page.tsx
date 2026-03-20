@@ -86,7 +86,7 @@ export default async function CaneSmarritoCityPage({ params }: PageProps) {
 
   const pagePath = `/smarriti/cane-smarrito/${city.slug}`;
   const pageTitle = `Cane smarrito a ${city.name}: cosa fare subito`;
-  const pageDescription = `Guida pratica su cosa fare se hai un cane smarrito a ${city.name}: passaggi immediati, errori da evitare, microchip, identità digitale animale e segnalazione tramite UNIMALIA.`;
+  const pageDescription = `Guida pratica su cosa fare se hai un cane smarrito a ${city.name}: passaggi immediati, errori da evitare, segnalazione chiara e uso di UNIMALIA per organizzare meglio le informazioni.`;
 
   const faqItems = [
     {
@@ -97,12 +97,12 @@ export default async function CaneSmarritoCityPage({ params }: PageProps) {
     {
       question: "Il microchip basta da solo?",
       answer:
-        "Il microchip è essenziale per l’identificazione ufficiale, ma non sostituisce una segnalazione chiara, leggibile e aggiornata.",
+        "Il microchip è importante per l’identificazione ufficiale, ma non sostituisce una segnalazione chiara, leggibile e aggiornata.",
     },
     {
       question: "UNIMALIA serve anche se il cane ha già il microchip?",
       answer:
-        "Sì. L’identità digitale animale e la gestione dello smarrimento aiutano a organizzare meglio le informazioni utili e ad aggiornarle più rapidamente.",
+        "Sì. UNIMALIA aiuta a organizzare meglio le informazioni dello smarrimento e a creare una scheda chiara, pronta da aggiornare e condividere.",
     },
     {
       question: "Posso aggiornare la segnalazione quando ricevo avvistamenti?",
@@ -177,8 +177,8 @@ export default async function CaneSmarritoCityPage({ params }: PageProps) {
           <p className="mt-5 max-w-3xl text-lg leading-relaxed text-zinc-600">
             Se hai perso un cane a {city.name}, le prime ore sono decisive. Agire rapidamente,
             organizzare bene la ricerca e pubblicare una segnalazione chiara aumenta le possibilità
-            di ritrovamento. UNIMALIA ti aiuta a segnalare l’animale smarrito, raccogliere le
-            informazioni utili e rendere più immediata la consultazione dei dati dell’animale.
+            di ritrovamento. UNIMALIA ti aiuta a raccogliere le informazioni utili in una scheda
+            ordinata e pronta da condividere.
           </p>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
@@ -189,7 +189,21 @@ export default async function CaneSmarritoCityPage({ params }: PageProps) {
           </div>
         </header>
 
-        <section className="mt-8 rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
+        <section className="mt-8 rounded-3xl border border-red-200 bg-red-50 p-6 shadow-sm">
+          <h2 className="text-xl font-bold text-red-900">
+            Cosa fare subito se hai perso un cane a {city.name}
+          </h2>
+
+          <ul className="mt-4 list-disc space-y-2 pl-6 text-red-900">
+            <li>torna immediatamente nell’ultima zona in cui è stato visto</li>
+            <li>chiama il cane e resta nella zona più tempo possibile</li>
+            <li>chiedi a persone e negozi se lo hanno visto</li>
+            <li>se possibile, lascia un oggetto con il tuo odore</li>
+            <li>inizia subito a diffondere una segnalazione chiara</li>
+          </ul>
+        </section>
+
+        <section className="mt-6 rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
           <h2 className="text-xl font-bold text-zinc-900">Risposte rapide</h2>
 
           <div className="mt-4 space-y-4 text-zinc-700">
@@ -212,6 +226,18 @@ export default async function CaneSmarritoCityPage({ params }: PageProps) {
               Creando una scheda completa con foto, posizione e contatti aggiornati.
             </p>
           </div>
+        </section>
+
+        <section className="mt-6 rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
+          <h2 className="text-xl font-bold text-zinc-900">In sintesi</h2>
+
+          <ul className="mt-4 list-disc space-y-2 pl-6 text-zinc-700">
+            <li>se hai perso un cane a {city.name}, devi agire subito</li>
+            <li>la ricerca va concentrata prima nell’ultima zona vista</li>
+            <li>una segnalazione chiara aiuta a raccogliere avvistamenti utili</li>
+            <li>UNIMALIA ti aiuta a creare una scheda ordinata e pronta da condividere</li>
+            <li>la piattaforma aiuta a mettere ordine nella frammentazione online</li>
+          </ul>
         </section>
 
         <div className="mt-8 grid gap-6">
@@ -247,12 +273,12 @@ export default async function CaneSmarritoCityPage({ params }: PageProps) {
                 contatto immediato fanno la differenza.
               </li>
               <li>
-                <strong>5. Pubblica la segnalazione su UNIMALIA.</strong> Ti aiuta a centralizzare
-                i dati utili in modo ordinato.
+                <strong>5. Pubblica la segnalazione in modo ordinato.</strong> Mantenere i dati
+                coerenti e aggiornati aiuta molto nella ricerca.
               </li>
               <li>
-                <strong>6. Verifica i dati identificativi disponibili.</strong> Microchip, segni
-                distintivi e informazioni già pronte aiutano a muoversi meglio.
+                <strong>6. Verifica i dati identificativi disponibili.</strong> Segni distintivi,
+                foto e informazioni già pronte aiutano a muoversi meglio.
               </li>
               <li>
                 <strong>7. Aggiorna rapidamente il caso.</strong> Se ricevi avvistamenti o il cane
@@ -263,13 +289,25 @@ export default async function CaneSmarritoCityPage({ params }: PageProps) {
 
           <Section title="Come può aiutarti UNIMALIA">
             <p>
-              UNIMALIA non sostituisce i canali ufficiali di identificazione, ma può aiutarti a
-              gestire meglio la parte informativa e digitale dello smarrimento.
+              Quando un animale si smarrisce, le informazioni finiscono spesso disperse tra gruppi,
+              post, bacheche e messaggi diversi. Questo crea confusione proprio quando servirebbe il
+              massimo ordine.
+            </p>
+
+            <p>
+              UNIMALIA ti permette di creare una scheda chiara e già pronta, che puoi copiare e
+              condividere ovunque mantenendo tutte le informazioni coerenti e aggiornate.
+            </p>
+
+            <p>
+              In questo modo diventa più semplice raccogliere segnalazioni utili e mantenere ordine
+              nella ricerca. UNIMALIA non sostituisce i canali ufficiali, ma può essere un ponte
+              concreto contro la frammentazione online.
             </p>
 
             <ul className="list-disc space-y-2 pl-6">
               <li>crei e gestisci l’identità digitale del tuo animale</li>
-              <li>pubblichi la segnalazione di smarrimento in modo ordinato</li>
+              <li>pubblichi una segnalazione più ordinata e chiara</li>
               <li>mantieni centrali le informazioni utili</li>
               <li>rendi più rapida la consultazione dei dati dell’animale</li>
               <li>aggiorni più facilmente lo stato del caso</li>
@@ -297,17 +335,16 @@ export default async function CaneSmarritoCityPage({ params }: PageProps) {
 
           <Section title="Microchip e identità digitale: non sono la stessa cosa">
             <p>
-              Il microchip è il riferimento ufficiale per l’identificazione del cane. L’identità
-              digitale animale non lo sostituisce.
+              Il microchip ha una funzione di identificazione ufficiale. L’identità digitale animale
+              non lo sostituisce e non va confusa con esso.
             </p>
             <p>
-              L’identità digitale serve a rendere più accessibili e aggiornabili online le
-              informazioni utili: dati essenziali, note pratiche, riferimenti rapidi e gestione del
-              caso.
+              Quello che UNIMALIA aggiunge è una gestione più ordinata delle informazioni utili:
+              dati essenziali, note pratiche, riferimenti rapidi e organizzazione del caso.
             </p>
             <p>
-              In sintesi: il microchip identifica formalmente; l’identità digitale aiuta nella
-              gestione pratica delle informazioni.
+              In sintesi: il microchip e l’identità digitale hanno ruoli diversi. Una buona
+              segnalazione di smarrimento resta comunque fondamentale.
             </p>
           </Section>
 
@@ -331,6 +368,23 @@ export default async function CaneSmarritoCityPage({ params }: PageProps) {
               ))}
             </div>
           </Section>
+
+          <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm text-center">
+            <h2 className="text-xl font-bold text-zinc-900">
+              Crea subito una segnalazione
+            </h2>
+
+            <p className="mt-3 text-zinc-700">
+              Puoi creare una scheda completa e pronta da condividere in pochi minuti.
+            </p>
+
+            <a
+              href="/smarrimenti/nuovo"
+              className="mt-4 inline-block rounded-xl bg-zinc-900 px-5 py-3 text-sm font-semibold text-white hover:bg-zinc-800"
+            >
+              Segnala animale smarrito
+            </a>
+          </section>
 
           <Section title="Guide correlate">
             <div className="grid gap-4 md:grid-cols-2">
