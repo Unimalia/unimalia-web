@@ -84,6 +84,9 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
   const [authChecked, setAuthChecked] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
+  const isPublicProfessionistiPage =
+    pathname === "/professionisti" || pathname === "/professionisti/login";
+
   useEffect(() => {
     let alive = true;
 
@@ -103,7 +106,7 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
     }
 
     async function check() {
-      if (pathname?.startsWith("/professionisti/login")) {
+      if (isPublicProfessionistiPage) {
         if (alive) setAuthChecked(true);
         return;
       }
@@ -136,7 +139,7 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
     return () => {
       alive = false;
     };
-  }, [router, pathname]);
+  }, [router, pathname, isPublicProfessionistiPage]);
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -224,6 +227,14 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
             <div className="mt-1 h-4 w-full max-w-lg rounded bg-zinc-200/40" />
           </div>
         </div>
+      </div>
+    );
+  }
+
+  if (isPublicProfessionistiPage) {
+    return (
+      <div data-pro-portal="true" className="min-h-screen bg-zinc-50 text-zinc-900">
+        {children}
       </div>
     );
   }
