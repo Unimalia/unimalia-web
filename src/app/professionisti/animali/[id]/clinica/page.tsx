@@ -638,6 +638,7 @@ export default function ClinicaPage() {
         reminderEnabled,
         remindAt: reminderEnabled ? remindAt || null : null,
         remindEmail,
+        hasAttachments: newFiles.length > 0,
       };
 
       const res = await fetch("/api/clinic-events/create", {

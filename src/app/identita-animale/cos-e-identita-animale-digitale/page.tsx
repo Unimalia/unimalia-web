@@ -11,7 +11,7 @@ import {
 const pagePath = "/identita-animale/cos-e-identita-animale-digitale";
 const pageTitle = "Cos’è l’identità animale digitale";
 const pageDescription =
-  "Scopri cos’è l’identità animale digitale, a cosa serve, in cosa si differenzia dal microchip e perché può essere utile per gestione, smarrimenti e accessi clinici.";
+  "Scopri cos’è l’identità animale digitale, a cosa serve, perché può essere utile per tutti gli animali anche senza microchip e come funziona in UNIMALIA.";
 
 export const metadata: Metadata = buildIdentityPageMetadata({
   title: pageTitle,
@@ -23,22 +23,27 @@ const faqItems = [
   {
     question: "Cos’è l’identità animale digitale?",
     answer:
-      "È una scheda digitale che raccoglie e organizza informazioni utili sull’animale in modo più accessibile, aggiornabile e consultabile online.",
+      "È una scheda digitale che raccoglie e organizza le informazioni utili di un animale in modo più accessibile, aggiornabile e consultabile online.",
   },
   {
-    question: "Sostituisce il microchip?",
+    question: "Serve solo agli animali con microchip?",
     answer:
-      "No. Il microchip resta lo strumento ufficiale di identificazione. L’identità digitale aiuta nella gestione pratica delle informazioni.",
+      "No. Tutti gli animali possono avere un’identità animale digitale, anche quelli che non hanno microchip.",
+  },
+  {
+    question: "Cosa succede se l’animale non ha il microchip?",
+    answer:
+      "Per gli animali senza microchip, UNIMALIA può assegnare un’identità digitale con QR code e barcode, così da creare un riferimento chiaro e sempre disponibile.",
   },
   {
     question: "A cosa serve concretamente?",
     answer:
-      "Può essere utile per raccogliere dati essenziali, velocizzare consultazione, migliorare gestione smarrimenti e facilitare accessi autorizzati in ambito clinico.",
+      "Serve a raccogliere dati essenziali, avere un punto unico più ordinato, migliorare la gestione pratica dell’animale e rendere più semplice la consultazione delle informazioni utili.",
   },
   {
-    question: "Chi la usa?",
+    question: "Che differenza c’è tra Free e Premium?",
     answer:
-      "Può essere utile sia al proprietario sia ai professionisti autorizzati, a seconda del tipo di informazione e dei permessi concessi.",
+      "Con la versione gratuita puoi avere una base utile, compresa una cartella clinica rapida e i referti via email tramite la Rete UNIMALIA. Con Premium puoi consultare una timeline completa e organizzata, storico clinico, reminder e funzioni avanzate.",
   },
 ];
 
@@ -60,7 +65,10 @@ function Section({
 export default function IdentityAnimalDigitalPage() {
   const breadcrumbJsonLd = buildIdentityBreadcrumbJsonLd([
     { name: "Home", item: "https://www.unimalia.it/" },
-    { name: "Identità animale", item: "https://www.unimalia.it/identita-animale/cos-e-identita-animale-digitale" },
+    {
+      name: "Cos’è l’identità animale digitale",
+      item: "https://www.unimalia.it/identita-animale/cos-e-identita-animale-digitale",
+    },
   ]);
 
   const faqJsonLd = buildIdentityFaqJsonLd(faqItems);
@@ -111,10 +119,10 @@ export default function IdentityAnimalDigitalPage() {
           </h1>
 
           <p className="mt-5 max-w-3xl text-lg leading-relaxed text-zinc-600">
-            L’identità animale digitale è un modo più ordinato per raccogliere e
-            gestire online le informazioni utili di un animale. Non sostituisce il
-            microchip, ma può aiutare il proprietario e i professionisti autorizzati a
-            consultare dati essenziali in modo più semplice, aggiornabile e coerente.
+            L’identità animale digitale è un modo più ordinato per raccogliere e gestire
+            online le informazioni utili di un animale. È pensata per tutti gli animali,
+            anche per quelli che non hanno microchip, e aiuta ad avere un punto unico,
+            più chiaro e più facile da consultare nel tempo.
           </p>
         </header>
 
@@ -122,28 +130,63 @@ export default function IdentityAnimalDigitalPage() {
           <Section title="Definizione semplice">
             <p>
               L’identità animale digitale è una scheda online che raccoglie in modo
-              strutturato i dati principali dell’animale: informazioni anagrafiche,
-              elementi identificativi, dati utili per riconoscerlo e, nei casi previsti,
-              accessi controllati a funzioni aggiuntive.
+              strutturato i dati principali di un animale: informazioni essenziali,
+              elementi utili per riconoscerlo, dati sanitari importanti e altri contenuti
+              consultabili in modo più semplice e ordinato.
+            </p>
+          </Section>
+
+          <Section title="È pensata per tutti gli animali">
+            <p>
+              UNIMALIA non è pensata solo per gli animali che hanno già il microchip.
+              Tutti gli animali possono avere un’identità animale digitale, anche gatti o
+              altri animali che non ne sono provvisti.
+            </p>
+            <p>
+              Per gli animali senza microchip, UNIMALIA può assegnare un’identità digitale
+              con QR code e barcode, così da creare un riferimento chiaro, consultabile e
+              sempre disponibile dal telefono.
             </p>
           </Section>
 
           <Section title="A cosa serve davvero">
             <ul className="list-disc space-y-2 pl-6">
               <li>tenere in ordine i dati essenziali dell’animale</li>
-              <li>avere una base unica e aggiornata</li>
-              <li>gestire meglio smarrimenti e ritrovamenti</li>
-              <li>favorire consultazione più rapida delle informazioni utili</li>
-              <li>supportare accessi autorizzati in ambito clinico</li>
+              <li>avere una base unica, più chiara e aggiornabile nel tempo</li>
+              <li>rendere più semplice la gestione pratica delle informazioni</li>
+              <li>avere dati utili sempre disponibili in caso di necessità</li>
+              <li>ridurre la dispersione tra documenti, email, note e strumenti diversi</li>
             </ul>
           </Section>
 
-          <Section title="Perché può essere utile">
+          <Section title="Cartella clinica rapida e funzioni avanzate">
             <p>
-              Spesso le informazioni su un animale sono disperse tra documenti,
-              messaggi, foto, note o piattaforme diverse. L’identità digitale aiuta a
-              ridurre questa dispersione e a creare un punto unico, più ordinato e più
-              facile da aggiornare.
+              Anche nella versione gratuita, UNIMALIA può offrire una cartella clinica
+              rapida con le informazioni essenziali utili soprattutto in caso di
+              emergenza.
+            </p>
+            <p>
+              Se il veterinario fa parte della <strong>Rete UNIMALIA</strong>, i referti
+              possono essere inviati tramite questo canale anche a chi non ha Premium:
+              in quel caso il cliente li riceve via email.
+            </p>
+            <p>
+              Chi ha Premium, oltre alla mail, può consultare una timeline completa e
+              organizzata, con archivio clinico, storico, reminder e funzioni avanzate.
+            </p>
+          </Section>
+
+          <Section title="Perché può essere utile ogni giorno">
+            <p>
+              Spesso le informazioni su un animale sono disperse tra documenti, messaggi,
+              foto, email e note personali. L’identità digitale aiuta a ridurre questa
+              frammentazione e a creare un punto unico più ordinato e più facile da
+              aggiornare.
+            </p>
+            <p>
+              Non solo in viaggio: anche durante una semplice passeggiata o quando sei
+              fuori casa con il tuo animale, avere accesso rapido alle informazioni
+              importanti dal telefono può essere utile in caso di bisogno.
             </p>
           </Section>
 
