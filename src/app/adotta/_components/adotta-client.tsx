@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 import { supabase } from "../../../lib/supabaseClient";
 
 import { AdottaFilters } from "./adotta-filters";
@@ -17,7 +16,27 @@ type ShelterOpt = { id: string; name: string; type: ShelterType; city: string | 
 type CityRow = { city: string | null };
 type DbRow = Record<string, any>;
 
-const ADOPTION_TABLE = "adoption_animals"; // ✅ se in futuro la tabella si chiama diversamente, cambi qui
+type AnimalRow = {
+  id: string;
+  name: string | null;
+  species: "dog" | "cat" | "other";
+  city: string | null;
+  province: string | null;
+  age_months: number | null;
+  sex: "m" | "f" | null;
+  size: "s" | "m" | "l" | null;
+  is_mixed: boolean | null;
+  photo_url: string | null;
+  urgent: boolean | null;
+  shelters?: {
+    id: string;
+    name: string | null;
+    type: ShelterType | null;
+    city: string | null;
+  } | null;
+} & DbRow;
+
+const ADOPTION_TABLE = "adoption_animals";
 const BREEDS_TABLE = "breeds";
 const SHELTERS_TABLE = "shelters";
 
@@ -25,6 +44,95 @@ function getSpecies(sp: URLSearchParams): Species {
   const s = (sp.get("species") || "").toLowerCase();
   if (s === "cat" || s === "other") return s;
   return "dog";
+}
+
+function str(value: unknown) {
+  return String(value ?? "").trim();
+}
+
+function boolFromUnknown(value: unknown) {
+  if (typeof value === "boolean") return value;
+  const v = String(value ?? "").toLowerCase().trim();
+  return v === "true" || v === "1" || v === "yes";
+}
+
+function ageRangeMatches(ageMonths: number | null | undefined, range: string) {
+  if (ageMonths == null) return false;
+
+  if (range === "0-2") return ageMonths <= 24;
+  if (range === "3-6") return ageMonths >= 36 && ageMonths <= 72;
+  if (range === "7+") return ageMonths >= 84;
+
+  return true;
+}
+
+function readAnimalShelterType(animal: DbRow) {
+  return str(
+    animal.shelter_type ??
+      animal.structure_type ??
+      animal.refuge_type ??
+      animal.shelters?.type
+  ).toLowerCase();
+}
+
+function readAnimalShelterId(animal: DbRow) {
+  return str(
+    animal.shelter_id ??
+      animal.structure_id ??
+      animal.refuge_id ??
+      animal.shelters?.id
+  );
+}
+
+function readAnimalBreedId(animal: DbRow) {
+  return str(animal.breed_id ?? animal.breedId ?? "");
+}
+
+function readAnimalCity(animal: DbRow) {
+  return str(animal.city ?? animal.location_city ?? animal.shelters?.city);
+}
+
+function readAnimalSex(animal: DbRow) {
+  return str(animal.sex ?? "").toLowerCase();
+}
+
+function readAnimalSize(animal: DbRow) {
+  return str(animal.size ?? "").toLowerCase();
+}
+
+function readAnimalAgeMonths(animal: DbRow) {
+  const raw = animal.age_months;
+  if (typeof raw === "number" && Number.isFinite(raw)) return raw;
+  if (typeof raw === "string" && raw.trim() !== "" && !Number.isNaN(Number(raw))) return Number(raw);
+  return null;
+}
+
+function readAnimalMixed(animal: DbRow) {
+  return boolFromUnknown(animal.is_mixed ?? animal.mixed);
+}
+
+function readAnimalUrgent(animal: DbRow) {
+  return boolFromUnknown(animal.urgent);
+}
+
+function readAnimalSpecialNeeds(animal: DbRow) {
+  return boolFromUnknown(animal.special_needs ?? animal.specialNeeds);
+}
+
+function readAnimalWithDogs(animal: DbRow) {
+  return boolFromUnknown(animal.with_dogs ?? animal.compatible_with_dogs);
+}
+
+function readAnimalWithCats(animal: DbRow) {
+  return boolFromUnknown(animal.with_cats ?? animal.compatible_with_cats);
+}
+
+function readAnimalWithKids(animal: DbRow) {
+  return boolFromUnknown(animal.with_kids ?? animal.compatible_with_kids ?? animal.with_children);
+}
+
+function readAnimalHasPhoto(animal: DbRow) {
+  return Boolean(str(animal.photo_url));
 }
 
 export function AdottaClient() {
@@ -35,114 +143,38 @@ export function AdottaClient() {
 
   const species = useMemo(() => getSpecies(sp), [sp]);
 
-  const [authLoading, setAuthLoading] = useState(true);
-  const [sessionUser, setSessionUser] = useState<{ id: string; email: string | null } | null>(null);
-
-  const [profileLoading, setProfileLoading] = useState(false);
-  const [profileOk, setProfileOk] = useState(false);
-
-  const [profileDebug, setProfileDebug] = useState<{
-    fullName: string;
-    phone: string;
-    profilesRowFound: boolean;
-    profilesError: string;
-    profilesKeys: string;
-  } | null>(null);
-
   const [optionsLoading, setOptionsLoading] = useState(true);
   const [breeds, setBreeds] = useState<BreedOpt[]>([]);
   const [shelters, setShelters] = useState<ShelterOpt[]>([]);
   const [cities, setCities] = useState<string[]>([]);
 
   const [resultsLoading, setResultsLoading] = useState(true);
-  const [animals, setAnimals] = useState<any[]>([]);
+  const [animals, setAnimals] = useState<AnimalRow[]>([]);
   const [errorMsg, setErrorMsg] = useState("");
 
   const [adoptionTableMissing, setAdoptionTableMissing] = useState(false);
 
-  /* ===========================
-     SESSION
-  ============================ */
-
-  useEffect(() => {
-    let mounted = true;
-
-    async function loadSession() {
-      setAuthLoading(true);
-      const { data } = await supabase.auth.getSession();
-      if (!mounted) return;
-
-      const u = data.session?.user;
-      setSessionUser(u ? { id: u.id, email: u.email ?? null } : null);
-      setAuthLoading(false);
-    }
-
-    loadSession();
-
-    const { data: sub } = supabase.auth.onAuthStateChange(
-      (_event: AuthChangeEvent, session: Session | null) => {
-        const u = session?.user;
-        setSessionUser(u ? { id: u.id, email: u.email ?? null } : null);
-      },
-    );
-
-    return () => {
-      mounted = false;
-      sub.subscription.unsubscribe();
+  const filters = useMemo(() => {
+    const get = (k: string) => sp.get(k) ?? "";
+    return {
+      species: (get("species") as Species) || species,
+      city: get("city"),
+      shelterType: get("shelterType"),
+      shelterId: get("shelterId"),
+      breedId: get("breedId"),
+      mixed: get("mixed"),
+      size: get("size"),
+      sex: get("sex"),
+      age: get("age"),
+      withDogs: get("withDogs"),
+      withCats: get("withCats"),
+      withKids: get("withKids"),
+      urgent: get("urgent"),
+      specialNeeds: get("specialNeeds"),
+      hasPhoto: get("hasPhoto"),
     };
-  }, []);
+  }, [sp, species]);
 
-  /* ===========================
-     PROFILE GATE
-  ============================ */
-
-  useEffect(() => {
-    let mounted = true;
-
-    async function loadProfile() {
-      if (!sessionUser?.id) {
-        setProfileOk(false);
-        setProfileDebug(null);
-        return;
-      }
-
-      setProfileLoading(true);
-
-      const { data: prof, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", sessionUser.id)
-        .maybeSingle();
-
-      if (!mounted) return;
-
-      const row = (prof ?? null) as DbRow | null;
-
-      const fullName = String(row?.full_name ?? "").trim();
-      const phone = String(row?.phone ?? "").trim();
-
-      setProfileDebug({
-        fullName,
-        phone,
-        profilesRowFound: Boolean(row),
-        profilesError: error?.message || "",
-        profilesKeys: row ? Object.keys(row).join(", ") : "",
-      });
-
-      setProfileOk(Boolean(sessionUser.email && fullName && phone));
-      setProfileLoading(false);
-    }
-
-    loadProfile();
-
-    return () => {
-      mounted = false;
-    };
-  }, [sessionUser?.id, sessionUser?.email]);
-
-  /* ===========================
-     ENSURE species param exists
-  ============================ */
   useEffect(() => {
     const cur = sp.get("species");
     if (cur) return;
@@ -153,34 +185,25 @@ export function AdottaClient() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /* ===========================
-     LOAD FILTER OPTIONS (SAFE)
-  ============================ */
-
   useEffect(() => {
     let mounted = true;
 
     async function loadOptions() {
-      if (!sessionUser?.id || !profileOk) return;
-
       setOptionsLoading(true);
       setErrorMsg("");
       setAdoptionTableMissing(false);
 
-      // breeds opzionale
       const breedsReq = supabase
         .from(BREEDS_TABLE)
         .select("id,name")
         .eq("species", species)
         .order("name", { ascending: true });
 
-      // shelters opzionale
       const sheltersReq = supabase
         .from(SHELTERS_TABLE)
         .select("id,name,type,city")
         .order("name", { ascending: true });
 
-      // cities da adoption table (ma può mancare)
       const citiesReq = supabase
         .from(ADOPTION_TABLE)
         .select("city")
@@ -188,11 +211,14 @@ export function AdottaClient() {
         .eq("status", "available")
         .not("city", "is", null);
 
-      const [breedsRes, sheltersRes, citiesRes] = await Promise.all([breedsReq, sheltersReq, citiesReq]);
+      const [breedsRes, sheltersRes, citiesRes] = await Promise.all([
+        breedsReq,
+        sheltersReq,
+        citiesReq,
+      ]);
 
       if (!mounted) return;
 
-      // BREEDS
       if (breedsRes.error) {
         const msg = breedsRes.error.message || "";
         if (msg.includes("Could not find the table") || msg.includes("schema cache")) {
@@ -204,7 +230,6 @@ export function AdottaClient() {
         setBreeds((breedsRes.data ?? []).map((b: any) => ({ id: b.id, name: b.name })));
       }
 
-      // SHELTERS
       if (sheltersRes.error) {
         const msg = sheltersRes.error.message || "";
         if (msg.includes("Could not find the table") || msg.includes("schema cache")) {
@@ -220,26 +245,24 @@ export function AdottaClient() {
             name: s.name,
             type: s.type as ShelterType,
             city: s.city ?? null,
-          })),
+          }))
         );
       }
 
-      // CITIES (adoption_animals può mancare)
       if (citiesRes.error) {
         const msg = citiesRes.error.message || "";
         if (msg.includes("Could not find the table") || msg.includes("schema cache")) {
           setCities([]);
           setAdoptionTableMissing(true);
-          // non è un errore “bloccante”: la sezione non è ancora configurata
         } else {
           setErrorMsg((prev) => prev || citiesRes.error.message);
           setCities([]);
         }
       } else {
         const rows = (citiesRes.data ?? []) as CityRow[];
-        const uniqueCities = Array.from(new Set(rows.map((r) => String(r.city ?? "").trim()).filter(Boolean))).sort(
-          (a, b) => a.localeCompare(b, "it"),
-        );
+        const uniqueCities = Array.from(
+          new Set(rows.map((r) => str(r.city)).filter(Boolean))
+        ).sort((a, b) => a.localeCompare(b, "it"));
         setCities(uniqueCities);
       }
 
@@ -251,18 +274,12 @@ export function AdottaClient() {
     return () => {
       mounted = false;
     };
-  }, [sessionUser?.id, profileOk, species]);
-
-  /* ===========================
-     RESULTS (SAFE)
-  ============================ */
+  }, [species]);
 
   useEffect(() => {
     let mounted = true;
 
     async function loadResults() {
-      if (!sessionUser?.id || !profileOk) return;
-
       setResultsLoading(true);
       setErrorMsg("");
 
@@ -285,7 +302,7 @@ export function AdottaClient() {
           setAnimals([]);
         }
       } else {
-        setAnimals(data ?? []);
+        setAnimals((data ?? []) as AnimalRow[]);
       }
 
       setResultsLoading(false);
@@ -296,86 +313,92 @@ export function AdottaClient() {
     return () => {
       mounted = false;
     };
-  }, [sessionUser?.id, profileOk, species]);
+  }, [species]);
 
-  /* ===========================
-     UI STATES
-  ============================ */
+  const filteredAnimals = useMemo(() => {
+    return animals.filter((animal: AnimalRow) => {
+      if (filters.city && readAnimalCity(animal) !== filters.city) return false;
+      if (filters.shelterType && readAnimalShelterType(animal) !== filters.shelterType) return false;
+      if (filters.shelterId && readAnimalShelterId(animal) !== filters.shelterId) return false;
+      if (filters.breedId && readAnimalBreedId(animal) !== filters.breedId) return false;
 
-  if (authLoading) {
-    return (
-      <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-        <p className="text-sm text-zinc-700">Caricamento…</p>
-      </div>
-    );
-  }
+      if (filters.mixed === "true" && !readAnimalMixed(animal)) return false;
+      if (filters.mixed === "false" && readAnimalMixed(animal)) return false;
 
-  if (!sessionUser) {
-    return (
-      <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <p className="text-sm text-zinc-700">Per vedere le adozioni devi effettuare l’accesso.</p>
-        <div className="mt-4">
-          <Link
-            href="/login"
-            className="inline-flex items-center justify-center rounded-xl bg-zinc-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-zinc-800"
-          >
-            Accedi
-          </Link>
-        </div>
-      </div>
-    );
-  }
+      if (filters.size && readAnimalSize(animal) !== filters.size) return false;
+      if (filters.sex && readAnimalSex(animal) !== filters.sex) return false;
 
-  if (profileLoading) {
-    return (
-      <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-        <p className="text-sm text-zinc-700">Verifica profilo…</p>
-      </div>
-    );
-  }
+      if (filters.age && !ageRangeMatches(readAnimalAgeMonths(animal), filters.age)) return false;
 
-  if (!profileOk) {
-    return (
-      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900">
-        <p className="font-medium">Completa il profilo per continuare</p>
-        <p className="mt-2 text-amber-900/80">
-          Servono: <b>email</b>, <b>nome e cognome</b> e <b>telefono</b>.
-        </p>
+      if (filters.withDogs === "true" && !readAnimalWithDogs(animal)) return false;
+      if (filters.withCats === "true" && !readAnimalWithCats(animal)) return false;
+      if (filters.withKids === "true" && !readAnimalWithKids(animal)) return false;
+      if (filters.urgent === "true" && !readAnimalUrgent(animal)) return false;
+      if (filters.specialNeeds === "true" && !readAnimalSpecialNeeds(animal)) return false;
+      if (filters.hasPhoto === "true" && !readAnimalHasPhoto(animal)) return false;
 
-        {profileDebug ? (
-          <div className="mt-3 space-y-1 text-xs text-amber-900/70">
-            <div>full_name="{profileDebug.fullName}"</div>
-            <div>phone="{profileDebug.phone}"</div>
-            <div>profilesRowFound: {String(profileDebug.profilesRowFound)}</div>
-          </div>
-        ) : null}
-
-        <div className="mt-4">
-          <Link
-            href="/profilo?returnTo=/adotta"
-            className="inline-flex items-center justify-center rounded-xl bg-zinc-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-zinc-800"
-          >
-            Vai al profilo
-          </Link>
-        </div>
-      </div>
-    );
-  }
+      return true;
+    });
+  }, [animals, filters]);
 
   return (
     <div className="space-y-6">
+      <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
+        <h2 className="text-xl font-bold text-zinc-900">Adozioni UNIMALIA</h2>
+
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-5">
+            <p className="text-sm font-semibold text-zinc-900">Area riservata alle associazioni</p>
+            <p className="mt-2 text-sm leading-relaxed text-zinc-700">
+              Le adozioni su UNIMALIA sono pensate per le associazioni e non per i privati.
+              L’obiettivo è pubblicare animali adottabili in modo più ordinato, con filtri di
+              ricerca chiari e una base digitale già pronta.
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-5">
+            <p className="text-sm font-semibold text-zinc-900">Continuità dopo l’adozione</p>
+            <p className="mt-2 text-sm leading-relaxed text-zinc-700">
+              L’associazione può creare gratuitamente l’identità animale completa. Se il nuovo
+              proprietario decide di continuare a usare UNIMALIA in versione Premium entro 15 giorni
+              dal passaggio di proprietà, il primo anno da 6 euro viene riconosciuto all’associazione.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
+          <p className="text-sm font-semibold text-emerald-900">Ricerca con filtri</p>
+          <p className="mt-2 text-sm leading-relaxed text-emerald-800">
+            Dentro l’area adozioni è possibile cercare gli animali tramite filtri per specie,
+            città, struttura, razza, taglia, sesso, età e altre caratteristiche utili.
+          </p>
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-3">
+          <Link
+            href="/professionisti/login"
+            className="inline-flex items-center justify-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-zinc-800"
+          >
+            Accesso associazioni
+          </Link>
+
+          <Link
+            href="/identita"
+            className="inline-flex items-center justify-center rounded-2xl border border-zinc-200 bg-white px-5 py-3 text-sm font-semibold text-zinc-900 shadow-sm hover:bg-zinc-50"
+          >
+            Scopri identità animale
+          </Link>
+        </div>
+      </section>
+
       {adoptionTableMissing ? (
         <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <p className="text-sm font-medium text-zinc-900">Sezione “Adotta” non ancora configurata</p>
-          <p className="mt-2 text-sm text-zinc-700">
-            Nel database Supabase non esiste la tabella <b>{ADOPTION_TABLE}</b>.
-            <br />
-            La pagina è pronta: appena crei la tabella (o mi dici il nome reale), colleghiamo tutto e compaiono gli
-            annunci.
+          <p className="text-sm font-medium text-zinc-900">
+            Sezione adozioni non ancora collegata al database
           </p>
-          <p className="mt-3 text-xs text-zinc-500">
-            Suggerimento: in Supabase vai su <b>Table Editor</b> e cerca se esiste una tabella tipo{" "}
-            <b>adoptions</b>, <b>adoption_listings</b>, <b>animals_for_adoption</b>, ecc.
+          <p className="mt-2 text-sm text-zinc-700">
+            La pagina è pronta, ma nel database Supabase non risulta ancora disponibile la tabella{" "}
+            <b>{ADOPTION_TABLE}</b>. Appena la colleghi, gli annunci compariranno qui.
           </p>
         </div>
       ) : null}
@@ -385,10 +408,20 @@ export function AdottaClient() {
           <p className="text-sm text-zinc-700">Caricamento filtri…</p>
         </div>
       ) : (
-        <AdottaFilters species={species} breeds={breeds} shelters={shelters} cities={cities} isPending={isPending} />
+        <AdottaFilters
+          species={species}
+          breeds={breeds}
+          shelters={shelters}
+          cities={cities}
+          isPending={isPending}
+        />
       )}
 
-      <AdottaResults animals={animals} loading={resultsLoading} errorMessage={errorMsg} />
+      <AdottaResults
+        animals={filteredAnimals}
+        loading={resultsLoading}
+        errorMessage={errorMsg}
+      />
     </div>
   );
 }
