@@ -29,7 +29,8 @@ const BASE_URLS: SitemapUrl[] = [
 
   { path: "/identita", changefreq: "weekly", priority: "0.85" },
   { path: "/servizi", changefreq: "weekly", priority: "0.85" },
-  { path: "/professionisti/veterinari", changefreq: "weekly", priority: "0.80" },
+  { path: "/rete/veterinari", changefreq: "weekly", priority: "0.80" },
+  { path: "/rete/professionisti", changefreq: "weekly", priority: "0.75" },
 
   { path: "/smarriti/animale-smarrito-cosa-fare", changefreq: "weekly", priority: "0.90" },
 

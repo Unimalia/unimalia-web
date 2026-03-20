@@ -3,7 +3,7 @@ import Link from "next/link";
 import Script from "next/script";
 
 const SITE_URL = "https://www.unimalia.it";
-const pagePath = "/professionisti/veterinari";
+const pagePath = "/rete/veterinari";
 const pageTitle = "Veterinari e Rete UNIMALIA";
 const pageDescription =
   "Scopri cosa offre UNIMALIA ai veterinari: cartella sanitaria digitale, invio referti, consulti veterinari tra colleghi, gestione pazienti attivi, remind e strumenti per la clinica.";
@@ -111,16 +111,16 @@ function CtaButton({
   );
 }
 
-export default function ProfessionistiVeterinariPage() {
+export default function ReteVeterinariPage() {
   return (
     <main className="bg-zinc-50">
       <Script
-        id="jsonld-professionisti-veterinari-webpage"
+        id="jsonld-rete-veterinari-webpage"
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(webPageJsonLd) }}
       />
       <Script
-        id="jsonld-professionisti-veterinari-faq"
+        id="jsonld-rete-veterinari-faq"
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
       />
@@ -131,6 +131,12 @@ export default function ProfessionistiVeterinariPage() {
             <li>
               <Link href="/" className="hover:text-zinc-900">
                 Home
+              </Link>
+            </li>
+            <li>/</li>
+            <li>
+              <Link href="/professionisti/login" className="hover:text-zinc-900">
+                Portale Professionisti
               </Link>
             </li>
             <li>/</li>
@@ -155,9 +161,9 @@ export default function ProfessionistiVeterinariPage() {
           </p>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-            <CtaButton href="/professionisti/nuovo">Iscriviti come professionista</CtaButton>
-            <CtaButton href="mailto:professionisti@unimalia.it" variant="secondary">
-              Richiedi informazioni
+            <CtaButton href="/professionisti/login?mode=signup">Iscriviti come veterinario</CtaButton>
+            <CtaButton href="/professionisti/login" variant="secondary">
+              Accedi al portale
             </CtaButton>
           </div>
         </header>
@@ -185,9 +191,7 @@ export default function ProfessionistiVeterinariPage() {
               consulti tramite una sezione dedicata, progettata con una logica simile a una inbox
               email.
             </p>
-            <p>
-              Questo significa poter gestire:
-            </p>
+            <p>Questo significa poter gestire:</p>
             <ul className="list-disc space-y-2 pl-6">
               <li>invii</li>
               <li>risposte</li>
