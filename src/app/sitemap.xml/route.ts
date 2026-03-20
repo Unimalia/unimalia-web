@@ -29,12 +29,25 @@ const BASE_URLS: SitemapUrl[] = [
 
   { path: "/identita", changefreq: "weekly", priority: "0.85" },
   { path: "/servizi", changefreq: "weekly", priority: "0.85" },
+  { path: "/professionisti/veterinari", changefreq: "weekly", priority: "0.80" },
 
   { path: "/smarriti/animale-smarrito-cosa-fare", changefreq: "weekly", priority: "0.90" },
 
-  { path: "/identita-animale/cos-e-identita-animale-digitale", changefreq: "weekly", priority: "0.85" },
-  { path: "/identita-animale/come-registrare-un-animale", changefreq: "weekly", priority: "0.85" },
-  { path: "/identita-animale/microchip-vs-identita-digitale", changefreq: "weekly", priority: "0.85" },
+  {
+    path: "/identita-animale/cos-e-identita-animale-digitale",
+    changefreq: "weekly",
+    priority: "0.85",
+  },
+  {
+    path: "/identita-animale/come-registrare-un-animale",
+    changefreq: "weekly",
+    priority: "0.85",
+  },
+  {
+    path: "/identita-animale/microchip-vs-identita-digitale",
+    changefreq: "weekly",
+    priority: "0.85",
+  },
 
   { path: "/privacy", changefreq: "monthly", priority: "0.30" },
   { path: "/cookie", changefreq: "monthly", priority: "0.30" },
