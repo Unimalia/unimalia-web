@@ -28,15 +28,12 @@ type ClinicEventRow = {
   source: "owner" | "professional" | "veterinarian";
   verified_at: string | null;
   verified_by: string | null;
-
   created_by?: string | null;
   created_by_label?: string | null;
   created_at?: string | null;
-
   verified_by_label?: string | null;
   verified_by_org_id?: string | null;
   verified_by_member_id?: string | null;
-
   meta?: any;
 };
 
@@ -174,7 +171,6 @@ function visibilityLabel(value: "owner" | "professionals" | "emergency" | string
 function formatDateIT(iso: string) {
   try {
     const s = String(iso || "").trim();
-
     if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
       const [y, m, d] = s.split("-").map((x) => Number(x));
       const dt = new Date(y, (m || 1) - 1, d || 1);
@@ -184,7 +180,6 @@ function formatDateIT(iso: string) {
         day: "2-digit",
       });
     }
-
     return new Date(s).toLocaleString("it-IT", {
       year: "numeric",
       month: "2-digit",
@@ -199,9 +194,7 @@ function formatDateIT(iso: string) {
 
 function formatEventDateIT(dateStr?: string | null) {
   if (!dateStr) return "—";
-
   const s = String(dateStr).trim();
-
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
     const [y, m, d] = s.split("-").map(Number);
     const dt = new Date(y, m - 1, d);
@@ -211,13 +204,11 @@ function formatEventDateIT(dateStr?: string | null) {
       day: "2-digit",
     });
   }
-
   return new Date(s).toLocaleDateString("it-IT");
 }
 
 function formatInsertedAtIT(iso?: string | null) {
   if (!iso) return "—";
-
   return new Date(iso).toLocaleString("it-IT", {
     year: "numeric",
     month: "2-digit",
@@ -230,7 +221,6 @@ function formatInsertedAtIT(iso?: string | null) {
 function formatDayGroupLabel(dateStr?: string | null) {
   if (!dateStr) return "Data non disponibile";
   const s = String(dateStr).trim();
-
   try {
     if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
       const [y, m, d] = s.split("-").map(Number);
@@ -242,7 +232,6 @@ function formatDayGroupLabel(dateStr?: string | null) {
         year: "numeric",
       });
     }
-
     return new Date(s).toLocaleDateString("it-IT", {
       weekday: "long",
       day: "2-digit",
@@ -260,7 +249,6 @@ function normalizeChip(raw?: string | null) {
 
 function extractWeightKg(e: any): number | null {
   if (!e) return null;
-
   const direct =
     e.weight_kg ??
     e.weightKg ??
@@ -270,12 +258,9 @@ function extractWeightKg(e: any): number | null {
     e?.data?.weight_kg ??
     e?.payload?.weightKg ??
     e?.payload?.weight_kg;
-
   if (direct === null || direct === undefined) return null;
-
   const n = typeof direct === "number" ? direct : Number(String(direct).replace(",", "."));
   if (!Number.isFinite(n) || n <= 0) return null;
-
   return Math.round(n * 10) / 10;
 }
 
@@ -292,17 +277,8 @@ function formatWeightLabel(kg: number) {
 }
 
 function getEventAuthorLabel(ev: ClinicEventRow) {
-  const vet =
-    ev?.meta?.created_by_member_label ||
-    ev.created_by_label ||
-    ev.verified_by_label ||
-    "";
-
-  const clinic =
-    ev?.meta?.created_by_org_name ||
-    ev?.meta?.org_name ||
-    "";
-
+  const vet = ev?.meta?.created_by_member_label || ev.created_by_label || ev.verified_by_label || "";
+  const clinic = ev?.meta?.created_by_org_name || ev?.meta?.org_name || "";
   if (vet && clinic) return `${vet} – ${clinic}`;
   if (vet) return vet;
   if (clinic) return clinic;
@@ -327,7 +303,6 @@ export default function ClinicaPage() {
 
   const [isVet, setIsVet] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-
   const [animal, setAnimal] = useState<AnimalSummary | null>(null);
   const [animalSpecies, setAnimalSpecies] = useState<string | null>(null);
 
@@ -354,6 +329,7 @@ export default function ClinicaPage() {
   const [newVetSignature, setNewVetSignature] = useState<string>("");
   const [vetOptions] = useState<VetOption[]>([]);
   const [selectedVetId] = useState<string>("");
+
   const [therapyStartDate, setTherapyStartDate] = useState("");
   const [therapyEndDate, setTherapyEndDate] = useState("");
   const [selectedVaccines, setSelectedVaccines] = useState<string[]>([]);
@@ -366,27 +342,22 @@ export default function ClinicaPage() {
 
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
   const [verifyErr, setVerifyErr] = useState<string | null>(null);
-
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkVerifying, setBulkVerifying] = useState(false);
 
   const [detailEvent, setDetailEvent] = useState<ClinicEventRow | null>(null);
-
   const [detailFiles, setDetailFiles] = useState<any[]>([]);
   const [detailFilesLoading, setDetailFilesLoading] = useState(false);
-
   const [filesCountByEventId, setFilesCountByEventId] = useState<Record<string, number>>({});
 
   const [isEditing, setIsEditing] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
-
   const [editTitle, setEditTitle] = useState("");
   const [editType, setEditType] = useState<ClinicEventType>("visit");
   const [editDate, setEditDate] = useState("");
   const [editDesc, setEditDesc] = useState("");
   const [editTherapyStartDate, setEditTherapyStartDate] = useState("");
   const [editTherapyEndDate, setEditTherapyEndDate] = useState("");
-
   const [modalErr, setModalErr] = useState<string | null>(null);
   const [updating, setUpdating] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -406,7 +377,6 @@ export default function ClinicaPage() {
     (async () => {
       const { data: authData } = await supabase.auth.getUser();
       const user = authData.user;
-
       if (!user) {
         router.replace(
           "/professionisti/login?next=" +
@@ -414,7 +384,6 @@ export default function ClinicaPage() {
         );
         return;
       }
-
       setIsVet(isVetUser(user));
       setCurrentUserId(user.id);
     })();
@@ -422,10 +391,8 @@ export default function ClinicaPage() {
 
   async function loadClinicEvents() {
     if (!id) return;
-
     setEventsLoading(true);
     setEventsErr(null);
-
     try {
       const res = await fetch(`/api/clinic-events/list?animalId=${encodeURIComponent(id)}`, {
         cache: "no-store",
@@ -433,7 +400,6 @@ export default function ClinicaPage() {
           ...(await authHeaders()),
         },
       });
-
       if (!res.ok) {
         if (res.status === 401 || res.status === 403) {
           setEvents([]);
@@ -446,7 +412,6 @@ export default function ClinicaPage() {
         setEventsLoading(false);
         return;
       }
-
       const json = await res.json().catch(() => ({}));
       setEvents((json?.events as ClinicEventRow[]) ?? []);
     } catch {
@@ -459,7 +424,6 @@ export default function ClinicaPage() {
 
   async function loadAnimal() {
     if (!id) return;
-
     try {
       const res = await fetch(`/api/professionisti/animal?animalId=${encodeURIComponent(id)}`, {
         cache: "no-store",
@@ -467,12 +431,9 @@ export default function ClinicaPage() {
           ...(await authHeaders()),
         },
       });
-
       if (!res.ok) return;
-
       const json = await res.json().catch(() => ({}));
       const a = json?.animal || null;
-
       setAnimal(
         a
           ? {
@@ -486,7 +447,6 @@ export default function ClinicaPage() {
             }
           : null
       );
-
       setAnimalSpecies(a?.species || null);
     } catch {
       // ignore
@@ -495,18 +455,12 @@ export default function ClinicaPage() {
 
   async function loadFilesCount() {
     if (!id) return;
-
     try {
-      const res = await fetch(
-        `/api/clinic-events/files/count?animalId=${encodeURIComponent(id)}`,
-        {
-          cache: "no-store",
-          headers: { ...(await authHeaders()) },
-        }
-      );
-
+      const res = await fetch(`/api/clinic-events/files/count?animalId=${encodeURIComponent(id)}`, {
+        cache: "no-store",
+        headers: { ...(await authHeaders()) },
+      });
       if (!res.ok) return;
-
       const json = await res.json().catch(() => ({}));
       const counts = (json?.counts as Record<string, number>) ?? {};
       setFilesCountByEventId(counts);
@@ -530,10 +484,8 @@ export default function ClinicaPage() {
 
   useEffect(() => {
     if (!detailEvent) return;
-
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-
     return () => {
       document.body.style.overflow = prev;
     };
@@ -541,9 +493,7 @@ export default function ClinicaPage() {
 
   useEffect(() => {
     if (!detailEvent?.id) return;
-
     const eventId = detailEvent.id;
-
     setDetailFiles([]);
     setDetailFilesLoading(true);
 
@@ -558,7 +508,6 @@ export default function ClinicaPage() {
             },
           }
         );
-
         const j = await res.json().catch(() => ({}));
         setDetailFiles((j?.files as any[]) ?? []);
         setFilesCountByEventId((prev) => ({ ...prev, [eventId]: j?.files?.length ?? 0 }));
@@ -587,7 +536,6 @@ export default function ClinicaPage() {
 
   async function saveClinicEvent() {
     if (!id) return;
-
     setSaving(true);
     setSaveErr(null);
     setSaveOk(null);
@@ -595,6 +543,7 @@ export default function ClinicaPage() {
     try {
       let weightKg: number | null = null;
       const w = newWeightKg.trim();
+
       if (w) {
         const parsed = Number(w.replace(",", "."));
         if (!Number.isFinite(parsed) || parsed <= 0) {
@@ -657,20 +606,26 @@ export default function ClinicaPage() {
         return;
       }
 
-      const createdEvent = (json?.event as ClinicEventRow | undefined) ?? undefined;
+      const createdEvent = json?.event as ClinicEventRow | undefined;
+      if (createdEvent) {
+        setEvents((prev) => [createdEvent, ...prev]);
+        if (newFiles.length > 0) {
+          setFilesCountByEventId((prev) => ({
+            ...prev,
+            [createdEvent.id]: newFiles.length,
+          }));
+        }
+      }
 
       if (!createdEvent?.id) {
         setSaveErr("Evento creato ma risposta incompleta.");
         return;
       }
 
-      let uploadedCount = 0;
-
       if (newFiles.length > 0) {
         const fd = new FormData();
         fd.append("eventId", String(createdEvent.id));
         fd.append("animalId", String(id));
-
         for (const f of newFiles) {
           fd.append("files", f);
         }
@@ -683,28 +638,22 @@ export default function ClinicaPage() {
           body: fd,
         });
 
-        const upJson = await upRes.json().catch(() => ({}));
-
         if (!upRes.ok) {
+          const upJson = await upRes.json().catch(() => ({}));
           setSaveErr(upJson?.error || "Evento salvato, ma caricamento allegati non riuscito.");
         } else {
-          uploadedCount = Array.isArray(upJson?.files) ? upJson.files.length : newFiles.length;
+          const upJson = await upRes.json().catch(() => ({}));
+          const uploadedFiles = Array.isArray(upJson?.files) ? upJson.files : [];
+          if (createdEvent?.id) {
+            setFilesCountByEventId((prev) => ({
+              ...prev,
+              [createdEvent.id]: uploadedFiles.length || newFiles.length,
+            }));
+          }
         }
       }
 
-      const mergedEvent: ClinicEventRow = createdEvent;
-
-      setEvents((prev) => [mergedEvent, ...prev]);
-
-      if (uploadedCount > 0) {
-        setFilesCountByEventId((prev) => ({
-          ...prev,
-          [createdEvent.id]: uploadedCount,
-        }));
-      }
-
       setSaveOk("Evento salvato ✅");
-
       setNewNotes("");
       setNewFiles([]);
       setNewWeightKg("");
@@ -729,7 +678,6 @@ export default function ClinicaPage() {
 
   async function verifyEvent(eventId: string) {
     if (!id) return;
-
     setVerifyingId(eventId);
     setVerifyErr(null);
 
@@ -740,14 +688,10 @@ export default function ClinicaPage() {
           "Content-Type": "application/json",
           ...(await authHeaders()),
         },
-        body: JSON.stringify({
-          eventIds: [eventId],
-          ids: [eventId],
-        }),
+        body: JSON.stringify({ eventIds: [eventId], ids: [eventId] }),
       });
 
       const json = await res.json().catch(() => ({}));
-
       if (!res.ok) {
         setVerifyErr(json?.error || "Errore durante la validazione.");
         return;
@@ -790,7 +734,6 @@ export default function ClinicaPage() {
           .filter((v) => typeof v === "string" && v.trim().length > 0)
       )
     ).sort((a, b) => a.localeCompare(b, "it"));
-
     return names;
   }, [events]);
 
@@ -813,7 +756,6 @@ export default function ClinicaPage() {
 
   async function verifyMany(idsToVerify: string[]) {
     if (!id || idsToVerify.length === 0) return;
-
     setBulkVerifying(true);
     setVerifyErr(null);
 
@@ -824,14 +766,10 @@ export default function ClinicaPage() {
           "Content-Type": "application/json",
           ...(await authHeaders()),
         },
-        body: JSON.stringify({
-          eventIds: idsToVerify,
-          ids: idsToVerify,
-        }),
+        body: JSON.stringify({ eventIds: idsToVerify, ids: idsToVerify }),
       });
 
       const json = await res.json().catch(() => ({}));
-
       if (!res.ok) {
         setVerifyErr(json?.error || "Errore durante la validazione.");
         return;
@@ -862,16 +800,13 @@ export default function ClinicaPage() {
 
   function canEditOrDelete(ev: ClinicEventRow) {
     if (ev.source === "owner") return true;
-
     const createdBy = (ev as any).created_by as string | null | undefined;
     if (!createdBy || !currentUserId) return false;
-
     return createdBy === currentUserId;
   }
 
   async function updateDetailEvent() {
     if (!detailEvent) return;
-
     setUpdating(true);
     setModalErr(null);
 
@@ -918,7 +853,6 @@ export default function ClinicaPage() {
 
   async function deleteDetailEvent() {
     if (!detailEvent) return;
-
     setDeleting(true);
     setModalErr(null);
 
@@ -1092,7 +1026,6 @@ export default function ClinicaPage() {
               <div className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
                 Cartella clinica professionale
               </div>
-
               <h1 className="mt-3 text-xl font-semibold tracking-tight text-zinc-900 md:text-2xl">
                 {animal?.name || "Animale"} <span className="text-zinc-400">•</span>{" "}
                 <span className="text-zinc-700">
@@ -1100,10 +1033,9 @@ export default function ClinicaPage() {
                   {animal?.breed ? ` • ${animal.breed}` : ""}
                 </span>
               </h1>
-
               <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-600">
-                Timeline cronologica, validazione eventi, allegati, promemoria e collaborazione tra
-                professionisti.
+                Timeline cronologica, validazione eventi, allegati, promemoria e collaborazione
+                tra professionisti.
               </p>
             </div>
 
@@ -1140,9 +1072,7 @@ export default function ClinicaPage() {
             <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
               Animale
             </div>
-            <div className="mt-2 text-sm font-semibold text-zinc-900">
-              {animal?.name || "—"}
-            </div>
+            <div className="mt-2 text-sm font-semibold text-zinc-900">{animal?.name || "—"}</div>
             <div className="mt-1 text-sm text-zinc-600">
               {animal?.species || "—"}
               {animal?.breed ? ` • ${animal.breed}` : ""}
@@ -1241,9 +1171,7 @@ export default function ClinicaPage() {
               <div className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
                 Inserimento rapido
               </div>
-
               <h2 className="mt-3 text-base font-semibold text-zinc-900">Nuovo evento clinico</h2>
-
               <p className="mt-1.5 text-sm leading-6 text-zinc-600">
                 Registra subito visite, vaccini, esami, terapie e documenti. Dopo il salvataggio
                 l’evento resta in questa pagina e compare subito nella timeline.
@@ -1328,11 +1256,9 @@ export default function ClinicaPage() {
               <div className="grid gap-4 md:col-span-12 md:grid-cols-12">
                 <div className="block md:col-span-6">
                   <span className={FIELD_LABEL_CLASS}>Vaccini eseguiti</span>
-
                   <div className="mt-1 grid gap-2 rounded-2xl border border-zinc-300 bg-zinc-50 p-3">
                     {(isCatSpecies(animalSpecies) ? CAT_VACCINES : DOG_VACCINES).map((v) => {
                       const checked = selectedVaccines.includes(v.value);
-
                       return (
                         <label
                           key={v.value}
@@ -1349,7 +1275,6 @@ export default function ClinicaPage() {
                       );
                     })}
                   </div>
-
                   <p className="mt-1.5 text-xs leading-5 text-zinc-500">
                     Puoi selezionare più vaccini nello stesso evento.
                   </p>
@@ -1468,7 +1393,6 @@ export default function ClinicaPage() {
                 />
                 Imposta promemoria per l’owner
               </label>
-
               <span className="text-xs text-zinc-600">Email ✅ • Push ⏳</span>
             </div>
 
@@ -1499,7 +1423,6 @@ export default function ClinicaPage() {
                       />
                       Email
                     </label>
-
                     <span
                       className="flex items-center gap-2 rounded-2xl border border-zinc-200 bg-zinc-100 px-3 py-2 text-sm text-zinc-500"
                       title="Disponibile quando UNIMALIA diventa web app (PWA)"
@@ -1565,8 +1488,8 @@ export default function ClinicaPage() {
         <div>
           <h2 className="text-base font-semibold text-zinc-900">Timeline clinica</h2>
           <p className="mt-1 text-sm leading-6 text-zinc-600">
-            Eventi cronologici, professionista visibile subito, stato validazione chiaro e dettaglio
-            completo al click.
+            Eventi cronologici, professionista visibile subito, stato validazione chiaro e
+            dettaglio completo al click.
           </p>
         </div>
 
@@ -1677,13 +1600,12 @@ export default function ClinicaPage() {
                                   <span className="rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 font-medium text-zinc-700">
                                     {eventTypeDisplay(ev.type)}
                                   </span>
-
                                   <span className="font-medium text-zinc-700">
                                     {formatEventDateIT(ev.event_date)}
                                   </span>
-
                                   {ev.created_at ? (
                                     <span className="text-zinc-400">
+                                      {" "}
                                       • Inserito il {formatInsertedAtIT(ev.created_at)}
                                     </span>
                                   ) : null}
@@ -1916,7 +1838,6 @@ export default function ClinicaPage() {
 
                             <label className="mt-4 block">
                               <span className={FIELD_LABEL_CLASS}>Aggiungi allegati</span>
-
                               <input
                                 type="file"
                                 multiple
@@ -1928,7 +1849,6 @@ export default function ClinicaPage() {
                                   const fd = new FormData();
                                   fd.append("eventId", String(detailEvent.id));
                                   fd.append("animalId", String(detailEvent.animal_id));
-
                                   for (const f of files) fd.append("files", f);
 
                                   const uploadRes = await fetch("/api/clinic-events/files/upload", {
@@ -1945,7 +1865,6 @@ export default function ClinicaPage() {
                                     const uploadedFiles = Array.isArray(uploadJson?.files)
                                       ? uploadJson.files
                                       : [];
-
                                     setFilesCountByEventId((prev) => ({
                                       ...prev,
                                       [detailEvent.id]: Math.max(
@@ -1971,7 +1890,6 @@ export default function ClinicaPage() {
                                     const j = await res.json().catch(() => ({}));
                                     const refreshedFiles = (j?.files as any[]) ?? [];
                                     setDetailFiles(refreshedFiles);
-
                                     setFilesCountByEventId((prev) => ({
                                       ...prev,
                                       [detailEvent.id]: refreshedFiles.length,
@@ -1990,7 +1908,6 @@ export default function ClinicaPage() {
                             <div className="text-xs font-semibold text-zinc-700">
                               Stato validazione
                             </div>
-
                             {detailEvent.source === "professional" ||
                             detailEvent.source === "veterinarian" ||
                             detailEvent.verified_at ? (
@@ -2011,7 +1928,6 @@ export default function ClinicaPage() {
                             <div className="text-xs font-semibold text-zinc-700">
                               Meta informazioni
                             </div>
-
                             <div className="mt-2 space-y-1.5 text-xs leading-5 text-zinc-600">
                               <div>
                                 ID evento: <span className="font-mono">{detailEvent.id}</span>
@@ -2104,7 +2020,8 @@ export default function ClinicaPage() {
                           </div>
 
                           <p className="mt-3 text-xs leading-5 text-zinc-600">
-                            Nota: il peso è salvato in “meta” e non è ancora modificabile da questa schermata.
+                            Nota: il peso è salvato in “meta” e non è ancora modificabile da questa
+                            schermata.
                           </p>
                         </div>
                       )}
@@ -2117,7 +2034,6 @@ export default function ClinicaPage() {
                           <p className="mt-1 text-sm leading-6 text-red-800">
                             Vuoi eliminare questo evento? L’azione sarà tracciata nello storico.
                           </p>
-
                           <div className="mt-3 flex flex-wrap gap-2">
                             <button
                               type="button"
@@ -2127,7 +2043,6 @@ export default function ClinicaPage() {
                             >
                               Chiudi
                             </button>
-
                             <button
                               type="button"
                               className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700 disabled:opacity-50"
@@ -2158,7 +2073,6 @@ export default function ClinicaPage() {
                             >
                               Annulla modifiche
                             </button>
-
                             <button
                               type="button"
                               className="rounded-xl bg-black px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-900 disabled:opacity-60"

@@ -209,18 +209,19 @@ export default function HomePage() {
                 <Badge>Professionisti</Badge>
               </div>
 
-              <h1 className="mt-6 max-w-4xl text-4xl font-bold tracking-tight text-zinc-900 sm:text-5xl lg:text-6xl">
-                La piattaforma per{" "}
-                <span className="text-teal-700">
-                  identità animale, accessi clinici e segnalazioni utili
-                </span>
-                .
+              <h1 className="text-3xl font-semibold text-zinc-900">
+                La salute e le informazioni del tuo animale, sempre organizzate.
               </h1>
 
               <p className="mt-6 max-w-2xl text-lg leading-relaxed text-zinc-600">
                 UNIMALIA aiuta proprietari e professionisti a gestire in modo semplice dati
                 essenziali, accessi autorizzati, consulti, smarrimenti, segnalazioni di animali
                 trovati o avvistati e casi conclusi con lieto fine.
+              </p>
+
+              <p className="mt-3 text-sm text-zinc-500">
+                Progettato per migliorare la continuità delle informazioni tra proprietari e
+                veterinari.
               </p>
 
               <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
@@ -319,6 +320,23 @@ export default function HomePage() {
             </div>
           </div>
         </Container>
+      </section>
+
+      <section className="mt-6 rounded-3xl border border-zinc-200 bg-white p-6">
+        <h2 className="text-lg font-semibold text-zinc-900">
+          Non perdere mai più un referto veterinario.
+        </h2>
+
+        <p className="mt-2 text-sm text-zinc-600">
+          Email, WhatsApp e carta rendono tutto confuso. UNIMALIA aiuta a mantenere tutte le
+          informazioni più ordinate e sempre accessibili.
+        </p>
+
+        <div className="mt-4 grid gap-2 text-sm text-zinc-600">
+          <p>✔ Ricevi i referti e i documenti in modo più ordinato</p>
+          <p>✔ Mantieni una storia clinica sempre disponibile</p>
+          <p>✔ Condividi facilmente le informazioni quando serve</p>
+        </div>
       </section>
 
       <section className="mt-8 rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
@@ -567,7 +585,7 @@ export default function HomePage() {
               className="rounded-xl border p-4 hover:bg-zinc-50"
             >
               <p className="font-semibold">Animale smarrito: cosa fare</p>
-              <p className="text-sm text-zinc-500 mt-1">Guida completa per agire subito</p>
+              <p className="mt-1 text-sm text-zinc-500">Guida completa per agire subito</p>
             </a>
 
             <a
@@ -575,7 +593,7 @@ export default function HomePage() {
               className="rounded-xl border p-4 hover:bg-zinc-50"
             >
               <p className="font-semibold">Cos’è l’identità animale digitale</p>
-              <p className="text-sm text-zinc-500 mt-1">Spiegazione semplice e utile</p>
+              <p className="mt-1 text-sm text-zinc-500">Spiegazione semplice e utile</p>
             </a>
 
             <a
@@ -583,7 +601,7 @@ export default function HomePage() {
               className="rounded-xl border p-4 hover:bg-zinc-50"
             >
               <p className="font-semibold">Cane smarrito a Firenze</p>
-              <p className="text-sm text-zinc-500 mt-1">Esempio guida locale</p>
+              <p className="mt-1 text-sm text-zinc-500">Esempio guida locale</p>
             </a>
 
             <a
@@ -591,7 +609,7 @@ export default function HomePage() {
               className="rounded-xl border p-4 hover:bg-zinc-50"
             >
               <p className="font-semibold">Come registrare un animale</p>
-              <p className="text-sm text-zinc-500 mt-1">Passaggi semplici</p>
+              <p className="mt-1 text-sm text-zinc-500">Passaggi semplici</p>
             </a>
           </div>
         </div>

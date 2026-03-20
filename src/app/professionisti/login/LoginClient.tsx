@@ -289,7 +289,7 @@ export default function LoginClient() {
             </h1>
 
             <p className="mt-5 max-w-3xl text-lg leading-relaxed text-zinc-600">
-              Accesso e registrazione dedicati ai professionisti del settore animale.
+              Piattaforma in cloud per professionisti del settore animale, progettata per gestire animali, dati e collaborazioni in modo semplice e sicuro.
             </p>
 
             <div className="mt-8 rounded-3xl border border-zinc-200 bg-zinc-50 p-6">
