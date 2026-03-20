@@ -120,22 +120,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: grant.reason }, { status: 403 });
   }
 
-  let actorOrgName: string | null = null;
-
-  if (grant.actor_org_id) {
-    const { data: orgRow } = await admin
-      .from("organizations")
-      .select("id,name,display_name,ragione_sociale")
-      .eq("id", grant.actor_org_id)
-      .maybeSingle();
-
-    actorOrgName =
-      orgRow?.display_name?.trim() ||
-      orgRow?.name?.trim() ||
-      orgRow?.ragione_sociale?.trim() ||
-      null;
-  }
-
   const type = (body.type || "").trim();
   const title = (body.title || "").trim();
   const description = (body.description ?? "").toString().trim() || null;
@@ -175,6 +159,38 @@ export async function POST(req: Request) {
     ["low", "normal", "high", "urgent"].includes(String(body.priority || ""))
       ? String(body.priority)
       : null;
+
+  let actorOrgName: string | null = null;
+
+  if (grant.actor_org_id) {
+    const { data: orgRow } = await admin
+      .from("organizations")
+      .select("id,name,display_name,ragione_sociale")
+      .eq("id", grant.actor_org_id)
+      .maybeSingle();
+
+    actorOrgName =
+      orgRow?.display_name?.trim() ||
+      orgRow?.name?.trim() ||
+      orgRow?.ragione_sociale?.trim() ||
+      null;
+  }
+
+  if (!actorOrgName) {
+    const { data: professionalRow } = await admin
+      .from("professionals")
+      .select("display_name,business_name,first_name,last_name")
+      .eq("owner_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    actorOrgName =
+      professionalRow?.business_name?.trim() ||
+      professionalRow?.display_name?.trim() ||
+      [professionalRow?.first_name, professionalRow?.last_name].filter(Boolean).join(" ").trim() ||
+      null;
+  }
 
   const meta: Record<string, any> = {};
 

@@ -52,6 +52,7 @@ export async function GET(req: Request) {
     await writeAudit(supabase, {
       req,
       actor_user_id: user.id,
+      actor_org_id: null,
       action: "file.count",
       target_type: "animal",
       target_id: animalId,
@@ -62,12 +63,78 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: grant.reason }, { status: 403 });
   }
 
-  const { data: files, error } = await supabase
-    .from("animal_clinic_event_files")
-    .select("id, event_id, animal_id")
-    .eq("animal_id", animalId);
+  try {
+    const { data: events, error: eventsError } = await supabase
+      .from("animal_clinic_events")
+      .select("id")
+      .eq("animal_id", animalId)
+      .neq("status", "void");
 
-  if (error) {
+    if (eventsError) {
+      await writeAudit(supabase, {
+        req,
+        actor_user_id: user.id,
+        actor_org_id: grant.actor_org_id,
+        action: "file.count",
+        target_type: "animal",
+        target_id: animalId,
+        animal_id: animalId,
+        result: "error",
+        reason: eventsError.message,
+      });
+      return NextResponse.json({ error: eventsError.message }, { status: 400 });
+    }
+
+    const eventIds = (events ?? []).map((e: any) => e.id).filter(Boolean);
+
+    if (eventIds.length === 0) {
+      return NextResponse.json({ ok: true, counts: {} }, { status: 200 });
+    }
+
+    const { data: files, error: filesError } = await supabase
+      .from("animal_clinic_event_files")
+      .select("id,event_id")
+      .in("event_id", eventIds);
+
+    if (filesError) {
+      await writeAudit(supabase, {
+        req,
+        actor_user_id: user.id,
+        actor_org_id: grant.actor_org_id,
+        action: "file.count",
+        target_type: "animal",
+        target_id: animalId,
+        animal_id: animalId,
+        result: "error",
+        reason: filesError.message,
+      });
+      return NextResponse.json({ error: filesError.message }, { status: 400 });
+    }
+
+    const counts: Record<string, number> = {};
+
+    for (const eventId of eventIds) {
+      counts[eventId] = 0;
+    }
+
+    for (const file of files ?? []) {
+      if (!file?.event_id) continue;
+      counts[file.event_id] = (counts[file.event_id] ?? 0) + 1;
+    }
+
+    await writeAudit(supabase, {
+      req,
+      actor_user_id: user.id,
+      actor_org_id: grant.actor_org_id,
+      action: "file.count",
+      target_type: "animal",
+      target_id: animalId,
+      animal_id: animalId,
+      result: "success",
+    });
+
+    return NextResponse.json({ ok: true, counts }, { status: 200 });
+  } catch {
     await writeAudit(supabase, {
       req,
       actor_user_id: user.id,
@@ -77,29 +144,8 @@ export async function GET(req: Request) {
       target_id: animalId,
       animal_id: animalId,
       result: "error",
-      reason: error.message,
+      reason: "Unhandled server error",
     });
-    return NextResponse.json({ error: error.message || "Count failed" }, { status: 400 });
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
-
-  const counts: Record<string, number> = {};
-
-  for (const file of files ?? []) {
-    const eventId = String((file as any).event_id || "");
-    if (!eventId) continue;
-    counts[eventId] = (counts[eventId] ?? 0) + 1;
-  }
-
-  await writeAudit(supabase, {
-    req,
-    actor_user_id: user.id,
-    actor_org_id: grant.actor_org_id,
-    action: "file.count",
-    target_type: "animal",
-    target_id: animalId,
-    animal_id: animalId,
-    result: "success",
-  });
-
-  return NextResponse.json({ ok: true, counts }, { status: 200 });
 }
