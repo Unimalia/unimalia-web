@@ -96,11 +96,7 @@ async function resolveAnimalByRef(animalRef: string) {
   }
 
   if (isUuid(ref)) {
-    const byId = await admin
-      .from("animals")
-      .select("*")
-      .eq("id", ref)
-      .maybeSingle();
+    const byId = await admin.from("animals").select("*").eq("id", ref).maybeSingle();
 
     if (byId.error) return byId;
     if (byId.data) return byId;
@@ -108,21 +104,13 @@ async function resolveAnimalByRef(animalRef: string) {
 
   const chip = digitsOnly(ref);
   if (chip.length === 15 || chip.length === 10) {
-    const byChip = await admin
-      .from("animals")
-      .select("*")
-      .eq("chip_number", chip)
-      .maybeSingle();
+    const byChip = await admin.from("animals").select("*").eq("chip_number", chip).maybeSingle();
 
     if (byChip.error) return byChip;
     if (byChip.data) return byChip;
   }
 
-  const byCode = await admin
-    .from("animals")
-    .select("*")
-    .eq("unimalia_code", ref)
-    .maybeSingle();
+  const byCode = await admin.from("animals").select("*").eq("unimalia_code", ref).maybeSingle();
 
   return byCode;
 }
@@ -221,10 +209,7 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (error: any) {
-    return NextResponse.json(
-      { error: error?.message || "Errore interno" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error?.message || "Errore interno" }, { status: 500 });
   }
 }
 
@@ -243,6 +228,26 @@ export async function POST(req: NextRequest) {
     }
 
     const orgId = await getProfessionalOrgId();
+
+    const { data: orgRow, error: orgError } = await admin
+      .from("organizations")
+      .select("id")
+      .eq("id", orgId)
+      .maybeSingle();
+
+    if (orgError) {
+      return NextResponse.json(
+        { error: orgError.message || "Errore verifica organizzazione" },
+        { status: 500 }
+      );
+    }
+
+    if (!orgRow) {
+      return NextResponse.json(
+        { error: `Organizzazione non trovata per questo professionista (${orgId})` },
+        { status: 403 }
+      );
+    }
 
     if (!orgId) {
       return NextResponse.json(
@@ -312,11 +317,7 @@ export async function POST(req: NextRequest) {
       owner_claim_status: "pending",
     };
 
-    const created = await admin
-      .from("animals")
-      .insert(insertPayload)
-      .select("*")
-      .single();
+    const created = await admin.from("animals").insert(insertPayload).select("*").single();
 
     if (created.error || !created.data) {
       return NextResponse.json(
@@ -335,9 +336,6 @@ export async function POST(req: NextRequest) {
       { status: 201 }
     );
   } catch (error: any) {
-    return NextResponse.json(
-      { error: error?.message || "Errore interno" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error?.message || "Errore interno" }, { status: 500 });
   }
 }
