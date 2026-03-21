@@ -104,7 +104,7 @@ export async function GET(
   const { data: orgs, error: orgErr } = orgIds.length
     ? await admin
         .from("organizations")
-        .select("id, name, display_name, ragione_sociale")
+        .select("id, name, legal_name")
         .in("id", orgIds)
     : { data: [], error: null };
 
@@ -115,7 +115,7 @@ export async function GET(
   const orgNameById = new Map<string, string>();
 
   for (const o of orgs ?? []) {
-    orgNameById.set(o.id, o.name ?? o.display_name ?? o.ragione_sociale ?? o.id);
+    orgNameById.set(o.id, o.name ?? o.legal_name ?? o.id);
   }
 
   const enrichedRequests = requestRows.map((r: any) => ({
