@@ -244,6 +244,10 @@ export default function AnimalProfilePage() {
           <ButtonSecondary href={`/identita/${animal.id}/modifica`}>Modifica</ButtonSecondary>
           <ButtonSecondary href={`/identita/${animal.id}/stampa`}>Stampa</ButtonSecondary>
 
+          <ButtonSecondary href={premiumOk ? `/identita/${animal.id}/clinica` : "/prezzi"}>
+            Cartella clinica
+          </ButtonSecondary>
+
           <ButtonSecondary href={premiumOk ? `/identita/${animal.id}/storia` : "/prezzi"}>
             Storia animale
           </ButtonSecondary>
@@ -356,7 +360,7 @@ export default function AnimalProfilePage() {
             <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <h2 className="text-base font-semibold text-zinc-900">Stato clinico rapido</h2>
+                  <h2 className="text-base font-semibold text-zinc-900">Cartella clinica rapida</h2>
                   <p className="mt-1 text-sm text-zinc-600">
                     Sintesi rapida della cartella clinica per valutazione immediata.
                   </p>
@@ -369,99 +373,108 @@ export default function AnimalProfilePage() {
                 ) : null}
               </div>
 
-              {!premiumOk ? (
-                <>
-                  <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
-                    <p className="text-sm font-semibold text-amber-900">
-                      La sintesi clinica rapida è disponibile con Premium
-                    </p>
-                    <p className="mt-2 text-sm text-amber-800">
-                      Il proprietario vede qui una sintesi rapida. La cartella clinica completa
-                      resta separata e riservata agli accessi autorizzati.
-                    </p>
+              <div className="mt-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+                <div className="text-sm font-semibold text-zinc-900">
+                  Età: {clinicalSummary.age} | Peso: {clinicalSummary.weight}
+                </div>
+                <div className="mt-2 text-sm text-zinc-600">
+                  Cartella clinica: accesso riservato ai veterinari autorizzati per la modifica.
+                </div>
+              </div>
+
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+                  <div className="text-xs text-zinc-500">Allergie</div>
+                  <div className="mt-1 text-sm font-semibold text-zinc-900">
+                    {clinicalSummary.allergies}
                   </div>
+                </div>
 
-                  <div className="mt-4">
-                    <Link
-                      href="/prezzi"
-                      className="inline-flex items-center justify-center rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-800 hover:bg-amber-100"
-                    >
-                      Sblocca con Premium
-                    </Link>
+                <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+                  <div className="text-xs text-zinc-500">Terapie attive</div>
+                  <div className="mt-1 text-sm font-semibold text-zinc-900">
+                    {clinicalSummary.activeTherapies}
                   </div>
-                </>
-              ) : (
-                <>
-                  <div className="mt-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-                    <div className="text-sm font-semibold text-zinc-900">
-                      Età: {clinicalSummary.age} | Peso: {clinicalSummary.weight}
-                    </div>
-                    <div className="mt-2 text-sm text-zinc-600">
-                      Cartella clinica: accesso riservato ai veterinari autorizzati.
-                    </div>
+                </div>
+
+                <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+                  <div className="text-xs text-zinc-500">Ultime terapie</div>
+                  <div className="mt-1 text-sm font-semibold text-zinc-900">
+                    {clinicalSummary.latestTherapies}
                   </div>
+                </div>
 
-                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-                      <div className="text-xs text-zinc-500">Allergie</div>
-                      <div className="mt-1 text-sm font-semibold text-zinc-900">
-                        {clinicalSummary.allergies}
-                      </div>
-                    </div>
-
-                    <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-                      <div className="text-xs text-zinc-500">Terapie attive</div>
-                      <div className="mt-1 text-sm font-semibold text-zinc-900">
-                        {clinicalSummary.activeTherapies}
-                      </div>
-                    </div>
-
-                    <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-                      <div className="text-xs text-zinc-500">Ultime terapie</div>
-                      <div className="mt-1 text-sm font-semibold text-zinc-900">
-                        {clinicalSummary.latestTherapies}
-                      </div>
-                    </div>
-
-                    <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-                      <div className="text-xs text-zinc-500">Patologie croniche</div>
-                      <div className="mt-1 text-sm font-semibold text-zinc-900">
-                        {clinicalSummary.chronicConditions}
-                      </div>
-                    </div>
-
-                    <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-                      <div className="text-xs text-zinc-500">Ricontrolli programmati</div>
-                      <div className="mt-1 text-sm font-semibold text-zinc-900">
-                        {clinicalSummary.plannedRechecks}
-                      </div>
-                    </div>
-
-                    <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-                      <div className="text-xs text-zinc-500">Ultima visita</div>
-                      <div className="mt-1 text-sm font-semibold text-zinc-900">
-                        {clinicalSummary.lastVisit}
-                      </div>
-                    </div>
-
-                    <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-                      <div className="text-xs text-zinc-500">Ultima vaccinazione</div>
-                      <div className="mt-1 text-sm font-semibold text-zinc-900">
-                        {clinicalSummary.lastVaccination}
-                      </div>
-                    </div>
-
-                    <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-                      <div className="text-xs text-zinc-500">
-                        Vaccinazioni scadute / in scadenza
-                      </div>
-                      <div className="mt-1 text-sm font-semibold text-zinc-900">
-                        {clinicalSummary.vaccineAlerts}
-                      </div>
-                    </div>
+                <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+                  <div className="text-xs text-zinc-500">Patologie croniche</div>
+                  <div className="mt-1 text-sm font-semibold text-zinc-900">
+                    {clinicalSummary.chronicConditions}
                   </div>
-                </>
-              )}
+                </div>
+
+                <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+                  <div className="text-xs text-zinc-500">Ricontrolli programmati</div>
+                  <div className="mt-1 text-sm font-semibold text-zinc-900">
+                    {clinicalSummary.plannedRechecks}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+                  <div className="text-xs text-zinc-500">Ultima visita</div>
+                  <div className="mt-1 text-sm font-semibold text-zinc-900">
+                    {clinicalSummary.lastVisit}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+                  <div className="text-xs text-zinc-500">Ultima vaccinazione</div>
+                  <div className="mt-1 text-sm font-semibold text-zinc-900">
+                    {clinicalSummary.lastVaccination}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+                  <div className="text-xs text-zinc-500">Vaccinazioni scadute / in scadenza</div>
+                  <div className="mt-1 text-sm font-semibold text-zinc-900">
+                    {clinicalSummary.vaccineAlerts}
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-base font-semibold text-zinc-900">Cartella clinica</h2>
+                  <p className="mt-1 text-sm text-zinc-600">
+                    Consultazione completa della cartella clinica dell’animale.
+                  </p>
+                </div>
+
+                {!premiumOk ? (
+                  <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">
+                    Premium
+                  </span>
+                ) : null}
+              </div>
+
+              <div className="mt-4">
+                <Link
+                  href={premiumOk ? `/identita/${animal.id}/clinica` : "/prezzi"}
+                  className={`inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold ${
+                    premiumOk
+                      ? "border border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-50"
+                      : "border border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100"
+                  }`}
+                >
+                  {premiumOk ? "Apri cartella clinica" : "Sblocca con Premium"}
+                </Link>
+              </div>
+
+              <p className="mt-3 text-xs text-zinc-500">
+                La cartella clinica completa è consultabile con Premium. Le modifiche da parte del
+                proprietario saranno possibili solo quando il professionista autorizzato sblocca la
+                compilazione dello storico.
+              </p>
             </section>
 
             <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
@@ -493,12 +506,11 @@ export default function AnimalProfilePage() {
                 </Link>
               </div>
 
-              {!premiumOk ? (
-                <p className="mt-3 text-xs text-zinc-500">
-                  Disponibile per account Premium. Le associazioni avranno accesso gratuito quando
-                  questa sezione sarà attivata anche lato professionisti.
-                </p>
-              ) : null}
+              <p className="mt-3 text-xs text-zinc-500">
+                La Storia animale raccoglierà eventi non clinici come servizi, attività e
+                promemoria. Le associazioni avranno accesso gratuito quando questa sezione sarà
+                attivata anche lato professionisti.
+              </p>
             </section>
           </div>
 
