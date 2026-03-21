@@ -41,17 +41,23 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (claim.used_at) {
-      const existingAnimal = await admin
-        .from("animals")
-        .select("id, owner_id")
-        .eq("id", claim.animal_id)
-        .maybeSingle();
+    const animalResult = await admin
+      .from("animals")
+      .select("id, owner_id, created_by_org_id, origin_org_id")
+      .eq("id", claim.animal_id)
+      .single();
 
-      if (existingAnimal.data?.id && existingAnimal.data.owner_id === user.id) {
+    if (animalResult.error || !animalResult.data) {
+      return NextResponse.json({ error: "Animale non trovato" }, { status: 404 });
+    }
+
+    const animal = animalResult.data;
+
+    if (claim.used_at) {
+      if (animal.id && animal.owner_id === user.id) {
         return NextResponse.json({
           ok: true,
-          animalId: existingAnimal.data.id,
+          animalId: animal.id,
         });
       }
 
@@ -65,34 +71,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invito scaduto" }, { status: 410 });
     }
 
-    const animalCheck = await admin
-      .from("animals")
-      .select("id, owner_id")
-      .eq("id", claim.animal_id)
-      .single();
-
-    if (animalCheck.error || !animalCheck.data) {
-      return NextResponse.json({ error: "Animale non trovato" }, { status: 404 });
-    }
-
-    if (animalCheck.data.owner_id && animalCheck.data.owner_id !== user.id) {
+    if (animal.owner_id && animal.owner_id !== user.id) {
       return NextResponse.json(
         { error: "Animale già collegato a un altro proprietario" },
         { status: 409 }
       );
     }
 
+    const nowIso = new Date().toISOString();
+
     const animalUpdate = await admin
       .from("animals")
       .update({
         owner_id: user.id,
         owner_claim_status: "claimed",
-        owner_claimed_at: new Date().toISOString(),
+        owner_claimed_at: nowIso,
         pending_owner_email: null,
         pending_owner_invited_at: null,
       })
       .eq("id", claim.animal_id)
-      .select("id")
+      .select("id, created_by_org_id, origin_org_id")
       .single();
 
     if (animalUpdate.error || !animalUpdate.data) {
@@ -106,7 +104,7 @@ export async function POST(req: NextRequest) {
       .from("animal_owner_claims")
       .update({
         used_by: user.id,
-        used_at: new Date().toISOString(),
+        used_at: nowIso,
       })
       .eq("id", claim.id);
 
@@ -115,6 +113,75 @@ export async function POST(req: NextRequest) {
         { error: claimUpdate.error.message || "Errore aggiornamento invito" },
         { status: 500 }
       );
+    }
+
+    const originOrgId =
+      animalUpdate.data.created_by_org_id || animalUpdate.data.origin_org_id || null;
+
+    if (originOrgId) {
+      const existingGrantResult = await admin
+        .from("animal_access_grants")
+        .select("id, status, revoked_at")
+        .eq("animal_id", claim.animal_id)
+        .eq("grantee_type", "org")
+        .eq("grantee_id", originOrgId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (existingGrantResult.error) {
+        return NextResponse.json(
+          { error: existingGrantResult.error.message || "Errore verifica grant clinica" },
+          { status: 500 }
+        );
+      }
+
+      if (existingGrantResult.data?.id) {
+        const shouldReactivate =
+          existingGrantResult.data.status !== "active" || !!existingGrantResult.data.revoked_at;
+
+        if (shouldReactivate) {
+          const reactivateGrant = await admin
+            .from("animal_access_grants")
+            .update({
+              status: "active",
+              revoked_at: null,
+              valid_to: null,
+              scope_read: true,
+              scope_write: true,
+              scope_upload: true,
+            })
+            .eq("id", existingGrantResult.data.id);
+
+          if (reactivateGrant.error) {
+            return NextResponse.json(
+              { error: reactivateGrant.error.message || "Errore riattivazione grant clinica" },
+              { status: 500 }
+            );
+          }
+        }
+      } else {
+        const insertGrant = await admin
+          .from("animal_access_grants")
+          .insert({
+            animal_id: claim.animal_id,
+            grantee_type: "org",
+            grantee_id: originOrgId,
+            status: "active",
+            valid_to: null,
+            revoked_at: null,
+            scope_read: true,
+            scope_write: true,
+            scope_upload: true,
+          });
+
+        if (insertGrant.error) {
+          return NextResponse.json(
+            { error: insertGrant.error.message || "Errore creazione grant clinica" },
+            { status: 500 }
+          );
+        }
+      }
     }
 
     return NextResponse.json({
