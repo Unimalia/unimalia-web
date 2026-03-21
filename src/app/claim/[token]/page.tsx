@@ -5,6 +5,7 @@ import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
 const CLAIM_TOKEN_STORAGE_KEY = "unimalia:pending-claim-token";
+const CLAIM_EMAIL_STORAGE_KEY = "unimalia:pending-claim-email";
 
 export default function ClaimAnimalPage() {
   const router = useRouter();
@@ -13,6 +14,8 @@ export default function ClaimAnimalPage() {
 
   const tokenFromParams = params?.token;
   const tokenFromQuery = searchParams.get("token") || "";
+  const emailFromQuery = (searchParams.get("email") || "").trim().toLowerCase();
+
   const token =
     (tokenFromParams && String(tokenFromParams).trim()) ||
     tokenFromQuery.trim() ||
@@ -29,7 +32,13 @@ export default function ClaimAnimalPage() {
           ? sessionStorage.getItem(CLAIM_TOKEN_STORAGE_KEY) || ""
           : "";
 
+      const storedEmail =
+        typeof window !== "undefined"
+          ? sessionStorage.getItem(CLAIM_EMAIL_STORAGE_KEY) || ""
+          : "";
+
       const effectiveToken = token || storedToken;
+      const effectiveEmail = emailFromQuery || storedEmail;
 
       if (!effectiveToken) {
         setMessage("Token invito mancante.");
@@ -38,14 +47,23 @@ export default function ClaimAnimalPage() {
 
       if (typeof window !== "undefined") {
         sessionStorage.setItem(CLAIM_TOKEN_STORAGE_KEY, effectiveToken);
+        if (effectiveEmail) {
+          sessionStorage.setItem(CLAIM_EMAIL_STORAGE_KEY, effectiveEmail);
+        }
       }
 
       const { data } = await supabase.auth.getUser();
 
       if (!data.user) {
-        router.replace(
-          `/login?next=${encodeURIComponent(`/claim/${effectiveToken}`)}`
-        );
+        const nextUrl = effectiveEmail
+          ? `/claim/${effectiveToken}?email=${encodeURIComponent(effectiveEmail)}`
+          : `/claim/${effectiveToken}`;
+
+        const loginUrl = effectiveEmail
+          ? `/login?email=${encodeURIComponent(effectiveEmail)}&next=${encodeURIComponent(nextUrl)}`
+          : `/login?next=${encodeURIComponent(nextUrl)}`;
+
+        router.replace(loginUrl);
         return;
       }
 
@@ -73,6 +91,7 @@ export default function ClaimAnimalPage() {
 
       if (typeof window !== "undefined") {
         sessionStorage.removeItem(CLAIM_TOKEN_STORAGE_KEY);
+        sessionStorage.removeItem(CLAIM_EMAIL_STORAGE_KEY);
       }
 
       router.replace(`/animali/${json.animalId}`);
@@ -83,7 +102,7 @@ export default function ClaimAnimalPage() {
     return () => {
       active = false;
     };
-  }, [token, router]);
+  }, [token, emailFromQuery, router]);
 
   return (
     <main className="mx-auto max-w-xl p-6">

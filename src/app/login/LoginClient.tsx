@@ -80,7 +80,8 @@ export default function LoginClient() {
 
   const [mode, setMode] = useState<"login" | "signup">(initialMode);
 
-  const [email, setEmail] = useState("");
+  const emailFromUrl = (searchParams.get("email") || "").trim().toLowerCase();
+  const [email, setEmail] = useState(emailFromUrl);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
@@ -93,6 +94,12 @@ export default function LoginClient() {
   const [msg, setMsg] = useState<string | null>(null);
 
   const passwordIssues = useMemo(() => getPasswordIssues(password), [password]);
+
+  useEffect(() => {
+    if (emailFromUrl) {
+      setEmail((prev) => (prev ? prev : emailFromUrl));
+    }
+  }, [emailFromUrl]);
 
   useEffect(() => {
     let alive = true;
@@ -195,7 +202,9 @@ export default function LoginClient() {
             m.includes("already exists") ||
             m.includes("user already registered")
           ) {
-            setMsg("Questa email risulta già registrata. Usa “Accedi” oppure “Password dimenticata”.");
+            setMsg(
+              "Questa email risulta già registrata. Usa “Accedi” oppure “Password dimenticata”."
+            );
             setMode("login");
             return;
           }
@@ -237,7 +246,9 @@ export default function LoginClient() {
       if (error) {
         const m = (error.message || "").toLowerCase();
         if (m.includes("confirm") || m.includes("confirmed") || m.includes("not confirmed")) {
-          setMsg("Email non confermata. Controlla la tua casella di posta e clicca il link di conferma.");
+          setMsg(
+            "Email non confermata. Controlla la tua casella di posta e clicca il link di conferma."
+          );
           return;
         }
 
@@ -315,12 +326,13 @@ export default function LoginClient() {
       </div>
 
       <p className="mt-3 text-zinc-700">
-        Gli smarrimenti su UNIMALIA sono sempre gratuiti e puoi pubblicarli anche senza registrazione.
+        Gli smarrimenti su UNIMALIA sono sempre gratuiti e puoi pubblicarli anche senza
+        registrazione.
         <br />
         <span className="text-zinc-600">
-          Creare un account ti permette di gestire l’identità animale e accedere alle funzioni complete
-          della piattaforma. Il telefono non è richiesto in questa fase: verrà gestito più avanti solo
-          per funzioni premium e notifiche dedicate.
+          Creare un account ti permette di gestire l’identità animale e accedere alle funzioni
+          complete della piattaforma. Il telefono non è richiesto in questa fase: verrà gestito più
+          avanti solo per funzioni premium e notifiche dedicate.
         </span>
       </p>
 
@@ -364,7 +376,9 @@ export default function LoginClient() {
           {mode === "signup" && (
             <>
               <div>
-                <label htmlFor="full-name" className="block text-sm font-medium">Nome e cognome</label>
+                <label htmlFor="full-name" className="block text-sm font-medium">
+                  Nome e cognome
+                </label>
                 <input
                   id="full-name"
                   name="name"
@@ -378,7 +392,9 @@ export default function LoginClient() {
               </div>
 
               <div>
-                <label htmlFor="city" className="block text-sm font-medium">Città</label>
+                <label htmlFor="city" className="block text-sm font-medium">
+                  Città
+                </label>
                 <input
                   id="city"
                   name="city"
@@ -409,7 +425,9 @@ export default function LoginClient() {
           )}
 
           <div>
-            <label htmlFor="email" className="block text-sm font-medium">Email</label>
+            <label htmlFor="email" className="block text-sm font-medium">
+              Email
+            </label>
             <input
               id="email"
               name="email"
@@ -427,7 +445,9 @@ export default function LoginClient() {
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium">Password</label>
+            <label htmlFor="password" className="block text-sm font-medium">
+              Password
+            </label>
             <input
               id="password"
               name={mode === "signup" ? "new-password" : "password"}
@@ -444,15 +464,17 @@ export default function LoginClient() {
             />
             {mode === "signup" && (
               <p className="mt-1 text-xs text-zinc-600">
-                Usa almeno 12 caratteri con maiuscola, minuscola, numero e simbolo. Il browser o il telefono
-                possono proporti una password casuale sicura.
+                Usa almeno 12 caratteri con maiuscola, minuscola, numero e simbolo. Il browser o il
+                telefono possono proporti una password casuale sicura.
               </p>
             )}
           </div>
 
           {mode === "signup" && (
             <div>
-              <label htmlFor="confirm-password" className="block text-sm font-medium">Conferma password</label>
+              <label htmlFor="confirm-password" className="block text-sm font-medium">
+                Conferma password
+              </label>
               <input
                 id="confirm-password"
                 name="confirm-password"
