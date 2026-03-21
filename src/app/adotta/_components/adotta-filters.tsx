@@ -1,10 +1,15 @@
 "use client";
 
-import { useMemo, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 type Species = "dog" | "cat" | "other";
 type ShelterType = "canile" | "gattile" | "rifugio";
+
+type BreedOption = {
+  id: string;
+  name: string;
+};
 
 export function AdottaFilters({
   species,
@@ -14,7 +19,7 @@ export function AdottaFilters({
   isPending,
 }: {
   species: Species;
-  breeds: Array<{ id: string; name: string }>;
+  breeds: BreedOption[];
   shelters: Array<{ id: string; name: string; type: ShelterType; city: string | null }>;
   cities: string[];
   isPending: boolean;
@@ -45,6 +50,18 @@ export function AdottaFilters({
     };
   }, [sp, species]);
 
+  const selectedBreed = useMemo(
+    () => breeds.find((b) => b.id === current.breedId) ?? null,
+    [breeds, current.breedId]
+  );
+
+  const [breedQuery, setBreedQuery] = useState(selectedBreed?.name ?? "");
+  const [breedOpen, setBreedOpen] = useState(false);
+
+  useEffect(() => {
+    setBreedQuery(selectedBreed?.name ?? "");
+  }, [selectedBreed]);
+
   function setParam(key: string, value: string) {
     const params = new URLSearchParams(sp.toString());
     if (!value) params.delete(key);
@@ -63,6 +80,8 @@ export function AdottaFilters({
       params.delete("specialNeeds");
       params.delete("hasPhoto");
       params.delete("shelterId");
+      setBreedQuery("");
+      setBreedOpen(false);
     }
 
     if (key === "shelterType") {
@@ -73,6 +92,8 @@ export function AdottaFilters({
   }
 
   function resetAll() {
+    setBreedQuery("");
+    setBreedOpen(false);
     startTransition(() => router.replace(`${pathname}?species=${species}`));
   }
 
@@ -81,6 +102,27 @@ export function AdottaFilters({
     if (!t) return shelters;
     return shelters.filter((s) => s.type === t);
   }, [shelters, current.shelterType]);
+
+  const filteredBreeds = useMemo(() => {
+    const q = breedQuery.trim().toLowerCase();
+    if (!q) return breeds.slice(0, 40);
+
+    return breeds
+      .filter((b) => b.name.toLowerCase().includes(q))
+      .slice(0, 40);
+  }, [breeds, breedQuery]);
+
+  function selectBreed(breed: BreedOption) {
+    setBreedQuery(breed.name);
+    setBreedOpen(false);
+    setParam("breedId", breed.id);
+  }
+
+  function clearBreed() {
+    setBreedQuery("");
+    setBreedOpen(false);
+    setParam("breedId", "");
+  }
 
   return (
     <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
@@ -184,20 +226,51 @@ export function AdottaFilters({
           </select>
         </div>
 
-        <div>
+        <div className="relative">
           <label className="text-xs font-medium text-zinc-700">Razza</label>
-          <select
-            value={current.breedId}
-            onChange={(e) => setParam("breedId", e.target.value)}
-            className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm"
-          >
-            <option value="">Tutte</option>
-            {breeds.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.name}
-              </option>
-            ))}
-          </select>
+
+          <input
+            value={breedQuery}
+            onChange={(e) => {
+              setBreedQuery(e.target.value);
+              setBreedOpen(true);
+              if (!e.target.value.trim()) {
+                setParam("breedId", "");
+              }
+            }}
+            onFocus={() => setBreedOpen(true)}
+            placeholder="Cerca razza..."
+            className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm outline-none"
+          />
+
+          {(breedOpen || filteredBreeds.length > 0) && breedQuery.trim() ? (
+            <div className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-xl border border-zinc-200 bg-white shadow-lg">
+              {filteredBreeds.length > 0 ? (
+                filteredBreeds.map((b) => (
+                  <button
+                    key={b.id}
+                    type="button"
+                    onClick={() => selectBreed(b)}
+                    className="block w-full px-3 py-2 text-left text-sm text-zinc-800 hover:bg-zinc-50"
+                  >
+                    {b.name}
+                  </button>
+                ))
+              ) : (
+                <div className="px-3 py-2 text-sm text-zinc-500">Nessuna razza trovata</div>
+              )}
+            </div>
+          ) : null}
+
+          {current.breedId ? (
+            <button
+              type="button"
+              onClick={clearBreed}
+              className="mt-2 text-xs font-medium text-zinc-500 hover:text-zinc-800"
+            >
+              Rimuovi razza selezionata
+            </button>
+          ) : null}
         </div>
 
         <div className="lg:col-span-2">
@@ -209,7 +282,7 @@ export function AdottaFilters({
           >
             <option value="">Indifferente</option>
             <option value="true">Solo meticci</option>
-            <option value="false">Solo razza</option>
+            <option value="false">Solo non meticci</option>
           </select>
         </div>
 
