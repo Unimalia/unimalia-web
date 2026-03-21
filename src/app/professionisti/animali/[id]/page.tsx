@@ -10,6 +10,7 @@ import { isVetUser } from "@/app/professionisti/_components/ProShell";
 import { AnimalCodes } from "@/_components/animal/animal-codes";
 import { authHeaders } from "@/lib/client/authHeaders";
 import { getBarcodeValue, getQrValue } from "@/lib/animalCodes";
+import { buildClinicalQuickSummary } from "@/lib/clinic/quickSummary";
 
 type Animal = {
   id: string;
@@ -102,39 +103,6 @@ function statusLabel(status: string) {
   }
 }
 
-function typeLabel(t: ClinicEventType) {
-  switch (t) {
-    case "visit":
-      return "Visita";
-    case "vaccine":
-      return "Vaccinazione";
-    case "exam":
-      return "Esame";
-    case "therapy":
-      return "Terapia";
-    case "note":
-      return "Nota";
-    case "document":
-      return "Documento";
-    case "emergency":
-      return "Emergenza";
-    case "weight":
-      return "Peso";
-    case "allergy":
-      return "Allergia";
-    case "feeding":
-      return "Alimentazione";
-    case "surgery":
-      return "Intervento chirurgico";
-    case "chronic_condition":
-      return "Patologia cronica";
-    case "follow_up":
-      return "Ricontrollo";
-    default:
-      return t;
-  }
-}
-
 function formatDateIT(iso: string) {
   try {
     const s = String(iso || "").trim();
@@ -159,28 +127,6 @@ function formatDateIT(iso: string) {
   } catch {
     return iso;
   }
-}
-
-function formatEventDateIT(dateStr?: string | null) {
-  if (!dateStr) return "—";
-
-  const s = String(dateStr).trim();
-
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
-    const [y, m, d] = s.split("-").map(Number);
-    const dt = new Date(y, m - 1, d);
-    return dt.toLocaleDateString("it-IT", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    });
-  }
-
-  return new Date(s).toLocaleDateString("it-IT", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
 }
 
 function normalizeChip(raw: string | null) {
@@ -218,61 +164,15 @@ function formatAgeFromBirthDate(birthDateISO?: string | null) {
   return `${years} anni ${months} mesi`;
 }
 
-function extractWeightKg(e: any): number | null {
-  if (!e) return null;
-
-  const direct =
-    e.weight_kg ??
-    e.weightKg ??
-    e?.meta?.weight_kg ??
-    e?.meta?.weightKg ??
-    e?.data?.weightKg ??
-    e?.data?.weight_kg ??
-    e?.payload?.weightKg ??
-    e?.payload?.weight_kg;
-
-  if (direct === null || direct === undefined) return null;
-
-  const n = typeof direct === "number" ? direct : Number(String(direct).replace(",", "."));
-  if (!Number.isFinite(n) || n <= 0) return null;
-
-  return Math.round(n * 10) / 10;
-}
-
-function extractTherapyStartDate(e: any): string | null {
-  return e?.meta?.therapy_start_date || null;
-}
-
-function extractTherapyEndDate(e: any): string | null {
-  return e?.meta?.therapy_end_date || null;
-}
-
-function isTherapyActive(e: any) {
-  if (!e || e.type !== "therapy") return false;
-
-  const start = extractTherapyStartDate(e);
-  const end = extractTherapyEndDate(e);
-
-  if (!start) return false;
-
-  const today = new Date();
-  const todayYmd = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(
-    2,
-    "0"
-  )}-${String(today.getDate()).padStart(2, "0")}`;
-
-  if (!end) return true;
-  return end >= todayYmd;
-}
-
-function formatWeightLabel(kg: number) {
-  return Number.isInteger(kg) ? `${kg} kg` : `${kg} kg`;
-}
-
 function ownerConnectionLabel(animal: Animal) {
   if (animal.owner_id) return "Proprietario collegato";
   if (animal.owner_claim_status === "pending") return "Proprietario non collegato";
   return "Proprietario non collegato";
+}
+
+function displayList(items: string[] | undefined, fallback = "—") {
+  if (!items || items.length === 0) return fallback;
+  return items;
 }
 
 export default function ProAnimalPage() {
@@ -411,91 +311,15 @@ export default function ProAnimalPage() {
     animal?.microchip_verified_at,
   ]);
 
-  function toDateOrNull(v?: string | null) {
-    if (!v) return null;
-    const d = new Date(v);
-    return Number.isNaN(d.getTime()) ? null : d;
-  }
-
-  const lastVisit = useMemo(() => {
-    const list = (events || []).filter((e) => e.type === "visit" && e.event_date);
-    list.sort((a, b) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime());
-    return list[0] ?? null;
-  }, [events]);
-
-  const lastVaccine = useMemo(() => {
-    const list = (events || []).filter((e) => e.type === "vaccine" && e.event_date);
-    list.sort((a, b) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime());
-    return list[0] ?? null;
-  }, [events]);
-
-  const lastWeight = useMemo(() => {
-    const list = (events || [])
-      .map((e) => ({ e, kg: extractWeightKg(e) }))
-      .filter((x) => x.kg !== null && x.e?.event_date);
-
-    list.sort((a, b) => new Date(b.e.event_date).getTime() - new Date(a.e.event_date).getTime());
-
-    return list.length > 0
-      ? { kg: list[0].kg as number, date: list[0].e.event_date as string }
-      : null;
-  }, [events]);
-
-  const allergyItems = useMemo(() => {
-    const list = (events || [])
-      .filter((e) => e.type === "allergy")
-      .sort((a, b) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime());
-
-    return list.slice(0, 3);
-  }, [events]);
-
-  const chronicConditions = useMemo(() => {
-    return (events || [])
-      .filter((e) => e.type === "chronic_condition")
-      .sort((a, b) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime())
-      .slice(0, 3);
-  }, [events]);
-
-  const upcomingFollowUps = useMemo(() => {
-    return (events || [])
-      .filter((e) => e.type === "follow_up" && e.event_date)
-      .sort((a, b) => new Date(a.event_date).getTime() - new Date(b.event_date).getTime())
-      .slice(0, 3);
-  }, [events]);
-
-  const activeTherapies = useMemo(() => {
-    return (events || [])
-      .filter((e) => e.type === "therapy" && isTherapyActive(e))
-      .sort((a, b) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime())
-      .slice(0, 3);
-  }, [events]);
-
-  const latestTherapies = useMemo(() => {
-    return (events || [])
-      .filter((e) => e.type === "therapy" && !isTherapyActive(e))
-      .sort((a, b) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime())
-      .slice(0, 3);
-  }, [events]);
-
-  const vaccinesDueSoonOrOverdue = useMemo(() => {
-    const now = new Date();
-    const limit = new Date(now.getTime() + 15 * 24 * 60 * 60 * 1000);
-
-    const getDue = (e: ClinicEventRow) =>
-      toDateOrNull(e.next_due_at) ||
-      toDateOrNull(e.next_due_date) ||
-      toDateOrNull(e.due_at) ||
-      toDateOrNull(e.due_date) ||
-      toDateOrNull(e.expires_at);
-
-    const list = (events || [])
-      .filter((e) => e.type === "vaccine")
-      .map((e) => ({ e, due: getDue(e) }))
-      .filter((x) => x.due && x.due.getTime() <= limit.getTime())
-      .sort((a, b) => a.due!.getTime() - b.due!.getTime());
-
-    return list;
-  }, [events]);
+  const rapidClinicalState = useMemo(() => {
+    return buildClinicalQuickSummary({
+      animal: {
+        birth_date: animal?.birth_date ?? null,
+        sterilized: animal?.sterilized ?? null,
+      },
+      events: events ?? [],
+    });
+  }, [animal, events]);
 
   if (loading) {
     return (
@@ -524,6 +348,11 @@ export default function ProAnimalPage() {
       </div>
     );
   }
+
+  const allergiesDisplay = displayList(rapidClinicalState.allergies);
+  const activeTherapiesDisplay = displayList(rapidClinicalState.activeTherapies);
+  const lastTherapiesDisplay = displayList(rapidClinicalState.lastTherapies);
+  const chronicPathologiesDisplay = displayList(rapidClinicalState.chronicPathologies);
 
   return (
     <div className="space-y-6">
@@ -683,46 +512,45 @@ export default function ProAnimalPage() {
 
       <div className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
         <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center justify-between gap-3">
+          <div>
             <h2 className="text-base font-semibold text-zinc-900">Stato clinico rapido</h2>
-
-            <div className="flex items-center gap-3 text-sm text-zinc-600">
-              <span>Età: {formatAgeFromBirthDate(animal?.birth_date)}</span>
-
-              {animal?.birth_date && animal?.birth_date_is_estimated ? (
-                <span className="text-xs text-zinc-500">(presunta)</span>
-              ) : null}
-
-              <span className="text-zinc-300">|</span>
-
-              <span>
-                Peso:{" "}
-                {lastWeight ? (
-                  <>
-                    {formatWeightLabel(lastWeight.kg)}{" "}
-                    <span className="text-zinc-500">• {formatEventDateIT(lastWeight.date)}</span>
-                  </>
-                ) : (
-                  "—"
-                )}
-              </span>
-            </div>
           </div>
 
           {eventsErr ? <span className="text-xs text-amber-700">{eventsErr}</span> : null}
         </div>
 
-        <div className="mt-4 grid gap-3 text-sm md:grid-cols-7">
+        <div className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50 p-3">
+          <div className="text-sm font-semibold text-zinc-900">
+            Età: {rapidClinicalState.age} | Peso: {rapidClinicalState.weight}
+          </div>
+          <div className="mt-2 text-sm text-zinc-600">
+            Cartella clinica: accesso riservato ai veterinari autorizzati.
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-3">
+          <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
+            <div className="text-xs text-zinc-500">Gruppo sanguigno</div>
+            <div className="mt-1 font-semibold text-zinc-900">{rapidClinicalState.bloodType}</div>
+          </div>
+
+          <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
+            <div className="text-xs text-zinc-500">Sterilizzato</div>
+            <div className="mt-1 font-semibold text-zinc-900">
+              {rapidClinicalState.sterilizationStatus}
+            </div>
+          </div>
+
           <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
             <div className="text-xs text-zinc-500">Allergie</div>
-            {allergyItems.length === 0 ? (
-              <div className="mt-1 font-semibold text-zinc-900">—</div>
+
+            {!Array.isArray(allergiesDisplay) ? (
+              <div className="mt-1 font-semibold text-zinc-900">{allergiesDisplay}</div>
             ) : (
               <ul className="mt-1 space-y-1 text-xs text-zinc-800">
-                {allergyItems.map((a) => (
-                  <li key={a.id} className="truncate">
-                    <span className="font-semibold">{a.description || a.title || "Allergia"}</span>
-                    <span className="text-zinc-500"> • {formatEventDateIT(a.event_date)}</span>
+                {allergiesDisplay.map((item, index) => (
+                  <li key={index} className="truncate">
+                    {item}
                   </li>
                 ))}
               </ul>
@@ -731,13 +559,14 @@ export default function ProAnimalPage() {
 
           <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
             <div className="text-xs text-zinc-500">Terapie attive</div>
-            {activeTherapies.length === 0 ? (
-              <div className="mt-1 font-semibold text-zinc-900">—</div>
+
+            {!Array.isArray(activeTherapiesDisplay) ? (
+              <div className="mt-1 font-semibold text-zinc-900">{activeTherapiesDisplay}</div>
             ) : (
               <ul className="mt-1 space-y-1 text-xs text-zinc-800">
-                {activeTherapies.map((t) => (
-                  <li key={t.id} className="truncate">
-                    <span className="font-semibold">{t.description || t.title || "Terapia"}</span>
+                {activeTherapiesDisplay.map((item, index) => (
+                  <li key={index} className="truncate">
+                    {item}
                   </li>
                 ))}
               </ul>
@@ -746,14 +575,14 @@ export default function ProAnimalPage() {
 
           <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
             <div className="text-xs text-zinc-500">Ultime terapie</div>
-            {latestTherapies.length === 0 ? (
-              <div className="mt-1 font-semibold text-zinc-900">—</div>
+
+            {!Array.isArray(lastTherapiesDisplay) ? (
+              <div className="mt-1 font-semibold text-zinc-900">{lastTherapiesDisplay}</div>
             ) : (
               <ul className="mt-1 space-y-1 text-xs text-zinc-800">
-                {latestTherapies.map((t) => (
-                  <li key={t.id} className="truncate">
-                    <span className="font-semibold">{t.description || t.title || "Terapia"}</span>
-                    <span className="text-zinc-500"> • {formatEventDateIT(t.event_date)}</span>
+                {lastTherapiesDisplay.map((item, index) => (
+                  <li key={index} className="truncate">
+                    {item}
                   </li>
                 ))}
               </ul>
@@ -763,16 +592,15 @@ export default function ProAnimalPage() {
           <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
             <div className="text-xs text-zinc-500">Patologie croniche</div>
 
-            {chronicConditions.length === 0 ? (
-              <div className="mt-1 font-semibold text-zinc-900">—</div>
+            {!Array.isArray(chronicPathologiesDisplay) ? (
+              <div className="mt-1 font-semibold text-zinc-900">
+                {chronicPathologiesDisplay}
+              </div>
             ) : (
               <ul className="mt-1 space-y-1 text-xs text-zinc-800">
-                {chronicConditions.map((c) => (
-                  <li key={c.id} className="truncate">
-                    <span className="font-semibold">
-                      {c.description || c.title || "Patologia"}
-                    </span>
-                    <span className="text-zinc-500"> • {formatEventDateIT(c.event_date)}</span>
+                {chronicPathologiesDisplay.map((item, index) => (
+                  <li key={index} className="truncate">
+                    {item}
                   </li>
                 ))}
               </ul>
@@ -781,57 +609,30 @@ export default function ProAnimalPage() {
 
           <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
             <div className="text-xs text-zinc-500">Ricontrolli programmati</div>
-
-            {upcomingFollowUps.length === 0 ? (
-              <div className="mt-1 font-semibold text-zinc-900">—</div>
-            ) : (
-              <ul className="mt-1 space-y-1 text-xs text-zinc-800">
-                {upcomingFollowUps.map((f) => (
-                  <li key={f.id} className="truncate">
-                    <span className="font-semibold">
-                      {f.description || f.title || "Ricontrollo"}
-                    </span>
-                    <span className="text-zinc-500"> • {formatEventDateIT(f.event_date)}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
+            <div className="mt-1 font-semibold text-zinc-900">
+              {rapidClinicalState.nextRecall || "—"}
+            </div>
           </div>
 
           <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
             <div className="text-xs text-zinc-500">Ultima visita</div>
             <div className="mt-1 font-semibold text-zinc-900">
-              {lastVisit ? formatEventDateIT(lastVisit.event_date) : "—"}
+              {rapidClinicalState.latestVisit || "—"}
             </div>
           </div>
 
           <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
             <div className="text-xs text-zinc-500">Ultima vaccinazione</div>
-            <div className="mt-1 text-sm font-semibold text-zinc-900">
-              {lastVaccine ? formatEventDateIT(lastVaccine.event_date) : "—"}
+            <div className="mt-1 font-semibold text-zinc-900">
+              {rapidClinicalState.latestVaccination || "—"}
             </div>
+          </div>
 
-            <div className="mt-2 text-xs text-zinc-500">Vaccinazioni scadute / in scadenza</div>
-
-            {vaccinesDueSoonOrOverdue.length === 0 ? (
-              <div className="mt-1 text-xs font-semibold text-zinc-900">—</div>
-            ) : (
-              <ul className="mt-1 space-y-1 text-xs text-zinc-800">
-                {vaccinesDueSoonOrOverdue.slice(0, 3).map(({ e, due }) => {
-                  const isOver = due!.getTime() < Date.now();
-                  return (
-                    <li key={e.id} className="truncate">
-                      <span className="font-semibold">{e.title || "Vaccino"}</span>
-                      <span className={isOver ? "text-red-700" : "text-amber-700"}>
-                        {" "}
-                        • {isOver ? "scaduta" : "in scadenza"}{" "}
-                        {due ? formatEventDateIT(due.toISOString()) : ""}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
+          <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
+            <div className="text-xs text-zinc-500">Vaccinazioni scadute / in scadenza</div>
+            <div className="mt-1 font-semibold text-zinc-900">
+              {rapidClinicalState.vaccinationExpiry || "—"}
+            </div>
           </div>
         </div>
 
@@ -901,12 +702,10 @@ export default function ProAnimalPage() {
               </span>
             )}
 
-            <Link
-              href={`/professionisti/animali/${animal.id}/storia`}
-              className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
-            >
-              Storia servizi (in arrivo)
-            </Link>
+            <span className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-2 text-sm font-semibold text-zinc-600">
+              Storia animale
+              <span className="ml-2 text-xs font-medium text-zinc-400">(in arrivo)</span>
+            </span>
           </div>
         </section>
 
