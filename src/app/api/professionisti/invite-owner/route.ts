@@ -50,26 +50,48 @@ export async function POST(req: NextRequest) {
     const email = String(body?.email ?? "").trim().toLowerCase();
 
     if (!animalId || !email) {
-      return NextResponse.json(
-        { error: "animalId o email mancanti" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "animalId o email mancanti" }, { status: 400 });
     }
 
     if (!isValidEmail(email)) {
-      return NextResponse.json(
-        { error: "Email non valida" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Email non valida" }, { status: 400 });
     }
 
     const orgLookup = await getProfessionalOrgId(user.id);
 
+    let clinicName: string | null = null;
+
+    if (orgLookup.orgId) {
+      const { data: orgRow } = await admin
+        .from("organizations")
+        .select("id,name")
+        .eq("id", orgLookup.orgId)
+        .maybeSingle();
+
+      clinicName = orgRow?.name?.trim() || null;
+    }
+
+    if (!clinicName) {
+      const { data: professionalRow } = await admin
+        .from("professionals")
+        .select("business_name,display_name,first_name,last_name")
+        .eq("owner_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      clinicName =
+        professionalRow?.business_name?.trim() ||
+        professionalRow?.display_name?.trim() ||
+        [professionalRow?.first_name, professionalRow?.last_name]
+          .filter(Boolean)
+          .join(" ")
+          .trim() ||
+        null;
+    }
+
     if (!orgLookup.orgId) {
-      return NextResponse.json(
-        { error: "Profilo professionista non valido" },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: "Profilo professionista non valido" }, { status: 403 });
     }
 
     const animalResult = await admin
@@ -85,8 +107,7 @@ export async function POST(req: NextRequest) {
     const animal = animalResult.data;
 
     const canAccess =
-      animal.created_by_org_id === orgLookup.orgId ||
-      animal.origin_org_id === orgLookup.orgId;
+      animal.created_by_org_id === orgLookup.orgId || animal.origin_org_id === orgLookup.orgId;
 
     if (!canAccess) {
       return NextResponse.json({ error: "Accesso negato" }, { status: 403 });
@@ -158,14 +179,11 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const baseUrl =
-      process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ||
-      req.nextUrl.origin;
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || req.nextUrl.origin;
 
     const claimLink = `${baseUrl}/claim/${token}`;
 
-    const fromEmail =
-      process.env.RESEND_FROM_EMAIL || "UNIMALIA <no-reply@unimalia.it>";
+    const fromEmail = process.env.RESEND_FROM_EMAIL || "UNIMALIA <no-reply@unimalia.it>";
 
     const emailResult = await resend.emails.send({
       from: fromEmail,
@@ -173,7 +191,10 @@ export async function POST(req: NextRequest) {
       subject: "Collega il tuo animale su UNIMALIA",
       html: `
         <div style="font-family: Arial, sans-serif; color: #222; line-height: 1.5; max-width: 640px; margin: 0 auto;">
-          <p>Una clinica veterinaria ha creato o aggiornato la scheda del tuo animale su UNIMALIA.</p>
+          <p>
+            ${clinicName ? `La clinica veterinaria <strong>${clinicName}</strong>` : "Una clinica veterinaria"}
+            ti ha invitato a collegare il tuo animale su UNIMALIA.
+          </p>
           <p><strong>${animal.name ?? "Il tuo animale"}</strong></p>
           <p>Per collegarlo al tuo account, apri questo link:</p>
           <p><a href="${claimLink}">${claimLink}</a></p>
@@ -212,9 +233,6 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     console.error("[INVITE_OWNER_ROUTE_ERROR]", error);
 
-    return NextResponse.json(
-      { error: error?.message || "Errore interno" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error?.message || "Errore interno" }, { status: 500 });
   }
 }
