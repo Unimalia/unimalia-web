@@ -29,6 +29,18 @@ type Animal = {
   premium_expires_at?: string | null;
   photo_url?: string | null;
   unimalia_code?: string | null;
+
+  age_text?: string | null;
+  weight?: string | number | null;
+  weight_kg?: string | number | null;
+  allergies?: string | null;
+  active_therapies?: string | null;
+  latest_therapies?: string | null;
+  chronic_conditions?: string | null;
+  planned_rechecks?: string | null;
+  last_visit_at?: string | null;
+  last_vaccination_at?: string | null;
+  vaccine_expiry_alerts?: string | null;
 };
 
 function statusLabel(status: string) {
@@ -46,6 +58,30 @@ function statusLabel(status: string) {
 
 function normalizeChip(raw: string | null) {
   return (raw || "").replace(/\s+/g, "").trim();
+}
+
+function toDisplayText(value: unknown) {
+  const v = String(value ?? "").trim();
+  return v ? v : "—";
+}
+
+function formatOptionalDate(value: unknown) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "—";
+
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return raw;
+
+  return d.toLocaleDateString("it-IT");
+}
+
+function firstDefined(...values: unknown[]) {
+  for (const value of values) {
+    if (value !== null && value !== undefined && String(value).trim() !== "") {
+      return value;
+    }
+  }
+  return null;
 }
 
 export default function AnimalProfilePage() {
@@ -107,6 +143,36 @@ export default function AnimalProfilePage() {
     if (!animal.premium_active) return false;
     if (!animal.premium_expires_at) return true;
     return new Date(animal.premium_expires_at).getTime() > new Date().getTime();
+  }, [animal]);
+
+  const clinicalSummary = useMemo(() => {
+    if (!animal) {
+      return {
+        age: "—",
+        weight: "—",
+        allergies: "—",
+        activeTherapies: "—",
+        latestTherapies: "—",
+        chronicConditions: "—",
+        plannedRechecks: "—",
+        lastVisit: "—",
+        lastVaccination: "—",
+        vaccineAlerts: "—",
+      };
+    }
+
+    return {
+      age: toDisplayText(firstDefined((animal as any).age_text, (animal as any).age)),
+      weight: toDisplayText(firstDefined((animal as any).weight_kg, (animal as any).weight)),
+      allergies: toDisplayText(firstDefined((animal as any).allergies)),
+      activeTherapies: toDisplayText(firstDefined((animal as any).active_therapies)),
+      latestTherapies: toDisplayText(firstDefined((animal as any).latest_therapies)),
+      chronicConditions: toDisplayText(firstDefined((animal as any).chronic_conditions)),
+      plannedRechecks: toDisplayText(firstDefined((animal as any).planned_rechecks)),
+      lastVisit: formatOptionalDate(firstDefined((animal as any).last_visit_at)),
+      lastVaccination: formatOptionalDate(firstDefined((animal as any).last_vaccination_at)),
+      vaccineAlerts: toDisplayText(firstDefined((animal as any).vaccine_expiry_alerts)),
+    };
   }, [animal]);
 
   const qrValue = useMemo(() => {
@@ -288,15 +354,114 @@ export default function AnimalProfilePage() {
             </section>
 
             <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-              <h2 className="text-base font-semibold text-zinc-900">Cartella clinica</h2>
-              <p className="mt-1 text-sm text-zinc-600">Referti, vaccinazioni, terapie e note.</p>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-base font-semibold text-zinc-900">Stato clinico rapido</h2>
+                  <p className="mt-1 text-sm text-zinc-600">
+                    Sintesi rapida della cartella clinica per valutazione immediata.
+                  </p>
+                </div>
 
-              <Link
-                href={`/identita/${animal.id}/clinica`}
-                className="mt-4 inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
-              >
-                Apri cartella clinica
-              </Link>
+                {!premiumOk ? (
+                  <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">
+                    Premium
+                  </span>
+                ) : null}
+              </div>
+
+              {!premiumOk ? (
+                <>
+                  <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                    <p className="text-sm font-semibold text-amber-900">
+                      La sintesi clinica rapida è disponibile con Premium
+                    </p>
+                    <p className="mt-2 text-sm text-amber-800">
+                      Il proprietario vede qui una sintesi rapida. La cartella clinica completa
+                      resta separata e riservata agli accessi autorizzati.
+                    </p>
+                  </div>
+
+                  <div className="mt-4">
+                    <Link
+                      href="/prezzi"
+                      className="inline-flex items-center justify-center rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-800 hover:bg-amber-100"
+                    >
+                      Sblocca con Premium
+                    </Link>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="mt-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+                    <div className="text-sm font-semibold text-zinc-900">
+                      Età: {clinicalSummary.age} | Peso: {clinicalSummary.weight}
+                    </div>
+                    <div className="mt-2 text-sm text-zinc-600">
+                      Cartella clinica: accesso riservato ai veterinari autorizzati.
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+                      <div className="text-xs text-zinc-500">Allergie</div>
+                      <div className="mt-1 text-sm font-semibold text-zinc-900">
+                        {clinicalSummary.allergies}
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+                      <div className="text-xs text-zinc-500">Terapie attive</div>
+                      <div className="mt-1 text-sm font-semibold text-zinc-900">
+                        {clinicalSummary.activeTherapies}
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+                      <div className="text-xs text-zinc-500">Ultime terapie</div>
+                      <div className="mt-1 text-sm font-semibold text-zinc-900">
+                        {clinicalSummary.latestTherapies}
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+                      <div className="text-xs text-zinc-500">Patologie croniche</div>
+                      <div className="mt-1 text-sm font-semibold text-zinc-900">
+                        {clinicalSummary.chronicConditions}
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+                      <div className="text-xs text-zinc-500">Ricontrolli programmati</div>
+                      <div className="mt-1 text-sm font-semibold text-zinc-900">
+                        {clinicalSummary.plannedRechecks}
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+                      <div className="text-xs text-zinc-500">Ultima visita</div>
+                      <div className="mt-1 text-sm font-semibold text-zinc-900">
+                        {clinicalSummary.lastVisit}
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+                      <div className="text-xs text-zinc-500">Ultima vaccinazione</div>
+                      <div className="mt-1 text-sm font-semibold text-zinc-900">
+                        {clinicalSummary.lastVaccination}
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+                      <div className="text-xs text-zinc-500">
+                        Vaccinazioni scadute / in scadenza
+                      </div>
+                      <div className="mt-1 text-sm font-semibold text-zinc-900">
+                        {clinicalSummary.vaccineAlerts}
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
             </section>
 
             <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
