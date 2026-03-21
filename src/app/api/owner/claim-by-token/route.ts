@@ -35,10 +35,7 @@ export async function POST(req: NextRequest) {
     const claim = claimResult.data;
 
     if (!claim.animal_id) {
-      return NextResponse.json(
-        { error: "animal_id mancante nel claim" },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "animal_id mancante nel claim" }, { status: 500 });
     }
 
     const animalResult = await admin
@@ -61,10 +58,7 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      return NextResponse.json(
-        { error: "Invito già utilizzato" },
-        { status: 409 }
-      );
+      return NextResponse.json({ error: "Invito già utilizzato" }, { status: 409 });
     }
 
     if (claim.expires_at && new Date(claim.expires_at).getTime() < Date.now()) {
@@ -144,6 +138,7 @@ export async function POST(req: NextRequest) {
           const reactivateGrant = await admin
             .from("animal_access_grants")
             .update({
+              granted_by_user_id: user.id,
               status: "active",
               revoked_at: null,
               valid_to: null,
@@ -161,19 +156,18 @@ export async function POST(req: NextRequest) {
           }
         }
       } else {
-        const insertGrant = await admin
-          .from("animal_access_grants")
-          .insert({
-            animal_id: claim.animal_id,
-            grantee_type: "org",
-            grantee_id: originOrgId,
-            status: "active",
-            valid_to: null,
-            revoked_at: null,
-            scope_read: true,
-            scope_write: true,
-            scope_upload: true,
-          });
+        const insertGrant = await admin.from("animal_access_grants").insert({
+          animal_id: claim.animal_id,
+          grantee_type: "org",
+          grantee_id: originOrgId,
+          granted_by_user_id: user.id,
+          status: "active",
+          valid_to: null,
+          revoked_at: null,
+          scope_read: true,
+          scope_write: true,
+          scope_upload: true,
+        });
 
         if (insertGrant.error) {
           return NextResponse.json(
@@ -189,9 +183,6 @@ export async function POST(req: NextRequest) {
       animalId: animalUpdate.data.id,
     });
   } catch (error: any) {
-    return NextResponse.json(
-      { error: error?.message || "Errore interno" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error?.message || "Errore interno" }, { status: 500 });
   }
 }
