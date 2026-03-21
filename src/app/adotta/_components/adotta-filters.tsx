@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 type Species = "dog" | "cat" | "other";
@@ -20,7 +26,12 @@ export function AdottaFilters({
 }: {
   species: Species;
   breeds: BreedOption[];
-  shelters: Array<{ id: string; name: string; type: ShelterType; city: string | null }>;
+  shelters: Array<{
+    id: string;
+    name: string;
+    type: ShelterType;
+    city: string | null;
+  }>;
   cities: string[];
   isPending: boolean;
 }) {
@@ -28,6 +39,8 @@ export function AdottaFilters({
   const pathname = usePathname();
   const sp = useSearchParams();
   const [, startTransition] = useTransition();
+
+  const breedBoxRef = useRef<HTMLDivElement | null>(null);
 
   const current = useMemo(() => {
     const get = (k: string) => sp.get(k) ?? "";
@@ -61,6 +74,29 @@ export function AdottaFilters({
   useEffect(() => {
     setBreedQuery(selectedBreed?.name ?? "");
   }, [selectedBreed]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (!breedBoxRef.current) return;
+      if (!breedBoxRef.current.contains(event.target as Node)) {
+        setBreedOpen(false);
+      }
+    }
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setBreedOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, []);
 
   function setParam(key: string, value: string) {
     const params = new URLSearchParams(sp.toString());
@@ -135,7 +171,9 @@ export function AdottaFilters({
               onClick={() => setParam("species", "dog")}
               className={[
                 "px-3 py-2 text-sm font-medium",
-                current.species === "dog" ? "bg-white text-zinc-900" : "text-zinc-600 hover:text-zinc-900",
+                current.species === "dog"
+                  ? "bg-white text-zinc-900"
+                  : "text-zinc-600 hover:text-zinc-900",
               ].join(" ")}
               aria-pressed={current.species === "dog"}
             >
@@ -146,7 +184,9 @@ export function AdottaFilters({
               onClick={() => setParam("species", "cat")}
               className={[
                 "px-3 py-2 text-sm font-medium",
-                current.species === "cat" ? "bg-white text-zinc-900" : "text-zinc-600 hover:text-zinc-900",
+                current.species === "cat"
+                  ? "bg-white text-zinc-900"
+                  : "text-zinc-600 hover:text-zinc-900",
               ].join(" ")}
               aria-pressed={current.species === "cat"}
             >
@@ -157,7 +197,9 @@ export function AdottaFilters({
               onClick={() => setParam("species", "other")}
               className={[
                 "px-3 py-2 text-sm font-medium",
-                current.species === "other" ? "bg-white text-zinc-900" : "text-zinc-600 hover:text-zinc-900",
+                current.species === "other"
+                  ? "bg-white text-zinc-900"
+                  : "text-zinc-600 hover:text-zinc-900",
               ].join(" ")}
               aria-pressed={current.species === "other"}
             >
@@ -226,15 +268,17 @@ export function AdottaFilters({
           </select>
         </div>
 
-        <div className="relative">
+        <div className="relative" ref={breedBoxRef}>
           <label className="text-xs font-medium text-zinc-700">Razza</label>
 
           <input
             value={breedQuery}
             onChange={(e) => {
-              setBreedQuery(e.target.value);
+              const nextValue = e.target.value;
+              setBreedQuery(nextValue);
               setBreedOpen(true);
-              if (!e.target.value.trim()) {
+
+              if (!nextValue.trim()) {
                 setParam("breedId", "");
               }
             }}
@@ -243,7 +287,7 @@ export function AdottaFilters({
             className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm outline-none"
           />
 
-          {(breedOpen || filteredBreeds.length > 0) && breedQuery.trim() ? (
+          {breedOpen && breedQuery.trim() ? (
             <div className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-xl border border-zinc-200 bg-white shadow-lg">
               {filteredBreeds.length > 0 ? (
                 filteredBreeds.map((b) => (
@@ -257,7 +301,9 @@ export function AdottaFilters({
                   </button>
                 ))
               ) : (
-                <div className="px-3 py-2 text-sm text-zinc-500">Nessuna razza trovata</div>
+                <div className="px-3 py-2 text-sm text-zinc-500">
+                  Nessuna razza trovata
+                </div>
               )}
             </div>
           ) : null}
