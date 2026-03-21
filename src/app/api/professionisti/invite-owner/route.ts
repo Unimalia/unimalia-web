@@ -181,7 +181,7 @@ export async function POST(req: NextRequest) {
 
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || req.nextUrl.origin;
 
-    const claimLink = `${baseUrl}/claim/${token}`;
+    const claimLink = `${baseUrl}/claim/${token}?email=${encodeURIComponent(email)}`;
 
     const fromEmail = process.env.RESEND_FROM_EMAIL || "UNIMALIA <no-reply@unimalia.it>";
 
