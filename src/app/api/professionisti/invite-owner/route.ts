@@ -27,6 +27,10 @@ async function getProfessionalOrgId(userId: string) {
   };
 }
 
+function isValidEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
 export async function POST(req: NextRequest) {
   try {
     const supabase = await createClient();
@@ -52,6 +56,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (!isValidEmail(email)) {
+      return NextResponse.json(
+        { error: "Email non valida" },
+        { status: 400 }
+      );
+    }
+
     const orgLookup = await getProfessionalOrgId(user.id);
 
     if (!orgLookup.orgId) {
@@ -63,7 +74,7 @@ export async function POST(req: NextRequest) {
 
     const animalResult = await admin
       .from("animals")
-      .select("id, name, created_by_org_id, origin_org_id, owner_id")
+      .select("id, name, created_by_org_id, origin_org_id, owner_id, pending_owner_email")
       .eq("id", animalId)
       .single();
 
@@ -88,25 +99,64 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const token = crypto.randomUUID();
+    const nowIso = new Date().toISOString();
 
-    await admin
+    const { error: animalUpdateError } = await admin
       .from("animals")
       .update({
         pending_owner_email: email,
-        pending_owner_invited_at: new Date().toISOString(),
+        pending_owner_invited_at: nowIso,
         owner_claim_status: "pending",
       })
       .eq("id", animalId);
 
-    await admin
+    if (animalUpdateError) {
+      return NextResponse.json(
+        { error: animalUpdateError.message || "Errore aggiornamento animale" },
+        { status: 500 }
+      );
+    }
+
+    const existingClaimResult = await admin
       .from("animal_owner_claims")
-      .insert({
-        animal_id: animalId,
-        email,
-        claim_token: token,
-        created_by: user.id,
-      });
+      .select("id, claim_token, used_at, created_at")
+      .eq("animal_id", animalId)
+      .eq("email", email)
+      .is("used_at", null)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (existingClaimResult.error) {
+      return NextResponse.json(
+        { error: existingClaimResult.error.message || "Errore lettura claim" },
+        { status: 500 }
+      );
+    }
+
+    let token = existingClaimResult.data?.claim_token ?? null;
+
+    if (!token) {
+      token = crypto.randomUUID();
+
+      const claimInsertResult = await admin
+        .from("animal_owner_claims")
+        .insert({
+          animal_id: animalId,
+          email,
+          claim_token: token,
+          created_by: user.id,
+        })
+        .select("id")
+        .single();
+
+      if (claimInsertResult.error) {
+        return NextResponse.json(
+          { error: claimInsertResult.error.message || "Errore creazione claim" },
+          { status: 500 }
+        );
+      }
+    }
 
     const baseUrl =
       process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ||
@@ -114,24 +164,54 @@ export async function POST(req: NextRequest) {
 
     const claimLink = `${baseUrl}/claim/${token}`;
 
-    await resend.emails.send({
-      from: "UNIMALIA <onboarding@resend.dev>",
+    const fromEmail =
+      process.env.RESEND_FROM_EMAIL || "UNIMALIA <no-reply@unimalia.it>";
+
+    const emailResult = await resend.emails.send({
+      from: fromEmail,
       to: email,
       subject: "Collega il tuo animale su UNIMALIA",
       html: `
-        <p>Una clinica ha creato la scheda del tuo animale su UNIMALIA.</p>
-        <p><strong>${animal.name ?? "Il tuo animale"}</strong></p>
-        <p>Clicca qui per collegarlo al tuo account:</p>
-        <p><a href="${claimLink}">${claimLink}</a></p>
+        <div style="font-family: Arial, sans-serif; color: #222; line-height: 1.5; max-width: 640px; margin: 0 auto;">
+          <p>Una clinica veterinaria ha creato o aggiornato la scheda del tuo animale su UNIMALIA.</p>
+          <p><strong>${animal.name ?? "Il tuo animale"}</strong></p>
+          <p>Per collegarlo al tuo account, apri questo link:</p>
+          <p><a href="${claimLink}">${claimLink}</a></p>
+          <hr style="margin: 24px 0; border: 0; border-top: 1px solid #ddd;" />
+          <p style="font-size: 12px; color: #666;">
+            Se hai ricevuto questa email per errore, puoi ignorarla.
+          </p>
+        </div>
       `,
+    });
+
+    if ((emailResult as { error?: { message?: string } })?.error) {
+      console.error("[INVITE_OWNER_EMAIL_ERROR]", emailResult);
+
+      return NextResponse.json(
+        {
+          error:
+            (emailResult as { error?: { message?: string } }).error?.message ||
+            "Errore invio email",
+        },
+        { status: 500 }
+      );
+    }
+
+    console.log("[INVITE_OWNER_EMAIL_SENT]", {
+      animalId,
+      email,
+      claimLink,
+      resendId: (emailResult as { data?: { id?: string } })?.data?.id ?? null,
     });
 
     return NextResponse.json({
       ok: true,
       claimLink,
     });
-
   } catch (error: any) {
+    console.error("[INVITE_OWNER_ROUTE_ERROR]", error);
+
     return NextResponse.json(
       { error: error?.message || "Errore interno" },
       { status: 500 }
