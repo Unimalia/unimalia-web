@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { authHeaders } from "@/lib/client/authHeaders";
 
-type BoxType = "received" | "responses" | "waiting" | "archive";
+type BoxType = "received" | "sent" | "archive";
 
 type ConsultItem = {
   id: string;
@@ -16,12 +17,22 @@ type ConsultItem = {
   priority: "normal" | "emergency";
   status: "pending" | "accepted" | "replied" | "closed" | "rejected" | "expired";
   created_at: string;
-  expires_at: string;
-  last_message_at?: string;
-  last_message_preview?: string | null;
-  last_message_sender_display_name?: string | null;
-  needs_my_action?: boolean;
-  inbox_bucket?: BoxType;
+  expires_at: string | null;
+  last_message_at?: string | null;
+  animal?: {
+    id: string;
+    name: string | null;
+    species: string | null;
+    breed: string | null;
+    sex: string | null;
+    microchip?: string | null;
+  } | null;
+  events?: Array<{
+    id: string;
+    title: string | null;
+    event_date: string | null;
+    created_at: string;
+  }>;
 };
 
 function statusLabel(status: string) {
@@ -50,11 +61,9 @@ function shareModeLabel(mode: string) {
 function boxTitle(box: BoxType) {
   switch (box) {
     case "received":
-      return "Da gestire";
-    case "responses":
-      return "Risposte";
-    case "waiting":
-      return "In attesa";
+      return "Consulti ricevuti";
+    case "sent":
+      return "Consulti inviati";
     case "archive":
       return "Archivio consulti";
     default:
@@ -65,26 +74,22 @@ function boxTitle(box: BoxType) {
 function boxDescription(box: BoxType) {
   switch (box) {
     case "received":
-      return "Richieste di consulto ricevute da altri veterinari o cliniche e che richiedono una tua azione.";
-    case "responses":
-      return "Risposte ricevute su consulti aperti da te.";
-    case "waiting":
-      return "Thread dove l’ultima azione è tua e stai aspettando l’altro professionista.";
+      return "Richieste di consulto ricevute da altre cliniche o professionisti veterinari.";
+    case "sent":
+      return "Richieste di consulto inviate dalla tua clinica ad altri veterinari o cliniche.";
     case "archive":
       return "Storico dei consulti chiusi, rifiutati o scaduti.";
     default:
-      return "Inbox clinica tra professionisti.";
+      return "Consulti veterinari.";
   }
 }
 
 function counterpartLabel(box: BoxType) {
   switch (box) {
     case "received":
-      return "Richiesta da";
-    case "responses":
-      return "Risposta da";
-    case "waiting":
-      return "In attesa di";
+      return "Richiesto da";
+    case "sent":
+      return "Inviato a";
     case "archive":
       return "Controparte";
     default:
@@ -93,12 +98,25 @@ function counterpartLabel(box: BoxType) {
 }
 
 function counterpartName(item: ConsultItem, box: BoxType) {
-  if (box === "received") return item.sender_display_name;
-  if (box === "responses") {
-    return item.last_message_sender_display_name || item.receiver_display_name;
+  if (box === "received") return item.sender_display_name || "Professionista";
+  if (box === "sent") return item.receiver_display_name || "Professionista";
+  return `${item.sender_display_name || "Professionista"} → ${item.receiver_display_name || "Professionista"}`;
+}
+
+function activityLabel(box: BoxType, status: ConsultItem["status"]) {
+  if (box === "received") {
+    if (status === "pending") return "Da prendere in carico";
+    if (status === "accepted" || status === "replied") return "Consulto attivo";
+    return "Ricevuto";
   }
-  if (box === "waiting") return item.receiver_display_name;
-  return `${item.sender_display_name} → ${item.receiver_display_name}`;
+
+  if (box === "sent") {
+    if (status === "pending") return "In attesa di risposta";
+    if (status === "accepted" || status === "replied") return "In corso";
+    return "Inviato";
+  }
+
+  return "Archiviato";
 }
 
 function formatDate(value?: string | null) {
@@ -114,11 +132,16 @@ async function fetchConsultItems(box: BoxType) {
 
   const res = await fetch(`/api/professionisti/consults?${params.toString()}`, {
     cache: "no-store",
+    headers: {
+      ...(await authHeaders()),
+      "x-unimalia-app": "professionisti",
+    },
   });
-  const json = await res.json();
+
+  const json = await res.json().catch(() => ({}));
 
   if (!res.ok) {
-    throw new Error(json.error || "Errore caricamento consulti");
+    throw new Error(json?.error || "Errore caricamento consulti");
   }
 
   return (json.items ?? []) as ConsultItem[];
@@ -132,17 +155,25 @@ export default function ProfessionistiRichiesteClient() {
   const [items, setItems] = useState<ConsultItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
   const [receivedCount, setReceivedCount] = useState(0);
+  const [sentCount, setSentCount] = useState(0);
 
   const pageTitle = useMemo(() => boxTitle(box), [box]);
   const pageDescription = useMemo(() => boxDescription(box), [box]);
 
-  async function refreshReceivedCount() {
+  async function refreshCounters() {
     try {
-      const receivedItems = await fetchConsultItems("received");
+      const [receivedItems, sentItems] = await Promise.all([
+        fetchConsultItems("received"),
+        fetchConsultItems("sent"),
+      ]);
+
       setReceivedCount(receivedItems.length);
+      setSentCount(sentItems.length);
     } catch {
       setReceivedCount(0);
+      setSentCount(0);
     }
   }
 
@@ -159,11 +190,19 @@ export default function ProfessionistiRichiesteClient() {
 
       const res = await fetch(`/api/professionisti/consults?${params.toString()}`, {
         cache: "no-store",
+        headers: {
+          ...(await authHeaders()),
+          "x-unimalia-app": "professionisti",
+        },
       });
-      const json = await res.json();
 
-      if (!res.ok) throw new Error(json.error || "Errore caricamento consulti");
-      setItems(json.items ?? []);
+      const json = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        throw new Error(json?.error || "Errore caricamento consulti");
+      }
+
+      setItems(Array.isArray(json?.items) ? json.items : []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore imprevisto");
     } finally {
@@ -172,12 +211,32 @@ export default function ProfessionistiRichiesteClient() {
   }
 
   useEffect(() => {
-    load();
+    void load();
   }, [box, status, priority]);
 
   useEffect(() => {
-    refreshReceivedCount();
-  }, [box]);
+    void refreshCounters();
+  }, []);
+
+  const filteredItems = useMemo(() => {
+    if (!q.trim()) return items;
+
+    const query = q.trim().toLowerCase();
+
+    return items.filter((item) =>
+      [
+        item.animal_name,
+        item.subject,
+        item.sender_display_name,
+        item.receiver_display_name,
+        item.initial_message,
+        item.animal?.species,
+        item.animal?.breed,
+      ]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(query))
+    );
+  }, [items, q]);
 
   return (
     <main className="mx-auto max-w-6xl p-6">
@@ -199,13 +258,11 @@ export default function ProfessionistiRichiesteClient() {
               }`}
             >
               <span className="inline-flex items-center gap-2">
-                <span>Da gestire</span>
+                <span>Ricevuti</span>
                 {receivedCount > 0 ? (
                   <span
                     className={`inline-flex min-w-[1.35rem] items-center justify-center rounded-full px-1.5 py-0.5 text-[11px] font-bold ${
-                      box === "received"
-                        ? "bg-white text-black"
-                        : "bg-emerald-600 text-white"
+                      box === "received" ? "bg-white text-black" : "bg-emerald-600 text-white"
                     }`}
                   >
                     {receivedCount}
@@ -216,26 +273,25 @@ export default function ProfessionistiRichiesteClient() {
 
             <button
               type="button"
-              onClick={() => setBox("responses")}
+              onClick={() => setBox("sent")}
               className={`rounded-2xl px-4 py-2 text-sm font-semibold ${
-                box === "responses"
+                box === "sent"
                   ? "bg-black text-white"
                   : "border border-zinc-200 bg-white text-zinc-800"
               }`}
             >
-              Risposte
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setBox("waiting")}
-              className={`rounded-2xl px-4 py-2 text-sm font-semibold ${
-                box === "waiting"
-                  ? "bg-black text-white"
-                  : "border border-zinc-200 bg-white text-zinc-800"
-              }`}
-            >
-              In attesa
+              <span className="inline-flex items-center gap-2">
+                <span>Inviati</span>
+                {sentCount > 0 ? (
+                  <span
+                    className={`inline-flex min-w-[1.35rem] items-center justify-center rounded-full px-1.5 py-0.5 text-[11px] font-bold ${
+                      box === "sent" ? "bg-white text-black" : "bg-zinc-800 text-white"
+                    }`}
+                  >
+                    {sentCount}
+                  </span>
+                ) : null}
+              </span>
             </button>
 
             <button
@@ -255,8 +311,8 @@ export default function ProfessionistiRichiesteClient() {
         <button
           type="button"
           onClick={() => {
-            load();
-            refreshReceivedCount();
+            void load();
+            void refreshCounters();
           }}
           className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 shadow-sm hover:bg-zinc-50"
         >
@@ -299,8 +355,8 @@ export default function ProfessionistiRichiesteClient() {
         <button
           type="button"
           onClick={() => {
-            load();
-            refreshReceivedCount();
+            void load();
+            void refreshCounters();
           }}
           className="h-11 rounded-2xl bg-black px-4 text-sm font-semibold text-white"
         >
@@ -316,24 +372,25 @@ export default function ProfessionistiRichiesteClient() {
         <div className="mt-6 rounded-3xl border border-red-200 bg-red-50 p-6 text-red-700 shadow-sm">
           {error}
         </div>
-      ) : items.length === 0 ? (
+      ) : filteredItems.length === 0 ? (
         <div className="mt-6 rounded-3xl border border-zinc-200 bg-white p-6 text-sm text-zinc-600 shadow-sm">
           Nessun consulto trovato.
         </div>
       ) : (
         <div className="mt-6 space-y-3">
-          {items.map((item) => {
+          {filteredItems.map((item) => {
             const counterpart = counterpartName(item, box);
             const activityDate = item.last_message_at || item.created_at;
-            const preview = item.last_message_preview || item.initial_message || "";
 
             const cardClass =
-              box === "received" && item.needs_my_action
-                ? "border-emerald-300 bg-emerald-50 hover:bg-emerald-50/80"
-                : box === "responses"
-                ? "border-blue-200 bg-blue-50 hover:bg-blue-50/80"
-                : item.priority === "emergency"
-                ? "border-red-300 bg-red-50 hover:bg-red-50/80"
+              box === "received"
+                ? item.priority === "emergency"
+                  ? "border-red-300 bg-red-50 hover:bg-red-50/80"
+                  : "border-emerald-300 bg-emerald-50 hover:bg-emerald-50/80"
+                : box === "sent"
+                ? item.priority === "emergency"
+                  ? "border-red-300 bg-red-50 hover:bg-red-50/80"
+                  : "border-blue-200 bg-blue-50 hover:bg-blue-50/80"
                 : "border-zinc-200 bg-white hover:bg-zinc-50";
 
             return (
@@ -357,17 +414,17 @@ export default function ProfessionistiRichiesteClient() {
                     {shareModeLabel(item.share_mode)}
                   </span>
 
-                  {box === "received" && item.needs_my_action ? (
-                    <span className="rounded-full border border-emerald-200 bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-800">
-                      Azione richiesta
-                    </span>
-                  ) : null}
-
-                  {box === "responses" ? (
-                    <span className="rounded-full border border-blue-200 bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-800">
-                      Risposta ricevuta
-                    </span>
-                  ) : null}
+                  <span
+                    className={`rounded-full px-2 py-1 text-xs font-semibold ${
+                      box === "received"
+                        ? "border border-emerald-200 bg-emerald-100 text-emerald-800"
+                        : box === "sent"
+                        ? "border border-blue-200 bg-blue-100 text-blue-800"
+                        : "border border-zinc-200 bg-zinc-100 text-zinc-700"
+                    }`}
+                  >
+                    {activityLabel(box, item.status)}
+                  </span>
                 </div>
 
                 <div className="mt-3 grid gap-3 md:grid-cols-[1fr_auto]">
@@ -380,17 +437,19 @@ export default function ProfessionistiRichiesteClient() {
                       {counterpartLabel(box)} {counterpart}
                     </div>
 
-                    {item.last_message_sender_display_name ? (
-                      <div className="mt-2 text-xs uppercase tracking-wide text-zinc-500">
-                        Ultimo messaggio da: {item.last_message_sender_display_name}
+                    <div className="mt-2 text-sm text-zinc-500">
+                      {[item.animal?.species, item.animal?.breed].filter(Boolean).join(" · ") || "Dati animale non disponibili"}
+                    </div>
+
+                    {item.initial_message ? (
+                      <div className="mt-2 line-clamp-2 text-sm text-zinc-700">
+                        {item.initial_message}
                       </div>
                     ) : null}
 
-                    {preview ? (
-                      <div className="mt-2 line-clamp-2 text-sm text-zinc-700">
-                        {preview}
-                      </div>
-                    ) : null}
+                    <div className="mt-3 text-xs uppercase tracking-wide text-zinc-500">
+                      Eventi condivisi: {item.events?.length ?? 0}
+                    </div>
                   </div>
 
                   <div className="text-sm text-zinc-500 md:text-right">
