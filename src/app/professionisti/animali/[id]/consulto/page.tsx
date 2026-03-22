@@ -74,9 +74,21 @@ export default function NewProfessionalConsultPage() {
 
       if (!res.ok) throw new Error(json.error || "Errore caricamento dati animale");
 
-      setCompose(json);
-      setSubject(`Consulto clinico ${json.animal?.name ?? ""}`.trim());
-      setSelectedEventIds((json.events ?? []).map((event: any) => event.id));
+      const safeCompose: ComposeData = {
+        animal: {
+          id: String(json?.animal?.id ?? ""),
+          name: String(json?.animal?.name ?? ""),
+          species: json?.animal?.species ?? null,
+          breed: json?.animal?.breed ?? null,
+          sex: json?.animal?.sex ?? null,
+          microchip: json?.animal?.microchip ?? null,
+        },
+        events: Array.isArray(json?.events) ? json.events : [],
+      };
+
+      setCompose(safeCompose);
+      setSubject(`Consulto clinico ${safeCompose.animal.name || ""}`.trim());
+      setSelectedEventIds(safeCompose.events.map((event) => event.id));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore imprevisto");
     } finally {
@@ -86,33 +98,40 @@ export default function NewProfessionalConsultPage() {
 
   async function searchRecipients() {
     try {
-      const params = new URLSearchParams();
-      if (q.trim()) params.set("q", q.trim());
-      if (tagId) params.set("tagId", tagId);
+      const paramsSearch = new URLSearchParams();
+      if (q.trim()) paramsSearch.set("q", q.trim());
+      if (tagId) paramsSearch.set("tagId", tagId);
 
-      const res = await fetch(`/api/professionisti/consults/recipients?${params.toString()}`, {
-        cache: "no-store",
-      });
+      const res = await fetch(
+        `/api/professionisti/consults/recipients?${paramsSearch.toString()}`,
+        {
+          cache: "no-store",
+        }
+      );
       const json = await res.json();
 
       if (!res.ok) throw new Error(json.error || "Errore ricerca professionisti");
 
-      setRecipients(json.professionals ?? []);
-      setTagsByProfessional(json.tagsByProfessional ?? {});
-      setTags(json.tags ?? []);
+      setRecipients(Array.isArray(json?.professionals) ? json.professionals : []);
+      setTagsByProfessional(
+        json?.tagsByProfessional && typeof json.tagsByProfessional === "object"
+          ? json.tagsByProfessional
+          : {}
+      );
+      setTags(Array.isArray(json?.tags) ? json.tags : []);
     } catch (err) {
       alert(err instanceof Error ? err.message : "Errore imprevisto");
     }
   }
 
   useEffect(() => {
-    loadCompose();
-    searchRecipients();
+    void loadCompose();
+    void searchRecipients();
   }, [params.id]);
 
   const effectiveSelectedIds = useMemo(() => {
     if (!compose) return [];
-    if (shareMode === "full_record") return compose.events.map((e) => e.id);
+    if (shareMode === "full_record") return (compose.events ?? []).map((e) => e.id);
     return selectedEventIds;
   }, [compose, shareMode, selectedEventIds]);
 
@@ -186,12 +205,24 @@ export default function NewProfessionalConsultPage() {
       <div className="mt-6 rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
         <h2 className="text-base font-semibold text-zinc-900">Animale</h2>
         <div className="mt-4 grid gap-3 text-sm text-zinc-700 md:grid-cols-2">
-          <div><strong>Nome:</strong> {compose.animal.name}</div>
-          <div><strong>Specie:</strong> {compose.animal.species ?? "—"}</div>
-          <div><strong>Razza:</strong> {compose.animal.breed ?? "—"}</div>
-          <div><strong>Sesso:</strong> {compose.animal.sex ?? "—"}</div>
-          <div><strong>Microchip:</strong> {compose.animal.microchip ?? "—"}</div>
-          <div><strong>Eventi disponibili:</strong> {compose.events.length}</div>
+          <div>
+            <strong>Nome:</strong> {compose.animal.name}
+          </div>
+          <div>
+            <strong>Specie:</strong> {compose.animal.species ?? "—"}
+          </div>
+          <div>
+            <strong>Razza:</strong> {compose.animal.breed ?? "—"}
+          </div>
+          <div>
+            <strong>Sesso:</strong> {compose.animal.sex ?? "—"}
+          </div>
+          <div>
+            <strong>Microchip:</strong> {compose.animal.microchip ?? "—"}
+          </div>
+          <div>
+            <strong>Eventi disponibili:</strong> {(compose.events ?? []).length}
+          </div>
         </div>
       </div>
 
@@ -243,9 +274,7 @@ export default function NewProfessionalConsultPage() {
                     type="button"
                     onClick={() => setReceiverProfessionalId(pro.id)}
                     className={`w-full rounded-2xl border p-4 text-left ${
-                      selected
-                        ? "border-black bg-zinc-100"
-                        : "border-zinc-200 bg-white"
+                      selected ? "border-black bg-zinc-100" : "border-zinc-200 bg-white"
                     }`}
                   >
                     <div className="text-sm font-semibold text-zinc-900">
@@ -253,7 +282,8 @@ export default function NewProfessionalConsultPage() {
                     </div>
 
                     <div className="mt-1 text-xs text-zinc-500">
-                      {[pro.city, pro.province].filter(Boolean).join(" · ") || "Località non disponibile"}
+                      {[pro.city, pro.province].filter(Boolean).join(" · ") ||
+                        "Località non disponibile"}
                     </div>
 
                     {tagsByProfessional[pro.id]?.length ? (
@@ -352,38 +382,44 @@ export default function NewProfessionalConsultPage() {
             <h2 className="text-base font-semibold text-zinc-900">Eventi condivisi</h2>
 
             <div className="mt-4 max-h-[420px] space-y-3 overflow-auto">
-              {(compose?.events ?? []).map((event) => {
-                const checked = effectiveSelectedIds.includes(event.id);
+              {(compose?.events ?? []).length === 0 ? (
+                <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600">
+                  Nessun evento clinico disponibile da condividere.
+                </div>
+              ) : (
+                (compose?.events ?? []).map((event) => {
+                  const checked = effectiveSelectedIds.includes(event.id);
 
-                return (
-                  <label
-                    key={event.id}
-                    className="flex cursor-pointer gap-3 rounded-2xl border border-zinc-200 p-4"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      disabled={shareMode === "full_record"}
-                      onChange={() => toggleEvent(event.id)}
-                    />
-                    <div className="min-w-0">
-                      <div className="text-sm font-semibold text-zinc-900">
-                        {event.title || "Evento clinico"}
-                      </div>
-                      <div className="mt-1 text-xs text-zinc-500">
-                        {event.event_date
-                          ? new Date(event.event_date).toLocaleString("it-IT")
-                          : new Date(event.created_at).toLocaleString("it-IT")}
-                      </div>
-                      {event.description ? (
-                        <div className="mt-2 line-clamp-3 text-sm text-zinc-700">
-                          {event.description}
+                  return (
+                    <label
+                      key={event.id}
+                      className="flex cursor-pointer gap-3 rounded-2xl border border-zinc-200 p-4"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        disabled={shareMode === "full_record"}
+                        onChange={() => toggleEvent(event.id)}
+                      />
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold text-zinc-900">
+                          {event.title || "Evento clinico"}
                         </div>
-                      ) : null}
-                    </div>
-                  </label>
-                );
-              })}
+                        <div className="mt-1 text-xs text-zinc-500">
+                          {event.event_date
+                            ? new Date(event.event_date).toLocaleString("it-IT")
+                            : new Date(event.created_at).toLocaleString("it-IT")}
+                        </div>
+                        {event.description ? (
+                          <div className="mt-2 line-clamp-3 text-sm text-zinc-700">
+                            {event.description}
+                          </div>
+                        ) : null}
+                      </div>
+                    </label>
+                  );
+                })
+              )}
             </div>
 
             <button
