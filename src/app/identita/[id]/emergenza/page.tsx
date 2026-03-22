@@ -433,7 +433,7 @@ export default function AnimalEmergencyPage() {
                   <QRCode
                     value={qrUrl}
                     size={180}
-                    style={{ width: "100%", height: "auto" }}
+                    style={{ width: "140px", height: "140px" }}
                     viewBox="0 0 256 256"
                   />
                 </div>
