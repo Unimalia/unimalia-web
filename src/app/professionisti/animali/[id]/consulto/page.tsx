@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { authHeaders } from "@/lib/client/authHeaders";
 
 type ComposeData = {
   animal: {
@@ -68,27 +69,39 @@ export default function NewProfessionalConsultPage() {
 
       const res = await fetch(
         `/api/professionisti/consults?mode=compose&animalId=${params.id}`,
-        { cache: "no-store" }
+        {
+          cache: "no-store",
+          headers: {
+            ...(await authHeaders()),
+            "x-unimalia-app": "professionisti",
+          },
+        }
       );
-      const json = await res.json();
 
-      if (!res.ok) throw new Error(json.error || "Errore caricamento dati animale");
+      const json = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        throw new Error(json?.error || "Errore caricamento dati animale");
+      }
+
+      const rawAnimal = json?.animal ?? {};
+      const rawEvents = Array.isArray(json?.events) ? json.events : [];
 
       const safeCompose: ComposeData = {
         animal: {
-          id: String(json?.animal?.id ?? ""),
-          name: String(json?.animal?.name ?? ""),
-          species: json?.animal?.species ?? null,
-          breed: json?.animal?.breed ?? null,
-          sex: json?.animal?.sex ?? null,
-          microchip: json?.animal?.microchip ?? null,
+          id: String(rawAnimal?.id ?? ""),
+          name: String(rawAnimal?.name ?? ""),
+          species: rawAnimal?.species ?? null,
+          breed: rawAnimal?.breed ?? null,
+          sex: rawAnimal?.sex ?? null,
+          microchip: rawAnimal?.microchip ?? rawAnimal?.chip_number ?? null,
         },
-        events: Array.isArray(json?.events) ? json.events : [],
+        events: rawEvents,
       };
 
       setCompose(safeCompose);
       setSubject(`Consulto clinico ${safeCompose.animal.name || ""}`.trim());
-      setSelectedEventIds(safeCompose.events.map((event) => event.id));
+      setSelectedEventIds(rawEvents.map((event: any) => event.id));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore imprevisto");
     } finally {
@@ -106,11 +119,18 @@ export default function NewProfessionalConsultPage() {
         `/api/professionisti/consults/recipients?${paramsSearch.toString()}`,
         {
           cache: "no-store",
+          headers: {
+            ...(await authHeaders()),
+            "x-unimalia-app": "professionisti",
+          },
         }
       );
-      const json = await res.json();
 
-      if (!res.ok) throw new Error(json.error || "Errore ricerca professionisti");
+      const json = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        throw new Error(json?.error || "Errore ricerca professionisti");
+      }
 
       setRecipients(Array.isArray(json?.professionals) ? json.professionals : []);
       setTagsByProfessional(
@@ -147,7 +167,11 @@ export default function NewProfessionalConsultPage() {
 
       const res = await fetch("/api/professionisti/consults", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(await authHeaders()),
+          "x-unimalia-app": "professionisti",
+        },
         body: JSON.stringify({
           animalId: params.id,
           receiverProfessionalId,
@@ -159,9 +183,11 @@ export default function NewProfessionalConsultPage() {
         }),
       });
 
-      const json = await res.json();
+      const json = await res.json().catch(() => ({}));
 
-      if (!res.ok) throw new Error(json.error || "Errore creazione consulto");
+      if (!res.ok) {
+        throw new Error(json?.error || "Errore creazione consulto");
+      }
 
       router.push(`/professionisti/richieste/${json.id}`);
     } catch (err) {
