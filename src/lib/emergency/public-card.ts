@@ -19,6 +19,26 @@ export type PublicEmergencyCardPayload = {
     size: string | null;
     photoUrl: string | null;
   };
+  owner: {
+    fullName: string | null;
+    phone: string | null;
+  };
+  settings: {
+    showPhoto: boolean;
+    showName: boolean;
+    showSpecies: boolean;
+    showBreed: boolean;
+    showColor: boolean;
+    showSize: boolean;
+    showOwnerName: boolean;
+    showOwnerPhone: boolean;
+    showAllergies: boolean;
+    showTherapies: boolean;
+    showChronicConditions: boolean;
+    showBloodType: boolean;
+    showSterilizationStatus: boolean;
+    emergencyNotes: string | null;
+  };
   clinical: {
     allergies: string[];
     activeTherapies: string[];
@@ -46,6 +66,33 @@ type AnimalRow = {
   photo_url: string | null;
   birth_date: string | null;
   sterilized: boolean | null;
+  owner_id: string | null;
+};
+
+type ProfileRow = {
+  id: string;
+  full_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  phone: string | null;
+};
+
+type SettingsRow = {
+  animal_id: string;
+  show_photo: boolean;
+  show_name: boolean;
+  show_species: boolean;
+  show_breed: boolean;
+  show_color: boolean;
+  show_size: boolean;
+  show_owner_name: boolean;
+  show_owner_phone: boolean;
+  show_allergies: boolean;
+  show_therapies: boolean;
+  show_chronic_conditions: boolean;
+  show_blood_type: boolean;
+  show_sterilization_status: boolean;
+  emergency_notes: string | null;
 };
 
 type ClinicEventRow = {
@@ -60,11 +107,40 @@ type ClinicEventRow = {
   meta: Record<string, unknown> | null;
 };
 
+const DEFAULT_SETTINGS: PublicEmergencyCardPayload["settings"] = {
+  showPhoto: true,
+  showName: true,
+  showSpecies: true,
+  showBreed: true,
+  showColor: true,
+  showSize: true,
+  showOwnerName: false,
+  showOwnerPhone: false,
+  showAllergies: true,
+  showTherapies: true,
+  showChronicConditions: true,
+  showBloodType: true,
+  showSterilizationStatus: true,
+  emergencyNotes: null,
+};
+
 function isExpired(expiresAt: string | null) {
   if (!expiresAt) return false;
   const ms = new Date(expiresAt).getTime();
   if (Number.isNaN(ms)) return false;
   return ms <= Date.now();
+}
+
+function buildOwnerName(profile: ProfileRow | null) {
+  if (!profile) return null;
+  if (profile.full_name?.trim()) return profile.full_name.trim();
+
+  const joined = [profile.first_name, profile.last_name]
+    .map((v) => String(v ?? "").trim())
+    .filter(Boolean)
+    .join(" ");
+
+  return joined || null;
 }
 
 export async function getPublicEmergencyCardByToken(
@@ -92,7 +168,7 @@ export async function getPublicEmergencyCardByToken(
 
     const animalQuery = admin
       .from("animals" as never)
-      .select("id, name, species, breed, color, size, photo_url, birth_date, sterilized")
+      .select("id, name, species, breed, color, size, photo_url, birth_date, sterilized, owner_id")
       .eq("id", resolved.row.animal_id)
       .maybeSingle();
 
@@ -104,6 +180,53 @@ export async function getPublicEmergencyCardByToken(
     if (animalError || !animal) {
       console.error("getPublicEmergencyCardByToken animal error", animalError);
       return null;
+    }
+
+    const settingsQuery = admin
+      .from("animal_emergency_settings" as never)
+      .select("*")
+      .eq("animal_id", animal.id)
+      .maybeSingle();
+
+    const { data: rawSettings } = (await settingsQuery) as unknown as {
+      data: SettingsRow | null;
+      error: Error | null;
+    };
+
+    const settings: PublicEmergencyCardPayload["settings"] = rawSettings
+      ? {
+          showPhoto: rawSettings.show_photo,
+          showName: rawSettings.show_name,
+          showSpecies: rawSettings.show_species,
+          showBreed: rawSettings.show_breed,
+          showColor: rawSettings.show_color,
+          showSize: rawSettings.show_size,
+          showOwnerName: rawSettings.show_owner_name,
+          showOwnerPhone: rawSettings.show_owner_phone,
+          showAllergies: rawSettings.show_allergies,
+          showTherapies: rawSettings.show_therapies,
+          showChronicConditions: rawSettings.show_chronic_conditions,
+          showBloodType: rawSettings.show_blood_type,
+          showSterilizationStatus: rawSettings.show_sterilization_status,
+          emergencyNotes: rawSettings.emergency_notes ?? null,
+        }
+      : DEFAULT_SETTINGS;
+
+    let ownerProfile: ProfileRow | null = null;
+
+    if (animal.owner_id) {
+      const profileQuery = admin
+        .from("profiles" as never)
+        .select("id, full_name, first_name, last_name, phone")
+        .eq("id", animal.owner_id)
+        .maybeSingle();
+
+      const { data: profileData } = (await profileQuery) as unknown as {
+        data: ProfileRow | null;
+        error: Error | null;
+      };
+
+      ownerProfile = profileData ?? null;
     }
 
     const eventsQuery = admin
@@ -164,6 +287,11 @@ export async function getPublicEmergencyCardByToken(
         size: animal.size,
         photoUrl: animal.photo_url ?? null,
       },
+      owner: {
+        fullName: buildOwnerName(ownerProfile),
+        phone: ownerProfile?.phone?.trim() || null,
+      },
+      settings,
       clinical: {
         allergies: quick.allergies.slice(0, 3),
         activeTherapies: quick.activeTherapies.slice(0, 3),

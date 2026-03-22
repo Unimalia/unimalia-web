@@ -115,6 +115,56 @@ async function resolveAnimalByRef(animalRef: string) {
   return byCode;
 }
 
+async function getOwnerDetails(ownerId?: string | null) {
+  if (!ownerId) {
+    return {
+      owner_name: null,
+      owner_first_name: null,
+      owner_last_name: null,
+      owner_phone: null,
+      owner_email: null,
+    };
+  }
+
+  const admin = supabaseAdmin();
+
+  const profileResult = await admin
+    .from("profiles")
+    .select("full_name, first_name, last_name, phone")
+    .eq("id", ownerId)
+    .maybeSingle();
+
+  if (profileResult.error) {
+    throw profileResult.error;
+  }
+
+  let ownerEmail: string | null = null;
+
+  try {
+    const authUserResult = await admin.auth.admin.getUserById(ownerId);
+    ownerEmail = authUserResult?.data?.user?.email ?? null;
+  } catch {
+    ownerEmail = null;
+  }
+
+  const profile = profileResult.data;
+
+  const firstName = profile?.first_name?.trim() || null;
+  const lastName = profile?.last_name?.trim() || null;
+  const fullName =
+    profile?.full_name?.trim() ||
+    [firstName, lastName].filter(Boolean).join(" ").trim() ||
+    null;
+
+  return {
+    owner_name: fullName,
+    owner_first_name: firstName,
+    owner_last_name: lastName,
+    owner_phone: profile?.phone?.trim() || null,
+    owner_email: ownerEmail,
+  };
+}
+
 export async function GET(req: NextRequest) {
   try {
     const supabase = await createClient();
@@ -202,10 +252,17 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Accesso negato" }, { status: 403 });
     }
 
+    const ownerDetails = await getOwnerDetails(animal.owner_id ?? null);
+
     return NextResponse.json({
       animal: {
         ...animal,
         microchip: animal.chip_number ?? null,
+        owner_name: ownerDetails.owner_name,
+        owner_first_name: ownerDetails.owner_first_name,
+        owner_last_name: ownerDetails.owner_last_name,
+        owner_phone: ownerDetails.owner_phone,
+        owner_email: ownerDetails.owner_email,
       },
     });
   } catch (error: any) {

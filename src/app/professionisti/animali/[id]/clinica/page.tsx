@@ -50,6 +50,9 @@ type AnimalSummary = {
   chip_number?: string | null;
   owner_name?: string | null;
   owner_email?: string | null;
+  owner_phone?: string | null;
+  owner_first_name?: string | null;
+  owner_last_name?: string | null;
 };
 
 type FilterKey =
@@ -444,6 +447,9 @@ export default function ClinicaPage() {
               chip_number: a.chip_number ?? a.chip_code ?? null,
               owner_name: a.owner_name ?? null,
               owner_email: a.owner_email ?? null,
+              owner_phone: a.owner_phone ?? null,
+              owner_first_name: a.owner_first_name ?? null,
+              owner_last_name: a.owner_last_name ?? null,
             }
           : null
       );
@@ -1095,10 +1101,18 @@ export default function ClinicaPage() {
             <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
               Proprietario
             </div>
+
             <div className="mt-2 text-sm font-semibold text-zinc-900">
               {animal?.owner_name || "Non disponibile"}
             </div>
-            <div className="mt-1 text-sm text-zinc-600">{animal?.owner_email || "—"}</div>
+
+            <div className="mt-1 text-sm text-zinc-600">
+              Email: {animal?.owner_email || "—"}
+            </div>
+
+            <div className="mt-1 text-sm text-zinc-600">
+              Telefono: {animal?.owner_phone || "—"}
+            </div>
           </div>
         </div>
       </section>

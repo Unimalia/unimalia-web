@@ -8,7 +8,6 @@ import QRCode from "react-qr-code";
 import { supabase } from "@/lib/supabaseClient";
 import { authHeaders } from "@/lib/client/authHeaders";
 import { buildClinicalQuickSummary } from "@/lib/clinic/quickSummary";
-
 import { PageShell } from "@/_components/ui/page-shell";
 import { ButtonSecondary } from "@/_components/ui/button";
 
@@ -64,45 +63,53 @@ type ClinicEventRow = {
 };
 
 type EmergencyFieldState = {
-  photo: boolean;
-  name: boolean;
-  species: boolean;
-  breed: boolean;
-  color: boolean;
-  size: boolean;
-  allergies: boolean;
-  therapies: boolean;
-  chronicPathologies: boolean;
-  bloodType: boolean;
-  sterilizationStatus: boolean;
+  show_photo: boolean;
+  show_name: boolean;
+  show_species: boolean;
+  show_breed: boolean;
+  show_color: boolean;
+  show_size: boolean;
+  show_owner_name: boolean;
+  show_owner_phone: boolean;
+  show_allergies: boolean;
+  show_therapies: boolean;
+  show_chronic_conditions: boolean;
+  show_blood_type: boolean;
+  show_sterilization_status: boolean;
+  emergency_notes: string;
 };
 
 const DEFAULT_FIELDS: EmergencyFieldState = {
-  photo: true,
-  name: true,
-  species: true,
-  breed: true,
-  color: true,
-  size: true,
-  allergies: true,
-  therapies: true,
-  chronicPathologies: true,
-  bloodType: true,
-  sterilizationStatus: true,
+  show_photo: true,
+  show_name: true,
+  show_species: true,
+  show_breed: true,
+  show_color: true,
+  show_size: true,
+  show_owner_name: false,
+  show_owner_phone: false,
+  show_allergies: true,
+  show_therapies: true,
+  show_chronic_conditions: true,
+  show_blood_type: true,
+  show_sterilization_status: true,
+  emergency_notes: "",
 };
 
-const FIELD_LABELS: Record<keyof EmergencyFieldState, string> = {
-  photo: "Foto",
-  name: "Nome",
-  species: "Specie",
-  breed: "Razza",
-  color: "Colore",
-  size: "Taglia",
-  allergies: "Allergie",
-  therapies: "Terapie attive",
-  chronicPathologies: "Patologie croniche",
-  bloodType: "Gruppo sanguigno",
-  sterilizationStatus: "Sterilizzato / castrato",
+const FIELD_LABELS: Record<Exclude<keyof EmergencyFieldState, "emergency_notes">, string> = {
+  show_photo: "Foto",
+  show_name: "Nome",
+  show_species: "Specie",
+  show_breed: "Razza",
+  show_color: "Colore",
+  show_size: "Taglia",
+  show_owner_name: "Nome proprietario",
+  show_owner_phone: "Telefono proprietario",
+  show_allergies: "Allergie",
+  show_therapies: "Terapie attive",
+  show_chronic_conditions: "Patologie croniche",
+  show_blood_type: "Gruppo sanguigno",
+  show_sterilization_status: "Sterilizzato / castrato",
 };
 
 export default function AnimalEmergencyPage() {
@@ -115,6 +122,8 @@ export default function AnimalEmergencyPage() {
   const [eventsError, setEventsError] = useState<string | null>(null);
 
   const [fields, setFields] = useState<EmergencyFieldState>(DEFAULT_FIELDS);
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [settingsMessage, setSettingsMessage] = useState<string | null>(null);
 
   const [loadingExistingQr, setLoadingExistingQr] = useState(true);
   const [generating, setGenerating] = useState(false);
@@ -124,7 +133,7 @@ export default function AnimalEmergencyPage() {
   useEffect(() => {
     let alive = true;
 
-    async function load() {
+    async function loadAnimalAndEvents() {
       if (!animalId) return;
 
       setLoading(true);
@@ -167,7 +176,50 @@ export default function AnimalEmergencyPage() {
       }
     }
 
-    void load();
+    void loadAnimalAndEvents();
+
+    return () => {
+      alive = false;
+    };
+  }, [animalId]);
+
+  useEffect(() => {
+    let alive = true;
+
+    async function loadSettings() {
+      if (!animalId) return;
+
+      try {
+        const res = await fetch(`/api/animals/${encodeURIComponent(animalId)}/emergency-settings`, {
+          cache: "no-store",
+          headers: {
+            ...(await authHeaders()),
+          },
+        });
+
+        const json = await res.json().catch(() => ({}));
+        if (!alive || !res.ok || !json?.settings) return;
+
+        setFields({
+          show_photo: Boolean(json.settings.show_photo),
+          show_name: Boolean(json.settings.show_name),
+          show_species: Boolean(json.settings.show_species),
+          show_breed: Boolean(json.settings.show_breed),
+          show_color: Boolean(json.settings.show_color),
+          show_size: Boolean(json.settings.show_size),
+          show_owner_name: Boolean(json.settings.show_owner_name),
+          show_owner_phone: Boolean(json.settings.show_owner_phone),
+          show_allergies: Boolean(json.settings.show_allergies),
+          show_therapies: Boolean(json.settings.show_therapies),
+          show_chronic_conditions: Boolean(json.settings.show_chronic_conditions),
+          show_blood_type: Boolean(json.settings.show_blood_type),
+          show_sterilization_status: Boolean(json.settings.show_sterilization_status),
+          emergency_notes: String(json.settings.emergency_notes ?? ""),
+        });
+      } catch {}
+    }
+
+    void loadSettings();
 
     return () => {
       alive = false;
@@ -230,11 +282,44 @@ export default function AnimalEmergencyPage() {
     });
   }, [animal, events]);
 
-  function toggleField(key: keyof EmergencyFieldState) {
+  function toggleField(key: Exclude<keyof EmergencyFieldState, "emergency_notes">) {
     setFields((prev) => ({
       ...prev,
       [key]: !prev[key],
     }));
+  }
+
+  async function handleSaveSettings() {
+    if (!animalId) return;
+
+    setSavingSettings(true);
+    setSettingsMessage(null);
+
+    try {
+      const res = await fetch(`/api/animals/${encodeURIComponent(animalId)}/emergency-settings`, {
+        method: "POST",
+        cache: "no-store",
+        headers: {
+          "Content-Type": "application/json",
+          ...(await authHeaders()),
+        },
+        body: JSON.stringify(fields),
+      });
+
+      const json = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setSettingsMessage(json?.error || "Impossibile salvare le impostazioni.");
+        return;
+      }
+
+      setSettingsMessage("Impostazioni salvate.");
+    } catch {
+      setSettingsMessage("Errore di rete durante il salvataggio.");
+    } finally {
+      setSavingSettings(false);
+      setTimeout(() => setSettingsMessage(null), 2500);
+    }
   }
 
   async function handleGenerateQr() {
@@ -287,10 +372,7 @@ export default function AnimalEmergencyPage() {
 
   if (!animal) {
     return (
-      <PageShell
-        title="QR emergenza / medaglietta"
-        backFallbackHref="/identita"
-      >
+      <PageShell title="QR emergenza / medaglietta" backFallbackHref="/identita">
         <div className="rounded-2xl border border-red-200 bg-white p-6 text-sm text-red-700 shadow-sm">
           Animale non trovato.
         </div>
@@ -298,7 +380,10 @@ export default function AnimalEmergencyPage() {
     );
   }
 
-  const showSpeciesLine = [fields.species ? animal.species : "", fields.breed ? animal.breed || "" : ""]
+  const showSpeciesLine = [
+    fields.show_species ? animal.species : "",
+    fields.show_breed ? animal.breed || "" : "",
+  ]
     .filter(Boolean)
     .join(" • ");
 
@@ -311,9 +396,15 @@ export default function AnimalEmergencyPage() {
       backFallbackHref={`/identita/${animalId}`}
       actions={
         <>
-          <ButtonSecondary href={`/identita/${animalId}`}>
-            Torna alla scheda animale
-          </ButtonSecondary>
+          <ButtonSecondary href={`/identita/${animalId}`}>Torna alla scheda animale</ButtonSecondary>
+          <button
+            type="button"
+            onClick={handleSaveSettings}
+            disabled={savingSettings}
+            className="inline-flex items-center justify-center rounded-xl bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-900 disabled:opacity-60"
+          >
+            {savingSettings ? "Salvataggio…" : "Salva impostazioni"}
+          </button>
         </>
       }
     >
@@ -321,11 +412,11 @@ export default function AnimalEmergencyPage() {
         <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
           <h2 className="text-base font-semibold text-zinc-900">Dati visibili</h2>
           <p className="mt-1 text-sm text-zinc-600">
-            In questa fase la selezione è visiva e serve a preparare la configurazione finale.
+            Scegli cosa sarà visibile nella scheda pubblica del QR emergenza.
           </p>
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            {(Object.keys(DEFAULT_FIELDS) as Array<keyof EmergencyFieldState>).map((key) => (
+            {(Object.keys(FIELD_LABELS) as Array<keyof typeof FIELD_LABELS>).map((key) => (
               <label
                 key={key}
                 className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm"
@@ -341,6 +432,26 @@ export default function AnimalEmergencyPage() {
             ))}
           </div>
 
+          <div className="mt-5">
+            <label className="block text-sm font-medium text-zinc-900">Note emergenza</label>
+            <textarea
+              value={fields.emergency_notes}
+              onChange={(e) =>
+                setFields((prev) => ({
+                  ...prev,
+                  emergency_notes: e.target.value,
+                }))
+              }
+              rows={4}
+              className="mt-2 w-full rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm outline-none ring-0"
+              placeholder="Informazioni utili in caso di emergenza"
+            />
+          </div>
+
+          {settingsMessage ? (
+            <p className="mt-4 text-xs text-emerald-700">{settingsMessage}</p>
+          ) : null}
+
           {eventsError ? (
             <p className="mt-4 text-xs text-amber-700">{eventsError}</p>
           ) : null}
@@ -351,7 +462,7 @@ export default function AnimalEmergencyPage() {
 
           <div className="mt-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
             <div className="flex flex-col gap-4 sm:flex-row">
-              {fields.photo && animal.photo_url ? (
+              {fields.show_photo && animal.photo_url ? (
                 <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white sm:w-44">
                   <img
                     src={animal.photo_url}
@@ -362,7 +473,7 @@ export default function AnimalEmergencyPage() {
               ) : null}
 
               <div className="min-w-0 flex-1 space-y-3">
-                {fields.name ? (
+                {fields.show_name ? (
                   <div className="text-lg font-semibold text-zinc-900">{animal.name}</div>
                 ) : null}
 
@@ -371,7 +482,7 @@ export default function AnimalEmergencyPage() {
                 ) : null}
 
                 <div className="grid gap-3 sm:grid-cols-2">
-                  {fields.color ? (
+                  {fields.show_color ? (
                     <div className="rounded-xl border border-zinc-200 bg-white p-3">
                       <div className="text-xs text-zinc-500">Colore</div>
                       <div className="mt-1 text-sm font-semibold text-zinc-900">
@@ -380,7 +491,7 @@ export default function AnimalEmergencyPage() {
                     </div>
                   ) : null}
 
-                  {fields.size ? (
+                  {fields.show_size ? (
                     <div className="rounded-xl border border-zinc-200 bg-white p-3">
                       <div className="text-xs text-zinc-500">Taglia</div>
                       <div className="mt-1 text-sm font-semibold text-zinc-900">
@@ -389,7 +500,7 @@ export default function AnimalEmergencyPage() {
                     </div>
                   ) : null}
 
-                  {fields.bloodType ? (
+                  {fields.show_blood_type ? (
                     <div className="rounded-xl border border-zinc-200 bg-white p-3">
                       <div className="text-xs text-zinc-500">Gruppo sanguigno</div>
                       <div className="mt-1 text-sm font-semibold text-zinc-900">
@@ -398,7 +509,7 @@ export default function AnimalEmergencyPage() {
                     </div>
                   ) : null}
 
-                  {fields.sterilizationStatus ? (
+                  {fields.show_sterilization_status ? (
                     <div className="rounded-xl border border-zinc-200 bg-white p-3">
                       <div className="text-xs text-zinc-500">Sterilizzato / castrato</div>
                       <div className="mt-1 text-sm font-semibold text-zinc-900">
@@ -408,7 +519,7 @@ export default function AnimalEmergencyPage() {
                   ) : null}
                 </div>
 
-                {fields.allergies ? (
+                {fields.show_allergies ? (
                   <div className="rounded-xl border border-red-200 bg-red-50 p-3">
                     <div className="text-xs font-semibold text-red-700">⚠️ Allergie</div>
                     <div className="mt-1 text-sm font-medium text-zinc-900">
@@ -417,18 +528,16 @@ export default function AnimalEmergencyPage() {
                   </div>
                 ) : null}
 
-                {fields.therapies ? (
+                {fields.show_therapies ? (
                   <div className="rounded-xl border border-zinc-200 bg-white p-3">
                     <div className="text-xs font-semibold text-zinc-500">💊 Terapie attive</div>
                     <div className="mt-1 text-sm font-medium text-zinc-900">
-                      {quick.activeTherapies.length > 0
-                        ? quick.activeTherapies.join(", ")
-                        : "—"}
+                      {quick.activeTherapies.length > 0 ? quick.activeTherapies.join(", ") : "—"}
                     </div>
                   </div>
                 ) : null}
 
-                {fields.chronicPathologies ? (
+                {fields.show_chronic_conditions ? (
                   <div className="rounded-xl border border-zinc-200 bg-white p-3">
                     <div className="text-xs font-semibold text-zinc-500">🩺 Patologie croniche</div>
                     <div className="mt-1 text-sm font-medium text-zinc-900">
@@ -438,13 +547,18 @@ export default function AnimalEmergencyPage() {
                     </div>
                   </div>
                 ) : null}
+
+                {fields.emergency_notes.trim() ? (
+                  <div className="rounded-xl border border-zinc-200 bg-white p-3">
+                    <div className="text-xs font-semibold text-zinc-500">📝 Note emergenza</div>
+                    <div className="mt-1 text-sm font-medium text-zinc-900">
+                      {fields.emergency_notes.trim()}
+                    </div>
+                  </div>
+                ) : null}
               </div>
             </div>
           </div>
-
-          <p className="mt-3 text-xs text-zinc-500">
-            Questa anteprima serve a preparare la futura configurazione salvata lato server.
-          </p>
         </section>
 
         <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm lg:col-span-2">
