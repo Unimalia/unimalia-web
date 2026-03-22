@@ -191,32 +191,33 @@ export default function AnimalEmergencyPage() {
   }
 
   async function handleGenerateQr() {
-    if (!animalId) return;
+    if (!animal?.id) return;
 
-    setGenerating(true);
-    setQrError(null);
+    const confirm = window.confirm(
+      "Generando un nuovo QR emergenza, il precedente verrà disattivato.\n\nSe hai già stampato una medaglietta, dovrai sostituirla.\n\nVuoi continuare?"
+    );
+
+    if (!confirm) return;
 
     try {
-      const res = await fetch(`/api/animals/${encodeURIComponent(animalId)}/emergency-token`, {
+      setGenerating(true);
+      setQrError(null);
+
+      const res = await fetch(`/api/animals/${animal.id}/emergency-token`, {
         method: "POST",
-        cache: "no-store",
-        headers: {
-          ...(await authHeaders()),
-        },
+        headers: await authHeaders(),
       });
 
-      const json = await res.json().catch(() => ({}));
-
       if (!res.ok) {
-        setQrUrl("");
-        setQrError(json?.error || "Impossibile generare il QR emergenza.");
-        return;
+        throw new Error("Errore generazione QR");
       }
 
-      setQrUrl(String(json?.url ?? ""));
+      const json = await res.json();
+      setQrUrl(json.url);
     } catch {
       setQrUrl("");
-      setQrError("Errore di rete durante la generazione del QR.");
+      setQrError("Impossibile generare il QR emergenza.");
+      alert("Impossibile generare il QR emergenza.");
     } finally {
       setGenerating(false);
     }
@@ -236,10 +237,7 @@ export default function AnimalEmergencyPage() {
 
   if (!animal) {
     return (
-      <PageShell
-        title="QR emergenza / medaglietta"
-        backFallbackHref="/identita"
-      >
+      <PageShell title="QR emergenza / medaglietta" backFallbackHref="/identita">
         <div className="rounded-2xl border border-red-200 bg-white p-6 text-sm text-red-700 shadow-sm">
           Animale non trovato.
         </div>
@@ -254,9 +252,7 @@ export default function AnimalEmergencyPage() {
       backFallbackHref={`/identita/${animalId}`}
       actions={
         <>
-          <ButtonSecondary href={`/identita/${animalId}`}>
-            Torna alla scheda animale
-          </ButtonSecondary>
+          <ButtonSecondary href={`/identita/${animalId}`}>Torna alla scheda animale</ButtonSecondary>
         </>
       }
     >
@@ -288,9 +284,7 @@ export default function AnimalEmergencyPage() {
             ))}
           </div>
 
-          {eventsError ? (
-            <p className="mt-4 text-xs text-amber-700">{eventsError}</p>
-          ) : null}
+          {eventsError ? <p className="mt-4 text-xs text-amber-700">{eventsError}</p> : null}
         </section>
 
         <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
@@ -372,9 +366,7 @@ export default function AnimalEmergencyPage() {
                   <div className="rounded-xl border border-zinc-200 bg-white p-3">
                     <div className="text-xs font-semibold text-zinc-500">💊 Terapie attive</div>
                     <div className="mt-1 text-sm font-medium text-zinc-900">
-                      {quick.activeTherapies.length > 0
-                        ? quick.activeTherapies.join(", ")
-                        : "—"}
+                      {quick.activeTherapies.length > 0 ? quick.activeTherapies.join(", ") : "—"}
                     </div>
                   </div>
                 ) : null}
@@ -428,22 +420,62 @@ export default function AnimalEmergencyPage() {
 
           {qrUrl ? (
             <div className="mt-6 grid gap-6 lg:grid-cols-[220px,1fr]">
-              <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-                <div className="rounded-xl bg-white p-3">
-                  <QRCode
-                    value={qrUrl}
-                    size={180}
-                    style={{ width: "140px", height: "140px" }}
-                    viewBox="0 0 256 256"
-                  />
+              <div>
+                <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+                  <div className="flex justify-center">
+                    <QRCode
+                      value={qrUrl}
+                      size={160}
+                      style={{ width: "160px", height: "160px" }}
+                      viewBox="0 0 256 256"
+                    />
+                  </div>
                 </div>
+
+                <section className="mt-4 rounded-2xl border border-zinc-200 bg-white p-5 text-sm text-zinc-700">
+                  <h3 className="font-semibold text-zinc-900">🏷️ Come stampare la medaglietta</h3>
+
+                  <ul className="mt-3 space-y-1">
+                    <li>
+                      • Dimensione consigliata: <b>2,5 – 3 cm</b>
+                    </li>
+                    <li>
+                      • Dimensione minima: <b>2 cm</b>
+                    </li>
+                    <li>
+                      • Colore QR: <b>nero su fondo bianco</b>
+                    </li>
+                    <li>• Mantieni un bordo bianco attorno al QR</li>
+                    <li>• Evita superfici lucide o riflettenti</li>
+                  </ul>
+
+                  <p className="mt-3 text-xs text-zinc-500">
+                    I dati dell’animale sono sempre aggiornati automaticamente. Non è necessario
+                    ristampare il QR in caso di modifiche (allergie, terapie, ecc.).
+                  </p>
+
+                  <p className="mt-2 text-xs font-medium text-amber-700">
+                    Generando un nuovo QR, quello precedente smetterà di funzionare.
+                  </p>
+
+                  <div className="mt-4">
+                    <a
+                      href="/medaglietta"
+                      className="inline-flex items-center justify-center rounded-xl bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800"
+                    >
+                      Ordina medaglietta (€19,99 spedizione inclusa)
+                    </a>
+
+                    <p className="mt-2 text-xs text-zinc-500">
+                      Medaglietta resistente pronta all’uso. Nessuna configurazione richiesta.
+                    </p>
+                  </div>
+                </section>
               </div>
 
               <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
                 <div className="text-xs text-zinc-500">URL pubblico</div>
-                <div className="mt-1 break-all text-sm font-semibold text-zinc-900">
-                  {qrUrl}
-                </div>
+                <div className="mt-1 break-all text-sm font-semibold text-zinc-900">{qrUrl}</div>
 
                 <div className="mt-4 flex flex-wrap gap-3">
                   <a
