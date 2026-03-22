@@ -263,7 +263,7 @@ export async function getComposeData(animalId: string) {
 
   const { data: animalRow, error: animalError } = await admin
     .from("animals")
-    .select("id,name,species,breed,sex")
+    .select("id,name,species,breed,sex,birth_date,owner_id,chip_number,sterilized")
     .eq("id", animalId)
     .maybeSingle();
 
@@ -272,13 +272,16 @@ export async function getComposeData(animalId: string) {
 
   const animal = {
     ...animalRow,
-    microchip: null,
+    microchip: animalRow.chip_number ?? null,
+    owner_name: null,
+    owner_email: null,
   };
 
   const { data: events, error: eventsError } = await admin
     .from("animal_clinic_events")
-    .select("id,event_date,type,title,description,visibility,status,priority,created_at")
+    .select("id,event_date,type,title,description,visibility,status,priority,created_at,meta")
     .eq("animal_id", animalId)
+    .neq("status", "void")
     .order("event_date", { ascending: false })
     .order("created_at", { ascending: false });
 
@@ -440,7 +443,6 @@ export async function listProfessionalConsults(params: {
   const admin = supabaseAdmin();
   const ctx = await getCurrentProfessionalContext();
 
-  // aggiorna eventuali consulti scaduti
   await admin
     .from("professional_consult_requests")
     .update({ status: "expired" })
@@ -468,10 +470,8 @@ export async function listProfessionalConsults(params: {
   if (error) throw new Error(error.message);
 
   const normalized = (data ?? []).map((x) => normalizeStatus(x));
-
   const consultIds = normalized.map((item) => item.id);
 
-  // 🔹 ultimo messaggio
   const latestMessageByConsultId = new Map<
     string,
     {
@@ -506,9 +506,7 @@ export async function listProfessionalConsults(params: {
 
     const isSender = item.sender_professional_id === ctx.professional.id;
     const isReceiver = item.receiver_professional_id === ctx.professional.id;
-
     const latestSenderProfessionalId = latestMessage?.sender_professional_id ?? null;
-
     const isArchived = ["closed", "rejected", "expired"].includes(item.status);
 
     const isActionRequired =
@@ -528,7 +526,8 @@ export async function listProfessionalConsults(params: {
       isSentActive,
       latest_sender_professional_id: latestSenderProfessionalId,
       latest_message_type: latestMessage?.message_type ?? null,
-      effective_last_message_at: latestMessage?.created_at ?? item.last_message_at ?? item.created_at,
+      effective_last_message_at:
+        latestMessage?.created_at ?? item.last_message_at ?? item.created_at,
     };
   });
 
@@ -556,7 +555,6 @@ export async function listProfessionalConsults(params: {
 
   if (filtered.length === 0) return [];
 
-  // 🔥 ANIMAL
   const animalIds = Array.from(
     new Set(filtered.map((item) => item.animal_id).filter(Boolean))
   );
@@ -580,7 +578,6 @@ export async function listProfessionalConsults(params: {
     ])
   );
 
-  // 🔥 EVENTS
   const { data: sharedRows, error: sharedError } = await admin
     .from("professional_consult_shared_events")
     .select("consult_id,event_id")
@@ -592,7 +589,9 @@ export async function listProfessionalConsults(params: {
 
   const { data: events, error: eventsError } = await admin
     .from("animal_clinic_events")
-    .select("id,animal_id,event_date,type,title,description,visibility,status,priority,created_at,meta")
+    .select(
+      "id,animal_id,event_date,type,title,description,visibility,status,priority,created_at,meta"
+    )
     .in("id", eventIds.length ? eventIds : ["00000000-0000-0000-0000-000000000000"])
     .order("event_date", { ascending: false })
     .order("created_at", { ascending: false });
@@ -600,8 +599,8 @@ export async function listProfessionalConsults(params: {
   if (eventsError) throw new Error(eventsError.message);
 
   const eventById = new Map((events ?? []).map((e) => [e.id, e]));
-
   const eventsByConsultId: Record<string, any[]> = {};
+
   for (const row of sharedRows ?? []) {
     const event = eventById.get(row.event_id);
     if (!event) continue;
@@ -613,7 +612,6 @@ export async function listProfessionalConsults(params: {
     eventsByConsultId[row.consult_id].push(event);
   }
 
-  // 🔥 RETURN FINALE
   return filtered.map(
     ({
       isSender,
