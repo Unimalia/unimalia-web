@@ -7,6 +7,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { getBarcodeValue, getQrValue } from "@/lib/animalCodes";
+import { authHeaders } from "@/lib/client/authHeaders";
+import { buildClinicalQuickSummary } from "@/lib/clinic/quickSummary";
 
 import { PageShell } from "@/_components/ui/page-shell";
 import { ButtonPrimary, ButtonSecondary } from "@/_components/ui/button";
@@ -41,6 +43,45 @@ type Animal = {
   last_visit_at?: string | null;
   last_vaccination_at?: string | null;
   vaccine_expiry_alerts?: string | null;
+};
+
+type ClinicEventType =
+  | "visit"
+  | "vaccine"
+  | "exam"
+  | "therapy"
+  | "note"
+  | "document"
+  | "emergency"
+  | "weight"
+  | "allergy"
+  | "feeding"
+  | "surgery"
+  | "chronic_condition"
+  | "follow_up";
+
+type ClinicEventRow = {
+  id: string;
+  animal_id: string;
+  event_date: string;
+  type: ClinicEventType;
+  title: string;
+  description: string | null;
+  visibility: "owner" | "professionals" | "emergency";
+  source: "owner" | "professional" | "veterinarian";
+  verified_at: string | null;
+  verified_by: string | null;
+  due_date?: string | null;
+  due_at?: string | null;
+  next_due_date?: string | null;
+  next_due_at?: string | null;
+  expires_at?: string | null;
+  weight_kg?: number | null;
+  weightKg?: number | null;
+  data?: any;
+  payload?: any;
+  meta?: any;
+  status?: string | null;
 };
 
 function statusLabel(status: string) {
@@ -94,6 +135,9 @@ export default function AnimalProfilePage() {
   const [error, setError] = useState<string | null>(null);
 
   const [shareOpen, setShareOpen] = useState(false);
+  const [eventsLoading, setEventsLoading] = useState(false);
+  const [events, setEvents] = useState<ClinicEventRow[]>([]);
+  const [eventsError, setEventsError] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -145,35 +189,64 @@ export default function AnimalProfilePage() {
     return new Date(animal.premium_expires_at).getTime() > new Date().getTime();
   }, [animal]);
 
-  const clinicalSummary = useMemo(() => {
-    if (!animal) {
-      return {
-        age: "—",
-        weight: "—",
-        allergies: "—",
-        activeTherapies: "—",
-        latestTherapies: "—",
-        chronicConditions: "—",
-        plannedRechecks: "—",
-        lastVisit: "—",
-        lastVaccination: "—",
-        vaccineAlerts: "—",
-      };
+  useEffect(() => {
+    let alive = true;
+
+    async function loadClinicEvents() {
+      if (!animal?.id || !premiumOk) {
+        setEvents([]);
+        setEventsError(null);
+        return;
+      }
+
+      setEventsLoading(true);
+      setEventsError(null);
+
+      try {
+        const res = await fetch(`/api/clinic-events/list?animalId=${encodeURIComponent(animal.id)}`, {
+          cache: "no-store",
+          headers: {
+            ...(await authHeaders()),
+          },
+        });
+
+        if (!alive) return;
+
+        if (!res.ok) {
+          setEvents([]);
+          setEventsError("Impossibile caricare la cartella clinica.");
+          setEventsLoading(false);
+          return;
+        }
+
+        const json = await res.json().catch(() => ({}));
+        setEvents((json?.events as ClinicEventRow[]) ?? []);
+      } catch {
+        if (!alive) return;
+        setEvents([]);
+        setEventsError("Errore di rete durante il caricamento della cartella clinica.");
+      } finally {
+        if (!alive) return;
+        setEventsLoading(false);
+      }
     }
 
-    return {
-      age: toDisplayText(firstDefined((animal as any).age_text, (animal as any).age)),
-      weight: toDisplayText(firstDefined((animal as any).weight_kg, (animal as any).weight)),
-      allergies: toDisplayText(firstDefined((animal as any).allergies)),
-      activeTherapies: toDisplayText(firstDefined((animal as any).active_therapies)),
-      latestTherapies: toDisplayText(firstDefined((animal as any).latest_therapies)),
-      chronicConditions: toDisplayText(firstDefined((animal as any).chronic_conditions)),
-      plannedRechecks: toDisplayText(firstDefined((animal as any).planned_rechecks)),
-      lastVisit: formatOptionalDate(firstDefined((animal as any).last_visit_at)),
-      lastVaccination: formatOptionalDate(firstDefined((animal as any).last_vaccination_at)),
-      vaccineAlerts: toDisplayText(firstDefined((animal as any).vaccine_expiry_alerts)),
+    void loadClinicEvents();
+
+    return () => {
+      alive = false;
     };
-  }, [animal]);
+  }, [animal?.id, premiumOk]);
+
+  const rapidClinicalState = useMemo(() => {
+    return buildClinicalQuickSummary({
+      animal: {
+        birth_date: (animal as any)?.birth_date ?? null,
+        sterilized: (animal as any)?.sterilized ?? null,
+      },
+      events: events ?? [],
+    });
+  }, [animal, events]);
 
   const qrValue = useMemo(() => {
     const origin =
@@ -375,67 +448,83 @@ export default function AnimalProfilePage() {
 
               <div className="mt-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
                 <div className="text-sm font-semibold text-zinc-900">
-                  Età: {clinicalSummary.age} | Peso: {clinicalSummary.weight}
+                  Età: {rapidClinicalState.age} | Peso: {rapidClinicalState.weight}
                 </div>
                 <div className="mt-2 text-sm text-zinc-600">
                   Cartella clinica: accesso riservato ai veterinari autorizzati per la modifica.
                 </div>
+
+                {premiumOk && eventsLoading ? (
+                  <p className="mt-3 text-xs text-zinc-500">Caricamento dati clinici…</p>
+                ) : null}
+
+                {premiumOk && eventsError ? (
+                  <p className="mt-3 text-xs text-amber-700">{eventsError}</p>
+                ) : null}
               </div>
 
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <div className="rounded-2xl border border-zinc-200 bg-white p-4">
                   <div className="text-xs text-zinc-500">Allergie</div>
                   <div className="mt-1 text-sm font-semibold text-zinc-900">
-                    {clinicalSummary.allergies}
+                    {rapidClinicalState.allergies.length > 0
+                      ? rapidClinicalState.allergies.join(", ")
+                      : "—"}
                   </div>
                 </div>
 
                 <div className="rounded-2xl border border-zinc-200 bg-white p-4">
                   <div className="text-xs text-zinc-500">Terapie attive</div>
                   <div className="mt-1 text-sm font-semibold text-zinc-900">
-                    {clinicalSummary.activeTherapies}
+                    {rapidClinicalState.activeTherapies.length > 0
+                      ? rapidClinicalState.activeTherapies.join(", ")
+                      : "—"}
                   </div>
                 </div>
 
                 <div className="rounded-2xl border border-zinc-200 bg-white p-4">
                   <div className="text-xs text-zinc-500">Ultime terapie</div>
                   <div className="mt-1 text-sm font-semibold text-zinc-900">
-                    {clinicalSummary.latestTherapies}
+                    {rapidClinicalState.lastTherapies.length > 0
+                      ? rapidClinicalState.lastTherapies.join(", ")
+                      : "—"}
                   </div>
                 </div>
 
                 <div className="rounded-2xl border border-zinc-200 bg-white p-4">
                   <div className="text-xs text-zinc-500">Patologie croniche</div>
                   <div className="mt-1 text-sm font-semibold text-zinc-900">
-                    {clinicalSummary.chronicConditions}
+                    {rapidClinicalState.chronicPathologies.length > 0
+                      ? rapidClinicalState.chronicPathologies.join(", ")
+                      : "—"}
                   </div>
                 </div>
 
                 <div className="rounded-2xl border border-zinc-200 bg-white p-4">
                   <div className="text-xs text-zinc-500">Ricontrolli programmati</div>
                   <div className="mt-1 text-sm font-semibold text-zinc-900">
-                    {clinicalSummary.plannedRechecks}
+                    {rapidClinicalState.nextRecall || "—"}
                   </div>
                 </div>
 
                 <div className="rounded-2xl border border-zinc-200 bg-white p-4">
                   <div className="text-xs text-zinc-500">Ultima visita</div>
                   <div className="mt-1 text-sm font-semibold text-zinc-900">
-                    {clinicalSummary.lastVisit}
+                    {rapidClinicalState.latestVisit || "—"}
                   </div>
                 </div>
 
                 <div className="rounded-2xl border border-zinc-200 bg-white p-4">
                   <div className="text-xs text-zinc-500">Ultima vaccinazione</div>
                   <div className="mt-1 text-sm font-semibold text-zinc-900">
-                    {clinicalSummary.lastVaccination}
+                    {rapidClinicalState.latestVaccination || "—"}
                   </div>
                 </div>
 
                 <div className="rounded-2xl border border-zinc-200 bg-white p-4">
                   <div className="text-xs text-zinc-500">Vaccinazioni scadute / in scadenza</div>
                   <div className="mt-1 text-sm font-semibold text-zinc-900">
-                    {clinicalSummary.vaccineAlerts}
+                    {rapidClinicalState.vaccinationExpiry || "—"}
                   </div>
                 </div>
               </div>
