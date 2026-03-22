@@ -36,6 +36,30 @@ type EmergencyRequestMeta = {
   requestId?: string | null;
 };
 
+type AnimalRow = {
+  id: string;
+  name: string;
+  species: string;
+  breed: string | null;
+  color: string | null;
+  size: string | null;
+  photo_url: string | null;
+  birth_date: string | null;
+  sterilized: boolean | null;
+};
+
+type ClinicEventRow = {
+  id: string;
+  event_date: string | null;
+  type: string | null;
+  title: string | null;
+  description: string | null;
+  visibility: string | null;
+  status: string | null;
+  created_at: string | null;
+  meta: Record<string, unknown> | null;
+};
+
 function isExpired(expiresAt: string | null) {
   if (!expiresAt) return false;
   const ms = new Date(expiresAt).getTime();
@@ -65,23 +89,33 @@ export async function getPublicEmergencyCardByToken(
 
   const admin = supabaseAdmin();
 
-  const { data: animal, error: animalError } = await admin
-    .from("animals")
+  const animalQuery = admin
+    .from("animals" as never)
     .select("id, name, species, breed, color, size, photo_url, birth_date, sterilized")
     .eq("id", resolved.row.animal_id)
     .maybeSingle();
+
+  const { data: animal, error: animalError } = (await animalQuery) as unknown as {
+    data: AnimalRow | null;
+    error: Error | null;
+  };
 
   if (animalError || !animal) {
     return null;
   }
 
-  const { data: events, error: eventsError } = await admin
-    .from("animal_clinic_events")
+  const eventsQuery = admin
+    .from("animal_clinic_events" as never)
     .select("id, event_date, type, title, description, visibility, status, created_at, meta")
     .eq("animal_id", animal.id)
     .neq("status", "void")
     .order("event_date", { ascending: false })
     .order("created_at", { ascending: false });
+
+  const { data: events, error: eventsError } = (await eventsQuery) as unknown as {
+    data: ClinicEventRow[] | null;
+    error: Error | null;
+  };
 
   if (eventsError) {
     return null;

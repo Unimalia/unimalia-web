@@ -440,6 +440,7 @@ export async function listProfessionalConsults(params: {
   const admin = supabaseAdmin();
   const ctx = await getCurrentProfessionalContext();
 
+  // aggiorna eventuali consulti scaduti
   await admin
     .from("professional_consult_requests")
     .update({ status: "expired" })
@@ -460,13 +461,8 @@ export async function listProfessionalConsults(params: {
     .order("last_message_at", { ascending: false })
     .limit(100);
 
-  if (params.status) {
-    query = query.eq("status", params.status);
-  }
-
-  if (params.priority) {
-    query = query.eq("priority", params.priority);
-  }
+  if (params.status) query = query.eq("status", params.status);
+  if (params.priority) query = query.eq("priority", params.priority);
 
   const { data, error } = await query;
   if (error) throw new Error(error.message);
@@ -475,6 +471,7 @@ export async function listProfessionalConsults(params: {
 
   const consultIds = normalized.map((item) => item.id);
 
+  // 🔹 ultimo messaggio
   const latestMessageByConsultId = new Map<
     string,
     {
@@ -557,6 +554,66 @@ export async function listProfessionalConsults(params: {
       .some((v) => String(v).toLowerCase().includes(q));
   });
 
+  if (filtered.length === 0) return [];
+
+  // 🔥 ANIMAL
+  const animalIds = Array.from(
+    new Set(filtered.map((item) => item.animal_id).filter(Boolean))
+  );
+
+  const { data: animals, error: animalsError } = await admin
+    .from("animals")
+    .select("id,name,species,breed,sex,birth_date,owner_id,chip_number,sterilized")
+    .in("id", animalIds.length ? animalIds : ["00000000-0000-0000-0000-000000000000"]);
+
+  if (animalsError) throw new Error(animalsError.message);
+
+  const animalById = new Map(
+    (animals ?? []).map((a) => [
+      a.id,
+      {
+        ...a,
+        microchip: a.chip_number ?? null,
+        owner_name: null,
+        owner_email: null,
+      },
+    ])
+  );
+
+  // 🔥 EVENTS
+  const { data: sharedRows, error: sharedError } = await admin
+    .from("professional_consult_shared_events")
+    .select("consult_id,event_id")
+    .in("consult_id", filtered.map((item) => item.id));
+
+  if (sharedError) throw new Error(sharedError.message);
+
+  const eventIds = Array.from(new Set((sharedRows ?? []).map((r) => r.event_id)));
+
+  const { data: events, error: eventsError } = await admin
+    .from("animal_clinic_events")
+    .select("id,animal_id,event_date,type,title,description,visibility,status,priority,created_at,meta")
+    .in("id", eventIds.length ? eventIds : ["00000000-0000-0000-0000-000000000000"])
+    .order("event_date", { ascending: false })
+    .order("created_at", { ascending: false });
+
+  if (eventsError) throw new Error(eventsError.message);
+
+  const eventById = new Map((events ?? []).map((e) => [e.id, e]));
+
+  const eventsByConsultId: Record<string, any[]> = {};
+  for (const row of sharedRows ?? []) {
+    const event = eventById.get(row.event_id);
+    if (!event) continue;
+
+    if (!eventsByConsultId[row.consult_id]) {
+      eventsByConsultId[row.consult_id] = [];
+    }
+
+    eventsByConsultId[row.consult_id].push(event);
+  }
+
+  // 🔥 RETURN FINALE
   return filtered.map(
     ({
       isSender,
@@ -569,6 +626,8 @@ export async function listProfessionalConsults(params: {
     }) => ({
       ...item,
       last_message_at: effective_last_message_at,
+      animal: animalById.get(item.animal_id) ?? null,
+      events: eventsByConsultId[item.id] ?? [],
     })
   );
 }
