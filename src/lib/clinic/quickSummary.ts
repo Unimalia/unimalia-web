@@ -94,7 +94,9 @@ function extractBloodType(e: QuickSummaryEvent): string | null {
   const value =
     meta.blood_type ??
     meta.bloodType ??
-    null;
+    meta.group_blood ??
+    meta.groupBlood ??
+    (e.type === "blood_type" ? e.description ?? e.title ?? null : null);
 
   const text = String(value ?? "").trim();
   return text || null;

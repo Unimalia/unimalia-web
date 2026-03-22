@@ -31,6 +31,7 @@ type Animal = {
   premium_expires_at?: string | null;
   photo_url?: string | null;
   unimalia_code?: string | null;
+  sterilized?: boolean | null;
 
   age_text?: string | null;
   weight?: string | number | null;
@@ -58,7 +59,8 @@ type ClinicEventType =
   | "feeding"
   | "surgery"
   | "chronic_condition"
-  | "follow_up";
+  | "follow_up"
+  | "blood_type";
 
 type ClinicEventRow = {
   id: string;
@@ -101,28 +103,10 @@ function normalizeChip(raw: string | null) {
   return (raw || "").replace(/\s+/g, "").trim();
 }
 
-function toDisplayText(value: unknown) {
-  const v = String(value ?? "").trim();
-  return v ? v : "—";
-}
-
-function formatOptionalDate(value: unknown) {
-  const raw = String(value ?? "").trim();
-  if (!raw) return "—";
-
-  const d = new Date(raw);
-  if (Number.isNaN(d.getTime())) return raw;
-
-  return d.toLocaleDateString("it-IT");
-}
-
-function firstDefined(...values: unknown[]) {
-  for (const value of values) {
-    if (value !== null && value !== undefined && String(value).trim() !== "") {
-      return value;
-    }
-  }
-  return null;
+function formatSterilizedLabel(value?: boolean | null) {
+  if (value === true) return "Sì";
+  if (value === false) return "No";
+  return "—";
 }
 
 export default function AnimalProfilePage() {
@@ -176,7 +160,7 @@ export default function AnimalProfilePage() {
       setLoading(false);
     }
 
-    load();
+    void load();
     return () => {
       alive = false;
     };
@@ -242,7 +226,7 @@ export default function AnimalProfilePage() {
     return buildClinicalQuickSummary({
       animal: {
         birth_date: (animal as any)?.birth_date ?? null,
-        sterilized: (animal as any)?.sterilized ?? null,
+        sterilized: animal?.sterilized ?? null,
       },
       events: events ?? [],
     });
@@ -431,6 +415,13 @@ export default function AnimalProfilePage() {
                   <dt className="text-zinc-500">Taglia</dt>
                   <dd className="font-medium text-zinc-900">{animal.size || "—"}</dd>
                 </div>
+
+                <div className="flex justify-between gap-4">
+                  <dt className="text-zinc-500">Sterilizzato / castrato</dt>
+                  <dd className="font-medium text-zinc-900">
+                    {formatSterilizedLabel(animal.sterilized)}
+                  </dd>
+                </div>
               </dl>
             </section>
 
@@ -468,6 +459,20 @@ export default function AnimalProfilePage() {
               </div>
 
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+                  <div className="text-xs text-zinc-500">Gruppo sanguigno</div>
+                  <div className="mt-1 text-sm font-semibold text-zinc-900">
+                    {rapidClinicalState.bloodType || "—"}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+                  <div className="text-xs text-zinc-500">Sterilizzato / castrato</div>
+                  <div className="mt-1 text-sm font-semibold text-zinc-900">
+                    {rapidClinicalState.sterilizationStatus || "—"}
+                  </div>
+                </div>
+
                 <div className="rounded-2xl border border-zinc-200 bg-white p-4">
                   <div className="text-xs text-zinc-500">Allergie</div>
                   <div className="mt-1 text-sm font-semibold text-zinc-900">

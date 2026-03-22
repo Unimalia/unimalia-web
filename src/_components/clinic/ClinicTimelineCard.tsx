@@ -23,6 +23,19 @@ export type ClinicTimelineCardEvent = {
   meta?: any;
 };
 
+function extractBloodTypeLabel(ev: ClinicTimelineCardEvent): string | null {
+  const value =
+    ev?.meta?.blood_type ??
+    ev?.meta?.bloodType ??
+    ev?.meta?.group_blood ??
+    ev?.meta?.groupBlood ??
+    ev.description ??
+    ev.title;
+
+  const text = String(value ?? "").trim();
+  return text || null;
+}
+
 export function ClinicTimelineCard({
   ev,
   onClick,
@@ -30,13 +43,13 @@ export function ClinicTimelineCard({
   ev: ClinicTimelineCardEvent;
   onClick: () => void;
 }) {
-
   const weight = extractWeightKg(ev);
   const isVerified = ev.source === "professional" || !!ev.verified_at;
 
   const chronicDiagnosis = extractChronicDiagnosis(ev);
   const followUpType = extractFollowUpType(ev);
   const followUpDate = extractFollowUpDate(ev);
+  const bloodTypeLabel = ev.type === "blood_type" ? extractBloodTypeLabel(ev) : null;
 
   let top = "";
   let badge = "";
@@ -57,9 +70,7 @@ export function ClinicTimelineCard({
       onClick={onClick}
     >
       <div className="flex items-start justify-between gap-3">
-
         <div className="min-w-0">
-
           <div className="text-xs text-zinc-500">
             <div>Evento: {formatEventDateIT(ev.event_date)}</div>
             {ev.created_at ? (
@@ -85,25 +96,27 @@ export function ClinicTimelineCard({
             </p>
           ) : null}
 
-          {/* PATLOGIE CRONICHE */}
+          {ev.type === "blood_type" && bloodTypeLabel ? (
+            <div className="mt-2 text-xs font-semibold text-rose-700">
+              🩸 Gruppo sanguigno: {bloodTypeLabel}
+            </div>
+          ) : null}
+
           {ev.type === "chronic_condition" && chronicDiagnosis ? (
             <div className="mt-2 text-xs font-semibold text-red-700">
               🧬 Patologia cronica: {chronicDiagnosis}
             </div>
           ) : null}
 
-          {/* FOLLOW UP */}
           {ev.type === "follow_up" && followUpType ? (
             <div className="mt-2 text-xs font-semibold text-blue-700">
               📅 Ricontrollo: {followUpType}
               {followUpDate ? ` (${formatEventDateIT(followUpDate)})` : ""}
             </div>
           ) : null}
-
         </div>
 
         <div className="shrink-0 flex flex-col items-end gap-2">
-
           {ev.visibility ? (
             <span className="rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs text-zinc-600">
               {ev.visibility}
@@ -111,7 +124,6 @@ export function ClinicTimelineCard({
           ) : null}
 
           <div className="flex flex-col items-end gap-2">
-
             <span className="text-xs text-zinc-600">
               {top}
             </span>
@@ -125,10 +137,8 @@ export function ClinicTimelineCard({
             >
               {badge}
             </span>
-
           </div>
         </div>
-
       </div>
     </div>
   );
