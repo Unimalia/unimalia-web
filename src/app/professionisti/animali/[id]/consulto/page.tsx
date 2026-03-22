@@ -352,7 +352,7 @@ export default function NewProfessionalConsultPage() {
             <h2 className="text-base font-semibold text-zinc-900">Eventi condivisi</h2>
 
             <div className="mt-4 max-h-[420px] space-y-3 overflow-auto">
-              {compose.events.map((event) => {
+              {(compose?.events ?? []).map((event) => {
                 const checked = effectiveSelectedIds.includes(event.id);
 
                 return (
