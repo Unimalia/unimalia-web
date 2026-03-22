@@ -67,6 +67,28 @@ export default async function EmergencyPublicPage({ params }: PageProps) {
     const lang = detectLanguage(h.get("accept-language"));
     const t = DICT[lang];
 
+    function translateContent(text: string, lang: "it" | "en") {
+      if (lang === "it") return text;
+
+      const map: Record<string, string> = {
+        terapia: "therapy",
+        "al giorno": "per day",
+        volte: "times",
+        cortisone: "cortisone",
+        amoxicillina: "amoxicillin",
+        pollo: "chicken",
+        osteortrite: "osteoarthritis",
+      };
+
+      let result = text.toLowerCase();
+
+      for (const key in map) {
+        result = result.replaceAll(key, map[key]);
+      }
+
+      return result;
+    }
+
     const data = await getPublicEmergencyCardByToken(token, {
       requestPath: `/emergency/${token}`,
       ip:
@@ -153,7 +175,7 @@ export default async function EmergencyPublicPage({ params }: PageProps) {
             <ul className="mt-3 space-y-2 text-sm text-zinc-800">
               {allergies.map((item, index) => (
                 <li key={index} className="rounded-xl bg-red-50 px-3 py-2">
-                  {item}
+                  {translateContent(item, lang)}
                 </li>
               ))}
             </ul>
@@ -164,7 +186,7 @@ export default async function EmergencyPublicPage({ params }: PageProps) {
             <ul className="mt-3 space-y-2 text-sm text-zinc-800">
               {therapies.map((item, index) => (
                 <li key={index} className="rounded-xl bg-zinc-50 px-3 py-2">
-                  {item}
+                  {translateContent(item, lang)}
                 </li>
               ))}
             </ul>
@@ -175,7 +197,7 @@ export default async function EmergencyPublicPage({ params }: PageProps) {
             <ul className="mt-3 space-y-2 text-sm text-zinc-800">
               {chronic.map((item, index) => (
                 <li key={index} className="rounded-xl bg-zinc-50 px-3 py-2">
-                  {item}
+                  {translateContent(item, lang)}
                 </li>
               ))}
             </ul>
