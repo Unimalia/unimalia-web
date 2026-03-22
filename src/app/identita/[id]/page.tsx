@@ -331,6 +331,10 @@ export default function AnimalProfilePage() {
             {isLost ? "Aggiorna annuncio smarrimento" : "Segnala come smarrito"}
           </ButtonSecondary>
 
+          <ButtonSecondary href={`/identita/${animal.id}/emergenza`}>
+            QR emergenza / medaglietta
+          </ButtonSecondary>
+
           <ButtonSecondary
             href="#"
             onClick={() => {
