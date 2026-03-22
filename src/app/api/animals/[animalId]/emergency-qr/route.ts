@@ -14,12 +14,6 @@ type RouteContext = {
   }>;
 };
 
-type ExistingEmergencyQrTokenRow = {
-  token_hash: string;
-  status: "active" | "revoked" | "rotated";
-  expires_at: string | null;
-};
-
 function isUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
     value
@@ -72,38 +66,17 @@ export async function GET(_req: Request, context: RouteContext) {
 
   const admin = supabaseAdmin();
 
-  const existingQuery = admin
+  const { error: rotateError } = await admin
     .from("emergency_qr_tokens" as never)
-    .select("token_hash, status, expires_at")
+    .update({ status: "rotated" } as never)
     .eq("animal_id", animalId)
-    .eq("status", "active")
-    .maybeSingle();
+    .eq("status", "active");
 
-  const { data: existing, error: existingError } = (await existingQuery) as unknown as {
-    data: ExistingEmergencyQrTokenRow | null;
-    error: Error | null;
-  };
-
-  if (existingError) {
+  if (rotateError) {
     return NextResponse.json(
-      { error: existingError.message },
+      { error: rotateError.message },
       {
-        status: 400,
-        headers: {
-          "Cache-Control": "no-store",
-        },
-      }
-    );
-  }
-
-  if (existing?.token_hash) {
-    return NextResponse.json(
-      {
-        status: "exists",
-        message:
-          "Esiste già un token QR attivo per questo animale. In v1 il token non viene riesposto dopo la creazione.",
-      },
-      {
+        status: 500,
         headers: {
           "Cache-Control": "no-store",
         },
