@@ -7,34 +7,15 @@ import {
   normalizeEmergencyToken,
 } from "@/lib/emergency/token";
 
-export type EmergencyProfile = {
-  animal_id: string;
-  enabled: boolean;
-  animal_name: string | null;
-  species: string | null;
-  breed: string | null;
-  sex: string | null;
-  weight_kg: number | null;
-  blood_type: string | null;
-  allergies: string | null;
-  active_therapies: string | null;
-  chronic_conditions: string | null;
-  essential_vaccination_status: string | null;
-  is_lost: boolean;
-  emergency_contact_name: string | null;
-  emergency_contact_phone: string | null;
-  show_emergency_contact: boolean;
-  premium_enabled: boolean;
-  advanced_summary: string | null;
-  last_visit_summary: string | null;
-  last_vaccination_summary: string | null;
-};
-
 export type EmergencyTokenRow = {
+  id?: string;
   animal_id: string;
+  public_token: string | null;
   token_hash: string;
+  token_prefix: string;
   status: "active" | "revoked" | "rotated";
   expires_at: string | null;
+  created_at?: string | null;
 };
 
 type EmergencyAccessLogInsert = {
@@ -57,7 +38,7 @@ export const resolveEmergencyToken = cache(async (rawToken: string) => {
 
   const query = admin
     .from("emergency_qr_tokens" as never)
-    .select("animal_id, token_hash, status, expires_at")
+    .select("id, animal_id, public_token, token_hash, token_prefix, status, expires_at, created_at")
     .eq("token_hash", tokenHash)
     .maybeSingle();
 
@@ -77,48 +58,6 @@ export const resolveEmergencyToken = cache(async (rawToken: string) => {
     row: data ?? null,
   };
 });
-
-export async function getEmergencyProfileByAnimalId(animalId: string) {
-  const admin = supabaseAdmin();
-
-  const query = admin
-    .from("animal_emergency_profiles" as never)
-    .select(`
-      animal_id,
-      enabled,
-      animal_name,
-      species,
-      breed,
-      sex,
-      weight_kg,
-      blood_type,
-      allergies,
-      active_therapies,
-      chronic_conditions,
-      essential_vaccination_status,
-      is_lost,
-      emergency_contact_name,
-      emergency_contact_phone,
-      show_emergency_contact,
-      premium_enabled,
-      advanced_summary,
-      last_visit_summary,
-      last_vaccination_summary
-    `)
-    .eq("animal_id", animalId)
-    .maybeSingle();
-
-  const { data, error } = (await query) as unknown as {
-    data: EmergencyProfile | null;
-    error: Error | null;
-  };
-
-  if (error) {
-    throw error;
-  }
-
-  return data ?? null;
-}
 
 export async function touchEmergencyToken(tokenHash: string) {
   const admin = supabaseAdmin();

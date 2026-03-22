@@ -226,10 +226,18 @@ export async function searchRecipientProfessionals(params: { q?: string; tagId?:
   if (linkError) throw new Error(linkError.message);
 
   const tagIds = Array.from(new Set((links ?? []).map((x) => x.tag_id)));
+  if (tagIds.length === 0) {
+    return {
+      professionals: professionals ?? [],
+      tagsByProfessional: {},
+    };
+  }
+
   const { data: tags, error: tagError } = await admin
     .from("professional_tags")
     .select("id,label,key")
-    .in("id", tagIds.length ? tagIds : ["00000000-0000-0000-0000-000000000000"]);
+    .eq("active", true)
+    .in("id", tagIds);
 
   if (tagError) throw new Error(tagError.message);
 
@@ -287,9 +295,38 @@ export async function getComposeData(animalId: string) {
 
   if (eventsError) throw new Error(eventsError.message);
 
+  const eventIds = (events ?? []).map((event) => event.id);
+
+  const { data: files, error: filesError } = await admin
+    .from("animal_clinic_event_files")
+    .select("id,event_id,filename,path,mime,size,created_at")
+    .in("event_id", eventIds.length ? eventIds : ["00000000-0000-0000-0000-000000000000"]);
+
+  if (filesError) throw new Error(filesError.message);
+
+  const filesByEventId: Record<string, number> = {};
+  for (const file of files ?? []) {
+    filesByEventId[file.event_id] = (filesByEventId[file.event_id] ?? 0) + 1;
+  }
+
+  const normalizedAnimal = {
+    ...animal,
+    microchip: animal.microchip ?? null,
+  };
+
+  const quickSummary = buildClinicalQuickSummary({
+    animal: normalizedAnimal,
+    events: events ?? [],
+  });
+
   return {
     animal,
-    events: events ?? [],
+    quickSummary,
+    events: (events ?? []).map((event) => ({
+      ...event,
+      has_attachments: (filesByEventId[event.id] ?? 0) > 0,
+      attachments_count: filesByEventId[event.id] ?? 0,
+    })),
   };
 }
 
@@ -555,9 +592,7 @@ export async function listProfessionalConsults(params: {
 
   if (filtered.length === 0) return [];
 
-  const animalIds = Array.from(
-    new Set(filtered.map((item) => item.animal_id).filter(Boolean))
-  );
+  const animalIds = Array.from(new Set(filtered.map((item) => item.animal_id).filter(Boolean)));
 
   const { data: animals, error: animalsError } = await admin
     .from("animals")
@@ -748,7 +783,7 @@ export async function getProfessionalConsultDetail(id: string) {
   const normalizedAnimal = animal
     ? {
         ...animal,
-        microchip: null,
+        microchip: animal.chip_number ?? null,
         owner_name: null,
         owner_email: null,
       }
