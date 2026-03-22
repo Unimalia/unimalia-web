@@ -2,103 +2,194 @@
 
 export const dynamic = "force-dynamic";
 
-import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
+
 import { PageShell } from "@/_components/ui/page-shell";
 import { ButtonPrimary, ButtonSecondary } from "@/_components/ui/button";
+
+type Animal = {
+  id: string;
+  name: string;
+  species: string;
+  breed: string | null;
+  photo_url?: string | null;
+  birth_date?: string | null;
+  sterilized?: boolean | null;
+};
+
+type ClinicEvent = {
+  type?: string | null;
+  description?: string | null;
+  meta?: any;
+};
 
 export default function AnimalEmergencyPage() {
   const params = useParams<{ id: string }>();
   const animalId = params?.id ?? "";
 
+  const [animal, setAnimal] = useState<Animal | null>(null);
+  const [events, setEvents] = useState<ClinicEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // 🔘 selezione campi emergenza
+  const [fields, setFields] = useState({
+    photo: true,
+    name: true,
+    species: true,
+    allergies: true,
+    therapies: true,
+  });
+
+  useEffect(() => {
+    let alive = true;
+
+    async function load() {
+      if (!animalId) return;
+
+      setLoading(true);
+
+      const { data: animalData } = await supabase
+        .from("animals")
+        .select("*")
+        .eq("id", animalId)
+        .single();
+
+      const res = await fetch(`/api/clinic-events/list?animalId=${animalId}`);
+      const json = await res.json().catch(() => ({}));
+
+      if (!alive) return;
+
+      setAnimal(animalData || null);
+      setEvents(json?.events || []);
+      setLoading(false);
+    }
+
+    load();
+    return () => {
+      alive = false;
+    };
+  }, [animalId]);
+
+  // 🧠 estrazione dati emergenza
+  const emergencyData = useMemo(() => {
+    const allergies = events
+      .filter((e) => e.type === "allergy")
+      .map((e) => e.description)
+      .filter(Boolean)
+      .slice(0, 3);
+
+    const therapies = events
+      .filter((e) => e.type === "therapy")
+      .map((e) => e.description)
+      .filter(Boolean)
+      .slice(0, 3);
+
+    return {
+      allergies,
+      therapies,
+    };
+  }, [events]);
+
+  function toggleField(key: keyof typeof fields) {
+    setFields((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  }
+
+  if (loading) {
+    return (
+      <PageShell title="Emergenza" backFallbackHref={`/identita/${animalId}`}>
+        <div className="text-sm text-zinc-600">Caricamento…</div>
+      </PageShell>
+    );
+  }
+
+  if (!animal) {
+    return (
+      <PageShell title="Emergenza" backFallbackHref="/identita">
+        <div className="text-red-600">Animale non trovato</div>
+      </PageShell>
+    );
+  }
+
   return (
     <PageShell
       title="QR emergenza / medaglietta"
-      subtitle="Sezione separata dai codici identificativi UNIMALIA."
-      backFallbackHref={animalId ? `/identita/${animalId}` : "/identita"}
+      subtitle="Configura cosa sarà visibile quando qualcuno scansiona il QR."
+      backFallbackHref={`/identita/${animalId}`}
       actions={
         <>
-          <ButtonSecondary href={animalId ? `/identita/${animalId}` : "/identita"}>
-            Torna alla scheda animale
+          <ButtonSecondary href={`/identita/${animalId}`}>
+            Torna alla scheda
           </ButtonSecondary>
-          <ButtonPrimary href={animalId ? `/identita/${animalId}` : "/identita"}>
-            Chiudi
-          </ButtonPrimary>
+          <ButtonPrimary>Salva configurazione</ButtonPrimary>
         </>
       }
     >
-      <div className="flex flex-col gap-6">
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* ⚙️ CONFIGURAZIONE */}
         <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <div className="flex flex-col gap-3">
-            <div>
-              <h2 className="text-base font-semibold text-zinc-900">QR emergenza</h2>
-              <p className="mt-1 text-sm text-zinc-600">
-                Questa area sarà dedicata a un QR separato, da usare solo in caso di emergenza
-                o per creare una medaglietta.
-              </p>
-            </div>
+          <h2 className="text-base font-semibold text-zinc-900">
+            Dati visibili
+          </h2>
 
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-              <p className="text-sm font-semibold text-amber-900">
-                In preparazione
-              </p>
-              <p className="mt-2 text-sm text-amber-800">
-                Il QR emergenza non userà i codici già presenti nella scheda animale e non sarà
-                mostrato nella pagina principale per evitare confusione.
-              </p>
-            </div>
+          <div className="mt-4 flex flex-col gap-3 text-sm">
+            {Object.entries(fields).map(([key, value]) => (
+              <label key={key} className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  checked={value}
+                  onChange={() => toggleField(key as any)}
+                />
+                <span className="capitalize">{key}</span>
+              </label>
+            ))}
           </div>
         </section>
 
+        {/* 👁️ PREVIEW */}
         <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <h2 className="text-base font-semibold text-zinc-900">Cosa conterrà questa sezione</h2>
+          <h2 className="text-base font-semibold text-zinc-900">
+            Anteprima emergenza
+          </h2>
 
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-              <div className="text-xs text-zinc-500">Dati visibili</div>
-              <div className="mt-1 text-sm font-semibold text-zinc-900">
-                Foto, identità e dati di emergenza essenziali
-              </div>
-            </div>
+          <div className="mt-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 flex flex-col gap-3">
+            {fields.photo && animal.photo_url && (
+              <img
+                src={animal.photo_url}
+                className="h-40 w-full object-contain rounded-xl bg-white"
+              />
+            )}
 
-            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-              <div className="text-xs text-zinc-500">Configurazione</div>
-              <div className="mt-1 text-sm font-semibold text-zinc-900">
-                Scelta campi visibili con checkbox
-              </div>
-            </div>
+            {fields.name && (
+              <div className="font-semibold text-lg">{animal.name}</div>
+            )}
 
-            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-              <div className="text-xs text-zinc-500">Codice separato</div>
-              <div className="mt-1 text-sm font-semibold text-zinc-900">
-                QR dedicato, distinto da QR e barcode UNIMALIA
+            {fields.species && (
+              <div className="text-sm text-zinc-600">
+                {animal.species} {animal.breed || ""}
               </div>
-            </div>
+            )}
 
-            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-              <div className="text-xs text-zinc-500">Uso previsto</div>
-              <div className="mt-1 text-sm font-semibold text-zinc-900">
-                Emergenza e medaglietta
+            {fields.allergies && emergencyData.allergies.length > 0 && (
+              <div className="text-sm">
+                ⚠️ Allergie: {emergencyData.allergies.join(", ")}
               </div>
-            </div>
+            )}
+
+            {fields.therapies && emergencyData.therapies.length > 0 && (
+              <div className="text-sm">
+                💊 Terapie: {emergencyData.therapies.join(", ")}
+              </div>
+            )}
           </div>
-        </section>
 
-        <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <h2 className="text-base font-semibold text-zinc-900">Prossimo step</h2>
-          <p className="mt-2 text-sm text-zinc-600">
-            Nel prossimo blocco verranno aggiunti i campi selezionabili, la preview del QR
-            emergenza e la futura scheda pubblica separata.
+          <p className="mt-3 text-xs text-zinc-500">
+            Questa è la schermata che vedrà chi scansiona il QR.
           </p>
-
-          <div className="mt-4">
-            <Link
-              href={animalId ? `/identita/${animalId}` : "/identita"}
-              className="inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
-            >
-              Torna alla scheda animale
-            </Link>
-          </div>
         </section>
       </div>
     </PageShell>
