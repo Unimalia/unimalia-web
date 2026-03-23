@@ -95,7 +95,6 @@ export default function IdentitaPage() {
   const [err, setErr] = useState<string | null>(null);
 
   const [profileOk, setProfileOk] = useState(true);
-  const [phoneVerified, setPhoneVerified] = useState<boolean | null>(null);
 
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<Animal | null>(null);
@@ -137,9 +136,6 @@ export default function IdentitaPage() {
 
       const profile = (pData as OwnerProfile) || null;
       setProfileOk(isProfileComplete(profile));
-
-      const pv = (profile as any)?.phone_verified;
-      setPhoneVerified(pv === undefined || pv === null ? null : pv === true);
 
       const { data, error } = await supabase
         .from("animals")
@@ -254,24 +250,6 @@ export default function IdentitaPage() {
                 <ButtonSecondary href="/profilo?returnTo=/identita">
                   Vai al profilo →
                 </ButtonSecondary>
-              </div>
-            </div>
-          </Card>
-        </div>
-      ) : null}
-
-      {profileOk && phoneVerified === false ? (
-        <div className="mb-6">
-          <Card>
-            <div className="rounded-2xl border border-zinc-200 bg-white p-5 text-sm text-zinc-900">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="font-semibold">Verifica telefono (consigliato)</p>
-                  <p className="mt-1 text-zinc-700">
-                    La verifica aumenta fiducia e può essere richiesta in futuro per alcune funzioni.
-                  </p>
-                </div>
-                <ButtonSecondary href="/profilo?returnTo=/identita">Gestisci →</ButtonSecondary>
               </div>
             </div>
           </Card>
