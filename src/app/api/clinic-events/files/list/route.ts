@@ -58,7 +58,7 @@ export async function GET(req: Request) {
 
   const { data: ev, error: evErr } = await admin
     .from("animal_clinic_events")
-    .select("id, animal_id, status")
+    .select("id, animal_id, status, created_by")
     .eq("id", eventId)
     .neq("status", "void")
     .single();
@@ -70,7 +70,18 @@ export async function GET(req: Request) {
   const animalId = String(ev.animal_id);
 
   const grant = await requireOwnerOrGrant(supabase, user.id, animalId, "read");
-  if (!grant.ok) {
+
+  let canAccess = grant.ok;
+  let accessMode: "full" | "own_only" | "denied" = grant.ok ? "full" : "denied";
+
+  if (!grant.ok && ev.created_by === user.id) {
+    canAccess = true;
+    accessMode = "own_only";
+  }
+
+  if (!canAccess) {
+    const denyReason = grant.ok ? "Accesso negato" : grant.reason;
+
     await writeAudit(supabase, {
       req,
       actor_user_id: user.id,
@@ -79,10 +90,10 @@ export async function GET(req: Request) {
       target_id: eventId,
       animal_id: animalId,
       result: "denied",
-      reason: grant.reason,
+      reason: denyReason,
     });
 
-    return NextResponse.json({ error: grant.reason }, { status: 403 });
+    return NextResponse.json({ error: denyReason }, { status: 403 });
   }
 
   const { data, error } = await admin
@@ -95,7 +106,7 @@ export async function GET(req: Request) {
     await writeAudit(supabase, {
       req,
       actor_user_id: user.id,
-      actor_org_id: grant.actor_org_id,
+      actor_org_id: grant.ok ? grant.actor_org_id : null,
       action: "file.list",
       target_type: "event",
       target_id: eventId,
@@ -110,13 +121,21 @@ export async function GET(req: Request) {
   await writeAudit(supabase, {
     req,
     actor_user_id: user.id,
-    actor_org_id: grant.actor_org_id,
+    actor_org_id: grant.ok ? grant.actor_org_id : null,
     action: "file.list",
     target_type: "event",
     target_id: eventId,
     animal_id: animalId,
     result: "success",
+    reason: accessMode === "own_only" ? "fallback_own_event_files_only" : undefined,
   });
 
-  return NextResponse.json({ ok: true, files: data ?? [] }, { status: 200 });
+  return NextResponse.json(
+    {
+      ok: true,
+      mode: accessMode,
+      files: data ?? [],
+    },
+    { status: 200 }
+  );
 }
