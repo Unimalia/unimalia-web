@@ -380,6 +380,24 @@ export default function ProAnimalPage() {
               Torna allo scanner
             </Link>
 
+            {isVet ? (
+              <Link
+                href={`/professionisti/animali/${animal.id}/clinica`}
+                className="rounded-2xl bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-900"
+              >
+                Cartella clinica
+              </Link>
+            ) : (
+              <span className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-2 text-sm font-semibold text-zinc-600">
+                Cartella clinica (solo vet)
+              </span>
+            )}
+
+            <span className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-2 text-sm font-semibold text-zinc-600">
+              Storia animale
+              <span className="ml-2 text-xs font-medium text-zinc-400">(in arrivo)</span>
+            </span>
+
             <Link
               href="/professionisti/richieste"
               className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
@@ -433,79 +451,104 @@ export default function ProAnimalPage() {
           </div>
         </div>
 
-        <div className="mt-4 rounded-2xl border p-5">
-          <div className="flex flex-wrap items-center gap-2">
-            {animal.owner_id ? (
-              <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-800">
-                Proprietario collegato
-              </span>
-            ) : (
-              <span className="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-800">
-                Proprietario non collegato
-              </span>
-            )}
-
-            {animal.created_by_org_id && (
-              <span className="inline-flex items-center rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-800">
-                Creato dalla clinica
-              </span>
-            )}
-
-            {animal.unimalia_code && (
-              <span className="inline-flex items-center rounded-full bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-800">
-                UNIMALIA: {animal.unimalia_code}
-              </span>
-            )}
-          </div>
-
-          {!animal.owner_id && (
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Link
-                href={`/professionisti/animali/${animal.id}/collega-proprietario`}
-                className="rounded-xl border px-4 py-2"
-              >
-                Collega proprietario
-              </Link>
-
-              <Link
-                href={`/identita/nuovo?animalId=${animal.id}`}
-                className="rounded-xl bg-black px-4 py-2 text-white"
-              >
-                Crea identità dalla cartella
-              </Link>
-            </div>
-          )}
-        </div>
-
         <div className="mt-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-700">
-          <div className="font-semibold">Privacy</div>
-          <div className="mt-1 text-sm text-zinc-600">
-            Le identità NON sono pubbliche. Questa scheda è visibile solo a professionisti
-            autorizzati e al proprietario.
-          </div>
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span
+                  className={
+                    animal.owner_id
+                      ? "rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700"
+                      : "rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700"
+                  }
+                >
+                  {ownerConnectionLabel(animal)}
+                </span>
 
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            <span
-              className={
-                animal.owner_id
-                  ? "rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700"
-                  : "rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700"
-              }
-            >
-              {ownerConnectionLabel(animal)}
-            </span>
+                {(animal.created_by_org_id || animal.created_by_role === "professional") && (
+                  <span className="rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-semibold text-zinc-700">
+                    Creato dalla clinica
+                  </span>
+                )}
 
-            {animal.created_by_role === "professional" ? (
-              <span className="rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-semibold text-zinc-700">
-                Creato dalla clinica
-              </span>
-            ) : null}
+                {animal.unimalia_code ? (
+                  <span className="rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-mono text-zinc-700">
+                    UNIMALIA: {animal.unimalia_code}
+                  </span>
+                ) : null}
+              </div>
 
-            {animal.unimalia_code ? (
-              <span className="rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-mono text-zinc-700">
-                UNIMALIA: {animal.unimalia_code}
-              </span>
-            ) : null}
+              <div className="mt-3">
+                <div className="font-semibold">Privacy</div>
+                <div className="mt-1 text-sm text-zinc-600">
+                  Le identità NON sono pubbliche. Questa scheda è visibile solo a professionisti
+                  autorizzati e al proprietario.
+                </div>
+              </div>
+
+              {!animal.owner_id && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Link
+                    href={`/professionisti/animali/${animal.id}/collega-proprietario`}
+                    className="rounded-xl border px-4 py-2"
+                  >
+                    Collega proprietario
+                  </Link>
+
+                  <Link
+                    href={`/identita/nuovo?animalId=${animal.id}`}
+                    className="rounded-xl bg-black px-4 py-2 text-white"
+                  >
+                    Crea identità dalla cartella
+                  </Link>
+                </div>
+              )}
+            </div>
+
+            <div className="lg:w-[320px] lg:pl-4">
+              <div className="font-semibold text-zinc-900">Identità</div>
+
+              <dl className="mt-3 grid gap-2 text-sm">
+                <div className="flex justify-between gap-4">
+                  <dt className="text-zinc-500">Nome</dt>
+                  <dd className="font-medium text-zinc-900">{animal.name}</dd>
+                </div>
+
+                <div className="flex justify-between gap-4">
+                  <dt className="text-zinc-500">Tipo</dt>
+                  <dd className="font-medium text-zinc-900">{animal.species}</dd>
+                </div>
+
+                <div className="flex justify-between gap-4">
+                  <dt className="text-zinc-500">Razza</dt>
+                  <dd className="font-medium text-zinc-900">{animal.breed || "—"}</dd>
+                </div>
+
+                <div className="flex justify-between gap-4">
+                  <dt className="text-zinc-500">Colore / segni</dt>
+                  <dd className="font-medium text-zinc-900">{animal.color || "—"}</dd>
+                </div>
+
+                <div className="flex justify-between gap-4">
+                  <dt className="text-zinc-500">Taglia</dt>
+                  <dd className="font-medium text-zinc-900">{animal.size || "—"}</dd>
+                </div>
+
+                <div className="flex justify-between gap-4">
+                  <dt className="text-zinc-500">Sesso</dt>
+                  <dd className="font-medium text-zinc-900">
+                    {animal.sex === "M" ? "Maschio" : animal.sex === "F" ? "Femmina" : "—"}
+                  </dd>
+                </div>
+
+                <div className="flex justify-between gap-4">
+                  <dt className="text-zinc-500">Sterilizzato</dt>
+                  <dd className="font-medium text-zinc-900">
+                    {animal.sterilized === true ? "Sì" : animal.sterilized === false ? "No" : "—"}
+                  </dd>
+                </div>
+              </dl>
+            </div>
           </div>
         </div>
       </div>
@@ -686,26 +729,6 @@ export default function ProAnimalPage() {
                 {animal.sterilized === true ? "Sì" : animal.sterilized === false ? "No" : "—"}
               </div>
             </div>
-          </div>
-
-          <div className="mt-4 flex flex-wrap gap-2">
-            {isVet ? (
-              <Link
-                href={`/professionisti/animali/${animal.id}/clinica`}
-                className="rounded-2xl bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-900"
-              >
-                Cartella clinica
-              </Link>
-            ) : (
-              <span className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-2 text-sm font-semibold text-zinc-600">
-                Cartella clinica (solo vet)
-              </span>
-            )}
-
-            <span className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-2 text-sm font-semibold text-zinc-600">
-              Storia animale
-              <span className="ml-2 text-xs font-medium text-zinc-400">(in arrivo)</span>
-            </span>
           </div>
         </section>
 
