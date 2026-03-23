@@ -9,6 +9,10 @@ function normalizeCF(s: string) {
   return (s || "").replace(/\s+/g, "").trim().toUpperCase();
 }
 
+function normalizePhone(s: string) {
+  return (s || "").replace(/\s+/g, "").trim();
+}
+
 function isLikelyFullName(s: string) {
   const v = (s || "").trim();
   if (v.length < 5) return false;
@@ -21,11 +25,12 @@ function isProfileComplete(p: any) {
 
   const fullNameOk = isLikelyFullName(p.full_name ?? "");
   const cityOk = (p.city ?? "").trim().length >= 2;
+  const phoneOk = normalizePhone(p.phone ?? "").length >= 6;
 
   const cf = normalizeCF(p.fiscal_code ?? "");
   const cfOk = !cf || cf.length === 16;
 
-  return fullNameOk && cityOk && cfOk;
+  return fullNameOk && cityOk && phoneOk && cfOk;
 }
 
 function sanitizeNextPath(value: string | null) {
@@ -48,7 +53,23 @@ function getPasswordIssues(password: string) {
 }
 
 async function ensureProfileRow(userId: string) {
-  await supabase.from("profiles").upsert({ id: userId }, { onConflict: "id" });
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const metadata = user?.user_metadata ?? {};
+
+  await supabase.from("profiles").upsert(
+    {
+      id: userId,
+      full_name: typeof metadata.full_name === "string" ? metadata.full_name.trim() || null : null,
+      city: typeof metadata.city === "string" ? metadata.city.trim() || null : null,
+      fiscal_code:
+        typeof metadata.fiscal_code === "string" ? normalizeCF(metadata.fiscal_code) || null : null,
+      phone: typeof metadata.phone === "string" ? normalizePhone(metadata.phone) || null : null,
+    },
+    { onConflict: "id" }
+  );
 }
 
 async function decideRedirect(router: ReturnType<typeof useRouter>, fallback: string) {
@@ -60,7 +81,7 @@ async function decideRedirect(router: ReturnType<typeof useRouter>, fallback: st
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("full_name,fiscal_code,city")
+    .select("full_name,fiscal_code,city,phone")
     .eq("id", user.id)
     .single();
 
@@ -87,6 +108,7 @@ export default function LoginClient() {
 
   const [fullName, setFullName] = useState("");
   const [city, setCity] = useState("");
+  const [phone, setPhone] = useState("");
   const [fiscalCode, setFiscalCode] = useState("");
 
   const [loadingPage, setLoadingPage] = useState(true);
@@ -158,6 +180,17 @@ export default function LoginClient() {
         return;
       }
 
+      const normalizedPhone = normalizePhone(phone);
+      if (!normalizedPhone) {
+        setMsg("Inserisci il numero di telefono.");
+        return;
+      }
+
+      if (normalizedPhone.length < 6) {
+        setMsg("Inserisci un numero di telefono valido.");
+        return;
+      }
+
       const cf = normalizeCF(fiscalCode);
       if (cf && cf.length !== 16) {
         setMsg("Il codice fiscale deve avere 16 caratteri oppure va lasciato vuoto.");
@@ -180,6 +213,7 @@ export default function LoginClient() {
     try {
       if (mode === "signup") {
         const cf = normalizeCF(fiscalCode);
+        const normalizedPhone = normalizePhone(phone);
 
         const { error } = await supabase.auth.signUp({
           email: emailValue,
@@ -189,6 +223,7 @@ export default function LoginClient() {
             data: {
               full_name: fullName.trim(),
               city: city.trim(),
+              phone: normalizedPhone,
               fiscal_code: cf || null,
             },
           },
@@ -229,6 +264,7 @@ export default function LoginClient() {
             id: data.user.id,
             full_name: fullName.trim(),
             city: city.trim(),
+            phone: normalizedPhone,
             fiscal_code: cf || null,
           },
           { onConflict: "id" }
@@ -331,8 +367,7 @@ export default function LoginClient() {
         <br />
         <span className="text-zinc-600">
           Creare un account ti permette di gestire l’identità animale e accedere alle funzioni
-          complete della piattaforma. Il telefono non è richiesto in questa fase: verrà gestito più
-          avanti solo per funzioni premium e notifiche dedicate.
+          complete della piattaforma. Il telefono è richiesto da ora in poi in fase di registrazione.
         </span>
       </p>
 
@@ -403,6 +438,23 @@ export default function LoginClient() {
                   onChange={(e) => setCity(e.target.value)}
                   placeholder="Es. Firenze"
                   autoComplete="address-level2"
+                  required
+                />
+              </div>
+
+              <div>
+                <label htmlFor="phone" className="block text-sm font-medium">
+                  Telefono
+                </label>
+                <input
+                  id="phone"
+                  name="phone"
+                  className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="Es. +39 333 1234567"
+                  autoComplete="tel"
+                  inputMode="tel"
                   required
                 />
               </div>

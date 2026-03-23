@@ -15,6 +15,10 @@ function safeNextPath(next: string | null | undefined) {
   return n;
 }
 
+function normalizePhone(input: string) {
+  return String(input || "").replace(/\s+/g, "").trim();
+}
+
 function getPasswordIssues(password: string) {
   const issues: string[] = [];
 
@@ -38,6 +42,7 @@ export default function LoginClient() {
   const [professionalType, setProfessionalType] = useState<"generic" | "veterinarian">("generic");
 
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
@@ -53,8 +58,13 @@ export default function LoginClient() {
       return email.trim().length > 3 && password.length >= 1;
     }
 
-    return email.trim().length > 3 && password.length >= 12 && confirmPassword.length >= 12;
-  }, [email, password, confirmPassword, mode]);
+    return (
+      email.trim().length > 3 &&
+      normalizePhone(phone).length >= 6 &&
+      password.length >= 12 &&
+      confirmPassword.length >= 12
+    );
+  }, [email, phone, password, confirmPassword, mode]);
 
   async function handleProfessionalPostLoginRedirect(userId: string) {
     const { data: proData, error: proErr } = await supabase
@@ -136,6 +146,20 @@ export default function LoginClient() {
 
     try {
       if (mode === "signup") {
+        const normalizedPhone = normalizePhone(phone);
+
+        if (!normalizedPhone) {
+          setErr("Il numero di telefono è obbligatorio.");
+          setLoading(false);
+          return;
+        }
+
+        if (normalizedPhone.length < 6) {
+          setErr("Inserisci un numero di telefono valido.");
+          setLoading(false);
+          return;
+        }
+
         if (passwordIssues.length > 0) {
           setErr(`Password non valida: ${passwordIssues.join(", ")}.`);
           setLoading(false);
@@ -157,6 +181,7 @@ export default function LoginClient() {
               is_professional: true,
               professional_type: professionalType,
               is_veterinarian: professionalType === "veterinarian",
+              phone: normalizedPhone,
             },
           },
         });
@@ -431,6 +456,27 @@ export default function LoginClient() {
                   inputMode="email"
                 />
               </div>
+
+              {mode === "signup" && (
+                <div>
+                  <label htmlFor="pro-phone" className="text-xs font-semibold text-zinc-700">
+                    Telefono
+                  </label>
+                  <input
+                    id="pro-phone"
+                    name="phone"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="mt-1 h-12 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm outline-none focus:border-zinc-400"
+                    autoComplete="tel"
+                    autoCapitalize="none"
+                    spellCheck={false}
+                    type="tel"
+                    inputMode="tel"
+                    required
+                  />
+                </div>
+              )}
 
               <div>
                 <label htmlFor="pro-password" className="text-xs font-semibold text-zinc-700">
