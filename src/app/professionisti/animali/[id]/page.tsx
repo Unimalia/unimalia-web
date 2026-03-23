@@ -452,104 +452,95 @@ export default function ProAnimalPage() {
         </div>
 
         <div className="mt-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-700">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <span
-                  className={
-                    animal.owner_id
-                      ? "rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700"
-                      : "rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700"
-                  }
-                >
-                  {ownerConnectionLabel(animal)}
-                </span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span
+              className={
+                animal.owner_id
+                  ? "rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700"
+                  : "rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700"
+              }
+            >
+              {ownerConnectionLabel(animal)}
+            </span>
 
-                {(animal.created_by_org_id || animal.created_by_role === "professional") && (
-                  <span className="rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-semibold text-zinc-700">
-                    Creato dalla clinica
-                  </span>
-                )}
+            {(animal.created_by_org_id || animal.created_by_role === "professional") && (
+              <span className="rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-semibold text-zinc-700">
+                Creato dalla clinica
+              </span>
+            )}
 
-                {animal.unimalia_code ? (
-                  <span className="rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-mono text-zinc-700">
-                    UNIMALIA: {animal.unimalia_code}
-                  </span>
-                ) : null}
-              </div>
+            {animal.unimalia_code ? (
+              <span className="rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-mono text-zinc-700">
+                UNIMALIA: {animal.unimalia_code}
+              </span>
+            ) : null}
+          </div>
 
-              <div className="mt-3">
-                <div className="font-semibold">Privacy</div>
-                <div className="mt-1 text-sm text-zinc-600">
-                  Le identità NON sono pubbliche. Questa scheda è visibile solo a professionisti
-                  autorizzati e al proprietario.
-                </div>
-              </div>
-
-              {!animal.owner_id && (
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <Link
-                    href={`/professionisti/animali/${animal.id}/collega-proprietario`}
-                    className="rounded-xl border px-4 py-2"
-                  >
-                    Collega proprietario
-                  </Link>
-
-                  <Link
-                    href={`/identita/nuovo?animalId=${animal.id}`}
-                    className="rounded-xl bg-black px-4 py-2 text-white"
-                  >
-                    Crea identità dalla cartella
-                  </Link>
-                </div>
-              )}
-            </div>
-
-            <div className="lg:w-[320px] lg:pl-4">
-              <div className="font-semibold text-zinc-900">Identità</div>
-
-              <dl className="mt-3 grid gap-2 text-sm">
-                <div className="flex justify-between gap-4">
-                  <dt className="text-zinc-500">Nome</dt>
-                  <dd className="font-medium text-zinc-900">{animal.name}</dd>
-                </div>
-
-                <div className="flex justify-between gap-4">
-                  <dt className="text-zinc-500">Tipo</dt>
-                  <dd className="font-medium text-zinc-900">{animal.species}</dd>
-                </div>
-
-                <div className="flex justify-between gap-4">
-                  <dt className="text-zinc-500">Razza</dt>
-                  <dd className="font-medium text-zinc-900">{animal.breed || "—"}</dd>
-                </div>
-
-                <div className="flex justify-between gap-4">
-                  <dt className="text-zinc-500">Colore / segni</dt>
-                  <dd className="font-medium text-zinc-900">{animal.color || "—"}</dd>
-                </div>
-
-                <div className="flex justify-between gap-4">
-                  <dt className="text-zinc-500">Taglia</dt>
-                  <dd className="font-medium text-zinc-900">{animal.size || "—"}</dd>
-                </div>
-
-                <div className="flex justify-between gap-4">
-                  <dt className="text-zinc-500">Sesso</dt>
-                  <dd className="font-medium text-zinc-900">
-                    {animal.sex === "M" ? "Maschio" : animal.sex === "F" ? "Femmina" : "—"}
-                  </dd>
-                </div>
-
-                <div className="flex justify-between gap-4">
-                  <dt className="text-zinc-500">Sterilizzato</dt>
-                  <dd className="font-medium text-zinc-900">
-                    {animal.sterilized === true ? "Sì" : animal.sterilized === false ? "No" : "—"}
-                  </dd>
-                </div>
-              </dl>
+          <div className="mt-3">
+            <div className="font-semibold">Privacy</div>
+            <div className="mt-1 text-sm text-zinc-600">
+              Le identità NON sono pubbliche. Questa scheda è visibile solo a professionisti
+              autorizzati e al proprietario.
             </div>
           </div>
+
+          <div className="mt-4 rounded-xl border border-zinc-200 bg-white p-4">
+            <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+              Proprietario
+            </div>
+
+            <div className="mt-2 text-sm font-semibold text-zinc-900">
+              {animal?.owner_name || "Non disponibile"}
+            </div>
+
+            <div className="mt-3 space-y-2 text-sm">
+              <div>
+                <div className="text-xs text-zinc-500">Email</div>
+                {animal?.owner_email ? (
+                  <a
+                    href={`mailto:${animal.owner_email}`}
+                    className="font-medium text-zinc-800 underline underline-offset-2 hover:text-zinc-950"
+                  >
+                    {animal.owner_email}
+                  </a>
+                ) : (
+                  <div className="text-zinc-600">—</div>
+                )}
+              </div>
+
+              <div>
+                <div className="text-xs text-zinc-500">Telefono</div>
+                {animal?.owner_phone ? (
+                  <a
+                    href={`tel:${normalizePhone(animal.owner_phone)}`}
+                    className="font-medium text-zinc-800 underline underline-offset-2 hover:text-zinc-950"
+                  >
+                    {animal.owner_phone}
+                  </a>
+                ) : (
+                  <div className="text-zinc-600">—</div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {!animal.owner_id && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Link
+                href={`/professionisti/animali/${animal.id}/collega-proprietario`}
+                className="rounded-xl border px-4 py-2"
+              >
+                Collega proprietario
+              </Link>
+
+              <Link
+                href={`/identita/nuovo?animalId=${animal.id}`}
+                className="rounded-xl bg-black px-4 py-2 text-white"
+              >
+                Crea identità dalla cartella
+              </Link>
+            </div>
+          )}
         </div>
       </div>
 
@@ -575,13 +566,6 @@ export default function ProAnimalPage() {
           <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
             <div className="text-xs text-zinc-500">Gruppo sanguigno</div>
             <div className="mt-1 font-semibold text-zinc-900">{rapidClinicalState.bloodType}</div>
-          </div>
-
-          <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
-            <div className="text-xs text-zinc-500">Sterilizzato</div>
-            <div className="mt-1 font-semibold text-zinc-900">
-              {rapidClinicalState.sterilizationStatus}
-            </div>
           </div>
 
           <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
@@ -759,46 +743,6 @@ export default function ProAnimalPage() {
             ) : null}
           </div>
         </section>
-
-        <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-          <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-            Proprietario
-          </div>
-
-          <div className="mt-2 text-sm font-semibold text-zinc-900">
-            {animal?.owner_name || "Non disponibile"}
-          </div>
-
-          <div className="mt-3 space-y-2 text-sm">
-            <div>
-              <div className="text-xs text-zinc-500">Email</div>
-              {animal?.owner_email ? (
-                <a
-                  href={`mailto:${animal.owner_email}`}
-                  className="font-medium text-zinc-800 underline underline-offset-2 hover:text-zinc-950"
-                >
-                  {animal.owner_email}
-                </a>
-              ) : (
-                <div className="text-zinc-600">—</div>
-              )}
-            </div>
-
-            <div>
-              <div className="text-xs text-zinc-500">Telefono</div>
-              {animal?.owner_phone ? (
-                <a
-                  href={`tel:${normalizePhone(animal.owner_phone)}`}
-                  className="font-medium text-zinc-800 underline underline-offset-2 hover:text-zinc-950"
-                >
-                  {animal.owner_phone}
-                </a>
-              ) : (
-                <div className="text-zinc-600">—</div>
-              )}
-            </div>
-          </div>
-        </div>
       </div>
 
       <AnimalCodes
