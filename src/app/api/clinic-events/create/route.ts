@@ -206,6 +206,7 @@ export async function POST(req: Request) {
   if (vetSignatureMemberId) meta.created_by_member_id = vetSignatureMemberId;
   if (priority) meta.priority = priority;
   if (actorOrgName) meta.created_by_org_name = actorOrgName;
+  if (hasAttachments) meta.has_attachments = true;
 
   if (type === "therapy") {
     if (therapyStartDate) meta.therapy_start_date = therapyStartDate;
@@ -265,16 +266,33 @@ export async function POST(req: Request) {
       next_data: data,
     });
 
+    let animalRow:
+      | {
+          id: string;
+          name: string | null;
+          owner_id: string | null;
+          pending_owner_email: string | null;
+        }
+      | null = null;
+
     try {
-      const { data: animalRow, error: animalRowError } = await admin
+      const animalFetch = await admin
         .from("animals")
-        .select("id, name, owner_id")
+        .select("id, name, owner_id, pending_owner_email")
         .eq("id", animalId)
         .single();
 
-      if (animalRowError) {
-        console.error("[OWNER_NOTIFICATION_ANIMAL_FETCH_ERROR]", animalRowError);
-      } else if (animalRow?.owner_id && source !== "owner") {
+      if (animalFetch.error) {
+        console.error("[OWNER_NOTIFICATION_ANIMAL_FETCH_ERROR]", animalFetch.error);
+      } else {
+        animalRow = animalFetch.data;
+      }
+    } catch (animalReadError) {
+      console.error("[OWNER_NOTIFICATION_ANIMAL_FETCH_ERROR]", animalReadError);
+    }
+
+    try {
+      if (animalRow?.owner_id && source !== "owner") {
         await createClinicalEventOwnerNotification({
           ownerId: animalRow.owner_id,
           animalId: animalRow.id,
@@ -313,20 +331,27 @@ export async function POST(req: Request) {
 
     if (type === "vaccine" && body.reminderEnabled && body.remindEmail !== false) {
       try {
-        const { data: animalRow } = await admin
+        const { data: animalReminderRow } = await admin
           .from("animals")
-          .select("owner_id,name")
+          .select("owner_id, pending_owner_email, name")
           .eq("id", animalId)
           .single();
 
-        const ownerId = (animalRow as any)?.owner_id as string | undefined;
-        const animalName = ((animalRow as any)?.name as string | undefined) || "il tuo animale";
+        const ownerId = (animalReminderRow as any)?.owner_id as string | undefined;
+        const pendingOwnerEmail =
+          ((animalReminderRow as any)?.pending_owner_email as string | undefined)?.trim() || null;
+        const animalName =
+          ((animalReminderRow as any)?.name as string | undefined) || "il tuo animale";
 
         let ownerEmail: string | null = null;
 
         if (ownerId) {
           const authResp = await admin.auth.admin.getUserById(ownerId);
           ownerEmail = authResp?.data?.user?.email ?? null;
+        }
+
+        if (!ownerEmail && pendingOwnerEmail) {
+          ownerEmail = pendingOwnerEmail;
         }
 
         const nextDueDate =

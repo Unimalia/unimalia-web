@@ -1,4 +1,3 @@
-import crypto from "crypto";
 import { Resend } from "resend";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
@@ -34,14 +33,6 @@ type AnimalEmailRow = {
   owner_claim_status: "none" | "pending" | "claimed" | null;
   pending_owner_email: string | null;
   invite_email_count: number | null;
-};
-
-type OwnerProfileRow = {
-  id: string;
-  email?: string | null;
-  first_name?: string | null;
-  last_name?: string | null;
-  full_name?: string | null;
 };
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://unimalia.it").replace(/\/$/, "");
@@ -191,9 +182,7 @@ function renderMetaRows(meta: Record<string, any> | null | undefined) {
     .join("");
 }
 
-function renderAttachments(
-  attachments: SendOwnerAnimalUpdateEmailInput["attachments"]
-) {
+function renderAttachments(attachments: SendOwnerAnimalUpdateEmailInput["attachments"]) {
   if (!attachments || attachments.length === 0) return "";
 
   const items = attachments
@@ -227,29 +216,15 @@ function renderAttachments(
 async function resolveOwnerEmail(ownerId: string): Promise<string | null> {
   const admin = supabaseAdmin();
 
-  const ownerProfileResult = await admin
-    .from("profiles")
-    .select("id, email")
-    .eq("id", ownerId)
-    .maybeSingle();
-
-  const ownerProfile = ownerProfileResult.data as OwnerProfileRow | null;
-  const profileEmail =
-    typeof ownerProfile?.email === "string" ? ownerProfile.email.trim() : "";
-
-  if (profileEmail) {
-    return profileEmail;
+  try {
+    const authResp = await admin.auth.admin.getUserById(ownerId);
+    return authResp?.data?.user?.email?.trim() || null;
+  } catch {
+    return null;
   }
-
-  const authResp = await admin.auth.admin.getUserById(ownerId);
-  const authEmail = authResp?.data?.user?.email?.trim() || null;
-
-  return authEmail || null;
 }
 
-export async function sendOwnerAnimalUpdateEmail(
-  input: SendOwnerAnimalUpdateEmailInput
-) {
+export async function sendOwnerAnimalUpdateEmail(input: SendOwnerAnimalUpdateEmailInput) {
   const {
     animalId,
     eventTitle,
@@ -269,14 +244,16 @@ export async function sendOwnerAnimalUpdateEmail(
 
   const animalResult = await admin
     .from("animals")
-    .select(`
+    .select(
+      `
       id,
       name,
       owner_id,
       owner_claim_status,
       pending_owner_email,
       invite_email_count
-    `)
+    `
+    )
     .eq("id", animalId)
     .single();
 
@@ -287,56 +264,13 @@ export async function sendOwnerAnimalUpdateEmail(
   const animal = animalResult.data as AnimalEmailRow;
 
   let destinationEmail: string | null = null;
-  let inviteBlock = "";
-  const inviteCount = animal.invite_email_count ?? 0;
 
   if (animal.owner_id) {
     destinationEmail = await resolveOwnerEmail(animal.owner_id);
-  } else if (animal.pending_owner_email) {
+  }
+
+  if (!destinationEmail && animal.pending_owner_email) {
     destinationEmail = animal.pending_owner_email.trim() || null;
-
-    if (destinationEmail && inviteCount < 3) {
-      const token = crypto.randomUUID();
-
-      const claimInsert = await admin
-        .from("animal_owner_claims")
-        .insert({
-          animal_id: animal.id,
-          email: destinationEmail,
-          claim_token: token,
-          created_by: null,
-        })
-        .select("id")
-        .single();
-
-      if (claimInsert.error) {
-        throw new Error(claimInsert.error.message || "Errore creazione claim token");
-      }
-
-      if (inviteCount === 0) {
-        inviteBlock = `
-          <p>Per maggiori informazioni puoi visitare il sito ufficiale UNIMALIA:</p>
-          <p><a href="${SITE_URL}">${SITE_URL}</a></p>
-        `;
-      } else if (inviteCount === 1) {
-        inviteBlock = `
-          <p>Puoi consultare il sito ufficiale UNIMALIA qui:</p>
-          <p><a href="${SITE_URL}">${SITE_URL}</a></p>
-        `;
-      } else if (inviteCount === 2) {
-        inviteBlock = `
-          <p>Sito ufficiale UNIMALIA:</p>
-          <p><a href="${SITE_URL}">${SITE_URL}</a></p>
-        `;
-      }
-
-      await admin
-        .from("animals")
-        .update({
-          invite_email_count: inviteCount + 1,
-        })
-        .eq("id", animal.id);
-    }
   }
 
   if (!destinationEmail) {
@@ -403,7 +337,6 @@ export async function sendOwnerAnimalUpdateEmail(
       ${notesBlock}
       ${attachmentsBlock}
       ${siteBlock}
-      ${inviteBlock ? `<div style="margin-top: 24px;">${inviteBlock}</div>` : ""}
 
       <hr style="margin: 24px 0; border: 0; border-top: 1px solid #ddd;" />
 

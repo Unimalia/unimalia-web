@@ -87,7 +87,6 @@ export async function POST(req: Request) {
 
   const animalId = String(ev.animal_id);
 
-  // Nel tuo flusso chi può scrivere evento può anche caricare allegati
   const grant = await requireOwnerOrGrant(supabase, user.id, animalId, "write");
 
   if (!grant.ok) {
@@ -210,8 +209,6 @@ export async function POST(req: Request) {
     diff: { uploadedCount: uploaded.length },
   });
 
-  // Una sola mail, solo per eventi creati da professionista/veterinario
-  // e solo dopo che gli allegati sono stati salvati davvero
   try {
     if (ev.source !== "owner" && uploaded.length > 0) {
       const signedAttachments: Array<{ name: string; url: string }> = [];
