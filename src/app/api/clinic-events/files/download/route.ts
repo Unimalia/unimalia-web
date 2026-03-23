@@ -84,9 +84,46 @@ export async function GET(req: Request) {
   }
 
   const animalId = String(fileRow.animal_id);
+  const eventId = String(fileRow.event_id);
 
   const grant = await requireOwnerOrGrant(supabase, user.id, animalId, "read");
+
+  let canAccess = grant.ok;
+  let accessMode: "full" | "own_only" | "denied" = grant.ok ? "full" : "denied";
+
   if (!grant.ok) {
+    const { data: eventRow, error: eventError } = await admin
+      .from("animal_clinic_events")
+      .select("id, created_by, animal_id, status")
+      .eq("id", eventId)
+      .eq("animal_id", animalId)
+      .neq("status", "void")
+      .maybeSingle();
+
+    if (eventError) {
+      await writeAudit(supabase, {
+        req,
+        actor_user_id: user.id,
+        action: "file.download",
+        target_type: "file",
+        target_id: fileRow.id,
+        animal_id: animalId,
+        result: "error",
+        reason: eventError.message,
+      });
+
+      return NextResponse.json({ error: "Errore verifica accesso file." }, { status: 500 });
+    }
+
+    if (eventRow && eventRow.created_by === user.id) {
+      canAccess = true;
+      accessMode = "own_only";
+    }
+  }
+
+  if (!canAccess) {
+    const denyReason = grant.ok ? "Accesso negato" : grant.reason;
+
     await writeAudit(supabase, {
       req,
       actor_user_id: user.id,
@@ -95,10 +132,10 @@ export async function GET(req: Request) {
       target_id: fileRow.id,
       animal_id: animalId,
       result: "denied",
-      reason: grant.reason,
+      reason: denyReason,
     });
 
-    return NextResponse.json({ error: grant.reason }, { status: 403 });
+    return NextResponse.json({ error: denyReason }, { status: 403 });
   }
 
   const { data, error } = await admin.storage
@@ -109,7 +146,7 @@ export async function GET(req: Request) {
     await writeAudit(supabase, {
       req,
       actor_user_id: user.id,
-      actor_org_id: grant.actor_org_id,
+      actor_org_id: grant.ok ? grant.actor_org_id : null,
       action: "file.download",
       target_type: "file",
       target_id: fileRow.id,
@@ -124,17 +161,19 @@ export async function GET(req: Request) {
   await writeAudit(supabase, {
     req,
     actor_user_id: user.id,
-    actor_org_id: grant.actor_org_id,
+    actor_org_id: grant.ok ? grant.actor_org_id : null,
     action: "file.download",
     target_type: "file",
     target_id: fileRow.id,
     animal_id: animalId,
     result: "success",
+    reason: accessMode === "own_only" ? "fallback_own_event_file_only" : undefined,
   });
 
   return NextResponse.json(
     {
       ok: true,
+      mode: accessMode,
       url: data.signedUrl,
       filename: fileRow.filename ?? null,
     },

@@ -36,7 +36,44 @@ export async function GET(req: Request) {
 
     const grant = await requireOwnerOrGrant(supabase, user.id, animalId, "read");
 
+    let query = admin
+      .from("animal_clinic_events")
+      .select(
+        "id, animal_id, event_date, type, title, description, visibility, source, verified_at, verified_by, verified_by_org_id, verified_by_member_id, verified_by_label, created_by, created_at, updated_at, status, meta, priority"
+      )
+      .eq("animal_id", animalId)
+      .neq("status", "void")
+      .order("event_date", { ascending: false })
+      .order("created_at", { ascending: false });
+
     if (!grant.ok) {
+      // Fallback: senza grant il professionista vede solo gli eventi creati da lui.
+      // ASSUNZIONE: animal_clinic_events.created_by contiene user.id dell'utente autenticato.
+      query = query.eq("created_by", user.id);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      await writeAudit(supabase, {
+        req,
+        actor_user_id: user.id,
+        actor_org_id: grant.ok ? grant.actor_org_id : null,
+        action: "animal.clinic.read",
+        target_type: "animal",
+        target_id: animalId,
+        animal_id: animalId,
+        result: "error",
+        reason: error.message,
+      });
+
+      return NextResponse.json(
+        { error: error.message || "Impossibile caricare eventi." },
+        { status: 500 }
+      );
+    }
+
+    if (!grant.ok && (!data || data.length === 0)) {
       await writeAudit(supabase, {
         req,
         actor_user_id: user.id,
@@ -52,47 +89,26 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: grant.reason }, { status: 403 });
     }
 
-    const { data, error } = await admin
-      .from("animal_clinic_events")
-      .select(
-        "id, animal_id, event_date, type, title, description, visibility, source, verified_at, verified_by, verified_by_org_id, verified_by_member_id, verified_by_label, created_by, created_at, updated_at, status, meta, priority"
-      )
-      .eq("animal_id", animalId)
-      .neq("status", "void")
-      .order("event_date", { ascending: false })
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      await writeAudit(supabase, {
-        req,
-        actor_user_id: user.id,
-        actor_org_id: grant.actor_org_id,
-        action: "animal.clinic.read",
-        target_type: "animal",
-        target_id: animalId,
-        animal_id: animalId,
-        result: "error",
-        reason: error.message,
-      });
-
-      return NextResponse.json(
-        { error: error.message || "Impossibile caricare eventi." },
-        { status: 500 }
-      );
-    }
-
     await writeAudit(supabase, {
       req,
       actor_user_id: user.id,
-      actor_org_id: grant.actor_org_id,
+      actor_org_id: grant.ok ? grant.actor_org_id : null,
       action: "animal.clinic.read",
       target_type: "animal",
       target_id: animalId,
       animal_id: animalId,
       result: "success",
+      reason: grant.ok ? undefined : "fallback_own_events_only",
     });
 
-    return NextResponse.json({ ok: true, events: data ?? [] }, { status: 200 });
+    return NextResponse.json(
+      {
+        ok: true,
+        mode: grant.ok ? "full" : "own_only",
+        events: data ?? [],
+      },
+      { status: 200 }
+    );
   } catch (error: any) {
     return NextResponse.json(
       { error: error?.message || "Server error" },
