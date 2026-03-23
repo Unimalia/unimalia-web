@@ -720,6 +720,14 @@ export default function ProAnimalPage() {
       <section className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
         <h2 className="text-base font-semibold text-zinc-900">Microchip e codici</h2>
 
+        <div className="mt-4">
+          <AnimalCodes
+            qrValue={qrValue}
+            barcodeValue={barcodeValue}
+            caption="Da usare in emergenza o per verifica rapida."
+          />
+        </div>
+
         <div className="mt-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
           <div className="text-xs text-zinc-500">Numero</div>
 
@@ -742,14 +750,6 @@ export default function ProAnimalPage() {
               <span className="font-semibold text-zinc-900">{microchipVerifierLabel}</span>
             </div>
           ) : null}
-        </div>
-
-        <div className="mt-4">
-          <AnimalCodes
-            qrValue={qrValue}
-            barcodeValue={barcodeValue}
-            caption="Da usare in emergenza o per verifica rapida."
-          />
         </div>
       </section>
     </div>

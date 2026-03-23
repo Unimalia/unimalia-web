@@ -34,6 +34,29 @@ function CardLink({
   );
 }
 
+function categoryLabel(category: string | null, isVet: boolean) {
+  if (isVet) return "Veterinario";
+
+  switch ((category || "").trim()) {
+    case "toelettatura":
+      return "Toelettatura";
+    case "pensione":
+      return "Pensione";
+    case "pet_sitter":
+      return "Pet sitter & Dog walking";
+    case "addestramento":
+      return "Addestramento";
+    case "pet_detective":
+      return "Pet Detective";
+    case "ponte_arcobaleno":
+      return "Ponte dell’Arcobaleno";
+    case "altro":
+      return "Altro";
+    default:
+      return "Professionista";
+  }
+}
+
 export const dynamic = "force-dynamic";
 
 export default async function ProDashboardPage({
@@ -69,19 +92,20 @@ export default async function ProDashboardPage({
     category = professional?.category ?? null;
   }
 
+  const roleLabel = categoryLabel(category, isVet);
+
   return (
     <div className="mx-auto max-w-5xl p-6">
       <h1 className="text-2xl font-semibold">Dashboard</h1>
       <p className="mt-2 text-sm text-zinc-600">
         {isVet
           ? "Hub operativo del Portale Professionisti veterinari."
-          : "Hub operativo del Portale Professionisti."}
+          : "Hub operativo del Portale Professionisti non clinici."}
       </p>
 
       {displayName ? (
         <p className="mt-1 text-xs text-zinc-500">
-          {displayName}
-          {category ? ` • ${category}` : ""}
+          {displayName} • {roleLabel}
         </p>
       ) : null}
 
@@ -89,8 +113,8 @@ export default async function ProDashboardPage({
         <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5">
           <p className="text-sm font-semibold text-amber-900">Profilo in verifica</p>
           <p className="mt-2 text-sm leading-relaxed text-amber-800">
-            La scheda professionista è stata salvata correttamente. Il profilo sarà verificato entro 24/48 ore
-            prima dell’abilitazione completa delle funzioni riservate.
+            La scheda professionista è stata salvata correttamente. Il profilo sarà verificato entro
+            24/48 ore prima dell’abilitazione completa delle funzioni riservate.
           </p>
         </div>
       ) : null}
@@ -98,6 +122,20 @@ export default async function ProDashboardPage({
       {isVet ? (
         <div className="mt-6">
           <ClinicAgendaDashboardWidget />
+        </div>
+      ) : null}
+
+      {!isVet ? (
+        <div className="mt-6 rounded-2xl border border-zinc-200 bg-zinc-50 p-5">
+          <p className="text-sm font-semibold text-zinc-900">Area professionista non clinica</p>
+          <p className="mt-2 text-sm text-zinc-700">
+            Questa dashboard è dedicata a professionisti come addestratori, toelettatori, pet sitter,
+            pensioni, pet detective e altri operatori non veterinari.
+          </p>
+          <p className="mt-2 text-sm text-zinc-700">
+            La parte clinica resta separata e riservata ai veterinari. Per i professionisti generici,
+            il lavoro evolverà sulla sezione <strong>Storia animale</strong>.
+          </p>
         </div>
       ) : null}
 
@@ -135,11 +173,21 @@ export default async function ProDashboardPage({
             />
           </>
         ) : (
-          <CardLink
-            href="/professionisti/impostazioni"
-            title="Profilo professionista"
-            desc="Gestisci dati, categoria, contatti e visibilità del tuo profilo."
-          />
+          <>
+            <CardLink
+              href="/professionisti/animali"
+              title="Storia animale"
+              desc="Timeline non clinica dedicata alle attività del professionista: sessioni, trattamenti, note operative e promemoria futuri."
+              right="In arrivo"
+            />
+
+            <CardLink
+              href="/professionisti/animali"
+              title="Attività e progressi"
+              desc="Sezione futura per registrare lavori svolti, aggiornamenti, esercizi consigliati e prossime attività."
+              right="In arrivo"
+            />
+          </>
         )}
 
         <CardLink
