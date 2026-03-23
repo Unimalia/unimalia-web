@@ -40,6 +40,7 @@ const MACRO_CATEGORIES = [
   { key: "pensione", label: "Pensioni" },
   { key: "pet_sitter", label: "Pet sitter & Dog walking" },
   { key: "addestramento", label: "Addestramento" },
+  { key: "pet_detective", label: "Pet Detective" },
   { key: "ponte_arcobaleno", label: "Ponte dell’Arcobaleno" },
   { key: "altro", label: "Altro" },
 ];

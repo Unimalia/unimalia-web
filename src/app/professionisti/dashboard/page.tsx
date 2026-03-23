@@ -1,5 +1,6 @@
 import Link from "next/link";
 import ClinicAgendaDashboardWidget from "@/_components/professionisti/ClinicAgendaDashboardWidget";
+import { createServerSupabaseClient, supabaseAdmin } from "@/lib/supabase/server";
 
 function CardLink({
   href,
@@ -43,12 +44,46 @@ export default async function ProDashboardPage({
   const resolved = await searchParams;
   const showPendingBanner = resolved?.pending === "1";
 
+  const supabase = await createServerSupabaseClient();
+  const admin = supabaseAdmin();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  let isVet = false;
+  let displayName: string | null = null;
+  let category: string | null = null;
+
+  if (user) {
+    const { data: professional } = await admin
+      .from("professionals")
+      .select("display_name, category, is_vet")
+      .eq("owner_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    isVet = professional?.is_vet === true;
+    displayName = professional?.display_name ?? null;
+    category = professional?.category ?? null;
+  }
+
   return (
     <div className="mx-auto max-w-5xl p-6">
       <h1 className="text-2xl font-semibold">Dashboard</h1>
       <p className="mt-2 text-sm text-zinc-600">
-        Hub operativo del Portale Professionisti.
+        {isVet
+          ? "Hub operativo del Portale Professionisti veterinari."
+          : "Hub operativo del Portale Professionisti."}
       </p>
+
+      {displayName ? (
+        <p className="mt-1 text-xs text-zinc-500">
+          {displayName}
+          {category ? ` • ${category}` : ""}
+        </p>
+      ) : null}
 
       {showPendingBanner ? (
         <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5">
@@ -60,9 +95,11 @@ export default async function ProDashboardPage({
         </div>
       ) : null}
 
-      <div className="mt-6">
-        <ClinicAgendaDashboardWidget />
-      </div>
+      {isVet ? (
+        <div className="mt-6">
+          <ClinicAgendaDashboardWidget />
+        </div>
+      ) : null}
 
       <div className="mt-6 grid gap-3">
         <CardLink
@@ -77,23 +114,33 @@ export default async function ProDashboardPage({
           desc="Vedi solo animali con grant attivo per la tua struttura."
         />
 
-        <CardLink
-          href="/professionisti/richieste"
-          title="Consulti veterinari"
-          desc="Invia, ricevi e gestisci consulenze cliniche con altri veterinari, con condivisione della cartella animale."
-        />
+        {isVet ? (
+          <>
+            <CardLink
+              href="/professionisti/richieste"
+              title="Consulti veterinari"
+              desc="Invia, ricevi e gestisci consulenze cliniche con altri veterinari, con condivisione della cartella animale."
+            />
 
-        <CardLink
-          href="/professionisti/agenda"
-          title="Agenda clinica"
-          desc="Agenda integrata con appuntamenti, turni veterinari, stanze e accesso rapido alla gestione completa."
-        />
+            <CardLink
+              href="/professionisti/agenda"
+              title="Agenda clinica"
+              desc="Agenda integrata con appuntamenti, turni veterinari, stanze e accesso rapido alla gestione completa."
+            />
 
-        <CardLink
-          href="/professionisti/impostazioni/agenda"
-          title="Impostazioni agenda"
-          desc="Configura veterinari, turni settimanali, override per data, stanze e prestazioni."
-        />
+            <CardLink
+              href="/professionisti/impostazioni/agenda"
+              title="Impostazioni agenda"
+              desc="Configura veterinari, turni settimanali, override per data, stanze e prestazioni."
+            />
+          </>
+        ) : (
+          <CardLink
+            href="/professionisti/impostazioni"
+            title="Profilo professionista"
+            desc="Gestisci dati, categoria, contatti e visibilità del tuo profilo."
+          />
+        )}
 
         <CardLink
           href="/professionisti/impostazioni"

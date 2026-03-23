@@ -45,6 +45,8 @@ function macroLabel(key: string) {
       return "Pet sitter & Dog walking";
     case "addestramento":
       return "Addestramento";
+    case "pet_detective":
+      return "Pet Detective";
     case "ponte_arcobaleno":
       return "Ponte dell’Arcobaleno";
     case "altro":

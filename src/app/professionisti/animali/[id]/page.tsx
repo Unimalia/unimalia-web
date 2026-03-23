@@ -7,7 +7,6 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { isVetUser } from "@/app/professionisti/_components/ProShell";
-import { AnimalCodes } from "@/_components/animal/animal-codes";
 import { authHeaders } from "@/lib/client/authHeaders";
 import { getBarcodeValue, getQrValue } from "@/lib/animalCodes";
 import { buildClinicalQuickSummary } from "@/lib/clinic/quickSummary";
@@ -501,7 +500,7 @@ export default function ProAnimalPage() {
                     {animal?.owner_email ? (
                       <a
                         href={`mailto:${animal.owner_email}`}
-                        className="font-medium text-zinc-800 underline underline-offset-2 hover:text-zinc-950"
+                        className="font-medium break-all text-zinc-800 underline underline-offset-2 hover:text-zinc-950"
                       >
                         {animal.owner_email}
                       </a>
@@ -719,54 +718,19 @@ export default function ProAnimalPage() {
 
       <div className="grid gap-4 md:grid-cols-2">
         <section className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
-          <h2 className="text-base font-semibold text-zinc-900">Identità</h2>
+          <h2 className="text-base font-semibold text-zinc-900">QR Code</h2>
 
-          <dl className="mt-3 grid gap-2 text-sm">
-            <div className="flex justify-between gap-4">
-              <dt className="text-zinc-500">Nome</dt>
-              <dd className="font-medium text-zinc-900">{animal.name}</dd>
-            </div>
-
-            <div className="flex justify-between gap-4">
-              <dt className="text-zinc-500">Tipo</dt>
-              <dd className="font-medium text-zinc-900">{animal.species}</dd>
-            </div>
-
-            <div className="flex justify-between gap-4">
-              <dt className="text-zinc-500">Razza</dt>
-              <dd className="font-medium text-zinc-900">{animal.breed || "—"}</dd>
-            </div>
-
-            <div className="flex justify-between gap-4">
-              <dt className="text-zinc-500">Colore / segni</dt>
-              <dd className="font-medium text-zinc-900">{animal.color || "—"}</dd>
-            </div>
-
-            <div className="flex justify-between gap-4">
-              <dt className="text-zinc-500">Taglia</dt>
-              <dd className="font-medium text-zinc-900">{animal.size || "—"}</dd>
-            </div>
-          </dl>
-
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 text-sm">
-            <div>
-              <div className="text-zinc-500">Sesso</div>
-              <div className="font-semibold text-zinc-900">
-                {animal.sex === "M" ? "Maschio" : animal.sex === "F" ? "Femmina" : "—"}
-              </div>
-            </div>
-
-            <div>
-              <div className="text-zinc-500">Sterilizzato</div>
-              <div className="font-semibold text-zinc-900">
-                {animal.sterilized === true ? "Sì" : animal.sterilized === false ? "No" : "—"}
-              </div>
+          <div className="mt-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+            <div className="text-xs text-zinc-500">QR Code</div>
+            <div className="mt-2 break-all text-sm font-medium text-zinc-900">{qrValue || "—"}</div>
+            <div className="mt-3 text-xs text-zinc-500">
+              Da usare in emergenza o per verifica rapida.
             </div>
           </div>
         </section>
 
         <section className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
-          <h2 className="text-base font-semibold text-zinc-900">Microchip e codici</h2>
+          <h2 className="text-base font-semibold text-zinc-900">Barcode</h2>
 
           <div className="mt-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
             <div className="text-xs text-zinc-500">Numero</div>
@@ -790,14 +754,9 @@ export default function ProAnimalPage() {
                 <span className="font-semibold text-zinc-900">{microchipVerifierLabel}</span>
               </div>
             ) : null}
-          </div>
 
-          <div className="mt-4">
-            <AnimalCodes
-              qrValue={qrValue}
-              barcodeValue={barcodeValue}
-              caption="Da usare in emergenza o per verifica rapida."
-            />
+            <div className="mt-4 text-xs text-zinc-500">Codice a barre</div>
+            <div className="mt-1 text-sm font-semibold text-zinc-900">{barcodeValue || "—"}</div>
           </div>
         </section>
       </div>

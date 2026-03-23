@@ -62,6 +62,7 @@ const MACRO = [
   { key: "pet_sitter", label: "Pet sitter & Dog walking" },
   { key: "addestramento", label: "Addestramento" },
   { key: "ponte_arcobaleno", label: "Ponte dell’Arcobaleno" },
+  { key: "pet_detective", label: "Pet Detective" },
   { key: "altro", label: "Altro" },
 ] as const;
 
