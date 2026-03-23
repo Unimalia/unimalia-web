@@ -191,10 +191,7 @@ export async function GET(req: NextRequest) {
       events: (result.data ?? []) as AnimalHistoryEventRow[],
     });
   } catch (error: any) {
-    return NextResponse.json(
-      { error: error?.message || "Errore interno" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error?.message || "Errore interno" }, { status: 500 });
   }
 }
 
@@ -279,9 +276,6 @@ export async function POST(req: NextRequest) {
       { status: 201 }
     );
   } catch (error: any) {
-    return NextResponse.json(
-      { error: error?.message || "Errore interno" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error?.message || "Errore interno" }, { status: 500 });
   }
 }

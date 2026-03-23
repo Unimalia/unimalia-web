@@ -52,7 +52,7 @@ function statusLabel(status: string) {
   }
 }
 
-function emptyForm(): FormState {
+function createEmptyForm(): FormState {
   const now = new Date();
 
   return {
@@ -84,7 +84,7 @@ export default function ProAnimalHistoryPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveOk, setSaveOk] = useState<string | null>(null);
 
-  const [form, setForm] = useState<FormState>(emptyForm());
+  const [form, setForm] = useState<FormState>(createEmptyForm());
 
   const pageSubtitle = useMemo(() => {
     if (!animal) return "Timeline non clinica";
@@ -110,20 +110,19 @@ export default function ProAnimalHistoryPage() {
     }
 
     try {
+      const headers = {
+        ...(await authHeaders()),
+        "x-unimalia-app": "professionisti",
+      };
+
       const [animalRes, historyRes] = await Promise.all([
         fetch(`/api/professionisti/animal?animalId=${encodeURIComponent(id)}`, {
           cache: "no-store",
-          headers: {
-            ...(await authHeaders()),
-            "x-unimalia-app": "professionisti",
-          },
+          headers,
         }),
         fetch(`/api/professionisti/animal-history?animalId=${encodeURIComponent(id)}`, {
           cache: "no-store",
-          headers: {
-            ...(await authHeaders()),
-            "x-unimalia-app": "professionisti",
-          },
+          headers,
         }),
       ]);
 
@@ -209,7 +208,7 @@ export default function ProAnimalHistoryPage() {
         await loadAll();
       }
 
-      setForm(emptyForm());
+      setForm(createEmptyForm());
       setSaveOk("Evento salvato correttamente.");
     } catch {
       setSaveError("Errore di rete durante il salvataggio.");
@@ -234,7 +233,7 @@ export default function ProAnimalHistoryPage() {
 
   if (error || !animal) {
     return (
-      <div className="mx-auto max-w-6xl p-6 space-y-4">
+      <div className="mx-auto max-w-6xl space-y-4 p-6">
         <Link
           href="/professionisti/animali"
           className="inline-flex items-center text-sm font-semibold text-zinc-700 hover:text-zinc-900"
@@ -251,7 +250,7 @@ export default function ProAnimalHistoryPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl p-6 space-y-6">
+    <div className="mx-auto max-w-6xl space-y-6 p-6">
       <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
@@ -259,7 +258,8 @@ export default function ProAnimalHistoryPage() {
             <h1 className="mt-1 text-2xl font-semibold text-zinc-900">{animal.name}</h1>
             <p className="mt-2 text-sm text-zinc-600">{pageSubtitle}</p>
             <p className="mt-2 text-sm text-zinc-600">
-              Timeline non clinica condivisa. Nessun dato sanitario viene salvato qui.
+              Timeline pratica condivisa. I promemoria clinici impostati dai veterinari possono
+              comparire qui, ma la cartella sanitaria resta separata.
             </p>
           </div>
 
@@ -272,20 +272,19 @@ export default function ProAnimalHistoryPage() {
             </Link>
 
             <span className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-800">
-              Non clinico
+              Timeline pratica
             </span>
           </div>
         </div>
       </div>
 
       <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold text-zinc-900">Nuovo evento</h2>
-            <p className="mt-2 text-sm text-zinc-600">
-              Registra attività, servizi, note operative o promemoria non clinici.
-            </p>
-          </div>
+        <div>
+          <h2 className="text-lg font-semibold text-zinc-900">Nuovo evento</h2>
+          <p className="mt-2 text-sm text-zinc-600">
+            Registra servizi, attività o note non cliniche. I remind clinici arrivano qui
+            automaticamente dal ramo veterinario quando verrà collegato.
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="mt-5 grid gap-4 md:grid-cols-2">
@@ -370,10 +369,7 @@ export default function ProAnimalHistoryPage() {
             <select
               value={form.status}
               onChange={(e) =>
-                updateForm(
-                  "status",
-                  e.target.value as "planned" | "completed" | "cancelled"
-                )
+                updateForm("status", e.target.value as "planned" | "completed" | "cancelled")
               }
               className="w-full rounded-xl border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
             >
@@ -388,10 +384,7 @@ export default function ProAnimalHistoryPage() {
             <select
               value={form.visibility}
               onChange={(e) =>
-                updateForm(
-                  "visibility",
-                  e.target.value as "shared" | "professionals"
-                )
+                updateForm("visibility", e.target.value as "shared" | "professionals")
               }
               className="w-full rounded-xl border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
             >
@@ -412,7 +405,7 @@ export default function ProAnimalHistoryPage() {
           </div>
 
           {(saveError || saveOk) && (
-            <div className="md:col-span-2">
+            <div className="md:col-span-2 space-y-3">
               {saveError ? (
                 <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                   {saveError}
@@ -440,13 +433,11 @@ export default function ProAnimalHistoryPage() {
       </section>
 
       <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold text-zinc-900">Timeline</h2>
-            <p className="mt-2 text-sm text-zinc-600">
-              Cronologia non clinica dell’animale.
-            </p>
-          </div>
+        <div>
+          <h2 className="text-lg font-semibold text-zinc-900">Timeline</h2>
+          <p className="mt-2 text-sm text-zinc-600">
+            Cronologia pratica dell’animale, separata dalla cartella clinica.
+          </p>
         </div>
 
         {eventsError ? (

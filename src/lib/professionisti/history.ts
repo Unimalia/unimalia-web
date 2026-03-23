@@ -6,6 +6,7 @@ export const HISTORY_SOURCE_SCOPES = [
   "owner_reminder",
   "professional_service",
   "professional_note",
+  "clinical_reminder",
 ] as const;
 export type HistorySourceScope = (typeof HISTORY_SOURCE_SCOPES)[number];
 
@@ -17,6 +18,7 @@ export const HISTORY_CATEGORIES = [
   "pet_sitter",
   "pet_detective",
   "altro",
+  "clinica",
 ] as const;
 export type HistoryCategory = (typeof HISTORY_CATEGORIES)[number];
 
@@ -80,6 +82,7 @@ export const historyCategoryLabels: Record<HistoryCategory, string> = {
   pet_sitter: "Pet sitter",
   pet_detective: "Pet detective",
   altro: "Altro",
+  clinica: "Clinica",
 };
 
 export const historyStatusLabels: Record<HistoryStatus, string> = {
@@ -99,6 +102,7 @@ export const historySourceScopeLabels: Record<HistorySourceScope, string> = {
   owner_reminder: "Promemoria owner",
   professional_service: "Servizio professionista",
   professional_note: "Nota professionista",
+  clinical_reminder: "Promemoria clinico",
 };
 
 function isObject(value: unknown): value is Record<string, unknown> {

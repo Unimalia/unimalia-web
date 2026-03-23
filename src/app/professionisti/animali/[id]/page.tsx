@@ -380,10 +380,12 @@ export default function ProAnimalPage() {
               Torna allo scanner
             </Link>
 
-            <span className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-2 text-sm font-semibold text-zinc-600">
+            <Link
+              href={`/professionisti/animali/${animal.id}/storia`}
+              className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+            >
               Storia animale
-              <span className="ml-2 text-xs font-medium text-zinc-400">(in arrivo)</span>
-            </span>
+            </Link>
 
             <Link
               href="/professionisti/richieste"
@@ -669,9 +671,7 @@ export default function ProAnimalPage() {
             <div className="text-xs text-zinc-500">Patologie croniche</div>
 
             {!Array.isArray(chronicPathologiesDisplay) ? (
-              <div className="mt-1 font-semibold text-zinc-900">
-                {chronicPathologiesDisplay}
-              </div>
+              <div className="mt-1 font-semibold text-zinc-900">{chronicPathologiesDisplay}</div>
             ) : (
               <ul className="mt-1 space-y-1 text-xs text-zinc-800">
                 {chronicPathologiesDisplay.map((item, index) => (

@@ -286,14 +286,12 @@ export async function POST(req: NextRequest) {
 
     let orgId: string | null = null;
 
-    // 1) tentativo standard
     try {
       orgId = await getProfessionalOrgId();
     } catch {
       orgId = null;
     }
 
-    // 2) fallback da professional_profiles
     if (!orgId) {
       const profileResult = await admin
         .from("professional_profiles")
@@ -306,7 +304,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 3) controllo finale
     if (!orgId) {
       return NextResponse.json(
         { error: "Profilo professionista non collegato a una organizzazione." },
@@ -314,7 +311,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 4) verifica esistenza organization
     const { data: orgRow, error: orgError } = await admin
       .from("organizations")
       .select("id")
@@ -403,6 +399,70 @@ export async function POST(req: NextRequest) {
         { error: created.error?.message || "Errore creazione animale" },
         { status: 500 }
       );
+    }
+
+    const existingGrantResult = await admin
+      .from("animal_access_grants")
+      .select("id, status, revoked_at")
+      .eq("animal_id", created.data.id)
+      .eq("grantee_type", "org")
+      .eq("grantee_id", orgId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (existingGrantResult.error) {
+      return NextResponse.json(
+        { error: existingGrantResult.error.message || "Errore verifica grant clinica" },
+        { status: 500 }
+      );
+    }
+
+    if (existingGrantResult.data?.id) {
+      const shouldReactivate =
+        existingGrantResult.data.status !== "active" || !!existingGrantResult.data.revoked_at;
+
+      if (shouldReactivate) {
+        const reactivateGrant = await admin
+          .from("animal_access_grants")
+          .update({
+            granted_by_user_id: user.id,
+            status: "active",
+            revoked_at: null,
+            valid_to: null,
+            scope_read: true,
+            scope_write: true,
+            scope_upload: true,
+          })
+          .eq("id", existingGrantResult.data.id);
+
+        if (reactivateGrant.error) {
+          return NextResponse.json(
+            { error: reactivateGrant.error.message || "Errore riattivazione grant clinica" },
+            { status: 500 }
+          );
+        }
+      }
+    } else {
+      const insertGrant = await admin.from("animal_access_grants").insert({
+        animal_id: created.data.id,
+        grantee_type: "org",
+        grantee_id: orgId,
+        granted_by_user_id: user.id,
+        status: "active",
+        valid_to: null,
+        revoked_at: null,
+        scope_read: true,
+        scope_write: true,
+        scope_upload: true,
+      });
+
+      if (insertGrant.error) {
+        return NextResponse.json(
+          { error: insertGrant.error.message || "Errore creazione grant clinica" },
+          { status: 500 }
+        );
+      }
     }
 
     return NextResponse.json(
