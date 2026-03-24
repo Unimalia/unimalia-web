@@ -13,6 +13,9 @@ export type ManagedAnimalRow = {
   created_by_org_id: string | null;
   origin_org_id: string | null;
   owner_name: string | null;
+  grant_status: "active" | "revoked_own_history" | "clinic_origin";
+  has_active_grant: boolean;
+  has_own_history: boolean;
 };
 
 async function getProfessionalRefs(userId: string) {
@@ -105,16 +108,14 @@ export async function getManagedAnimals(userId: string): Promise<ManagedAnimalRo
     )
   );
 
+  const grantedAnimalIdSet = new Set<string>(grantedAnimalIds);
+
   const createdOrOriginatedIds = new Set<string>();
 
   const { data: createdOrOriginated, error: createdError } = await admin
     .from("animals")
     .select("id, created_by_org_id, origin_org_id")
-    .or(
-      refs
-        .map((ref) => `created_by_org_id.eq.${ref},origin_org_id.eq.${ref}`)
-        .join(",")
-    )
+    .or(refs.map((ref) => `created_by_org_id.eq.${ref},origin_org_id.eq.${ref}`).join(","))
     .limit(5000);
 
   if (createdError) {
@@ -125,8 +126,28 @@ export async function getManagedAnimals(userId: string): Promise<ManagedAnimalRo
     if (row.id) createdOrOriginatedIds.add(row.id);
   }
 
+  const { data: ownHistoryRows, error: ownHistoryError } = await admin
+    .from("animal_clinic_events")
+    .select("animal_id")
+    .eq("created_by", userId)
+    .neq("status", "void")
+    .limit(5000);
+
+  if (ownHistoryError) {
+    throw ownHistoryError;
+  }
+
+  const ownHistoryAnimalIds = Array.from(
+    new Set((ownHistoryRows ?? []).map((row: any) => row.animal_id).filter(Boolean))
+  );
+  const ownHistoryAnimalIdSet = new Set<string>(ownHistoryAnimalIds);
+
   const animalIds = Array.from(
-    new Set([...grantedAnimalIds, ...Array.from(createdOrOriginatedIds)])
+    new Set([
+      ...grantedAnimalIds,
+      ...Array.from(createdOrOriginatedIds),
+      ...ownHistoryAnimalIds,
+    ])
   );
 
   if (animalIds.length === 0) {
@@ -170,17 +191,39 @@ export async function getManagedAnimals(userId: string): Promise<ManagedAnimalRo
     }
   }
 
-  return (animals ?? []).map((row: any) => ({
-    id: row.id,
-    name: row.name ?? null,
-    species: row.species ?? null,
-    breed: row.breed ?? null,
-    microchip: row.chip_number ?? null,
-    unimalia_code: row.unimalia_code ?? null,
-    owner_id: row.owner_id ?? null,
-    owner_claim_status: row.owner_claim_status ?? null,
-    created_by_org_id: row.created_by_org_id ?? null,
-    origin_org_id: row.origin_org_id ?? null,
-    owner_name: row.owner_id ? ownerNameById.get(row.owner_id) ?? null : null,
-  }));
+  return (animals ?? []).map((row: any) => {
+    const hasActiveGrant = grantedAnimalIdSet.has(row.id);
+    const hasOwnHistory = ownHistoryAnimalIdSet.has(row.id);
+    const isClinicOrigin =
+      createdOrOriginatedIds.has(row.id) ||
+      refs.includes(String(row.created_by_org_id ?? "")) ||
+      refs.includes(String(row.origin_org_id ?? ""));
+
+    let grantStatus: "active" | "revoked_own_history" | "clinic_origin" = "clinic_origin";
+
+    if (hasActiveGrant) {
+      grantStatus = "active";
+    } else if (hasOwnHistory) {
+      grantStatus = "revoked_own_history";
+    } else if (isClinicOrigin) {
+      grantStatus = "clinic_origin";
+    }
+
+    return {
+      id: row.id,
+      name: row.name ?? null,
+      species: row.species ?? null,
+      breed: row.breed ?? null,
+      microchip: row.chip_number ?? null,
+      unimalia_code: row.unimalia_code ?? null,
+      owner_id: row.owner_id ?? null,
+      owner_claim_status: row.owner_claim_status ?? null,
+      created_by_org_id: row.created_by_org_id ?? null,
+      origin_org_id: row.origin_org_id ?? null,
+      owner_name: row.owner_id ? ownerNameById.get(row.owner_id) ?? null : null,
+      grant_status: grantStatus,
+      has_active_grant: hasActiveGrant,
+      has_own_history: hasOwnHistory,
+    };
+  });
 }
