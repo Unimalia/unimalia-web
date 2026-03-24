@@ -9,9 +9,7 @@ async function getAuthenticatedUserId() {
     error,
   } = await supabase.auth.getUser();
 
-  if (error || !user) {
-    return null;
-  }
+  if (error || !user) return null;
 
   return user.id;
 }
@@ -28,25 +26,16 @@ async function resolveProfessionalRefs(userId: string) {
     .eq("user_id", userId)
     .maybeSingle();
 
-  if (profileResult.error) {
-    throw profileResult.error;
-  }
-
   if (profileResult.data?.org_id) {
     refs.add(profileResult.data.org_id);
   }
 
   const professionalResult = await admin
     .from("professionals")
-    .select("id, owner_id")
+    .select("id")
     .eq("owner_id", userId)
-    .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
-
-  if (professionalResult.error) {
-    throw professionalResult.error;
-  }
 
   if (professionalResult.data?.id) {
     refs.add(professionalResult.data.id);
@@ -62,66 +51,29 @@ export async function hasActiveGrantForAnimal(animalId: string) {
   const admin = supabaseAdmin();
   const refs = await resolveProfessionalRefs(userId);
 
-  if (refs.length === 0) {
-    return false;
-  }
-
-  const { data: animal, error: animalError } = await admin
-    .from("animals")
-    .select("id, owner_id, created_by_org_id, origin_org_id")
-    .eq("id", animalId)
-    .maybeSingle();
-
-  if (animalError) {
-    throw animalError;
-  }
-
-  if (!animal) {
-    return false;
-  }
-
-  const createdOrOriginAccess =
-    refs.includes(String(animal.created_by_org_id ?? "")) ||
-    refs.includes(String(animal.origin_org_id ?? ""));
-
-  if (createdOrOriginAccess) {
-    return true;
-  }
-
-  const { data: grants, error: grantsError } = await admin
+  const { data: grants } = await admin
     .from("animal_access_grants")
     .select(
-      "id, grantee_type, grantee_id, status, valid_from, valid_to, revoked_at, scope_read, scope_write"
+      "grantee_type, grantee_id, status, valid_from, valid_to, revoked_at, scope_read, scope_write"
     )
     .eq("animal_id", animalId)
     .is("revoked_at", null)
     .in("status", ["active", "approved"]);
 
-  if (grantsError) {
-    throw grantsError;
-  }
-
   const now = Date.now();
 
-  const activeGrant = (grants ?? []).find((g: any) => {
-    const validFrom = g.valid_from ? new Date(g.valid_from).getTime() : 0;
-    const validTo = g.valid_to ? new Date(g.valid_to).getTime() : Infinity;
+  return Boolean(
+    (grants || []).find((g: any) => {
+      const from = g.valid_from ? new Date(g.valid_from).getTime() : 0;
+      const to = g.valid_to ? new Date(g.valid_to).getTime() : Infinity;
 
-    if (Number.isFinite(validFrom) && now < validFrom) return false;
-    if (Number.isFinite(validTo) && now > validTo) return false;
+      if (now < from || now > to) return false;
+      if (!g.scope_read && !g.scope_write) return false;
 
-    if (!g.scope_read && !g.scope_write) return false;
+      if (g.grantee_type === "user" && g.grantee_id === userId) return true;
+      if (g.grantee_type === "org" && refs.includes(String(g.grantee_id))) return true;
 
-    if (g.grantee_type === "user" && g.grantee_id === userId) {
-      return true;
-    }
-
-    if (g.grantee_type === "org" && refs.includes(String(g.grantee_id))) {
-      return true;
-    }
-
-    return false;
-  });
-
-  return Boolean(activeGrant);
+      return false;
+    })
+  );
 }

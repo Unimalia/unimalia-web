@@ -15,7 +15,8 @@ type ClinicEventType =
   | "surgery"
   | "note"
   | "chronic_condition"
-  | "follow_up";
+  | "follow_up"
+  | "imaging";
 
 type ClinicEventRow = {
   id: string;
@@ -69,13 +70,15 @@ type FilterKey =
   | "feeding"
   | "surgery"
   | "chronic_condition"
-  | "follow_up";
+  | "follow_up"
+  | "imaging";
 
 const FILTERS: Array<{ key: FilterKey; label: string }> = [
   { key: "all", label: "Tutti" },
   { key: "visit", label: "Visite" },
   { key: "vaccine", label: "Vaccini" },
   { key: "exam", label: "Esami" },
+  { key: "imaging", label: "Imaging" },
   { key: "therapy", label: "Terapie" },
   { key: "chronic_condition", label: "Patologie croniche" },
   { key: "follow_up", label: "Ricontrolli" },
@@ -106,6 +109,8 @@ function typeLabel(t: ClinicEventType) {
       return "Nota";
     case "surgery":
       return "Intervento chirurgico";
+    case "imaging":
+      return "Imaging";
     default:
       return t;
   }
@@ -129,6 +134,8 @@ function typeIcon(t: ClinicEventType | string) {
       return "📌";
     case "follow_up":
       return "🔁";
+    case "imaging":
+      return "🖼️";
     default:
       return "📄";
   }
@@ -472,6 +479,33 @@ export default function ClinicaPage() {
       setFilesCountByEventId(counts);
     } catch {
       // no-op
+    }
+  }
+
+  async function openImagingFile(eventId: string, filePath: string) {
+    try {
+      const res = await fetch("/api/clinic/imaging/download", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(await authHeaders()),
+        },
+        body: JSON.stringify({
+          eventId,
+          filePath,
+        }),
+      });
+
+      const json = await res.json().catch(() => ({}));
+
+      if (!res.ok || !json?.url) {
+        alert(json?.error || "Impossibile aprire il file imaging.");
+        return;
+      }
+
+      window.open(json.url, "_blank", "noopener,noreferrer");
+    } catch {
+      alert("Errore di rete durante l'apertura del file imaging.");
     }
   }
 
@@ -1830,6 +1864,64 @@ export default function ClinicaPage() {
                             </div>
                           ) : null}
 
+                          {detailEvent.type === "imaging" ? (
+                            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+                              <div className="text-xs font-semibold text-zinc-700">
+                                Dati imaging
+                              </div>
+
+                              <div className="mt-3 space-y-2 text-sm text-zinc-700">
+                                <div>
+                                  <span className="font-semibold">Modalità:</span>{" "}
+                                  {detailEvent.meta?.imaging?.modality || "—"}
+                                </div>
+                                <div>
+                                  <span className="font-semibold">Distretto:</span>{" "}
+                                  {detailEvent.meta?.imaging?.body_part || "—"}
+                                </div>
+                              </div>
+
+                              {Array.isArray(detailEvent.meta?.imaging?.files) &&
+                              detailEvent.meta.imaging.files.length > 0 ? (
+                                <div className="mt-4 space-y-3">
+                                  {detailEvent.meta.imaging.files.map((file: any) => (
+                                    <div
+                                      key={file.id || file.path}
+                                      className="rounded-xl border border-zinc-200 bg-white px-3 py-3"
+                                    >
+                                      <div className="text-sm font-semibold text-zinc-900">
+                                        {file.name || "File imaging"}
+                                      </div>
+
+                                      <div className="mt-1 text-xs text-zinc-500">
+                                        {file.mime || "mime sconosciuto"}
+                                        {typeof file.size === "number"
+                                          ? ` • ${Math.round(file.size / 1024)} KB`
+                                          : ""}
+                                      </div>
+
+                                      <div className="mt-3">
+                                        <button
+                                          type="button"
+                                          className="rounded-xl bg-black px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-900"
+                                          onClick={() =>
+                                            void openImagingFile(detailEvent.id, file.path)
+                                          }
+                                        >
+                                          Apri file
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="mt-3 text-xs text-zinc-600">
+                                  Nessun file imaging associato.
+                                </div>
+                              )}
+                            </div>
+                          ) : null}
+
                           <div className="rounded-2xl border border-zinc-200 bg-white p-4">
                             <div className="text-xs font-semibold text-zinc-700">Allegati</div>
 
@@ -1980,6 +2072,7 @@ export default function ClinicaPage() {
                                 <option value="visit">🩺 Visita</option>
                                 <option value="vaccine">💉 Vaccinazione</option>
                                 <option value="exam">🔬 Esame</option>
+                                <option value="imaging">🖼️ Imaging</option>
                                 <option value="therapy">💊 Terapia</option>
                                 <option value="chronic_condition">📌 Patologia cronica</option>
                                 <option value="follow_up">🔁 Prossimo ricontrollo</option>
