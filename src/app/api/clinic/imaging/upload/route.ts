@@ -34,6 +34,36 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "File mancante" }, { status: 400 });
     }
 
+    if (!animalId) {
+      return NextResponse.json({ error: "animalId mancante" }, { status: 400 });
+    }
+
+    const allowedImagingMimeTypes = new Set([
+      "application/dicom",
+      "application/pdf",
+      "image/jpeg",
+      "image/png",
+    ]);
+
+    const allowedImagingExtensions = [".dcm", ".dicom", ".pdf", ".jpg", ".jpeg", ".png"];
+
+    const lowerName = String(file.name || "").toLowerCase();
+    const hasAllowedExtension = allowedImagingExtensions.some((ext) => lowerName.endsWith(ext));
+    const hasAllowedMime = !file.type || allowedImagingMimeTypes.has(file.type);
+
+    if (!hasAllowedExtension && !hasAllowedMime) {
+      return NextResponse.json(
+        {
+          error: "Formato imaging non consentito. Usa DCM, DICOM, PDF, JPG o PNG.",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (file.size <= 0) {
+      return NextResponse.json({ error: "File imaging non valido." }, { status: 400 });
+    }
+
     if (typeof animalId !== "string" || !animalId.trim()) {
       return NextResponse.json({ error: "animalId mancante" }, { status: 400 });
     }
@@ -79,7 +109,6 @@ export async function POST(req: Request) {
 
     const title = buildImagingTitle(finalModality, finalBodyPart);
 
-    // ✅ BLOCCO eventMeta (già corretto)
     const eventMeta = {
       has_attachments: true,
       imaging: {

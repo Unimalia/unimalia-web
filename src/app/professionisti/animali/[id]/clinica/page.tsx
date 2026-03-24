@@ -1341,19 +1341,47 @@ export default function ClinicaPage() {
             </label>
 
             <label className="block md:col-span-5">
-              <span className={FIELD_LABEL_CLASS}>Allegati</span>
+              <span className={FIELD_LABEL_CLASS}>
+                {newType === "imaging" ? "File imaging" : "Allegati"}
+              </span>
               <input
                 type="file"
-                multiple
+                multiple={newType !== "imaging"}
+                accept={
+                  newType === "imaging"
+                    ? ".dcm,application/dicom,.dicom,image/jpeg,image/png,application/pdf"
+                    : ".pdf,image/jpeg,image/png,image/webp"
+                }
                 className={FILE_INPUT_CLASS}
                 onChange={(e) => {
                   const list = Array.from(e.target.files || []);
+
+                  if (newType === "imaging" && list.length > 1) {
+                    setSaveErr("Per imaging puoi caricare un solo file alla volta.");
+                    setNewFiles(list.slice(0, 1));
+                    return;
+                  }
+
+                  setSaveErr(null);
                   setNewFiles(list);
                 }}
               />
+
+              {newType === "imaging" ? (
+                <div className="mt-1.5 text-[11px] leading-5 text-zinc-600">
+                  Formati ammessi imaging:{" "}
+                  <span className="font-semibold">.dcm, .dicom, PDF, JPG, PNG</span>
+                </div>
+              ) : (
+                <div className="mt-1.5 text-[11px] leading-5 text-zinc-600">
+                  Formati ammessi: <span className="font-semibold">PDF, JPG, PNG, WEBP</span>
+                </div>
+              )}
+
               {newFiles.length > 0 ? (
                 <div className="mt-1.5 text-[11px] leading-5 text-zinc-600">
                   📎 <span className="font-semibold">{newFiles.length}</span>
+                  {newType === "imaging" ? ` • ${newFiles[0]?.name || ""}` : ""}
                 </div>
               ) : null}
             </label>
@@ -1462,6 +1490,11 @@ export default function ClinicaPage() {
                     placeholder="Es. Torace, Addome, Arto anteriore destro"
                   />
                 </label>
+
+                <div className="md:col-span-12 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-medium text-amber-800">
+                  Per gli eventi imaging il file diagnostico va caricato solo qui e verrà salvato
+                  su storage dedicato Cloudflare.
+                </div>
               </div>
             ) : null}
 
@@ -1501,7 +1534,11 @@ export default function ClinicaPage() {
                 disabled={!canSave}
                 onClick={() => void saveClinicEvent()}
               >
-                {saving ? "Salvataggio…" : "Salva evento e aggiorna timeline"}
+                {saving
+                  ? "Salvataggio…"
+                  : newType === "imaging"
+                    ? "Salva imaging"
+                    : "Salva evento e aggiorna timeline"}
               </button>
             </div>
           </div>
