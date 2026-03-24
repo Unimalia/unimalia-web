@@ -2008,35 +2008,57 @@ export default function ClinicaPage() {
                               {Array.isArray(detailEvent.meta?.imaging?.files) &&
                               detailEvent.meta.imaging.files.length > 0 ? (
                                 <div className="mt-4 space-y-3">
-                                  {detailEvent.meta.imaging.files.map((file: any) => (
-                                    <div
-                                      key={file.id || file.path}
-                                      className="rounded-xl border border-zinc-200 bg-white px-3 py-3"
-                                    >
-                                      <div className="text-sm font-semibold text-zinc-900">
-                                        {file.name || "File imaging"}
-                                      </div>
+                                  {detailEvent.meta.imaging.files.map((file: any) => {
+                                    const isImage =
+                                      file.mime?.startsWith("image/") ||
+                                      file.name?.toLowerCase().endsWith(".jpg") ||
+                                      file.name?.toLowerCase().endsWith(".png");
 
-                                      <div className="mt-1 text-xs text-zinc-500">
-                                        {file.mime || "mime sconosciuto"}
-                                        {typeof file.size === "number"
-                                          ? ` • ${Math.round(file.size / 1024)} KB`
-                                          : ""}
-                                      </div>
+                                    return (
+                                      <div
+                                        key={file.id || file.path}
+                                        className="rounded-xl border border-zinc-200 bg-white p-3"
+                                      >
+                                        <div className="flex items-start justify-between gap-3">
+                                          <div className="min-w-0">
+                                            <div className="text-sm font-semibold text-zinc-900 truncate">
+                                              {file.name || "File imaging"}
+                                            </div>
 
-                                      <div className="mt-3">
-                                        <button
-                                          type="button"
-                                          className="rounded-xl bg-black px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-900"
-                                          onClick={() =>
-                                            void openImagingFile(detailEvent.id, file.path)
-                                          }
-                                        >
-                                          Apri file
-                                        </button>
+                                            <div className="mt-1 text-xs text-zinc-500">
+                                              {file.mime || "mime sconosciuto"}
+                                              {typeof file.size === "number"
+                                                ? ` • ${Math.round(file.size / 1024)} KB`
+                                                : ""}
+                                            </div>
+                                          </div>
+
+                                          <button
+                                            type="button"
+                                            className="shrink-0 rounded-xl bg-black px-3 py-2 text-xs font-semibold text-white"
+                                            onClick={() =>
+                                              void openImagingFile(detailEvent.id, file.path)
+                                            }
+                                          >
+                                            Apri
+                                          </button>
+                                        </div>
+
+                                        {isImage ? (
+                                          <div className="mt-3">
+                                            <img
+                                              src="#"
+                                              alt="preview"
+                                              className="max-h-40 w-full rounded-lg object-cover bg-zinc-100"
+                                              onClick={() =>
+                                                void openImagingFile(detailEvent.id, file.path)
+                                              }
+                                            />
+                                          </div>
+                                        ) : null}
                                       </div>
-                                    </div>
-                                  ))}
+                                    );
+                                  })}
                                 </div>
                               ) : (
                                 <div className="mt-3 text-xs text-zinc-600">
