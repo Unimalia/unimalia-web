@@ -85,6 +85,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Event not found" }, { status: 404 });
   }
 
+  if (ev.type === "imaging") {
+    return NextResponse.json(
+      {
+        error: "Per gli eventi imaging usa solo il caricamento dedicato imaging.",
+      },
+      { status: 400 }
+    );
+  }
+
   const animalId = String(ev.animal_id);
 
   const grant = await requireOwnerOrGrant(supabase, user.id, animalId, "write");

@@ -54,10 +54,22 @@ function hasRequiredScope(grant: any, scope: Scope) {
     return grant.scope_write === true;
   }
 
-  // upload: compatibilità retroattiva
-  // se un grant storico ha write=true ma upload=false/null,
-  // consideriamo comunque valido l'upload
   return grant.scope_upload === true || grant.scope_write === true;
+}
+
+function isGrantActiveNow(grant: any) {
+  if (!grant) return false;
+  if (grant.revoked_at) return false;
+  if (grant.status !== "active") return false;
+
+  const now = Date.now();
+  const from = grant.valid_from ? new Date(grant.valid_from).getTime() : 0;
+  const to = grant.valid_to ? new Date(grant.valid_to).getTime() : Infinity;
+
+  if (Number.isFinite(from) && now < from) return false;
+  if (Number.isFinite(to) && now > to) return false;
+
+  return true;
 }
 
 export async function requireOwnerOrGrant(
@@ -87,27 +99,18 @@ export async function requireOwnerOrGrant(
     .select(
       "id, grantee_type, grantee_id, scope_read, scope_write, scope_upload, valid_from, valid_to, status, revoked_at"
     )
-    .eq("animal_id", animalId)
-    .in("status", ["active", "approved"])
-    .is("revoked_at", null);
+    .eq("animal_id", animalId);
 
   if (gErr) {
     return { ok: false, reason: "Errore permessi (grants)." };
   }
 
-  const now = Date.now();
+  const activeGrants = (grants || []).filter((g: any) => isGrantActiveNow(g));
 
-  const isTimeOk = (g: any) => {
-    const from = g.valid_from ? new Date(g.valid_from).getTime() : 0;
-    const to = g.valid_to ? new Date(g.valid_to).getTime() : Infinity;
-    return now >= from && now <= to;
-  };
-
-  const userGrant = (grants || []).find(
+  const userGrant = activeGrants.find(
     (g: any) =>
       g.grantee_type === "user" &&
-      g.grantee_id === userId &&
-      isTimeOk(g) &&
+      String(g.grantee_id) === String(userId) &&
       hasRequiredScope(g, scope)
   );
 
@@ -117,11 +120,10 @@ export async function requireOwnerOrGrant(
 
   const refs = await resolveProfessionalRefs(userId);
 
-  const orgGrant = (grants || []).find(
+  const orgGrant = activeGrants.find(
     (g: any) =>
       g.grantee_type === "org" &&
       refs.includes(String(g.grantee_id)) &&
-      isTimeOk(g) &&
       hasRequiredScope(g, scope)
   );
 
@@ -135,6 +137,6 @@ export async function requireOwnerOrGrant(
 
   return {
     ok: false,
-    reason: "Accesso negato: nessun consenso attivo (grant) per questo animale.",
+    reason: "Accesso negato: nessun grant attivo per questo animale.",
   };
 }
