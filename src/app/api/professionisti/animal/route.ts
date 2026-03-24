@@ -243,13 +243,40 @@ export async function GET(req: NextRequest) {
 
     const hasGrant = Boolean(activeGrant);
 
-    const canAccess =
-      hasGrant ||
+    const isClinicOrigin =
       refs.includes(String(animal.created_by_org_id ?? "")) ||
       refs.includes(String(animal.origin_org_id ?? ""));
 
+    const ownEventsResult = await admin
+      .from("animal_clinic_events")
+      .select("id", { count: "exact", head: true })
+      .eq("animal_id", animal.id)
+      .eq("created_by", user.id)
+      .neq("status", "void");
+
+    if (ownEventsResult.error) {
+      return NextResponse.json(
+        { error: ownEventsResult.error.message || "Errore verifica storico clinico" },
+        { status: 500 }
+      );
+    }
+
+    const hasOwnHistory = (ownEventsResult.count ?? 0) > 0;
+
+    const canAccess = hasGrant || isClinicOrigin || hasOwnHistory;
+
     if (!canAccess) {
       return NextResponse.json({ error: "Accesso negato" }, { status: 403 });
+    }
+
+    let grantStatus: "active" | "revoked_own_history" | "clinic_origin" = "clinic_origin";
+
+    if (hasGrant) {
+      grantStatus = "active";
+    } else if (hasOwnHistory) {
+      grantStatus = "revoked_own_history";
+    } else {
+      grantStatus = "clinic_origin";
     }
 
     const ownerDetails = await getOwnerDetails(animal.owner_id ?? null);
@@ -263,6 +290,9 @@ export async function GET(req: NextRequest) {
         owner_last_name: ownerDetails.owner_last_name,
         owner_phone: ownerDetails.owner_phone,
         owner_email: ownerDetails.owner_email,
+        grant_status: grantStatus,
+        has_active_grant: hasGrant,
+        has_own_history: hasOwnHistory,
       },
     });
   } catch (error: any) {
