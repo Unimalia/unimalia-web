@@ -337,6 +337,8 @@ export default function ClinicaPage() {
   const [newNotes, setNewNotes] = useState<string>("");
   const [newFiles, setNewFiles] = useState<File[]>([]);
   const [newVetSignature, setNewVetSignature] = useState<string>("");
+  const [newImagingModality, setNewImagingModality] = useState<string>("RX");
+  const [newImagingBodyPart, setNewImagingBodyPart] = useState<string>("");
   const [vetOptions] = useState<VetOption[]>([]);
   const [selectedVetId] = useState<string>("");
 
@@ -598,6 +600,61 @@ export default function ClinicaPage() {
 
       if (!newType || !newDate) {
         setSaveErr("Compila tipo e data.");
+        setSaving(false);
+        return;
+      }
+
+      if (newType === "imaging") {
+        if (newFiles.length === 0) {
+          setSaveErr("Per un evento imaging devi caricare almeno un file.");
+          setSaving(false);
+          return;
+        }
+
+        const fd = new FormData();
+        fd.append("animalId", String(id));
+        fd.append("eventDate", newDate);
+        fd.append("modality", newImagingModality);
+        fd.append("bodyPart", newImagingBodyPart.trim());
+        fd.append("description", newNotes.trim());
+        fd.append("visibility", "owner");
+        fd.append("file", newFiles[0]);
+
+        const imagingRes = await fetch("/api/clinic/imaging/upload", {
+          method: "POST",
+          headers: {
+            ...(await authHeaders()),
+          },
+          body: fd,
+        });
+
+        const imagingJson = await imagingRes.json().catch(() => ({}));
+
+        if (!imagingRes.ok) {
+          setSaveErr(imagingJson?.error || "Errore salvataggio imaging.");
+          setSaving(false);
+          return;
+        }
+
+        setSaveOk("Evento imaging salvato ✅");
+        setNewNotes("");
+        setNewFiles([]);
+        setNewWeightKg("");
+        setNewVetSignature("");
+        setTherapyStartDate("");
+        setTherapyEndDate("");
+        setSelectedVaccines([]);
+        setVaccineBatch("");
+        setVaccineNextDue("");
+        setReminderEnabled(false);
+        setRemindAt("");
+        setReminderPresetDays(null);
+        setNewImagingModality("RX");
+        setNewImagingBodyPart("");
+
+        await loadClinicEvents();
+        await loadFilesCount();
+
         setSaving(false);
         return;
       }
@@ -1250,6 +1307,7 @@ export default function ClinicaPage() {
                 <option value="visit">🩺 Visita</option>
                 <option value="vaccine">💉 Vaccinazione</option>
                 <option value="exam">🔬 Esame</option>
+                <option value="imaging">🖼️ Imaging</option>
                 <option value="therapy">💊 Terapia</option>
                 <option value="chronic_condition">📌 Patologia cronica</option>
                 <option value="follow_up">🔁 Prossimo ricontrollo</option>
@@ -1374,6 +1432,35 @@ export default function ClinicaPage() {
                   <p className="mt-1.5 text-xs leading-5 text-zinc-500">
                     Se lasci vuoto, la terapia è considerata in corso.
                   </p>
+                </label>
+              </div>
+            ) : null}
+
+            {newType === "imaging" ? (
+              <div className="grid gap-4 md:col-span-12 md:grid-cols-12">
+                <label className="block md:col-span-4">
+                  <span className={FIELD_LABEL_CLASS}>Modalità</span>
+                  <select
+                    className={FIELD_CLASS}
+                    value={newImagingModality}
+                    onChange={(e) => setNewImagingModality(e.target.value)}
+                  >
+                    <option value="RX">RX</option>
+                    <option value="TAC">TAC</option>
+                    <option value="RM">RM</option>
+                    <option value="ECO">ECO</option>
+                  </select>
+                </label>
+
+                <label className="block md:col-span-8">
+                  <span className={FIELD_LABEL_CLASS}>Distretto</span>
+                  <input
+                    type="text"
+                    className={FIELD_CLASS}
+                    value={newImagingBodyPart}
+                    onChange={(e) => setNewImagingBodyPart(e.target.value)}
+                    placeholder="Es. Torace, Addome, Arto anteriore destro"
+                  />
                 </label>
               </div>
             ) : null}

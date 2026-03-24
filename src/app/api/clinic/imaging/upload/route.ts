@@ -79,6 +79,7 @@ export async function POST(req: Request) {
 
     const title = buildImagingTitle(finalModality, finalBodyPart);
 
+    // ✅ BLOCCO eventMeta (già corretto)
     const eventMeta = {
       has_attachments: true,
       imaging: {
