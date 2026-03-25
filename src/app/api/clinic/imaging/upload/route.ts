@@ -6,7 +6,7 @@ import {
   deletePrivateFile,
   fileExists,
 } from "@/lib/storage";
-import { supabaseAdmin } from "@/lib/supabase/server";
+import { createServerSupabaseClient, supabaseAdmin } from "@/lib/supabase/server";
 import { requireOwnerOrGrant } from "@/lib/server/requireOwnerOrGrant";
 import { writeAudit } from "@/lib/server/audit";
 
@@ -14,6 +14,46 @@ function getBearerToken(req: Request) {
   const h = req.headers.get("authorization") || req.headers.get("Authorization") || "";
   const m = h.match(/^Bearer\s+(.+)$/i);
   return m?.[1] || null;
+}
+
+async function resolveAuthenticatedUser(req: Request) {
+  const token = getBearerToken(req);
+
+  if (token) {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !supabaseAnon) {
+      throw new Error("Server misconfigured (Supabase env missing)");
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseAnon, {
+      global: { headers: { Authorization: `Bearer ${token}` } },
+    });
+
+    const { data, error } = await supabase.auth.getUser(token);
+    if (!error && data?.user) {
+      return {
+        supabase,
+        user: data.user,
+      };
+    }
+  }
+
+  const cookieSupabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+    error,
+  } = await cookieSupabase.auth.getUser();
+
+  if (error || !user) {
+    return null;
+  }
+
+  return {
+    supabase: cookieSupabase,
+    user,
+  };
 }
 
 function sanitizeFileName(fileName: string) {
@@ -54,33 +94,13 @@ const MAX_IMAGING_FILE_SIZE_BYTES = 500 * 1024 * 1024;
 export async function POST(req: Request) {
   let uploadedPathToCleanup: string | null = null;
 
-  const token = getBearerToken(req);
-  if (!token) {
-    return NextResponse.json({ error: "Missing Bearer token" }, { status: 401 });
-  }
-
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!supabaseUrl || !supabaseAnon) {
-    return NextResponse.json(
-      { error: "Server misconfigured (Supabase env missing)" },
-      { status: 500 }
-    );
-  }
-
-  const supabase = createClient(supabaseUrl, supabaseAnon, {
-    global: { headers: { Authorization: `Bearer ${token}` } },
-  });
-
-  const admin = supabaseAdmin();
-
-  const { data: userData, error: userErr } = await supabase.auth.getUser(token);
-  const user = userData?.user;
-
-  if (userErr || !user) {
+  const auth = await resolveAuthenticatedUser(req);
+  if (!auth) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const { supabase, user } = auth;
+  const admin = supabaseAdmin();
 
   try {
     const formData = await req.formData();
