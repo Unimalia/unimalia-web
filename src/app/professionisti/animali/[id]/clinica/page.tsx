@@ -611,27 +611,89 @@ export default function ClinicaPage() {
           return;
         }
 
-        const fd = new FormData();
-        fd.append("animalId", String(id));
-        fd.append("eventDate", newDate);
-        fd.append("modality", newImagingModality);
-        fd.append("bodyPart", newImagingBodyPart.trim());
-        fd.append("description", newNotes.trim());
-        fd.append("visibility", "owner");
-        fd.append("file", newFiles[0]);
+        const file = newFiles[0];
 
-        const imagingRes = await fetch("/api/clinic/imaging/upload", {
+        const prepareFd = new FormData();
+        prepareFd.append("mode", "prepare");
+        prepareFd.append("animalId", String(id));
+        prepareFd.append("eventDate", newDate);
+        prepareFd.append("modality", newImagingModality);
+        prepareFd.append("bodyPart", newImagingBodyPart.trim());
+        prepareFd.append("description", newNotes.trim());
+        prepareFd.append("visibility", "owner");
+        prepareFd.append("fileName", file.name);
+        prepareFd.append("fileType", file.type || "application/octet-stream");
+        prepareFd.append("fileSize", String(file.size));
+
+        const prepareRes = await fetch("/api/clinic/imaging/upload", {
           method: "POST",
           headers: {
             ...(await authHeaders()),
           },
-          body: fd,
+          body: prepareFd,
         });
 
-        const imagingJson = await imagingRes.json().catch(() => ({}));
+        const prepareJson = await prepareRes.json().catch(() => ({}));
 
-        if (!imagingRes.ok) {
-          setSaveErr(imagingJson?.error || "Errore salvataggio imaging.");
+        if (!prepareRes.ok) {
+          setSaveErr(prepareJson?.error || "Errore preparazione upload imaging.");
+          setSaving(false);
+          return;
+        }
+
+        const uploadUrl = prepareJson?.upload?.url as string | undefined;
+        const path = prepareJson?.upload?.path as string | undefined;
+        const eventId = prepareJson?.upload?.eventId as string | undefined;
+        const fileId = prepareJson?.upload?.fileId as string | undefined;
+        const preparedFileName = prepareJson?.upload?.fileName as string | undefined;
+
+        if (!uploadUrl || !path || !eventId || !fileId || !preparedFileName) {
+          setSaveErr("Risposta upload imaging incompleta.");
+          setSaving(false);
+          return;
+        }
+
+        const uploadRes = await fetch(uploadUrl, {
+          method: "PUT",
+          headers: {
+            "Content-Type": file.type || "application/octet-stream",
+          },
+          body: file,
+        });
+
+        if (!uploadRes.ok) {
+          setSaveErr("Upload file imaging su storage non riuscito.");
+          setSaving(false);
+          return;
+        }
+
+        const completeFd = new FormData();
+        completeFd.append("mode", "complete");
+        completeFd.append("animalId", String(id));
+        completeFd.append("eventDate", newDate);
+        completeFd.append("modality", newImagingModality);
+        completeFd.append("bodyPart", newImagingBodyPart.trim());
+        completeFd.append("description", newNotes.trim());
+        completeFd.append("visibility", "owner");
+        completeFd.append("eventId", eventId);
+        completeFd.append("fileId", fileId);
+        completeFd.append("path", path);
+        completeFd.append("fileName", preparedFileName);
+        completeFd.append("fileType", file.type || "application/octet-stream");
+        completeFd.append("fileSize", String(file.size));
+
+        const completeRes = await fetch("/api/clinic/imaging/upload", {
+          method: "POST",
+          headers: {
+            ...(await authHeaders()),
+          },
+          body: completeFd,
+        });
+
+        const completeJson = await completeRes.json().catch(() => ({}));
+
+        if (!completeRes.ok) {
+          setSaveErr(completeJson?.error || "Errore salvataggio imaging.");
           setSaving(false);
           return;
         }
@@ -2021,7 +2083,7 @@ export default function ClinicaPage() {
                                       >
                                         <div className="flex items-start justify-between gap-3">
                                           <div className="min-w-0">
-                                            <div className="text-sm font-semibold text-zinc-900 truncate">
+                                            <div className="truncate text-sm font-semibold text-zinc-900">
                                               {file.name || "File imaging"}
                                             </div>
 
@@ -2086,7 +2148,7 @@ export default function ClinicaPage() {
                                             <img
                                               src="#"
                                               alt="preview"
-                                              className="max-h-40 w-full rounded-lg object-cover bg-zinc-100"
+                                              className="max-h-40 w-full rounded-lg bg-zinc-100 object-cover"
                                               onClick={() =>
                                                 void openImagingFile(detailEvent.id, file.path)
                                               }
