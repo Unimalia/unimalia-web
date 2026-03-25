@@ -17,7 +17,7 @@ function isUuid(value: string) {
   );
 }
 
-const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
+const MAX_FILE_SIZE_BYTES = 500 * 1024 * 1024; // 500MB
 
 const ALLOWED_MIME_TYPES = new Set([
   "application/pdf",
