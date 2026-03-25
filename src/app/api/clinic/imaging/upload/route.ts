@@ -1,7 +1,20 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
-import { uploadPrivateFile, deletePrivateFile } from "@/lib/storage";
+import { createClient } from "@supabase/supabase-js";
+import {
+  createSignedUploadUrl,
+  deletePrivateFile,
+  fileExists,
+} from "@/lib/storage";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { requireOwnerOrGrant } from "@/lib/server/requireOwnerOrGrant";
+import { writeAudit } from "@/lib/server/audit";
+
+function getBearerToken(req: Request) {
+  const h = req.headers.get("authorization") || req.headers.get("Authorization") || "";
+  const m = h.match(/^Bearer\s+(.+)$/i);
+  return m?.[1] || null;
+}
 
 function sanitizeFileName(fileName: string) {
   return fileName.replace(/[^\w.\-]+/g, "_");
@@ -10,190 +23,310 @@ function sanitizeFileName(fileName: string) {
 function buildImagingTitle(modality?: string | null, bodyPart?: string | null) {
   const cleanModality = modality?.trim() || "Imaging";
   const cleanBodyPart = bodyPart?.trim();
-
   return cleanBodyPart ? `${cleanModality} ${cleanBodyPart}` : cleanModality;
 }
 
+function parsePositiveInt(value: FormDataEntryValue | null) {
+  const n = Number(String(value || "").trim());
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return Math.round(n);
+}
+
+function isAllowedImagingFile(fileName: string, mimeType?: string | null) {
+  const allowedImagingMimeTypes = new Set([
+    "application/dicom",
+    "application/pdf",
+    "image/jpeg",
+    "image/png",
+  ]);
+
+  const allowedImagingExtensions = [".dcm", ".dicom", ".pdf", ".jpg", ".jpeg", ".png"];
+
+  const lowerName = String(fileName || "").toLowerCase();
+  const hasAllowedExtension = allowedImagingExtensions.some((ext) => lowerName.endsWith(ext));
+  const hasAllowedMime = !mimeType || allowedImagingMimeTypes.has(String(mimeType).toLowerCase());
+
+  return hasAllowedExtension || hasAllowedMime;
+}
+
+const MAX_IMAGING_FILE_SIZE_BYTES = 500 * 1024 * 1024;
+
 export async function POST(req: Request) {
-  let uploadedPath: string | null = null;
+  let uploadedPathToCleanup: string | null = null;
+
+  const token = getBearerToken(req);
+  if (!token) {
+    return NextResponse.json({ error: "Missing Bearer token" }, { status: 401 });
+  }
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseAnon) {
+    return NextResponse.json(
+      { error: "Server misconfigured (Supabase env missing)" },
+      { status: 500 }
+    );
+  }
+
+  const supabase = createClient(supabaseUrl, supabaseAnon, {
+    global: { headers: { Authorization: `Bearer ${token}` } },
+  });
+
+  const admin = supabaseAdmin();
+
+  const { data: userData, error: userErr } = await supabase.auth.getUser(token);
+  const user = userData?.user;
+
+  if (userErr || !user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   try {
-    const supabase = supabaseAdmin();
-
     const formData = await req.formData();
 
-    const file = formData.get("file");
-    const animalId = formData.get("animalId");
-    const modality = formData.get("modality");
-    const bodyPart = formData.get("bodyPart");
-    const description = formData.get("description");
-    const visibility = formData.get("visibility");
-    const eventDate = formData.get("eventDate");
-
-    if (!(file instanceof File)) {
-      return NextResponse.json({ error: "File mancante" }, { status: 400 });
-    }
+    const mode = String(formData.get("mode") || "prepare").trim().toLowerCase();
+    const animalId = String(formData.get("animalId") || "").trim();
+    const modality = String(formData.get("modality") || "").trim() || null;
+    const bodyPart = String(formData.get("bodyPart") || "").trim() || null;
+    const description = String(formData.get("description") || "").trim() || null;
+    const visibility = String(formData.get("visibility") || "").trim() || "owner";
+    const eventDateRaw = String(formData.get("eventDate") || "").trim();
 
     if (!animalId) {
       return NextResponse.json({ error: "animalId mancante" }, { status: 400 });
     }
 
-    const allowedImagingMimeTypes = new Set([
-      "application/dicom",
-      "application/pdf",
-      "image/jpeg",
-      "image/png",
-    ]);
+    const grant = await requireOwnerOrGrant(supabase, user.id, animalId, "upload");
 
-    const allowedImagingExtensions = [".dcm", ".dicom", ".pdf", ".jpg", ".jpeg", ".png"];
+    if (!grant.ok) {
+      await writeAudit(supabase, {
+        req,
+        actor_user_id: user.id,
+        action: "imaging.upload",
+        target_type: "animal",
+        target_id: animalId,
+        animal_id: animalId,
+        result: "denied",
+        reason: grant.reason,
+      });
 
-    const lowerName = String(file.name || "").toLowerCase();
-    const hasAllowedExtension = allowedImagingExtensions.some((ext) => lowerName.endsWith(ext));
-    const hasAllowedMime = !file.type || allowedImagingMimeTypes.has(file.type);
+      return NextResponse.json({ error: grant.reason }, { status: 403 });
+    }
 
-    if (!hasAllowedExtension && !hasAllowedMime) {
-      return NextResponse.json(
-        {
-          error: "Formato imaging non consentito. Usa DCM, DICOM, PDF, JPG o PNG.",
+    if (mode === "prepare") {
+      const originalFileName = String(formData.get("fileName") || "").trim();
+      const mime = String(formData.get("fileType") || "").trim() || "application/octet-stream";
+      const size = parsePositiveInt(formData.get("fileSize"));
+
+      if (!originalFileName) {
+        return NextResponse.json({ error: "fileName mancante" }, { status: 400 });
+      }
+
+      if (!isAllowedImagingFile(originalFileName, mime)) {
+        return NextResponse.json(
+          { error: "Formato imaging non consentito. Usa DCM, DICOM, PDF, JPG o PNG." },
+          { status: 400 }
+        );
+      }
+
+      if (!size || size > MAX_IMAGING_FILE_SIZE_BYTES) {
+        return NextResponse.json(
+          { error: "File imaging non valido o troppo grande (max 500 MB)." },
+          { status: 400 }
+        );
+      }
+
+      const eventId = randomUUID();
+      const fileId = randomUUID();
+
+      const safeFileName = sanitizeFileName(originalFileName);
+      const storedFileName = `${Date.now()}_${safeFileName}`;
+      const path = `${animalId}/${eventId}/${storedFileName}`;
+
+      const signed = await createSignedUploadUrl({
+        path,
+        contentType: mime,
+        expiresInSeconds: 60 * 15,
+      });
+
+      await writeAudit(supabase, {
+        req,
+        actor_user_id: user.id,
+        actor_org_id: grant.actor_org_id,
+        action: "imaging.upload.prepare",
+        target_type: "event",
+        target_id: eventId,
+        animal_id: animalId,
+        result: "success",
+        diff: {
+          fileId,
+          path,
+          mime,
+          size,
         },
-        { status: 400 }
-      );
-    }
-
-    if (file.size <= 0) {
-      return NextResponse.json({ error: "File imaging non valido." }, { status: 400 });
-    }
-
-    if (typeof animalId !== "string" || !animalId.trim()) {
-      return NextResponse.json({ error: "animalId mancante" }, { status: 400 });
-    }
-
-    const eventId = randomUUID();
-    const fileId = randomUUID();
-
-    const safeFileName = sanitizeFileName(file.name);
-    const timestampPrefix = Date.now();
-    const storedFileName = `${timestampPrefix}_${safeFileName}`;
-    const path = `${animalId}/${eventId}/${storedFileName}`;
-    uploadedPath = path;
-
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const mime = file.type || "application/octet-stream";
-
-    await uploadPrivateFile({
-      path,
-      body: buffer,
-      contentType: mime,
-    });
-
-    const finalModality =
-      typeof modality === "string" && modality.trim() ? modality.trim() : null;
-
-    const finalBodyPart =
-      typeof bodyPart === "string" && bodyPart.trim() ? bodyPart.trim() : null;
-
-    const finalDescription =
-      typeof description === "string" && description.trim()
-        ? description.trim()
-        : null;
-
-    const finalVisibility =
-      typeof visibility === "string" && visibility.trim()
-        ? visibility.trim()
-        : "owner";
-
-    const finalEventDate =
-      typeof eventDate === "string" && eventDate.trim()
-        ? new Date(eventDate).toISOString()
-        : new Date().toISOString();
-
-    const title = buildImagingTitle(finalModality, finalBodyPart);
-
-    const eventMeta = {
-      has_attachments: true,
-      imaging: {
-        modality: finalModality,
-        body_part: finalBodyPart,
-        files: [
-          {
-            id: fileId,
-            path,
-            name: safeFileName,
-            size: file.size,
-            mime,
-          },
-        ],
-      },
-    };
-
-    const { error: eventInsertError } = await supabase
-      .from("animal_clinic_events")
-      .insert({
-        id: eventId,
-        animal_id: animalId,
-        event_date: finalEventDate,
-        type: "imaging",
-        title,
-        description: finalDescription,
-        visibility: finalVisibility,
-        meta: eventMeta,
-        created_by: null,
-        source: "professional",
-        status: "active",
       });
 
-    if (eventInsertError) {
-      throw new Error(`Errore salvataggio evento clinico: ${eventInsertError.message}`);
-    }
-
-    const { error: fileInsertError } = await supabase
-      .from("animal_clinic_event_files")
-      .insert({
-        id: fileId,
-        event_id: eventId,
-        animal_id: animalId,
-        path,
-        filename: safeFileName,
-        mime,
-        size: file.size,
-        created_by: null,
+      return NextResponse.json({
+        ok: true,
+        mode: "prepare",
+        upload: {
+          url: signed.url,
+          path,
+          eventId,
+          fileId,
+          fileName: safeFileName,
+          mime,
+          size,
+          expiresInSeconds: signed.expiresInSeconds,
+        },
       });
-
-    if (fileInsertError) {
-      throw new Error(`Errore salvataggio file evento: ${fileInsertError.message}`);
     }
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        eventId,
-        fileId,
-        animalId,
-        path,
-        type: "imaging",
-        title,
-        visibility: finalVisibility,
+    if (mode === "complete") {
+      const eventId = String(formData.get("eventId") || "").trim();
+      const fileId = String(formData.get("fileId") || "").trim();
+      const path = String(formData.get("path") || "").trim();
+      const fileName = String(formData.get("fileName") || "").trim();
+      const mime = String(formData.get("fileType") || "").trim() || "application/octet-stream";
+      const size = parsePositiveInt(formData.get("fileSize"));
+
+      if (!eventId || !fileId || !path || !fileName || !size) {
+        return NextResponse.json(
+          { error: "Dati upload incompleti per completare il salvataggio imaging." },
+          { status: 400 }
+        );
+      }
+
+      if (!isAllowedImagingFile(fileName, mime)) {
+        return NextResponse.json(
+          { error: "Formato imaging non consentito. Usa DCM, DICOM, PDF, JPG o PNG." },
+          { status: 400 }
+        );
+      }
+
+      if (size > MAX_IMAGING_FILE_SIZE_BYTES) {
+        return NextResponse.json(
+          { error: "File imaging troppo grande (max 500 MB)." },
+          { status: 400 }
+        );
+      }
+
+      const exists = await fileExists(path);
+      if (!exists) {
+        return NextResponse.json(
+          { error: "File non trovato su storage. Ripeti l’upload." },
+          { status: 400 }
+        );
+      }
+
+      const finalEventDate = eventDateRaw ? new Date(eventDateRaw).toISOString() : new Date().toISOString();
+      const title = buildImagingTitle(modality, bodyPart);
+
+      const eventMeta = {
+        has_attachments: true,
         imaging: {
-          modality: finalModality,
-          body_part: finalBodyPart,
+          modality,
+          body_part: bodyPart,
           files: [
             {
               id: fileId,
               path,
-              name: safeFileName,
-              size: file.size,
+              name: fileName,
+              size,
               mime,
             },
           ],
         },
-      },
-    });
+      };
+
+      uploadedPathToCleanup = path;
+
+      const { error: eventInsertError } = await admin
+        .from("animal_clinic_events")
+        .insert({
+          id: eventId,
+          animal_id: animalId,
+          event_date: finalEventDate,
+          type: "imaging",
+          title,
+          description,
+          visibility,
+          meta: eventMeta,
+          created_by: user.id,
+          source: "professional",
+          status: "active",
+        });
+
+      if (eventInsertError) {
+        throw new Error(`Errore salvataggio evento clinico: ${eventInsertError.message}`);
+      }
+
+      const { error: fileInsertError } = await admin
+        .from("animal_clinic_event_files")
+        .insert({
+          id: fileId,
+          event_id: eventId,
+          animal_id: animalId,
+          path,
+          filename: fileName,
+          mime,
+          size,
+          created_by: user.id,
+        });
+
+      if (fileInsertError) {
+        throw new Error(`Errore salvataggio file evento: ${fileInsertError.message}`);
+      }
+
+      uploadedPathToCleanup = null;
+
+      await writeAudit(supabase, {
+        req,
+        actor_user_id: user.id,
+        actor_org_id: grant.actor_org_id,
+        action: "imaging.upload.complete",
+        target_type: "event",
+        target_id: eventId,
+        animal_id: animalId,
+        result: "success",
+      });
+
+      return NextResponse.json({
+        ok: true,
+        mode: "complete",
+        data: {
+          eventId,
+          fileId,
+          animalId,
+          path,
+          type: "imaging",
+          title,
+          visibility,
+          imaging: {
+            modality,
+            body_part: bodyPart,
+            files: [
+              {
+                id: fileId,
+                path,
+                name: fileName,
+                size,
+                mime,
+              },
+            ],
+          },
+        },
+      });
+    }
+
+    return NextResponse.json({ error: "Mode non valido" }, { status: 400 });
   } catch (err: any) {
     console.error("UPLOAD IMAGING ERROR:", err);
 
-    if (uploadedPath) {
+    if (uploadedPathToCleanup) {
       try {
-        await deletePrivateFile(uploadedPath);
+        await deletePrivateFile(uploadedPathToCleanup);
       } catch (cleanupErr) {
         console.error("UPLOAD CLEANUP ERROR:", cleanupErr);
       }
