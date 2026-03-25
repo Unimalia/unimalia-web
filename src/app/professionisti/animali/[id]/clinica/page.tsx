@@ -2033,15 +2033,85 @@ export default function ClinicaPage() {
                                             </div>
                                           </div>
 
-                                          <button
-                                            type="button"
-                                            className="shrink-0 rounded-xl bg-black px-3 py-2 text-xs font-semibold text-white"
-                                            onClick={() =>
-                                              void openImagingFile(detailEvent.id, file.path)
-                                            }
-                                          >
-                                            Apri
-                                          </button>
+                                          <div className="shrink-0 space-y-2">
+                                            <button
+                                              type="button"
+                                              className="block w-full rounded-xl bg-black px-3 py-2 text-xs font-semibold text-white"
+                                              onClick={() =>
+                                                void openImagingFile(detailEvent.id, file.path)
+                                              }
+                                            >
+                                              Apri
+                                            </button>
+
+                                            <button
+                                              type="button"
+                                              className="rounded-xl border px-3 py-2 text-xs font-semibold"
+                                              onClick={async () => {
+                                                const res = await fetch("/api/clinic/imaging/download", {
+                                                  method: "POST",
+                                                  headers: {
+                                                    "Content-Type": "application/json",
+                                                    ...(await authHeaders()),
+                                                  },
+                                                  body: JSON.stringify({
+                                                    eventId: detailEvent.id,
+                                                    filePath: file.path,
+                                                  }),
+                                                });
+
+                                                const json = await res.json();
+
+                                                if (!json?.url) {
+                                                  alert("Errore apertura viewer");
+                                                  return;
+                                                }
+
+                                                window.open(
+                                                  `/professionisti/animali/${detailEvent.animal_id}/clinica/imaging/viewer?url=${encodeURIComponent(json.url)}`,
+                                                  "_blank"
+                                                );
+                                              }}
+                                            >
+                                              Apri viewer
+                                            </button>
+
+                                            <a
+                                              href="#"
+                                              onClick={async (e) => {
+                                                e.preventDefault();
+
+                                                const res = await fetch("/api/clinic/imaging/download", {
+                                                  method: "POST",
+                                                  headers: {
+                                                    "Content-Type": "application/json",
+                                                    ...(await authHeaders()),
+                                                  },
+                                                  body: JSON.stringify({
+                                                    eventId: detailEvent.id,
+                                                    filePath: file.path,
+                                                  }),
+                                                });
+
+                                                const json = await res.json().catch(() => ({}));
+
+                                                if (!res.ok || !json?.url) {
+                                                  alert("Errore download file");
+                                                  return;
+                                                }
+
+                                                const link = document.createElement("a");
+                                                link.href = json.url;
+                                                link.download = file.name || "imaging";
+                                                document.body.appendChild(link);
+                                                link.click();
+                                                link.remove();
+                                              }}
+                                              className="inline-block text-xs font-semibold text-blue-600 hover:underline"
+                                            >
+                                              Scarica file
+                                            </a>
+                                          </div>
                                         </div>
 
                                         {isImage ? (
