@@ -27,33 +27,42 @@ async function resolveAuthenticatedUser(req: Request) {
       throw new Error("Server misconfigured (Supabase env missing)");
     }
 
-    const supabase = createClient(supabaseUrl, supabaseAnon, {
+    const bearerSupabase = createClient(supabaseUrl, supabaseAnon, {
       global: { headers: { Authorization: `Bearer ${token}` } },
     });
 
-    const { data, error } = await supabase.auth.getUser(token);
-    if (!error && data?.user) {
+    const bearerUserResp = await bearerSupabase.auth.getUser(token);
+
+    if (!bearerUserResp.error && bearerUserResp.data?.user) {
       return {
-        supabase,
-        user: data.user,
+        supabase: bearerSupabase,
+        user: bearerUserResp.data.user,
       };
     }
+
+    console.error("[IMAGING AUTH] bearer failed", {
+      hasToken: true,
+      error: bearerUserResp.error?.message ?? null,
+    });
+  } else {
+    console.error("[IMAGING AUTH] bearer missing");
   }
 
   const cookieSupabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-    error,
-  } = await cookieSupabase.auth.getUser();
+  const cookieUserResp = await cookieSupabase.auth.getUser();
 
-  if (error || !user) {
-    return null;
+  if (!cookieUserResp.error && cookieUserResp.data?.user) {
+    return {
+      supabase: cookieSupabase,
+      user: cookieUserResp.data.user,
+    };
   }
 
-  return {
-    supabase: cookieSupabase,
-    user,
-  };
+  console.error("[IMAGING AUTH] cookie failed", {
+    error: cookieUserResp.error?.message ?? null,
+  });
+
+  return null;
 }
 
 function sanitizeFileName(fileName: string) {
