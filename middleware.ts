@@ -61,7 +61,8 @@ function buildCsp(nonce: string) {
       https://www.google-analytics.com
       https://region1.google-analytics.com
       https://www.googletagmanager.com
-      https://challenges.cloudflare.com;
+      https://challenges.cloudflare.com
+      https://*.r2.cloudflarestorage.com;
 
     frame-src 'self'
       https://www.google.com
