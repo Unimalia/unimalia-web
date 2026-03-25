@@ -3,22 +3,30 @@
 import { supabase } from "@/lib/supabaseClient";
 
 export async function authHeaders(): Promise<Record<string, string>> {
-  const { data, error } = await supabase.auth.getUser();
+  const sessionResp = await supabase.auth.getSession();
+  const session = sessionResp.data.session;
 
-  if (error || !data?.user) {
-    console.warn("[AUTH] no user", error);
+  if (session?.access_token) {
+    return {
+      Authorization: `Bearer ${session.access_token}`,
+    };
+  }
+
+  const userResp = await supabase.auth.getUser();
+
+  if (userResp.error || !userResp.data.user) {
+    console.warn("[AUTH HEADERS] no authenticated user");
     return {};
   }
 
-  const { data: sessionData } = await supabase.auth.getSession();
-  const token = sessionData?.session?.access_token;
+  const refreshed = await supabase.auth.refreshSession();
 
-  if (!token) {
-    console.warn("[AUTH] missing token");
+  if (refreshed.error || !refreshed.data.session?.access_token) {
+    console.warn("[AUTH HEADERS] unable to refresh access token", refreshed.error);
     return {};
   }
 
   return {
-    Authorization: `Bearer ${token}`,
+    Authorization: `Bearer ${refreshed.data.session.access_token}`,
   };
 }

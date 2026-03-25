@@ -619,6 +619,9 @@ export default function ClinicaPage() {
           type: file.type,
         });
 
+        const imagingAuthHeaders = await authHeaders();
+        console.log("[IMAGING AUTH HEADERS]", imagingAuthHeaders);
+
         const prepareFd = new FormData();
         prepareFd.append("mode", "prepare");
         prepareFd.append("animalId", String(id));
@@ -634,7 +637,7 @@ export default function ClinicaPage() {
         const prepareRes = await fetch("/api/clinic/imaging/upload", {
           method: "POST",
           headers: {
-            ...(await authHeaders()),
+            ...imagingAuthHeaders,
           },
           body: prepareFd,
         });
@@ -697,7 +700,7 @@ export default function ClinicaPage() {
         const completeRes = await fetch("/api/clinic/imaging/upload", {
           method: "POST",
           headers: {
-            ...(await authHeaders()),
+            ...imagingAuthHeaders,
           },
           body: completeFd,
         });
