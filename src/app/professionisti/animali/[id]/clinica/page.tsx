@@ -613,6 +613,12 @@ export default function ClinicaPage() {
 
         const file = newFiles[0];
 
+        console.log("[IMAGING] START", {
+          name: file.name,
+          size: file.size,
+          type: file.type,
+        });
+
         const prepareFd = new FormData();
         prepareFd.append("mode", "prepare");
         prepareFd.append("animalId", String(id));
@@ -634,6 +640,9 @@ export default function ClinicaPage() {
         });
 
         const prepareJson = await prepareRes.json().catch(() => ({}));
+
+        console.log("[IMAGING] PREPARE STATUS", prepareRes.status);
+        console.log("[IMAGING] PREPARE JSON", prepareJson);
 
         if (!prepareRes.ok) {
           setSaveErr(prepareJson?.error || "Errore preparazione upload imaging.");
@@ -660,6 +669,9 @@ export default function ClinicaPage() {
           },
           body: file,
         });
+
+        console.log("[IMAGING] R2 UPLOAD STATUS", uploadRes.status);
+        console.log("[IMAGING] R2 UPLOAD OK", uploadRes.ok);
 
         if (!uploadRes.ok) {
           setSaveErr("Upload file imaging su storage non riuscito.");
@@ -691,6 +703,9 @@ export default function ClinicaPage() {
         });
 
         const completeJson = await completeRes.json().catch(() => ({}));
+
+        console.log("[IMAGING] COMPLETE STATUS", completeRes.status);
+        console.log("[IMAGING] COMPLETE JSON", completeJson);
 
         if (!completeRes.ok) {
           setSaveErr(completeJson?.error || "Errore salvataggio imaging.");
@@ -828,7 +843,8 @@ export default function ClinicaPage() {
 
       await loadClinicEvents();
       await loadFilesCount();
-    } catch {
+    } catch (err) {
+      console.error("[IMAGING] SAVE ERROR", err);
       setSaveErr("Errore di rete durante il salvataggio.");
     } finally {
       setSaving(false);
