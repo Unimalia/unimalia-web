@@ -2033,49 +2033,16 @@ export default function ClinicaPage() {
                                             </div>
                                           </div>
 
-                                          <div className="shrink-0 space-y-2">
+                                          <div className="shrink-0">
                                             <button
                                               type="button"
-                                              className="block w-full rounded-xl bg-black px-3 py-2 text-xs font-semibold text-white"
+                                              className="shrink-0 rounded-xl bg-black px-3 py-2 text-xs font-semibold text-white"
                                               onClick={() =>
                                                 void openImagingFile(detailEvent.id, file.path)
                                               }
                                             >
                                               Apri
                                             </button>
-
-                                            <button
-                                              type="button"
-                                              className="rounded-xl border px-3 py-2 text-xs font-semibold"
-                                              onClick={async () => {
-                                                const res = await fetch("/api/clinic/imaging/download", {
-                                                  method: "POST",
-                                                  headers: {
-                                                    "Content-Type": "application/json",
-                                                    ...(await authHeaders()),
-                                                  },
-                                                  body: JSON.stringify({
-                                                    eventId: detailEvent.id,
-                                                    filePath: file.path,
-                                                  }),
-                                                });
-
-                                                const json = await res.json();
-
-                                                if (!json?.url) {
-                                                  alert("Errore apertura viewer");
-                                                  return;
-                                                }
-
-                                                window.open(
-                                                  `/professionisti/animali/${detailEvent.animal_id}/clinica/imaging/viewer?url=${encodeURIComponent(json.url)}`,
-                                                  "_blank"
-                                                );
-                                              }}
-                                            >
-                                              Apri viewer
-                                            </button>
-
                                             <a
                                               href="#"
                                               onClick={async (e) => {
@@ -2107,7 +2074,7 @@ export default function ClinicaPage() {
                                                 link.click();
                                                 link.remove();
                                               }}
-                                              className="inline-block text-xs font-semibold text-blue-600 hover:underline"
+                                              className="mt-2 inline-block text-xs font-semibold text-blue-600 hover:underline"
                                             >
                                               Scarica file
                                             </a>
