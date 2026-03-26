@@ -513,15 +513,24 @@ export default function ClinicaPage() {
 
   function buildOrthancViewerUrl(file: any) {
     const orthanc = file?.orthanc;
-    const studyListUrl = orthanc?.ohifStudyListUrl;
+    if (!orthanc) return null;
 
-    if (!studyListUrl || typeof studyListUrl !== "string") return null;
+    const studyInstanceUid = String(orthanc?.studyInstanceUid || "").trim();
+    if (!studyInstanceUid) return null;
 
-    return studyListUrl;
+    return `/api/clinic/imaging/view?studyInstanceUid=${encodeURIComponent(
+      studyInstanceUid
+    )}`;
   }
 
   async function openImagingViewerOrFile(eventId: string, file: any) {
     const viewerUrl = buildOrthancViewerUrl(file);
+
+    console.log("[IMAGING VIEWER]", {
+      studyInstanceUid: file?.orthanc?.studyInstanceUid ?? null,
+      viewerUrl,
+      orthanc: file?.orthanc ?? null,
+    });
 
     if (viewerUrl) {
       window.open(viewerUrl, "_blank", "noopener,noreferrer");
@@ -2106,6 +2115,14 @@ export default function ClinicaPage() {
                                     ? "Disponibile"
                                     : "Non disponibile"}
                                 </div>
+                                {detailEvent.meta?.imaging?.files?.[0]?.orthanc?.studyInstanceUid ? (
+                                  <div>
+                                    <span className="font-semibold">Study UID:</span>{" "}
+                                    <span className="break-all font-mono text-xs">
+                                      {detailEvent.meta.imaging.files[0].orthanc.studyInstanceUid}
+                                    </span>
+                                  </div>
+                                ) : null}
                               </div>
 
                               {Array.isArray(detailEvent.meta?.imaging?.files) &&
@@ -2147,8 +2164,9 @@ export default function ClinicaPage() {
                                               type="button"
                                               className="shrink-0 rounded-xl bg-black px-3 py-2 text-xs font-semibold text-white"
                                               onClick={() => void openImagingViewerOrFile(detailEvent.id, file)}
+                                              title={file?.orthanc?.studyInstanceUid ? "Apri direttamente lo studio DICOM" : "Apri viewer"}
                                             >
-                                              {file?.orthanc ? "Apri viewer" : "Apri"}
+                                              {file?.orthanc?.studyInstanceUid ? "Apri viewer" : file?.orthanc ? "Apri viewer" : "Apri"}
                                             </button>
                                             <a
                                               href="#"
