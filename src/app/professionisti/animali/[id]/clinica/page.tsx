@@ -351,6 +351,7 @@ export default function ClinicaPage() {
   const [saving, setSaving] = useState(false);
   const [saveErr, setSaveErr] = useState<string | null>(null);
   const [saveOk, setSaveOk] = useState<string | null>(null);
+  const [uploadPhase, setUploadPhase] = useState<string | null>(null);
 
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
   const [verifyErr, setVerifyErr] = useState<string | null>(null);
@@ -649,6 +650,14 @@ export default function ClinicaPage() {
   }, [detailEvent]);
 
   useEffect(() => {
+    setShareLoadingByFileId({});
+    setShareLinkByFileId({});
+    setShareExpiresAtByFileId({});
+    setShareCopiedByFileId({});
+    setShareErrorByFileId({});
+  }, [detailEvent?.id]);
+
+  useEffect(() => {
     if (!detailEvent?.id) return;
     const eventId = detailEvent.id;
     setDetailFiles([]);
@@ -696,6 +705,7 @@ export default function ClinicaPage() {
     setSaving(true);
     setSaveErr(null);
     setSaveOk(null);
+    setUploadPhase(null);
 
     try {
       let weightKg: number | null = null;
@@ -730,6 +740,7 @@ export default function ClinicaPage() {
 
         const imagingAuthHeaders = await authHeaders();
 
+        setUploadPhase("Preparazione upload…");
         const prepareFd = new FormData();
         prepareFd.append("mode", "prepare");
         prepareFd.append("animalId", String(id));
@@ -770,6 +781,7 @@ export default function ClinicaPage() {
           return;
         }
 
+        setUploadPhase("Caricamento file su storage…");
         const uploadRes = await fetch(uploadUrl, {
           method: "PUT",
           headers: {
@@ -799,6 +811,7 @@ export default function ClinicaPage() {
         completeFd.append("fileType", file.type || "application/octet-stream");
         completeFd.append("fileSize", String(file.size));
 
+        setUploadPhase("Registrazione imaging…");
         const completeRes = await fetch("/api/clinic/imaging/upload", {
           method: "POST",
           headers: {
@@ -815,6 +828,7 @@ export default function ClinicaPage() {
           return;
         }
 
+        setUploadPhase(null);
         setSaveOk("Evento imaging salvato ✅");
         setNewNotes("");
         setNewFiles([]);
@@ -866,6 +880,7 @@ export default function ClinicaPage() {
         hasAttachments: newFiles.length > 0,
       };
 
+      setUploadPhase("Salvataggio evento…");
       const res = await fetch("/api/clinic-events/create", {
         method: "POST",
         headers: {
@@ -947,9 +962,11 @@ export default function ClinicaPage() {
       await loadFilesCount();
     } catch (err) {
       console.error("[IMAGING] SAVE ERROR", err);
+      setUploadPhase(null);
       setSaveErr("Errore di rete durante il salvataggio.");
     } finally {
       setSaving(false);
+      setUploadPhase(null);
     }
   }
 
@@ -1283,6 +1300,11 @@ export default function ClinicaPage() {
     setIsEditing(false);
     setDeleteConfirm(false);
     setModalErr(null);
+    setShareLoadingByFileId({});
+    setShareLinkByFileId({});
+    setShareExpiresAtByFileId({});
+    setShareCopiedByFileId({});
+    setShareErrorByFileId({});
   }
 
   return (
@@ -1707,15 +1729,25 @@ export default function ClinicaPage() {
               ) : null}
             </label>
 
-            <div className="flex items-end md:col-span-3">
+            <div className="md:col-span-3">
               <button
                 type="button"
                 className="w-full rounded-xl bg-black px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-900 disabled:opacity-60"
                 disabled={!canSave}
                 onClick={() => void saveClinicEvent()}
               >
-                {saving ? "Salvataggio…" : "Salva evento e aggiorna timeline"}
+                {saving
+                  ? uploadPhase || "Salvataggio…"
+                  : newType === "imaging"
+                    ? "Salva imaging"
+                    : "Salva evento e aggiorna timeline"}
               </button>
+
+              {saving && uploadPhase ? (
+                <div className="mt-2 text-xs font-medium text-zinc-500">
+                  {uploadPhase}
+                </div>
+              ) : null}
             </div>
           </div>
 
@@ -2343,15 +2375,8 @@ export default function ClinicaPage() {
                                         </div>
 
                                         {isImage ? (
-                                          <div className="mt-3">
-                                            <img
-                                              src="#"
-                                              alt="preview"
-                                              className="max-h-40 w-full rounded-lg bg-zinc-100 object-cover"
-                                              onClick={() =>
-                                                void openImagingViewerOrFile(detailEvent.id, file)
-                                              }
-                                            />
+                                          <div className="mt-3 rounded-lg border border-dashed border-zinc-200 bg-zinc-50 px-3 py-3 text-xs text-zinc-500">
+                                            Anteprima inline non ancora disponibile. Usa “Apri viewer” o “Scarica file”.
                                           </div>
                                         ) : null}
                                       </div>
