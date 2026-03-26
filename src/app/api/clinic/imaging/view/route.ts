@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const redirectUrl = `${orthancPublicUrl}/ohif/viewer?StudyInstanceUID=${encodeURIComponent(
+    const redirectUrl = `${orthancPublicUrl}/ohif/viewer?StudyInstanceUIDs=${encodeURIComponent(
       studyInstanceUid
     )}`;
 

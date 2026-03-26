@@ -241,6 +241,7 @@ const MAX_IMAGING_FILE_SIZE_BYTES = 500 * 1024 * 1024;
 
 export async function POST(req: Request) {
   let uploadedPathToCleanup: string | null = null;
+  let trackedAnimalId: string | null = null;
 
   const auth = await resolveAuthenticatedUser(req);
   if (!auth) {
@@ -255,6 +256,8 @@ export async function POST(req: Request) {
 
     const mode = String(formData.get("mode") || "prepare").trim().toLowerCase();
     const animalId = String(formData.get("animalId") || "").trim();
+    trackedAnimalId = animalId;
+
     const modality = String(formData.get("modality") || "").trim() || null;
     const bodyPart = String(formData.get("bodyPart") || "").trim() || null;
     const description = String(formData.get("description") || "").trim() || null;
@@ -469,6 +472,22 @@ export async function POST(req: Request) {
         throw new Error(`Errore salvataggio file evento: ${fileInsertError.message}`);
       }
 
+      await admin.from("clinic_imaging_uploads").insert({
+        clinic_id: grant.actor_org_id ?? null,
+        user_id: user.id,
+
+        animal_id: animalId,
+        event_id: eventId,
+        file_id: fileId,
+
+        file_name: fileName,
+        file_size: size,
+        mime,
+
+        modality,
+        status: "completed",
+      });
+
       uploadedPathToCleanup = null;
 
       await writeAudit(supabase, {
@@ -537,6 +556,26 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Mode non valido" }, { status: 400 });
   } catch (err: any) {
     console.error("UPLOAD IMAGING ERROR:", err);
+
+    try {
+      await admin.from("clinic_imaging_uploads").insert({
+        clinic_id: null,
+        user_id: user.id,
+
+        animal_id: trackedAnimalId,
+        event_id: null,
+        file_id: null,
+
+        file_name: null,
+        file_size: null,
+        mime: null,
+
+        modality: null,
+        status: "failed",
+      });
+    } catch (trackingErr) {
+      console.error("IMAGING FAILED TRACKING ERROR:", trackingErr);
+    }
 
     if (uploadedPathToCleanup) {
       try {

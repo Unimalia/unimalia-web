@@ -65,7 +65,7 @@ export async function GET(
     })
     .eq("id", linkRow.id);
 
-  const redirectUrl = `${orthancPublicBaseUrl}/ohif/viewer?StudyInstanceUID=${encodeURIComponent(
+  const redirectUrl = `${orthancPublicBaseUrl}/ohif/viewer?StudyInstanceUIDs=${encodeURIComponent(
     studyInstanceUid
   )}`;
 

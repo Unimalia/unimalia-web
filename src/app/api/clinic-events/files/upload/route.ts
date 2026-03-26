@@ -26,6 +26,20 @@ const ALLOWED_MIME_TYPES = new Set([
   "image/webp",
 ]);
 
+function isDicomFile(fileName?: string | null, mimeType?: string | null) {
+  const lowerName = String(fileName || "").toLowerCase().trim();
+  const lowerMime = String(mimeType || "").toLowerCase().trim();
+
+  return (
+    lowerName.endsWith(".dcm") ||
+    lowerName.endsWith(".dicom") ||
+    lowerMime === "application/dicom" ||
+    lowerMime === "application/dicom+json" ||
+    lowerMime === "application/dicom+xml" ||
+    lowerMime === "application/octet-stream"
+  );
+}
+
 export async function POST(req: Request) {
   const token = getBearerToken(req);
   if (!token) {
@@ -132,7 +146,17 @@ export async function POST(req: Request) {
 
     if (f.size <= 0 || f.size > MAX_FILE_SIZE_BYTES) {
       return NextResponse.json(
-        { error: "File non valido o troppo grande (max 10 MB)" },
+        { error: "File non valido o troppo grande (max 500 MB)" },
+        { status: 400 }
+      );
+    }
+
+    if (isDicomFile(f.name, f.type)) {
+      return NextResponse.json(
+        {
+          error:
+            "I file DICOM (.dcm/.dicom) non possono essere caricati come allegati normali. Usa la sezione Imaging.",
+        },
         { status: 400 }
       );
     }

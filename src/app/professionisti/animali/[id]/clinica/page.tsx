@@ -361,6 +361,11 @@ export default function ClinicaPage() {
   const [detailFiles, setDetailFiles] = useState<any[]>([]);
   const [detailFilesLoading, setDetailFilesLoading] = useState(false);
   const [filesCountByEventId, setFilesCountByEventId] = useState<Record<string, number>>({});
+  const [shareLoadingByFileId, setShareLoadingByFileId] = useState<Record<string, boolean>>({});
+  const [shareLinkByFileId, setShareLinkByFileId] = useState<Record<string, string>>({});
+  const [shareExpiresAtByFileId, setShareExpiresAtByFileId] = useState<Record<string, string>>({});
+  const [shareCopiedByFileId, setShareCopiedByFileId] = useState<Record<string, boolean>>({});
+  const [shareErrorByFileId, setShareErrorByFileId] = useState<Record<string, string>>({});
 
   const [isEditing, setIsEditing] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
@@ -526,18 +531,99 @@ export default function ClinicaPage() {
   async function openImagingViewerOrFile(eventId: string, file: any) {
     const viewerUrl = buildOrthancViewerUrl(file);
 
-    console.log("[IMAGING VIEWER]", {
-      studyInstanceUid: file?.orthanc?.studyInstanceUid ?? null,
-      viewerUrl,
-      orthanc: file?.orthanc ?? null,
-    });
-
     if (viewerUrl) {
       window.open(viewerUrl, "_blank", "noopener,noreferrer");
       return;
     }
 
     await openImagingFile(eventId, file.path);
+  }
+
+  async function createImagingShareLink(eventId: string, animalId: string, file: any) {
+    const fileId = String(file?.id || "").trim();
+    if (!fileId) {
+      alert("File imaging non valido.");
+      return;
+    }
+
+    setShareErrorByFileId((prev) => ({ ...prev, [fileId]: "" }));
+    setShareCopiedByFileId((prev) => ({ ...prev, [fileId]: false }));
+    setShareLoadingByFileId((prev) => ({ ...prev, [fileId]: true }));
+
+    try {
+      const res = await fetch("/api/clinic/imaging/share", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(await authHeaders()),
+        },
+        body: JSON.stringify({
+          animalId,
+          eventId,
+          fileId,
+        }),
+      });
+
+      const json = await res.json().catch(() => ({}));
+
+      if (!res.ok || !json?.data?.shareUrl) {
+        const msg = json?.error || "Impossibile creare il link imaging.";
+        setShareErrorByFileId((prev) => ({ ...prev, [fileId]: msg }));
+        return;
+      }
+
+      setShareLinkByFileId((prev) => ({
+        ...prev,
+        [fileId]: String(json.data.shareUrl),
+      }));
+
+      setShareExpiresAtByFileId((prev) => ({
+        ...prev,
+        [fileId]: String(json.data.expiresAt || ""),
+      }));
+    } catch {
+      setShareErrorByFileId((prev) => ({
+        ...prev,
+        [fileId]: "Errore di rete durante la creazione del link.",
+      }));
+    } finally {
+      setShareLoadingByFileId((prev) => ({ ...prev, [fileId]: false }));
+    }
+  }
+
+  async function copyImagingShareLink(file: any) {
+    const fileId = String(file?.id || "").trim();
+    const shareUrl = String(shareLinkByFileId[fileId] || "").trim();
+
+    if (!fileId || !shareUrl) {
+      alert("Prima crea il link.");
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setShareCopiedByFileId((prev) => ({ ...prev, [fileId]: true }));
+      setTimeout(() => {
+        setShareCopiedByFileId((prev) => ({ ...prev, [fileId]: false }));
+      }, 2000);
+    } catch {
+      alert("Impossibile copiare il link negli appunti.");
+    }
+  }
+
+  function formatShareExpiry(iso?: string) {
+    if (!iso) return "";
+    try {
+      return new Date(iso).toLocaleString("it-IT", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch {
+      return iso;
+    }
   }
 
   useEffect(() => {
@@ -642,14 +728,7 @@ export default function ClinicaPage() {
 
         const file = newFiles[0];
 
-        console.log("[IMAGING] START", {
-          name: file.name,
-          size: file.size,
-          type: file.type,
-        });
-
         const imagingAuthHeaders = await authHeaders();
-        console.log("[IMAGING AUTH HEADERS]", imagingAuthHeaders);
 
         const prepareFd = new FormData();
         prepareFd.append("mode", "prepare");
@@ -672,9 +751,6 @@ export default function ClinicaPage() {
         });
 
         const prepareJson = await prepareRes.json().catch(() => ({}));
-
-        console.log("[IMAGING] PREPARE STATUS", prepareRes.status);
-        console.log("[IMAGING] PREPARE JSON", prepareJson);
 
         if (!prepareRes.ok) {
           setSaveErr(prepareJson?.error || "Errore preparazione upload imaging.");
@@ -701,9 +777,6 @@ export default function ClinicaPage() {
           },
           body: file,
         });
-
-        console.log("[IMAGING] R2 UPLOAD STATUS", uploadRes.status);
-        console.log("[IMAGING] R2 UPLOAD OK", uploadRes.ok);
 
         if (!uploadRes.ok) {
           setSaveErr("Upload file imaging su storage non riuscito.");
@@ -735,9 +808,6 @@ export default function ClinicaPage() {
         });
 
         const completeJson = await completeRes.json().catch(() => ({}));
-
-        console.log("[IMAGING] COMPLETE STATUS", completeRes.status);
-        console.log("[IMAGING] COMPLETE JSON", completeJson);
 
         if (!completeRes.ok) {
           setSaveErr(completeJson?.error || "Errore salvataggio imaging.");
@@ -2110,7 +2180,7 @@ export default function ClinicaPage() {
                                   {detailEvent.meta?.imaging?.body_part || "—"}
                                 </div>
                                 <div>
-                                  <span className="font-semibold">Viewer:</span>{" "}
+                                  <span className="font-semibold">Viewer DICOM:</span>{" "}
                                   {detailEvent.meta?.imaging?.files?.some((f: any) => !!f?.orthanc)
                                     ? "Disponibile"
                                     : "Non disponibile"}
@@ -2133,6 +2203,14 @@ export default function ClinicaPage() {
                                       file.mime?.startsWith("image/") ||
                                       file.name?.toLowerCase().endsWith(".jpg") ||
                                       file.name?.toLowerCase().endsWith(".png");
+
+                                    const fileId = String(file?.id || file?.path || "");
+                                    const viewerUrl = buildOrthancViewerUrl(file);
+                                    const shareUrl = shareLinkByFileId[fileId];
+                                    const shareExpiresAt = shareExpiresAtByFileId[fileId];
+                                    const isShareLoading = !!shareLoadingByFileId[fileId];
+                                    const isCopied = !!shareCopiedByFileId[fileId];
+                                    const shareError = shareErrorByFileId[fileId];
 
                                     return (
                                       <div
@@ -2157,17 +2235,75 @@ export default function ClinicaPage() {
                                                 Viewer DICOM disponibile
                                               </div>
                                             ) : null}
+
+                                            {shareUrl ? (
+                                              <div className="mt-2 break-all text-[11px] leading-5 text-zinc-600">
+                                                <span className="font-semibold text-zinc-700">
+                                                  Link condivisibile:
+                                                </span>{" "}
+                                                {shareUrl}
+                                              </div>
+                                            ) : null}
+
+                                            {shareExpiresAt ? (
+                                              <div className="mt-1 text-[11px] text-zinc-500">
+                                                Valido fino al {formatShareExpiry(shareExpiresAt)}
+                                              </div>
+                                            ) : null}
+
+                                            {shareError ? (
+                                              <div className="mt-2 text-[11px] font-medium text-red-600">
+                                                {shareError}
+                                              </div>
+                                            ) : null}
+
+                                            {isCopied ? (
+                                              <div className="mt-2 text-[11px] font-semibold text-emerald-700">
+                                                Link copiato negli appunti
+                                              </div>
+                                            ) : null}
                                           </div>
 
-                                          <div className="shrink-0">
+                                          <div className="shrink-0 space-y-2">
                                             <button
                                               type="button"
-                                              className="shrink-0 rounded-xl bg-black px-3 py-2 text-xs font-semibold text-white"
-                                              onClick={() => void openImagingViewerOrFile(detailEvent.id, file)}
-                                              title={file?.orthanc?.studyInstanceUid ? "Apri direttamente lo studio DICOM" : "Apri viewer"}
+                                              className="block w-full rounded-xl bg-black px-3 py-2 text-xs font-semibold text-white"
+                                              onClick={() =>
+                                                void openImagingViewerOrFile(detailEvent.id, file)
+                                              }
+                                              title={
+                                                viewerUrl
+                                                  ? "Apri direttamente lo studio DICOM"
+                                                  : "Apri file imaging"
+                                              }
                                             >
-                                              {file?.orthanc?.studyInstanceUid ? "Apri viewer" : file?.orthanc ? "Apri viewer" : "Apri"}
+                                              {viewerUrl ? "Apri viewer" : "Apri"}
                                             </button>
+
+                                            <button
+                                              type="button"
+                                              className="block w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-800"
+                                              disabled={isShareLoading || !file?.orthanc?.studyInstanceUid}
+                                              onClick={() =>
+                                                void createImagingShareLink(
+                                                  detailEvent.id,
+                                                  detailEvent.animal_id,
+                                                  file
+                                                )
+                                              }
+                                            >
+                                              {isShareLoading ? "Creazione..." : "Crea link"}
+                                            </button>
+
+                                            <button
+                                              type="button"
+                                              className="block w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-800 disabled:opacity-50"
+                                              disabled={!shareUrl}
+                                              onClick={() => void copyImagingShareLink(file)}
+                                            >
+                                              Copia link
+                                            </button>
+
                                             <a
                                               href="#"
                                               onClick={async (e) => {
@@ -2199,7 +2335,7 @@ export default function ClinicaPage() {
                                                 link.click();
                                                 link.remove();
                                               }}
-                                              className="mt-2 inline-block text-xs font-semibold text-blue-600 hover:underline"
+                                              className="block text-center text-xs font-semibold text-blue-600 hover:underline"
                                             >
                                               Scarica file
                                             </a>
@@ -2212,7 +2348,9 @@ export default function ClinicaPage() {
                                               src="#"
                                               alt="preview"
                                               className="max-h-40 w-full rounded-lg bg-zinc-100 object-cover"
-                                              onClick={() => void openImagingViewerOrFile(detailEvent.id, file)}
+                                              onClick={() =>
+                                                void openImagingViewerOrFile(detailEvent.id, file)
+                                              }
                                             />
                                           </div>
                                         ) : null}
