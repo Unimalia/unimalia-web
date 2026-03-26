@@ -124,10 +124,34 @@ type OrthancUploadResult = {
   orthancExplorerUrl: string;
 };
 
+async function fetchOrthancResource(
+  baseUrl: string,
+  basicAuth: string,
+  resource: "studies" | "series" | "instances",
+  id: string
+) {
+  const resp = await fetch(`${baseUrl}/${resource}/${id}`, {
+    method: "GET",
+    headers: {
+      Authorization: `Basic ${basicAuth}`,
+      Accept: "application/json",
+    },
+    cache: "no-store",
+  });
+
+  const json = await resp.json().catch(() => null);
+
+  if (!resp.ok || !json) {
+    throw new Error(`Recupero metadata Orthanc fallito su ${resource}/${id} (${resp.status})`);
+  }
+
+  return json;
+}
+
 async function uploadDicomToOrthancFromR2(params: {
   path: string;
   fileName: string;
-}) : Promise<OrthancUploadResult> {
+}): Promise<OrthancUploadResult> {
   const baseUrl = process.env.ORTHANC_BASE_URL?.trim();
   const username = process.env.ORTHANC_USERNAME?.trim();
   const password = process.env.ORTHANC_PASSWORD?.trim();
@@ -164,7 +188,13 @@ async function uploadDicomToOrthancFromR2(params: {
 
   const uploadJson = await uploadResp.json().catch(() => null);
 
-  if (!uploadResp.ok || !uploadJson?.ID || !uploadJson?.ParentStudy || !uploadJson?.ParentSeries || !uploadJson?.ParentPatient) {
+  if (
+    !uploadResp.ok ||
+    !uploadJson?.ID ||
+    !uploadJson?.ParentStudy ||
+    !uploadJson?.ParentSeries ||
+    !uploadJson?.ParentPatient
+  ) {
     throw new Error(
       `Upload Orthanc fallito (${uploadResp.status})${uploadJson ? `: ${JSON.stringify(uploadJson)}` : ""}`
     );
@@ -175,22 +205,14 @@ async function uploadDicomToOrthancFromR2(params: {
   const seriesId = String(uploadJson.ParentSeries);
   const patientId = String(uploadJson.ParentPatient);
 
-  const instanceResp = await fetch(`${baseUrl}/instances/${instanceId}`, {
-    method: "GET",
-    headers: {
-      Authorization: `Basic ${basicAuth}`,
-      Accept: "application/json",
-    },
-    cache: "no-store",
-  });
+  const instanceJson = await fetchOrthancResource(baseUrl, basicAuth, "instances", instanceId);
+  const studyJson = await fetchOrthancResource(baseUrl, basicAuth, "studies", studyId);
+  const seriesJson = await fetchOrthancResource(baseUrl, basicAuth, "series", seriesId);
 
-  const instanceJson = await instanceResp.json().catch(() => null);
+  const instanceMainTags = instanceJson?.MainDicomTags ?? {};
+  const studyMainTags = studyJson?.MainDicomTags ?? {};
+  const seriesMainTags = seriesJson?.MainDicomTags ?? {};
 
-  if (!instanceResp.ok || !instanceJson) {
-    throw new Error(`Recupero metadata Orthanc fallito (${instanceResp.status})`);
-  }
-
-  const mainTags = instanceJson?.MainDicomTags ?? {};
   const parentStudy = instanceJson?.ParentStudy ?? studyId;
   const parentSeries = instanceJson?.ParentSeries ?? seriesId;
   const parentPatient = instanceJson?.ParentPatient ?? patientId;
@@ -201,9 +223,15 @@ async function uploadDicomToOrthancFromR2(params: {
     seriesId: String(parentSeries),
     patientId: String(parentPatient),
     path: instanceJson?.Path ?? null,
-    studyInstanceUid: mainTags?.StudyInstanceUID ?? null,
-    seriesInstanceUid: mainTags?.SeriesInstanceUID ?? null,
-    sopInstanceUid: mainTags?.SOPInstanceUID ?? null,
+    studyInstanceUid:
+      studyMainTags?.StudyInstanceUID ??
+      instanceMainTags?.StudyInstanceUID ??
+      null,
+    seriesInstanceUid:
+      seriesMainTags?.SeriesInstanceUID ??
+      instanceMainTags?.SeriesInstanceUID ??
+      null,
+    sopInstanceUid: instanceMainTags?.SOPInstanceUID ?? null,
     ohifStudyListUrl: `${baseUrl}/ohif/`,
     orthancExplorerUrl: `${baseUrl}/app/explorer.html`,
   };
