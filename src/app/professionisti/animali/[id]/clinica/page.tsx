@@ -352,6 +352,7 @@ export default function ClinicaPage() {
   const [saveErr, setSaveErr] = useState<string | null>(null);
   const [saveOk, setSaveOk] = useState<string | null>(null);
   const [uploadPhase, setUploadPhase] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
 
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
   const [verifyErr, setVerifyErr] = useState<string | null>(null);
@@ -627,6 +628,36 @@ export default function ClinicaPage() {
     }
   }
 
+  async function uploadFileWithProgress(file: File, uploadUrl: string) {
+    return await new Promise<void>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+
+      xhr.open("PUT", uploadUrl, true);
+      xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) {
+          const percent = Math.round((event.loaded / event.total) * 100);
+          setUploadProgress(percent);
+        }
+      };
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          setUploadProgress(100);
+          resolve();
+        } else {
+          reject(new Error(`Upload failed with status ${xhr.status}`));
+        }
+      };
+
+      xhr.onerror = () => reject(new Error("Network error during upload"));
+      xhr.onabort = () => reject(new Error("Upload aborted"));
+
+      xhr.send(file);
+    });
+  }
+
   useEffect(() => {
     if (!id) return;
     void (async () => {
@@ -706,6 +737,7 @@ export default function ClinicaPage() {
     setSaveErr(null);
     setSaveOk(null);
     setUploadPhase(null);
+    setUploadProgress(0);
 
     try {
       let weightKg: number | null = null;
@@ -782,17 +814,13 @@ export default function ClinicaPage() {
         }
 
         setUploadPhase("Caricamento file su storage…");
-        const uploadRes = await fetch(uploadUrl, {
-          method: "PUT",
-          headers: {
-            "Content-Type": file.type || "application/octet-stream",
-          },
-          body: file,
-        });
 
-        if (!uploadRes.ok) {
+        try {
+          await uploadFileWithProgress(file, uploadUrl);
+        } catch {
           setSaveErr("Upload file imaging su storage non riuscito.");
           setSaving(false);
+          setUploadPhase(null);
           return;
         }
 
@@ -829,6 +857,7 @@ export default function ClinicaPage() {
         }
 
         setUploadPhase(null);
+        setUploadProgress(0);
         setSaveOk("Evento imaging salvato ✅");
         setNewNotes("");
         setNewFiles([]);
@@ -962,8 +991,9 @@ export default function ClinicaPage() {
       await loadFilesCount();
     } catch (err) {
       console.error("[IMAGING] SAVE ERROR", err);
-      setUploadPhase(null);
       setSaveErr("Errore di rete durante il salvataggio.");
+      setUploadPhase(null);
+      setUploadProgress(0);
     } finally {
       setSaving(false);
       setUploadPhase(null);
@@ -1744,8 +1774,22 @@ export default function ClinicaPage() {
               </button>
 
               {saving && uploadPhase ? (
-                <div className="mt-2 text-xs font-medium text-zinc-500">
-                  {uploadPhase}
+                <div className="mt-2 space-y-2">
+                  <div className="text-xs font-medium text-zinc-500">{uploadPhase}</div>
+
+                  {newType === "imaging" && uploadProgress > 0 ? (
+                    <div>
+                      <div className="mb-1 text-[11px] text-zinc-500">
+                        Upload completato: {uploadProgress}%
+                      </div>
+                      <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-200">
+                        <div
+                          className="h-full rounded-full bg-emerald-500 transition-all"
+                          style={{ width: `${uploadProgress}%` }}
+                        />
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
             </div>
@@ -2376,7 +2420,8 @@ export default function ClinicaPage() {
 
                                         {isImage ? (
                                           <div className="mt-3 rounded-lg border border-dashed border-zinc-200 bg-zinc-50 px-3 py-3 text-xs text-zinc-500">
-                                            Anteprima inline non ancora disponibile. Usa “Apri viewer” o “Scarica file”.
+                                            Anteprima inline non ancora disponibile. Usa “Apri
+                                            viewer” o “Scarica file”.
                                           </div>
                                         ) : null}
                                       </div>
