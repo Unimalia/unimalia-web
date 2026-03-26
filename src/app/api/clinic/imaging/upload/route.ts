@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 import { createClient } from "@supabase/supabase-js";
 import {
   createSignedUploadUrl,
+  createSignedDownloadUrl,
   deletePrivateFile,
   fileExists,
 } from "@/lib/storage";
@@ -96,6 +97,116 @@ function isAllowedImagingFile(fileName: string, mimeType?: string | null) {
   const hasAllowedMime = !mimeType || allowedImagingMimeTypes.has(String(mimeType).toLowerCase());
 
   return hasAllowedExtension || hasAllowedMime;
+}
+
+function isDicomFile(fileName: string, mimeType?: string | null) {
+  const lowerName = String(fileName || "").toLowerCase();
+  const lowerMime = String(mimeType || "").toLowerCase();
+  return (
+    lowerName.endsWith(".dcm") ||
+    lowerName.endsWith(".dicom") ||
+    lowerMime === "application/dicom" ||
+    lowerMime === "application/dicom+json" ||
+    lowerMime === "application/octet-stream"
+  );
+}
+
+type OrthancUploadResult = {
+  instanceId: string;
+  studyId: string;
+  seriesId: string;
+  patientId: string;
+  path?: string | null;
+  studyInstanceUid?: string | null;
+  seriesInstanceUid?: string | null;
+  sopInstanceUid?: string | null;
+  ohifStudyListUrl: string;
+  orthancExplorerUrl: string;
+};
+
+async function uploadDicomToOrthancFromR2(params: {
+  path: string;
+  fileName: string;
+}) : Promise<OrthancUploadResult> {
+  const baseUrl = process.env.ORTHANC_BASE_URL?.trim();
+  const username = process.env.ORTHANC_USERNAME?.trim();
+  const password = process.env.ORTHANC_PASSWORD?.trim();
+
+  if (!baseUrl || !username || !password) {
+    throw new Error("Orthanc env mancanti: ORTHANC_BASE_URL / ORTHANC_USERNAME / ORTHANC_PASSWORD");
+  }
+
+  const signedDownloadUrl = await createSignedDownloadUrl(params.path, 60);
+  const r2Resp = await fetch(signedDownloadUrl, {
+    method: "GET",
+    cache: "no-store",
+  });
+
+  if (!r2Resp.ok) {
+    throw new Error(`Download da R2 fallito per invio a Orthanc (${r2Resp.status})`);
+  }
+
+  const dicomArrayBuffer = await r2Resp.arrayBuffer();
+  const dicomBuffer = Buffer.from(dicomArrayBuffer);
+
+  const basicAuth = Buffer.from(`${username}:${password}`).toString("base64");
+
+  const uploadResp = await fetch(`${baseUrl}/instances`, {
+    method: "POST",
+    headers: {
+      Authorization: `Basic ${basicAuth}`,
+      "Content-Type": "application/dicom",
+      Accept: "application/json",
+    },
+    body: dicomBuffer,
+    cache: "no-store",
+  });
+
+  const uploadJson = await uploadResp.json().catch(() => null);
+
+  if (!uploadResp.ok || !uploadJson?.ID || !uploadJson?.ParentStudy || !uploadJson?.ParentSeries || !uploadJson?.ParentPatient) {
+    throw new Error(
+      `Upload Orthanc fallito (${uploadResp.status})${uploadJson ? `: ${JSON.stringify(uploadJson)}` : ""}`
+    );
+  }
+
+  const instanceId = String(uploadJson.ID);
+  const studyId = String(uploadJson.ParentStudy);
+  const seriesId = String(uploadJson.ParentSeries);
+  const patientId = String(uploadJson.ParentPatient);
+
+  const instanceResp = await fetch(`${baseUrl}/instances/${instanceId}`, {
+    method: "GET",
+    headers: {
+      Authorization: `Basic ${basicAuth}`,
+      Accept: "application/json",
+    },
+    cache: "no-store",
+  });
+
+  const instanceJson = await instanceResp.json().catch(() => null);
+
+  if (!instanceResp.ok || !instanceJson) {
+    throw new Error(`Recupero metadata Orthanc fallito (${instanceResp.status})`);
+  }
+
+  const mainTags = instanceJson?.MainDicomTags ?? {};
+  const parentStudy = instanceJson?.ParentStudy ?? studyId;
+  const parentSeries = instanceJson?.ParentSeries ?? seriesId;
+  const parentPatient = instanceJson?.ParentPatient ?? patientId;
+
+  return {
+    instanceId,
+    studyId: String(parentStudy),
+    seriesId: String(parentSeries),
+    patientId: String(parentPatient),
+    path: instanceJson?.Path ?? null,
+    studyInstanceUid: mainTags?.StudyInstanceUID ?? null,
+    seriesInstanceUid: mainTags?.SeriesInstanceUID ?? null,
+    sopInstanceUid: mainTags?.SOPInstanceUID ?? null,
+    ohifStudyListUrl: `${baseUrl}/ohif/`,
+    orthancExplorerUrl: `${baseUrl}/app/explorer.html`,
+  };
 }
 
 const MAX_IMAGING_FILE_SIZE_BYTES = 500 * 1024 * 1024;
@@ -249,6 +360,15 @@ export async function POST(req: Request) {
         );
       }
 
+      let orthancInfo: OrthancUploadResult | null = null;
+
+      if (isDicomFile(fileName, mime)) {
+        orthancInfo = await uploadDicomToOrthancFromR2({
+          path,
+          fileName,
+        });
+      }
+
       const finalEventDate = eventDateRaw ? new Date(eventDateRaw).toISOString() : new Date().toISOString();
       const title = buildImagingTitle(modality, bodyPart);
 
@@ -264,6 +384,19 @@ export async function POST(req: Request) {
               name: fileName,
               size,
               mime,
+              orthanc: orthancInfo
+                ? {
+                    patientId: orthancInfo.patientId,
+                    studyId: orthancInfo.studyId,
+                    seriesId: orthancInfo.seriesId,
+                    instanceId: orthancInfo.instanceId,
+                    studyInstanceUid: orthancInfo.studyInstanceUid,
+                    seriesInstanceUid: orthancInfo.seriesInstanceUid,
+                    sopInstanceUid: orthancInfo.sopInstanceUid,
+                    ohifStudyListUrl: orthancInfo.ohifStudyListUrl,
+                    orthancExplorerUrl: orthancInfo.orthancExplorerUrl,
+                  }
+                : null,
             },
           ],
         },
@@ -319,6 +452,17 @@ export async function POST(req: Request) {
         target_id: eventId,
         animal_id: animalId,
         result: "success",
+        diff: orthancInfo
+          ? {
+              orthanc: {
+                studyId: orthancInfo.studyId,
+                seriesId: orthancInfo.seriesId,
+                instanceId: orthancInfo.instanceId,
+                patientId: orthancInfo.patientId,
+                studyInstanceUid: orthancInfo.studyInstanceUid,
+              },
+            }
+          : undefined,
       });
 
       return NextResponse.json({
@@ -342,6 +486,19 @@ export async function POST(req: Request) {
                 name: fileName,
                 size,
                 mime,
+                orthanc: orthancInfo
+                  ? {
+                      patientId: orthancInfo.patientId,
+                      studyId: orthancInfo.studyId,
+                      seriesId: orthancInfo.seriesId,
+                      instanceId: orthancInfo.instanceId,
+                      studyInstanceUid: orthancInfo.studyInstanceUid,
+                      seriesInstanceUid: orthancInfo.seriesInstanceUid,
+                      sopInstanceUid: orthancInfo.sopInstanceUid,
+                      ohifStudyListUrl: orthancInfo.ohifStudyListUrl,
+                      orthancExplorerUrl: orthancInfo.orthancExplorerUrl,
+                    }
+                  : null,
               },
             ],
           },

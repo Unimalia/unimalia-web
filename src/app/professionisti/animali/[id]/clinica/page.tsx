@@ -511,6 +511,26 @@ export default function ClinicaPage() {
     }
   }
 
+  function buildOrthancViewerUrl(file: any) {
+    const orthanc = file?.orthanc;
+    const studyListUrl = orthanc?.ohifStudyListUrl;
+
+    if (!studyListUrl || typeof studyListUrl !== "string") return null;
+
+    return studyListUrl;
+  }
+
+  async function openImagingViewerOrFile(eventId: string, file: any) {
+    const viewerUrl = buildOrthancViewerUrl(file);
+
+    if (viewerUrl) {
+      window.open(viewerUrl, "_blank", "noopener,noreferrer");
+      return;
+    }
+
+    await openImagingFile(eventId, file.path);
+  }
+
   useEffect(() => {
     if (!id) return;
     void (async () => {
@@ -1615,11 +1635,7 @@ export default function ClinicaPage() {
                 disabled={!canSave}
                 onClick={() => void saveClinicEvent()}
               >
-                {saving
-                  ? "Salvataggio…"
-                  : newType === "imaging"
-                    ? "Salva imaging"
-                    : "Salva evento e aggiorna timeline"}
+                {saving ? "Salvataggio…" : "Salva evento e aggiorna timeline"}
               </button>
             </div>
           </div>
@@ -2084,6 +2100,12 @@ export default function ClinicaPage() {
                                   <span className="font-semibold">Distretto:</span>{" "}
                                   {detailEvent.meta?.imaging?.body_part || "—"}
                                 </div>
+                                <div>
+                                  <span className="font-semibold">Viewer:</span>{" "}
+                                  {detailEvent.meta?.imaging?.files?.some((f: any) => !!f?.orthanc)
+                                    ? "Disponibile"
+                                    : "Non disponibile"}
+                                </div>
                               </div>
 
                               {Array.isArray(detailEvent.meta?.imaging?.files) &&
@@ -2112,17 +2134,21 @@ export default function ClinicaPage() {
                                                 ? ` • ${Math.round(file.size / 1024)} KB`
                                                 : ""}
                                             </div>
+
+                                            {file?.orthanc ? (
+                                              <div className="mt-1 text-[11px] font-semibold text-emerald-700">
+                                                Viewer DICOM disponibile
+                                              </div>
+                                            ) : null}
                                           </div>
 
                                           <div className="shrink-0">
                                             <button
                                               type="button"
                                               className="shrink-0 rounded-xl bg-black px-3 py-2 text-xs font-semibold text-white"
-                                              onClick={() =>
-                                                void openImagingFile(detailEvent.id, file.path)
-                                              }
+                                              onClick={() => void openImagingViewerOrFile(detailEvent.id, file)}
                                             >
-                                              Apri
+                                              {file?.orthanc ? "Apri viewer" : "Apri"}
                                             </button>
                                             <a
                                               href="#"
@@ -2168,9 +2194,7 @@ export default function ClinicaPage() {
                                               src="#"
                                               alt="preview"
                                               className="max-h-40 w-full rounded-lg bg-zinc-100 object-cover"
-                                              onClick={() =>
-                                                void openImagingFile(detailEvent.id, file.path)
-                                              }
+                                              onClick={() => void openImagingViewerOrFile(detailEvent.id, file)}
                                             />
                                           </div>
                                         ) : null}
