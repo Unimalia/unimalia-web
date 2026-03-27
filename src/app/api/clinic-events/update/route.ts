@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { requireOwnerOrGrant } from "@/lib/server/requireOwnerOrGrant";
 import { writeAudit } from "@/lib/server/audit";
 import { sendOwnerAnimalUpdateEmail } from "@/lib/email/sendOwnerAnimalUpdateEmail";
@@ -39,12 +39,51 @@ function parseDateOnly(v: unknown): string | null {
   return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null;
 }
 
+function sanitizeMeta(input: unknown): Record<string, any> | null {
+  if (!input || typeof input !== "object" || Array.isArray(input)) return null;
+
+  const reservedKeys = new Set([
+    "therapy_start_date",
+    "therapy_end_date",
+    "priority",
+    "created_by_member_label",
+    "created_by_member_id",
+    "created_by_org_name",
+    "has_attachments",
+    "weight_kg",
+  ]);
+
+  const output: Record<string, any> = {};
+
+  for (const [key, value] of Object.entries(input)) {
+    if (!key || reservedKeys.has(key)) continue;
+    output[key] = value;
+  }
+
+  return output;
+}
+
+async function safeWriteAudit(
+  supabase: SupabaseClient<any, "public", any>,
+  payload: Parameters<typeof writeAudit>[1]
+) {
+  try {
+    await writeAudit(supabase as any, payload);
+  } catch (error) {
+    console.error("[AUDIT_WRITE_ERROR]", error);
+  }
+}
+
 export async function POST(req: Request) {
   const token = getBearerToken(req);
-  if (!token) return NextResponse.json({ error: "Missing Bearer token" }, { status: 401 });
+
+  if (!token) {
+    return NextResponse.json({ error: "Missing Bearer token" }, { status: 401 });
+  }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
   if (!supabaseUrl || !supabaseAnon) {
     return NextResponse.json(
       { error: "Server misconfigured (Supabase env missing)" },
@@ -58,27 +97,53 @@ export async function POST(req: Request) {
 
   const { data: userData, error: userErr } = await supabase.auth.getUser(token);
   const user = userData?.user;
-  if (userErr || !user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  if (userErr || !user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   const body = (await req.json().catch(() => null)) as Body | null;
-  if (!body) return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
 
-  const id = (body.id || "").trim();
+  if (!body) {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
+  const id = String(body.id || "").trim();
   const title = typeof body.title === "string" ? body.title.trim() : "";
   const type = typeof body.type === "string" ? body.type.trim() : "";
   const eventDate = typeof body.eventDate === "string" ? body.eventDate.trim() : "";
   const description = (body.description ?? "").toString().trim() || null;
 
-  if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
+  if (!id) {
+    return NextResponse.json({ error: "id required" }, { status: 400 });
+  }
 
   if (!isUuid(id)) {
     return NextResponse.json({ error: "id invalid" }, { status: 400 });
   }
 
-  if (!title) return NextResponse.json({ error: "title required" }, { status: 400 });
-  if (!type) return NextResponse.json({ error: "type required" }, { status: 400 });
+  if (!title) {
+    return NextResponse.json({ error: "title required" }, { status: 400 });
+  }
+
+  if (!type) {
+    return NextResponse.json({ error: "type required" }, { status: 400 });
+  }
+
   if (!eventDate || !isValidDateYYYYMMDD(eventDate)) {
     return NextResponse.json({ error: "eventDate must be YYYY-MM-DD" }, { status: 400 });
+  }
+
+  if (title.length > 200) {
+    return NextResponse.json({ error: "title too long" }, { status: 400 });
+  }
+
+  if (type.length > 80) {
+    return NextResponse.json({ error: "type too long" }, { status: 400 });
+  }
+
+  if (description && description.length > 5000) {
+    return NextResponse.json({ error: "description too long" }, { status: 400 });
   }
 
   const { data: current, error: readErr } = await supabase
@@ -91,11 +156,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Event not found" }, { status: 404 });
   }
 
-  const animalId = (current as any).animal_id as string;
+  const animalId = String((current as any).animal_id || "");
 
-  const grant = await requireOwnerOrGrant(supabase, user.id, animalId, "write");
+  if (!animalId || !isUuid(animalId)) {
+    return NextResponse.json({ error: "Invalid event animal_id" }, { status: 400 });
+  }
+
+  const grant = await requireOwnerOrGrant(supabase as any, user.id, animalId, "write");
+
   if (!grant.ok) {
-    await writeAudit(supabase, {
+    await safeWriteAudit(supabase, {
       req,
       actor_user_id: user.id,
       action: "event.update",
@@ -105,15 +175,18 @@ export async function POST(req: Request) {
       result: "denied",
       reason: grant.reason,
     });
+
     return NextResponse.json({ error: grant.reason }, { status: 403 });
   }
 
-  const source = (current as any).source as string;
+  const source = String((current as any).source || "");
   const createdBy = ((current as any).created_by as string | null) ?? null;
 
   if (source !== "owner") {
     if (!createdBy || createdBy !== user.id) {
-      await writeAudit(supabase, {
+      const reason = "Non autorizzato: puoi modificare solo eventi owner o i tuoi eventi.";
+
+      await safeWriteAudit(supabase, {
         req,
         actor_user_id: user.id,
         actor_org_id: grant.actor_org_id,
@@ -122,30 +195,38 @@ export async function POST(req: Request) {
         target_id: id,
         animal_id: animalId,
         result: "denied",
-        reason: "Non autorizzato: puoi modificare solo eventi owner o i tuoi eventi.",
+        reason,
       });
-      return NextResponse.json(
-        { error: "Non autorizzato: puoi modificare solo eventi owner o i tuoi eventi." },
-        { status: 403 }
-      );
+
+      return NextResponse.json({ error: reason }, { status: 403 });
     }
   }
 
-  const therapyStartDate = parseDateOnly((body as any).therapyStartDate);
-  const therapyEndDate = parseDateOnly((body as any).therapyEndDate);
+  const therapyStartDate = parseDateOnly(body.therapyStartDate);
+  const therapyEndDate = parseDateOnly(body.therapyEndDate);
+
+  if (
+    therapyStartDate &&
+    therapyEndDate &&
+    new Date(`${therapyEndDate}T00:00:00.000Z`).getTime() <
+      new Date(`${therapyStartDate}T00:00:00.000Z`).getTime()
+  ) {
+    return NextResponse.json(
+      { error: "therapyEndDate cannot be before therapyStartDate" },
+      { status: 400 }
+    );
+  }
+
   const priority =
-    ["low", "normal", "high", "urgent"].includes(String((body as any).priority || ""))
-      ? String((body as any).priority)
+    ["low", "normal", "high", "urgent"].includes(String(body.priority || ""))
+      ? String(body.priority)
       : null;
 
   const nextMeta: Record<string, any> = {
-    ...(((current as any).meta as Record<string, any>) || {}),
+    ...((((current as any).meta as Record<string, any>) || {}) as Record<string, any>),
   };
 
-  const incomingMeta =
-    body.meta && typeof body.meta === "object" && !Array.isArray(body.meta)
-      ? body.meta
-      : null;
+  const incomingMeta = sanitizeMeta(body.meta);
 
   if (incomingMeta) {
     Object.assign(nextMeta, incomingMeta);
@@ -159,7 +240,11 @@ export async function POST(req: Request) {
     delete nextMeta.therapy_end_date;
   }
 
-  if (priority) nextMeta.priority = priority;
+  if (priority) {
+    nextMeta.priority = priority;
+  } else {
+    delete nextMeta.priority;
+  }
 
   const before = {
     title: (current as any).title,
@@ -167,6 +252,11 @@ export async function POST(req: Request) {
     event_date: (current as any).event_date,
     description: (current as any).description,
     meta: (current as any).meta,
+    verified_at: (current as any).verified_at,
+    verified_by: (current as any).verified_by,
+    verified_by_org_id: (current as any).verified_by_org_id,
+    verified_by_member_id: (current as any).verified_by_member_id,
+    verified_by_label: (current as any).verified_by_label,
   };
 
   const updateData: Record<string, any> = {
@@ -177,9 +267,12 @@ export async function POST(req: Request) {
     meta: nextMeta,
   };
 
-  if ((current as any).verified_at || (current as any).source === "professional") {
+  if ((current as any).verified_at || source === "professional" || source === "veterinarian") {
     updateData.verified_at = null;
     updateData.verified_by = null;
+    updateData.verified_by_org_id = null;
+    updateData.verified_by_member_id = null;
+    updateData.verified_by_label = null;
   }
 
   const { data: updated, error } = await supabase
@@ -190,7 +283,7 @@ export async function POST(req: Request) {
     .single();
 
   if (error || !updated) {
-    await writeAudit(supabase, {
+    await safeWriteAudit(supabase, {
       req,
       actor_user_id: user.id,
       actor_org_id: grant.actor_org_id,
@@ -201,18 +294,23 @@ export async function POST(req: Request) {
       result: "error",
       reason: error?.message || "update failed",
     });
+
     return NextResponse.json({ error: error?.message || "Update failed" }, { status: 400 });
   }
 
-  await supabase.from("animal_clinic_event_audit").insert({
-    event_id: (current as any).id,
-    animal_id: animalId,
-    actor_user_id: user.id,
-    actor_org_id: grant.actor_org_id,
-    action: "update",
-    previous_data: current,
-    next_data: { ...current, ...updateData },
-  });
+  try {
+    await supabase.from("animal_clinic_event_audit").insert({
+      event_id: (current as any).id,
+      animal_id: animalId,
+      actor_user_id: user.id,
+      actor_org_id: grant.actor_org_id,
+      action: "update",
+      previous_data: current,
+      next_data: { ...current, ...updateData },
+    });
+  } catch (auditInsertError) {
+    console.error("[CLINIC_EVENT_AUDIT_INSERT_ERROR]", auditInsertError);
+  }
 
   try {
     await sendOwnerAnimalUpdateEmail({
@@ -244,9 +342,14 @@ export async function POST(req: Request) {
     event_date: (updated as any).event_date,
     description: (updated as any).description,
     meta: (updated as any).meta,
+    verified_at: (updated as any).verified_at,
+    verified_by: (updated as any).verified_by,
+    verified_by_org_id: (updated as any).verified_by_org_id,
+    verified_by_member_id: (updated as any).verified_by_member_id,
+    verified_by_label: (updated as any).verified_by_label,
   };
 
-  await writeAudit(supabase, {
+  await safeWriteAudit(supabase, {
     req,
     actor_user_id: user.id,
     actor_org_id: grant.actor_org_id,
