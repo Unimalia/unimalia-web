@@ -354,6 +354,10 @@ export default function ClinicaPage() {
   const [saveOk, setSaveOk] = useState<string | null>(null);
   const [uploadPhase, setUploadPhase] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [uploadStatus, setUploadStatus] = useState<string>("");
+
+  const [modality, setModality] = useState<string | null>(null);
+  const [bodyPart, setBodyPart] = useState<string | null>(null);
 
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
   const [verifyErr, setVerifyErr] = useState<string | null>(null);
@@ -807,6 +811,7 @@ export default function ClinicaPage() {
         const eventId = prepareJson?.upload?.eventId as string | undefined;
         const fileId = prepareJson?.upload?.fileId as string | undefined;
         const preparedFileName = prepareJson?.upload?.fileName as string | undefined;
+        
 
         if (!uploadUrl || !path || !eventId || !fileId || !preparedFileName) {
           setSaveErr("Risposta upload imaging incompleta.");
@@ -821,7 +826,11 @@ export default function ClinicaPage() {
         try {
           const result = await multipartUpload({
             file,
+            animalId: String(id),
+            modality,
+            bodyPart,
             onProgress: (p) => setUploadProgress(p),
+            onStatus: (msg) => setUploadStatus(msg),
           });
 
           uploadedKey = result.key;

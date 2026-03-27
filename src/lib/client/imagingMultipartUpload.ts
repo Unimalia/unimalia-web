@@ -1,81 +1,150 @@
-export type MultipartOptions = {
+type MultipartUploadParams = {
   file: File;
-  onProgress?: (p: number) => void;
-  signal?: AbortSignal;
+  animalId: string;
+  modality?: string | null;
+  bodyPart?: string | null;
+  onProgress?: (percent: number) => void;
+  onStatus?: (msg: string) => void;
 };
 
-const PART_SIZE = 5 * 1024 * 1024; // 5MB
+export async function multipartUpload({
+  file,
+  animalId,
+  modality,
+  bodyPart,
+  onProgress,
+  onStatus,
+}: MultipartUploadParams) {
+  const token = localStorage.getItem("sb-access-token");
 
-export async function multipartUpload({ file, onProgress }: MultipartOptions) {
-  // STEP 1 — init
-  const initRes = await fetch("/api/clinic/imaging/multipart/init", {
+  if (!token) throw new Error("Missing auth token");
+
+  const headers = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  };
+
+  // 🔥 INIT
+  onStatus?.("Init upload...");
+
+  const initResp = await fetch("/api/clinic/imaging/multipart/init", {
     method: "POST",
+    headers,
     body: JSON.stringify({
+      animalId,
       fileName: file.name,
-      fileType: file.type,
       fileSize: file.size,
+      fileType: file.type,
+      userId: null, // server prende da token
     }),
   });
 
-  const init = await initRes.json();
+  const initJson = await initResp.json();
 
-  const { uploadId, key } = init;
+  if (!initJson.ok) throw new Error(initJson.error);
 
-  let uploadedBytes = 0;
-  const parts: { ETag: string; PartNumber: number }[] = [];
+  const { sessionId, partSize, totalParts } = initJson.data;
 
-  const totalParts = Math.ceil(file.size / PART_SIZE);
+  // 🔥 STATUS (resume)
+  onStatus?.("Checking existing upload...");
 
+  const statusResp = await fetch("/api/clinic/imaging/multipart/status", {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ sessionId }),
+  });
+
+  const statusJson = await statusResp.json();
+
+  const uploadedParts = statusJson.data?.uploadedPartNumbers || [];
+
+  let uploadedBytes = statusJson.data?.uploadedBytes || 0;
+
+  // 🔁 LOOP CHUNK
   for (let partNumber = 1; partNumber <= totalParts; partNumber++) {
-    const start = (partNumber - 1) * PART_SIZE;
-    const end = Math.min(start + PART_SIZE, file.size);
+    if (uploadedParts.includes(partNumber)) continue;
 
+    const start = (partNumber - 1) * partSize;
+    const end = Math.min(start + partSize, file.size);
     const chunk = file.slice(start, end);
 
-    // STEP 2 — sign part
-    const signRes = await fetch("/api/clinic/imaging/multipart/sign", {
+    onStatus?.(`Uploading part ${partNumber}/${totalParts}`);
+
+    // 🔐 SIGN URL
+    const signResp = await fetch("/api/clinic/imaging/multipart/sign", {
       method: "POST",
-      body: JSON.stringify({
-        uploadId,
-        key,
-        partNumber,
-      }),
+      headers,
+      body: JSON.stringify({ sessionId, partNumber }),
     });
 
-    const { url } = await signRes.json();
+    const signJson = await signResp.json();
 
-    // STEP 3 — upload chunk
-    const uploadRes = await fetch(url, {
-      method: "PUT",
-      body: chunk,
-    });
+    if (!signJson.ok) throw new Error(signJson.error);
 
-    if (!uploadRes.ok) throw new Error("Chunk upload failed");
+    const { url } = signJson.data;
 
-    const etag = uploadRes.headers.get("ETag") || "";
+    // 🔁 RETRY LOGIC
+    let uploaded = false;
+    let attempt = 0;
 
-    parts.push({
-      ETag: etag.replaceAll('"', ""),
-      PartNumber: partNumber,
-    });
+    while (!uploaded && attempt < 3) {
+      attempt++;
+
+      try {
+        const uploadResp = await fetch(url, {
+          method: "PUT",
+          body: chunk,
+        });
+
+        if (!uploadResp.ok) throw new Error("Chunk upload failed");
+
+        const etag = uploadResp.headers.get("etag") || `${Date.now()}`;
+
+        // 🔥 MARK PART
+        await fetch("/api/clinic/imaging/multipart/mark-part", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            sessionId,
+            partNumber,
+            etag,
+            size: chunk.size,
+          }),
+        });
+
+        uploaded = true;
+      } catch (err) {
+        if (attempt >= 3) throw err;
+        await new Promise((r) => setTimeout(r, attempt * 1000));
+      }
+    }
 
     uploadedBytes += chunk.size;
 
-    if (onProgress) {
-      const percent = Math.round((uploadedBytes / file.size) * 100);
-      onProgress(percent);
-    }
+    const percent = Math.round((uploadedBytes / file.size) * 100);
+    onProgress?.(percent);
   }
 
-  // STEP 4 — complete
-  await fetch("/api/clinic/imaging/multipart/complete", {
+  // 🔥 COMPLETE
+  onStatus?.("Finalizing upload...");
+
+  const completeResp = await fetch("/api/clinic/imaging/multipart/complete", {
     method: "POST",
+    headers,
     body: JSON.stringify({
-      uploadId,
-      key,
-      parts,
+      sessionId,
+      animalId,
+      modality,
+      bodyPart,
     }),
   });
 
-  return { key };
+  const completeJson = await completeResp.json();
+
+  if (!completeJson.ok) throw new Error(completeJson.error);
+
+  onProgress?.(100);
+  onStatus?.("Upload completed");
+
+  return completeJson.data;
 }
