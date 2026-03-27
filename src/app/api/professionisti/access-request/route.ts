@@ -3,6 +3,12 @@ import { createClient, supabaseAdmin } from "@/lib/supabase/server";
 import { getCoreSystemFlags } from "@/lib/systemFlags";
 import { getProfessionalOrgId } from "@/lib/professionisti/org";
 
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value
+  );
+}
+
 export async function POST(req: NextRequest) {
   try {
     const flags = await getCoreSystemFlags();
@@ -41,16 +47,33 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => null);
 
     const animalId = String(body?.animalId ?? body?.animal_id ?? "").trim();
-    const permissions = Array.isArray(body?.permissions)
+
+    if (!animalId || !isUuid(animalId)) {
+      return NextResponse.json({ error: "animalId non valido" }, { status: 400 });
+    }
+
+    // 🔒 NORMALIZZAZIONE PERMESSI (solo read/write)
+    const rawPermissions = Array.isArray(body?.permissions)
       ? body.permissions
       : Array.isArray(body?.requestedScope)
-        ? body.requestedScope
-        : Array.isArray(body?.requested_scope)
-          ? body.requested_scope
-          : [];
+      ? body.requestedScope
+      : Array.isArray(body?.requested_scope)
+      ? body.requested_scope
+      : [];
 
-    if (!animalId) {
-      return NextResponse.json({ error: "animalId mancante" }, { status: 400 });
+    const permissions = Array.from(
+      new Set(
+        rawPermissions.filter(
+          (p: any) => p === "read" || p === "write"
+        )
+      )
+    );
+
+    if (permissions.length === 0) {
+      return NextResponse.json(
+        { error: "Permessi non validi (read/write richiesti)" },
+        { status: 400 }
+      );
     }
 
     const animalResult = await admin
@@ -75,31 +98,34 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // 🔒 CHECK GRANT ATTIVO (solo org!)
     const existingGrant = await admin
       .from("animal_access_grants")
-      .select("id, status")
+      .select("id")
       .eq("animal_id", animalId)
       .eq("grantee_id", orgId)
+      .eq("grantee_type", "org")
       .in("status", ["active", "approved"])
-      .maybeSingle();
+      .limit(1);
 
-    if (existingGrant.data) {
+    if (existingGrant.data && existingGrant.data.length > 0) {
       return NextResponse.json({
         ok: true,
         alreadyGranted: true,
       });
     }
 
+    // 🔒 CHECK REQUEST PENDING
     const existingRequest = await admin
       .from("animal_access_requests")
-      .select("id, status")
+      .select("id")
       .eq("animal_id", animalId)
       .eq("owner_id", animal.owner_id)
       .eq("org_id", orgId)
-      .in("status", ["pending"])
-      .maybeSingle();
+      .eq("status", "pending")
+      .limit(1);
 
-    if (existingRequest.data) {
+    if (existingRequest.data && existingRequest.data.length > 0) {
       return NextResponse.json({
         ok: true,
         alreadyPending: true,
@@ -133,6 +159,9 @@ export async function POST(req: NextRequest) {
       requestId: insertResult.data.id,
     });
   } catch (error: any) {
-    return NextResponse.json({ error: error?.message || "Errore interno" }, { status: 500 });
+    return NextResponse.json(
+      { error: error?.message || "Errore interno" },
+      { status: 500 }
+    );
   }
 }

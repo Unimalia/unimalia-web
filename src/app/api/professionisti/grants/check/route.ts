@@ -53,7 +53,6 @@ export async function GET(req: Request) {
 
     const candidateIds = new Set<string>();
 
-    // 1) org_id dal profilo professionale
     const profileResult = await admin
       .from("professional_profiles")
       .select("user_id, org_id")
@@ -72,9 +71,8 @@ export async function GET(req: Request) {
     }
 
     const profileOrgId = (profileResult.data as any)?.org_id ?? null;
-    if (profileOrgId) candidateIds.add(profileOrgId);
+    if (profileOrgId) candidateIds.add(String(profileOrgId));
 
-    // 2) id del professionista collegato all’utente
     const professionalResult = await admin
       .from("professionals")
       .select("id, owner_id")
@@ -95,9 +93,9 @@ export async function GET(req: Request) {
     }
 
     const professionalId = (professionalResult.data as any)?.id ?? null;
-    if (professionalId) candidateIds.add(professionalId);
+    if (professionalId) candidateIds.add(String(professionalId));
 
-    const ids = Array.from(candidateIds);
+    const ids = Array.from(candidateIds).filter(Boolean);
 
     if (ids.length === 0) {
       return NextResponse.json({
@@ -107,7 +105,6 @@ export async function GET(req: Request) {
       });
     }
 
-    // Verifica grant attivo direttamente su tabella grant
     const { data: grants, error: grantError } = await admin
       .from("animal_access_grants")
       .select("id, grantee_id, status, valid_to, revoked_at")
@@ -128,17 +125,18 @@ export async function GET(req: Request) {
     const activeGrant =
       (grants ?? []).find((g: any) => {
         if (g.status !== "active" && g.status !== "approved") return false;
+
         if (!g.valid_to) return true;
+
         const validToMs = new Date(g.valid_to).getTime();
-        if (Number.isNaN(validToMs)) return true;
+        if (Number.isNaN(validToMs)) return false;
+
         return validToMs > now;
       }) ?? null;
 
     return NextResponse.json({
       ok: true,
       hasGrant: Boolean(activeGrant),
-      matchedGranteeId: activeGrant?.grantee_id ?? null,
-      checkedIds: ids,
     });
   } catch (error) {
     return NextResponse.json(

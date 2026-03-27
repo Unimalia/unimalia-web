@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { isVetUser } from "@/app/professionisti/_components/ProShell";
 import { authHeaders } from "@/lib/client/authHeaders";
+import { multipartUpload } from "@/lib/client/imagingMultipartUpload";
 
 type ClinicEventType =
   | "visit"
@@ -815,10 +816,18 @@ export default function ClinicaPage() {
 
         setUploadPhase("Caricamento file su storage…");
 
+        let uploadedKey: string | null = null;
+
         try {
-          await uploadFileWithProgress(file, uploadUrl);
-        } catch {
-          setSaveErr("Upload file imaging su storage non riuscito.");
+          const result = await multipartUpload({
+            file,
+            onProgress: (p) => setUploadProgress(p),
+          });
+
+          uploadedKey = result.key;
+        } catch (err) {
+          console.error("Multipart upload error", err);
+          setSaveErr("Upload imaging fallito.");
           setSaving(false);
           setUploadPhase(null);
           return;
