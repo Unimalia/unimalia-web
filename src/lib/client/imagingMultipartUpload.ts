@@ -15,6 +15,17 @@ function getLocalKey(file: File, animalId: string) {
   return `upload:${animalId}:${file.name}:${file.size}`;
 }
 
+async function safeJson(res: Response) {
+  try {
+    if (!res.ok) return null;
+    const text = await res.text();
+    if (!text) return null;
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
 async function retryFetch(fn: () => Promise<Response>, retries = 3) {
   let delay = 1000;
 
@@ -48,22 +59,25 @@ export async function multipartUpload({
 
   onStatus?.("Init upload...");
 
+  // INIT (start or resume)
   const initResp = await fetch("/api/clinic/imaging/multipart/init", {
     method: "POST",
     headers,
     body: JSON.stringify({
       fileName: file.name,
       fileSize: file.size,
-      fileType: file.type,
+      fileType: file.type || "application/octet-stream",
       animalId,
       modality,
       bodyPart,
     }),
   });
 
-  const init = await initResp.json();
+  const init = await safeJson(initResp);
 
-  if (!initResp.ok) throw new Error(init?.error);
+  if (!initResp.ok || !init) {
+    throw new Error("Init upload failed");
+  }
 
   const { uploadId, key, totalParts, resumed } = init;
 
@@ -71,7 +85,7 @@ export async function multipartUpload({
 
   onStatus?.(resumed ? "Resume upload..." : "New upload...");
 
-  // 🔥 status
+  // STATUS (per resume reale)
   const statusResp = await fetch(
     `/api/clinic/imaging/multipart/status?uploadId=${uploadId}`,
     {
@@ -79,12 +93,13 @@ export async function multipartUpload({
     }
   );
 
-  const status = await statusResp.json();
+  const status = await safeJson(statusResp);
 
   const uploadedParts = new Set<number>(
     status?.uploadedPartNumbers || []
   );
 
+  // LOOP PARTS
   for (let part = 1; part <= totalParts; part++) {
     if (uploadedParts.has(part)) continue;
 
@@ -95,25 +110,43 @@ export async function multipartUpload({
 
     const chunk = file.slice(start, end);
 
+    // GET SIGNED URL
     const urlResp = await fetch(
       `/api/clinic/imaging/multipart/part-url?uploadId=${uploadId}&partNumber=${part}&key=${encodeURIComponent(
         key
       )}`,
-      { headers: await authHeaders() }
+      {
+        headers: await authHeaders(),
+      }
     );
 
-    const { url } = await urlResp.json();
+    const urlJson = await safeJson(urlResp);
 
+    if (!urlResp.ok || !urlJson?.url) {
+      throw new Error("Errore part-url");
+    }
+
+    const uploadUrl = urlJson.url as string;
+
+    // UPLOAD CHUNK (retry)
     const uploadResp = await retryFetch(() =>
-      fetch(url, { method: "PUT", body: chunk })
+      fetch(uploadUrl, {
+        method: "PUT",
+        body: chunk,
+      })
     );
 
     const etag = uploadResp.headers.get("etag") || "";
 
+    // MARK PART
     await fetch("/api/clinic/imaging/multipart/mark-part", {
       method: "POST",
       headers,
-      body: JSON.stringify({ uploadId, partNumber: part, etag }),
+      body: JSON.stringify({
+        uploadId,
+        partNumber: part,
+        etag,
+      }),
     });
 
     const percent = Math.round((part / totalParts) * 100);
@@ -122,22 +155,28 @@ export async function multipartUpload({
 
   onStatus?.("Completing...");
 
+  // COMPLETE
   const completeResp = await fetch(
     "/api/clinic/imaging/multipart/complete",
     {
       method: "POST",
       headers,
-      body: JSON.stringify({ uploadId, key }),
+      body: JSON.stringify({
+        uploadId,
+        key,
+      }),
     }
   );
 
-  const complete = await completeResp.json();
+  const complete = await safeJson(completeResp);
 
-  if (!completeResp.ok) throw new Error(complete?.error);
+  if (!completeResp.ok || !complete) {
+    throw new Error("Complete upload failed");
+  }
 
   localStorage.removeItem(localKey);
 
-  onStatus?.("Done");
+  onStatus?.("Upload completato");
 
   return complete;
 }
