@@ -14,6 +14,9 @@ type AnimalPayload = {
   microchip?: string | null;
   chip_number?: string | null;
   photo_url?: string | null;
+  owner_email?: string | null;
+  ownerEmail?: string | null;
+  pending_owner_email?: string | null;
 };
 
 function normalizeChip(value?: string | null) {
@@ -44,6 +47,13 @@ function normalizeAnimalRef(value: string) {
   }
 
   return raw;
+}
+
+function normalizeEmail(value?: string | null) {
+  const email = String(value ?? "").trim().toLowerCase();
+  if (!email) return null;
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return null;
+  return email;
 }
 
 async function getProfessionalRefs(userId: string) {
@@ -165,6 +175,56 @@ async function getOwnerDetails(ownerId?: string | null) {
   };
 }
 
+async function findAnimalByChip(chipNumber: string) {
+  const admin = supabaseAdmin();
+
+  const result = await admin
+    .from("animals")
+    .select("*")
+    .eq("chip_number", chipNumber)
+    .limit(2);
+
+  if (result.error) {
+    throw result.error;
+  }
+
+  const rows = result.data ?? [];
+
+  if (rows.length > 1) {
+    throw new Error("Conflitto dati: esistono più animali con questo microchip.");
+  }
+
+  return rows[0] ?? null;
+}
+
+async function findAnimalByPendingOwnerEmailAndCoreData(params: {
+  ownerEmail: string;
+  name: string;
+  species: string;
+}) {
+  const admin = supabaseAdmin();
+
+  const result = await admin
+    .from("animals")
+    .select("*")
+    .eq("pending_owner_email", params.ownerEmail)
+    .eq("species", params.species)
+    .eq("name", params.name)
+    .limit(2);
+
+  if (result.error) {
+    throw result.error;
+  }
+
+  const rows = result.data ?? [];
+
+  if (rows.length > 1) {
+    throw new Error("Conflitto dati: esistono più animali compatibili con questa email owner.");
+  }
+
+  return rows[0] ?? null;
+}
+
 export async function GET(req: NextRequest) {
   try {
     const supabase = await createClient();
@@ -236,7 +296,7 @@ export async function GET(req: NextRequest) {
         if (!g.valid_to) return true;
 
         const validToMs = new Date(g.valid_to).getTime();
-        if (Number.isNaN(validToMs)) return true;
+        if (Number.isNaN(validToMs)) return false;
 
         return validToMs > now;
       }) ?? null;
@@ -329,6 +389,13 @@ export async function POST(req: NextRequest) {
         .eq("user_id", user.id)
         .maybeSingle();
 
+      if (profileResult.error) {
+        return NextResponse.json(
+          { error: profileResult.error.message || "Errore profilo professionista" },
+          { status: 500 }
+        );
+      }
+
       if (profileResult.data?.org_id) {
         orgId = profileResult.data.org_id;
       }
@@ -361,11 +428,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const body = (await req.json()) as AnimalPayload;
+    const body = (await req.json().catch(() => null)) as AnimalPayload | null;
+
+    if (!body) {
+      return NextResponse.json({ error: "Body non valido" }, { status: 400 });
+    }
 
     const name = body.name?.trim() ?? "";
     const species = body.species?.trim() ?? "";
     const chipNumber = normalizeChip(body.microchip ?? body.chip_number ?? null);
+    const ownerEmail = normalizeEmail(
+      body.owner_email ?? body.ownerEmail ?? body.pending_owner_email ?? null
+    );
 
     if (!name) {
       return NextResponse.json({ error: "Nome obbligatorio" }, { status: 400 });
@@ -382,29 +456,79 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    let matchedAnimal: any = null;
+    let matchReason: "chip" | "owner_email" | null = null;
+
     if (chipNumber) {
-      const chipCheck = await admin
-        .from("animals")
-        .select("id, name, chip_number")
-        .eq("chip_number", chipNumber)
-        .maybeSingle();
-
-      if (chipCheck.data?.id) {
-        return NextResponse.json(
-          { error: "Esiste già un animale con questo microchip" },
-          { status: 409 }
-        );
-      }
-
-      if (chipCheck.error) {
-        return NextResponse.json(
-          { error: chipCheck.error.message || "Errore controllo microchip" },
-          { status: 500 }
-        );
+      matchedAnimal = await findAnimalByChip(chipNumber);
+      if (matchedAnimal) {
+        matchReason = "chip";
       }
     }
 
-    const insertPayload = {
+    if (!matchedAnimal && ownerEmail) {
+      matchedAnimal = await findAnimalByPendingOwnerEmailAndCoreData({
+        ownerEmail,
+        name,
+        species,
+      });
+
+      if (matchedAnimal) {
+        matchReason = "owner_email";
+      }
+    }
+
+    if (matchedAnimal) {
+      const patch: Record<string, any> = {
+        updated_at: new Date().toISOString(),
+      };
+
+      if (!matchedAnimal.breed && body.breed?.trim()) patch.breed = body.breed.trim();
+      if (!matchedAnimal.color && body.color?.trim()) patch.color = body.color.trim();
+      if (!matchedAnimal.size && body.size?.trim()) patch.size = body.size.trim();
+      if (!matchedAnimal.sex && body.sex?.trim()) patch.sex = body.sex.trim();
+      if (matchedAnimal.sterilized == null && typeof body.sterilized === "boolean") {
+        patch.sterilized = body.sterilized;
+      }
+      if (!matchedAnimal.birth_date && body.birth_date) patch.birth_date = body.birth_date;
+      if (!matchedAnimal.photo_url && body.photo_url) patch.photo_url = body.photo_url;
+      if (!matchedAnimal.chip_number && chipNumber) patch.chip_number = chipNumber;
+      if (!matchedAnimal.pending_owner_email && ownerEmail) patch.pending_owner_email = ownerEmail;
+      if (!matchedAnimal.origin_org_id) patch.origin_org_id = orgId;
+
+      if (Object.keys(patch).length > 1) {
+        const upd = await admin
+          .from("animals")
+          .update(patch)
+          .eq("id", matchedAnimal.id)
+          .select("*")
+          .single();
+
+        if (upd.error || !upd.data) {
+          return NextResponse.json(
+            { error: upd.error?.message || "Errore aggiornamento animale esistente" },
+            { status: 500 }
+          );
+        }
+
+        matchedAnimal = upd.data;
+      }
+
+      return NextResponse.json(
+        {
+          ok: true,
+          matched: true,
+          match_reason: matchReason,
+          animal: {
+            ...matchedAnimal,
+            microchip: matchedAnimal.chip_number ?? null,
+          },
+        },
+        { status: 200 }
+      );
+    }
+
+    const insertPayload: Record<string, any> = {
       name,
       species,
       breed: body.breed?.trim() || null,
@@ -416,10 +540,12 @@ export async function POST(req: NextRequest) {
       chip_number: chipNumber,
       photo_url: body.photo_url || null,
       owner_id: null,
+      pending_owner_email: ownerEmail,
       created_by_role: "professional",
       created_by_org_id: orgId,
       origin_org_id: orgId,
       owner_claim_status: "pending",
+      microchip_verified: false,
     };
 
     const created = await admin.from("animals").insert(insertPayload).select("*").single();
@@ -431,72 +557,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const existingGrantResult = await admin
-      .from("animal_access_grants")
-      .select("id, status, revoked_at")
-      .eq("animal_id", created.data.id)
-      .eq("grantee_type", "org")
-      .eq("grantee_id", orgId)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (existingGrantResult.error) {
-      return NextResponse.json(
-        { error: existingGrantResult.error.message || "Errore verifica grant clinica" },
-        { status: 500 }
-      );
-    }
-
-    if (existingGrantResult.data?.id) {
-      const shouldReactivate =
-        existingGrantResult.data.status !== "active" || !!existingGrantResult.data.revoked_at;
-
-      if (shouldReactivate) {
-        const reactivateGrant = await admin
-          .from("animal_access_grants")
-          .update({
-            granted_by_user_id: user.id,
-            status: "active",
-            revoked_at: null,
-            valid_to: null,
-            scope_read: true,
-            scope_write: true,
-            scope_upload: true,
-          })
-          .eq("id", existingGrantResult.data.id);
-
-        if (reactivateGrant.error) {
-          return NextResponse.json(
-            { error: reactivateGrant.error.message || "Errore riattivazione grant clinica" },
-            { status: 500 }
-          );
-        }
-      }
-    } else {
-      const insertGrant = await admin.from("animal_access_grants").insert({
-        animal_id: created.data.id,
-        grantee_type: "org",
-        grantee_id: orgId,
-        granted_by_user_id: user.id,
-        status: "active",
-        valid_to: null,
-        revoked_at: null,
-        scope_read: true,
-        scope_write: true,
-        scope_upload: true,
-      });
-
-      if (insertGrant.error) {
-        return NextResponse.json(
-          { error: insertGrant.error.message || "Errore creazione grant clinica" },
-          { status: 500 }
-        );
-      }
-    }
-
     return NextResponse.json(
       {
+        ok: true,
+        matched: false,
         animal: {
           ...created.data,
           microchip: created.data.chip_number ?? null,

@@ -12,6 +12,12 @@ function isValidDuration(value: string): value is Duration {
   return value === "24h" || value === "7d" || value === "6m" || value === "forever";
 }
 
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value
+  );
+}
+
 function computeValidTo(duration: Duration) {
   const now = new Date();
 
@@ -28,7 +34,6 @@ async function tryResolveOrgNames(admin: ReturnType<typeof supabaseAdmin>, orgId
 
   if (!orgIds.length) return orgNameById;
 
-  // Primo tentativo: tabella organizations
   try {
     const { data, error } = await admin
       .from("organizations")
@@ -48,11 +53,8 @@ async function tryResolveOrgNames(admin: ReturnType<typeof supabaseAdmin>, orgId
 
       if (orgNameById.size > 0) return orgNameById;
     }
-  } catch {
-    // fallback sotto
-  }
+  } catch {}
 
-  // Fallback: tabella professionals
   try {
     const { data, error } = await admin
       .from("professionals")
@@ -72,9 +74,7 @@ async function tryResolveOrgNames(admin: ReturnType<typeof supabaseAdmin>, orgId
         orgNameById.set(row.id, name || row.id);
       }
     }
-  } catch {
-    // se fallisce anche questo, mostreremo direttamente org_id
-  }
+  } catch {}
 
   return orgNameById;
 }
@@ -82,7 +82,11 @@ async function tryResolveOrgNames(admin: ReturnType<typeof supabaseAdmin>, orgId
 export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
-    const animalId = url.searchParams.get("animalId");
+    const animalId = (url.searchParams.get("animalId") || "").trim();
+
+    if (animalId && !isUuid(animalId)) {
+      return NextResponse.json({ error: "animalId non valido" }, { status: 400 });
+    }
 
     const supabase = await createServerSupabaseClient();
     const admin = supabaseAdmin();
@@ -105,6 +109,7 @@ export async function GET(req: Request) {
     if (animalId) q = q.eq("animal_id", animalId);
 
     const { data, error } = await q;
+
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
@@ -163,12 +168,17 @@ export async function POST(req: Request) {
     if (!user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
     const body = await req.json().catch(() => null);
+
     if (!body?.id || !body?.action) {
       return NextResponse.json({ error: "Missing id/action" }, { status: 400 });
     }
 
-    const id = String(body.id);
-    const actionRaw = String(body.action);
+    const id = String(body.id).trim();
+    if (!isUuid(id)) {
+      return NextResponse.json({ error: "Invalid id" }, { status: 400 });
+    }
+
+    const actionRaw = String(body.action).trim();
     if (!isValidAction(actionRaw)) {
       return NextResponse.json({ error: "Unknown action" }, { status: 400 });
     }
@@ -185,30 +195,41 @@ export async function POST(req: Request) {
 
     if (reqErr) return NextResponse.json({ error: reqErr.message }, { status: 500 });
     if (!reqRow) return NextResponse.json({ error: "Request not found" }, { status: 404 });
+
     if (reqRow.owner_id !== user.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     if (action === "approve") {
+      if (reqRow.status !== "pending") {
+        return NextResponse.json({ error: "Request is not pending" }, { status: 409 });
+      }
+
       const validTo = computeValidTo(duration);
 
       const requestedScopeRaw = Array.isArray(reqRow.requested_scope) ? reqRow.requested_scope : [];
-      const requestedScope = requestedScopeRaw.filter(
-        (item) => item === "read" || item === "write"
+      const requestedScope = Array.from(
+        new Set(requestedScopeRaw.filter((item) => item === "read" || item === "write"))
       );
 
-      const { data: existingGrant, error: existingGrantErr } = await admin
+      if (requestedScope.length === 0) {
+        return NextResponse.json({ error: "Invalid requested scope" }, { status: 400 });
+      }
+
+      const { data: existingGrants, error: existingGrantErr } = await admin
         .from("animal_access_grants")
         .select("id")
         .eq("animal_id", reqRow.animal_id)
         .eq("grantee_type", "org")
         .eq("grantee_id", reqRow.org_id)
         .is("revoked_at", null)
-        .maybeSingle();
+        .limit(2);
 
       if (existingGrantErr) {
         return NextResponse.json({ error: existingGrantErr.message }, { status: 500 });
       }
+
+      const existingGrant = (existingGrants ?? [])[0] ?? null;
 
       if (existingGrant?.id) {
         const { error: updGrantErr } = await admin
@@ -268,6 +289,10 @@ export async function POST(req: Request) {
     }
 
     if (action === "reject") {
+      if (reqRow.status !== "pending") {
+        return NextResponse.json({ error: "Request is not pending" }, { status: 409 });
+      }
+
       const { error: updErr } = await admin
         .from("animal_access_requests")
         .update({
@@ -282,6 +307,10 @@ export async function POST(req: Request) {
     }
 
     if (action === "block") {
+      if (reqRow.status !== "pending") {
+        return NextResponse.json({ error: "Request is not pending" }, { status: 409 });
+      }
+
       const { error: updErr } = await admin
         .from("animal_access_requests")
         .update({
@@ -296,6 +325,26 @@ export async function POST(req: Request) {
     }
 
     if (action === "revoke") {
+      if (reqRow.status !== "approved" && reqRow.status !== "revoked") {
+        // consentiamo revoke su approved; se è già revoked ritorniamo ok
+        const { data: activeGrants, error: activeGrantCheckErr } = await admin
+          .from("animal_access_grants")
+          .select("id")
+          .eq("animal_id", reqRow.animal_id)
+          .eq("grantee_type", "org")
+          .eq("grantee_id", reqRow.org_id)
+          .is("revoked_at", null)
+          .limit(1);
+
+        if (activeGrantCheckErr) {
+          return NextResponse.json({ error: activeGrantCheckErr.message }, { status: 500 });
+        }
+
+        if (!activeGrants || activeGrants.length === 0) {
+          return NextResponse.json({ ok: true, status: "revoked" });
+        }
+      }
+
       const { error: revErr } = await admin
         .from("animal_access_grants")
         .update({
