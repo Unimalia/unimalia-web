@@ -19,6 +19,12 @@ type AnimalPayload = {
   pending_owner_email?: string | null;
 };
 
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value
+  );
+}
+
 function normalizeChip(value?: string | null) {
   const digits = String(value ?? "").replace(/\D+/g, "").trim();
   return digits.length ? digits : null;
@@ -26,12 +32,6 @@ function normalizeChip(value?: string | null) {
 
 function isValidChip(value: string) {
   return /^\d{15}$/.test(value);
-}
-
-function isUuid(value: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    value
-  );
 }
 
 function digitsOnly(v: string) {
@@ -54,6 +54,10 @@ function normalizeEmail(value?: string | null) {
   if (!email) return null;
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return null;
   return email;
+}
+
+function normalizeComparableText(value?: string | null) {
+  return String(value ?? "").trim().toLowerCase();
 }
 
 async function getProfessionalRefs(userId: string) {
@@ -208,15 +212,21 @@ async function findAnimalByPendingOwnerEmailAndCoreData(params: {
     .from("animals")
     .select("*")
     .eq("pending_owner_email", params.ownerEmail)
-    .eq("species", params.species)
-    .eq("name", params.name)
-    .limit(2);
+    .limit(10);
 
   if (result.error) {
     throw result.error;
   }
 
-  const rows = result.data ?? [];
+  const rows = (result.data ?? []).filter((row: any) => {
+    const rowName = normalizeComparableText(row?.name);
+    const rowSpecies = normalizeComparableText(row?.species);
+
+    return (
+      rowName === normalizeComparableText(params.name) &&
+      rowSpecies === normalizeComparableText(params.species)
+    );
+  });
 
   if (rows.length > 1) {
     throw new Error("Conflitto dati: esistono più animali compatibili con questa email owner.");
@@ -322,7 +332,6 @@ export async function GET(req: NextRequest) {
     }
 
     const hasOwnHistory = (ownEventsResult.count ?? 0) > 0;
-
     const canAccess = hasGrant || isClinicOrigin || hasOwnHistory;
 
     if (!canAccess) {
@@ -335,8 +344,6 @@ export async function GET(req: NextRequest) {
       grantStatus = "active";
     } else if (hasOwnHistory) {
       grantStatus = "revoked_own_history";
-    } else {
-      grantStatus = "clinic_origin";
     }
 
     const ownerDetails = await getOwnerDetails(animal.owner_id ?? null);

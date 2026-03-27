@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { createSignedUploadUrl } from "@/lib/storage";
 
 function getBearerToken(req: Request) {
   const h = req.headers.get("authorization") || req.headers.get("Authorization") || "";
@@ -40,10 +41,16 @@ export async function GET(req: Request) {
     }
 
     const { searchParams } = new URL(req.url);
-    const uploadId = String(searchParams.get("uploadId") || "").trim();
 
-    if (!uploadId) {
-      return NextResponse.json({ error: "uploadId obbligatorio." }, { status: 400 });
+    const uploadId = String(searchParams.get("uploadId") || "").trim();
+    const key = String(searchParams.get("key") || "").trim();
+    const partNumber = Number(searchParams.get("partNumber"));
+
+    if (!uploadId || !key || !Number.isInteger(partNumber) || partNumber <= 0) {
+      return NextResponse.json(
+        { error: "uploadId, key e partNumber sono obbligatori." },
+        { status: 400 }
+      );
     }
 
     const { data: session, error: sessionErr } = await admin
@@ -60,57 +67,47 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const fileSize = Number(session.file_size || 0);
-    const totalParts = Number(session.total_parts || 0);
-
-    const uploadedPartNumbers = Array.isArray(session.uploaded_parts)
-      ? session.uploaded_parts
-          .map((n: any) => Number(n))
-          .filter((n: number) => Number.isInteger(n) && n > 0)
-          .sort((a: number, b: number) => a - b)
-      : [];
-
-    const partSize = Number(session.part_size || 0);
-
-    let uploadedBytes = 0;
-
-    for (const partNumber of uploadedPartNumbers) {
-      const start = (partNumber - 1) * partSize;
-      const end = Math.min(start + partSize, fileSize);
-      uploadedBytes += Math.max(0, end - start);
+    if (String(session.storage_key) !== key) {
+      return NextResponse.json(
+        { error: "key non coerente con la upload session." },
+        { status: 400 }
+      );
     }
 
-    const percent =
-      fileSize > 0 ? Math.min(100, Math.round((uploadedBytes / fileSize) * 100)) : 0;
-
-    const remainingParts: number[] = [];
-    for (let i = 1; i <= totalParts; i++) {
-      if (!uploadedPartNumbers.includes(i)) {
-        remainingParts.push(i);
-      }
+    if (session.status === "completed") {
+      return NextResponse.json(
+        { error: "Upload session già completata." },
+        { status: 400 }
+      );
     }
+
+    if (session.status === "aborted") {
+      return NextResponse.json(
+        { error: "Upload session annullata." },
+        { status: 400 }
+      );
+    }
+
+    const partPath = `${key}.part${partNumber}`;
+
+    const signed = await createSignedUploadUrl({
+      path: partPath,
+      contentType: session.file_type || "application/octet-stream",
+      expiresInSeconds: 60 * 15,
+    });
 
     return NextResponse.json({
       ok: true,
-      uploadId,
-      uploadedPartNumbers,
-      uploadedPartsCount: uploadedPartNumbers.length,
-      remainingParts,
-      uploadedBytes,
-      fileSize,
-      totalParts,
-      status: session.status,
-      fileName: session.file_name,
-      animalId: session.animal_id,
-      percent,
-      sessionId: session.id,
+      url: signed.url,
+      path: partPath,
+      partNumber,
     });
   } catch (err: any) {
-    console.error("IMAGING MULTIPART STATUS ERROR:", err);
+    console.error("IMAGING MULTIPART PART-URL ERROR:", err);
 
     return NextResponse.json(
       {
-        error: err?.message || "Status error",
+        error: err?.message || "Part URL error",
       },
       { status: 500 }
     );

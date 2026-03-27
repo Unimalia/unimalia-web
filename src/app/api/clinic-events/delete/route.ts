@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { requireOwnerOrGrant } from "@/lib/server/requireOwnerOrGrant";
 import { writeAudit } from "@/lib/server/audit";
 import { sendOwnerAnimalUpdateEmail } from "@/lib/email/sendOwnerAnimalUpdateEmail";
@@ -18,12 +18,27 @@ function isUuid(value: string) {
 
 type Body = { id: string };
 
+async function safeWriteAudit(
+  supabase: SupabaseClient<any, "public", any>,
+  payload: Parameters<typeof writeAudit>[1]
+) {
+  try {
+    await writeAudit(supabase as any, payload);
+  } catch (error) {
+    console.error("[AUDIT_WRITE_ERROR]", error);
+  }
+}
+
 export async function POST(req: Request) {
   const token = getBearerToken(req);
-  if (!token) return NextResponse.json({ error: "Missing Bearer token" }, { status: 401 });
+
+  if (!token) {
+    return NextResponse.json({ error: "Missing Bearer token" }, { status: 401 });
+  }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
   if (!supabaseUrl || !supabaseAnon) {
     return NextResponse.json(
       { error: "Server misconfigured (Supabase env missing)" },
@@ -37,13 +52,22 @@ export async function POST(req: Request) {
 
   const { data: userData, error: userErr } = await supabase.auth.getUser(token);
   const user = userData?.user;
-  if (userErr || !user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  if (userErr || !user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   const body = (await req.json().catch(() => null)) as Body | null;
-  if (!body) return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
 
-  const id = (body.id || "").trim();
-  if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
+  if (!body) {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
+  const id = String(body.id || "").trim();
+
+  if (!id) {
+    return NextResponse.json({ error: "id required" }, { status: 400 });
+  }
 
   if (!isUuid(id)) {
     return NextResponse.json({ error: "id invalid" }, { status: 400 });
@@ -59,11 +83,20 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Event not found" }, { status: 404 });
   }
 
-  const animalId = (current as any).animal_id as string;
+  if ((current as any).status === "void") {
+    return NextResponse.json({ ok: true }, { status: 200 });
+  }
 
-  const grant = await requireOwnerOrGrant(supabase, user.id, animalId, "write");
+  const animalId = String((current as any).animal_id || "");
+
+  if (!animalId || !isUuid(animalId)) {
+    return NextResponse.json({ error: "Invalid event animal_id" }, { status: 400 });
+  }
+
+  const grant = await requireOwnerOrGrant(supabase as any, user.id, animalId, "write");
+
   if (!grant.ok) {
-    await writeAudit(supabase, {
+    await safeWriteAudit(supabase, {
       req,
       actor_user_id: user.id,
       action: "event.delete",
@@ -73,15 +106,18 @@ export async function POST(req: Request) {
       result: "denied",
       reason: grant.reason,
     });
+
     return NextResponse.json({ error: grant.reason }, { status: 403 });
   }
 
-  const source = (current as any).source as string;
+  const source = String((current as any).source || "");
   const createdBy = ((current as any).created_by as string | null) ?? null;
 
   if (source !== "owner") {
     if (!createdBy || createdBy !== user.id) {
-      await writeAudit(supabase, {
+      const reason = "Non autorizzato: puoi eliminare solo eventi owner o i tuoi eventi.";
+
+      await safeWriteAudit(supabase, {
         req,
         actor_user_id: user.id,
         actor_org_id: grant.actor_org_id,
@@ -90,12 +126,10 @@ export async function POST(req: Request) {
         target_id: id,
         animal_id: animalId,
         result: "denied",
-        reason: "Non autorizzato: puoi eliminare solo eventi owner o i tuoi eventi.",
+        reason,
       });
-      return NextResponse.json(
-        { error: "Non autorizzato: puoi eliminare solo eventi owner o i tuoi eventi." },
-        { status: 403 }
-      );
+
+      return NextResponse.json({ error: reason }, { status: 403 });
     }
   }
 
@@ -105,7 +139,7 @@ export async function POST(req: Request) {
     .eq("id", id);
 
   if (error) {
-    await writeAudit(supabase, {
+    await safeWriteAudit(supabase, {
       req,
       actor_user_id: user.id,
       actor_org_id: grant.actor_org_id,
@@ -116,18 +150,23 @@ export async function POST(req: Request) {
       result: "error",
       reason: error.message,
     });
+
     return NextResponse.json({ error: error.message || "Delete failed" }, { status: 400 });
   }
 
-  await supabase.from("animal_clinic_event_audit").insert({
-    event_id: (current as any).id,
-    animal_id: animalId,
-    actor_user_id: user.id,
-    actor_org_id: grant.actor_org_id,
-    action: "delete",
-    previous_data: current,
-    next_data: { ...(current as any), status: "void" },
-  });
+  try {
+    await supabase.from("animal_clinic_event_audit").insert({
+      event_id: (current as any).id,
+      animal_id: animalId,
+      actor_user_id: user.id,
+      actor_org_id: grant.actor_org_id,
+      action: "delete",
+      previous_data: current,
+      next_data: { ...(current as any), status: "void" },
+    });
+  } catch (auditInsertError) {
+    console.error("[CLINIC_EVENT_AUDIT_INSERT_ERROR]", auditInsertError);
+  }
 
   try {
     const currentTitle =
@@ -150,6 +189,17 @@ export async function POST(req: Request) {
         ? (current as any).description.trim()
         : null;
 
+    const currentPriority =
+      typeof (current as any).priority === "string" &&
+      ["low", "normal", "high", "urgent"].includes((current as any).priority)
+        ? ((current as any).priority as "low" | "normal" | "high" | "urgent")
+        : null;
+
+    const currentMeta =
+      (current as any).meta && typeof (current as any).meta === "object"
+        ? (current as any).meta
+        : null;
+
     const notesParts = [
       "Questo evento clinico è stato annullato.",
       currentType ? `Tipo: ${currentType}` : null,
@@ -163,19 +213,15 @@ export async function POST(req: Request) {
       eventDate: currentDate,
       eventNotes: notesParts.join(" • "),
       eventType: currentType,
-      priority:
-        typeof (current as any).priority === "string" ? (current as any).priority : null,
-      meta:
-        (current as any).meta && typeof (current as any).meta === "object"
-          ? (current as any).meta
-          : null,
+      priority: currentPriority,
+      meta: currentMeta,
       attachments: null,
     });
   } catch (emailError) {
     console.error("[CLINIC_EVENT_OWNER_EMAIL_DELETE]", emailError);
   }
 
-  await writeAudit(supabase, {
+  await safeWriteAudit(supabase, {
     req,
     actor_user_id: user.id,
     actor_org_id: grant.actor_org_id,

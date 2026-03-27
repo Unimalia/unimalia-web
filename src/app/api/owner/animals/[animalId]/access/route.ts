@@ -75,6 +75,7 @@ export async function GET(
       "id, created_at, animal_id, grantee_type, grantee_id, status, valid_to, revoked_at, scope_read, scope_write, scope_upload"
     )
     .eq("animal_id", animalId)
+    .eq("grantee_type", "org")
     .order("created_at", { ascending: false });
 
   const [{ data: requests, error: reqErr }, { data: grants, error: grantErr }] =
@@ -104,7 +105,7 @@ export async function GET(
   const { data: orgs, error: orgErr } = orgIds.length
     ? await admin
         .from("organizations")
-        .select("id, name, legal_name")
+        .select("id, name, legal_name, display_name, ragione_sociale")
         .in("id", orgIds)
     : { data: [], error: null };
 
@@ -115,7 +116,14 @@ export async function GET(
   const orgNameById = new Map<string, string>();
 
   for (const o of orgs ?? []) {
-    orgNameById.set(o.id, o.name ?? o.legal_name ?? o.id);
+    orgNameById.set(
+      o.id,
+      (o as any).display_name ??
+        o.name ??
+        (o as any).legal_name ??
+        (o as any).ragione_sociale ??
+        o.id
+    );
   }
 
   const enrichedRequests = requestRows.map((r: any) => ({

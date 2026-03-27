@@ -120,7 +120,7 @@ async function ensureProfessionalAnimalAccess(userId: string, animalId: string) 
       if (!g.valid_to) return true;
 
       const validToMs = new Date(g.valid_to).getTime();
-      if (Number.isNaN(validToMs)) return true;
+      if (Number.isNaN(validToMs)) return false;
 
       return validToMs > now;
     }) ?? null;
@@ -209,7 +209,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Non autorizzato" }, { status: 401 });
     }
 
-    const body = await req.json();
+    const body = await req.json().catch(() => null);
+
+    if (!body || typeof body !== "object") {
+      return NextResponse.json({ error: "Body non valido" }, { status: 400 });
+    }
+
     const input = parseProfessionalHistoryCreateInput(body);
 
     if (!isUuid(input.animalId)) {
@@ -227,6 +232,7 @@ export async function POST(req: NextRequest) {
     }
 
     let professionalOrgId: string | null = null;
+
     try {
       professionalOrgId = await getProfessionalOrgId();
     } catch {
