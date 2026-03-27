@@ -340,6 +340,8 @@ export default function ClinicaPage() {
   const [newVetSignature, setNewVetSignature] = useState<string>("");
   const [newImagingModality, setNewImagingModality] = useState<string>("RX");
   const [newImagingBodyPart, setNewImagingBodyPart] = useState<string>("");
+  const [uploadDrafts, setUploadDrafts] = useState<any[]>([]);
+  const [resumeHint, setResumeHint] = useState<string | null>(null);
   const [vetOptions] = useState<VetOption[]>([]);
   const [selectedVetId] = useState<string>("");
 
@@ -491,6 +493,26 @@ export default function ClinicaPage() {
       const json = await res.json().catch(() => ({}));
       const counts = (json?.counts as Record<string, number>) ?? {};
       setFilesCountByEventId(counts);
+    } catch {
+      // no-op
+    }
+  }
+
+  async function loadUploadDrafts() {
+    if (!id) return;
+    try {
+      const res = await fetch(
+        `/api/clinic/imaging/multipart/list-drafts?animalId=${encodeURIComponent(String(id))}`,
+        {
+          cache: "no-store",
+          headers: {
+            ...(await authHeaders()),
+          },
+        }
+      );
+      if (!res.ok) return;
+      const json = await res.json().catch(() => ({}));
+      setUploadDrafts(Array.isArray(json?.drafts) ? json.drafts : []);
     } catch {
       // no-op
     }
@@ -669,6 +691,7 @@ export default function ClinicaPage() {
       await loadAnimal();
       await loadClinicEvents();
       await loadFilesCount();
+      await loadUploadDrafts();
     })();
   }, [id]);
 
@@ -743,6 +766,7 @@ export default function ClinicaPage() {
     setSaveOk(null);
     setUploadPhase(null);
     setUploadProgress(0);
+    setUploadStatus("");
 
     try {
       let weightKg: number | null = null;
@@ -774,6 +798,7 @@ export default function ClinicaPage() {
         }
 
         const file = newFiles[0];
+        setResumeHint(null);
 
         const imagingAuthHeaders = await authHeaders();
 
@@ -811,7 +836,6 @@ export default function ClinicaPage() {
         const eventId = prepareJson?.upload?.eventId as string | undefined;
         const fileId = prepareJson?.upload?.fileId as string | undefined;
         const preparedFileName = prepareJson?.upload?.fileName as string | undefined;
-        
 
         if (!uploadUrl || !path || !eventId || !fileId || !preparedFileName) {
           setSaveErr("Risposta upload imaging incompleta.");
@@ -827,8 +851,8 @@ export default function ClinicaPage() {
           const result = await multipartUpload({
             file,
             animalId: String(id),
-            modality,
-            bodyPart,
+            modality: newImagingModality,
+            bodyPart: newImagingBodyPart.trim() || null,
             onProgress: (p) => setUploadProgress(p),
             onStatus: (msg) => setUploadStatus(msg),
           });
@@ -876,6 +900,7 @@ export default function ClinicaPage() {
 
         setUploadPhase(null);
         setUploadProgress(0);
+        setUploadStatus("");
         setSaveOk("Evento imaging salvato ✅");
         setNewNotes("");
         setNewFiles([]);
@@ -894,6 +919,7 @@ export default function ClinicaPage() {
 
         await loadClinicEvents();
         await loadFilesCount();
+        await loadUploadDrafts();
 
         setSaving(false);
         return;
@@ -1004,14 +1030,17 @@ export default function ClinicaPage() {
       setReminderEnabled(false);
       setRemindAt("");
       setReminderPresetDays(null);
+      setUploadStatus("");
 
       await loadClinicEvents();
       await loadFilesCount();
     } catch (err) {
       console.error("[IMAGING] SAVE ERROR", err);
       setSaveErr("Errore di rete durante il salvataggio.");
+      await loadUploadDrafts();
       setUploadPhase(null);
       setUploadProgress(0);
+      setUploadStatus("");
     } finally {
       setSaving(false);
       setUploadPhase(null);
@@ -1546,6 +1575,57 @@ export default function ClinicaPage() {
             </div>
           ) : null}
 
+          {uploadDrafts.length > 0 ? (
+            <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+              <div className="text-sm font-semibold text-amber-900">
+                Upload imaging incompleti
+              </div>
+
+              <div className="mt-3 space-y-3">
+                {uploadDrafts.map((draft) => (
+                  <div
+                    key={draft.uploadId}
+                    className="rounded-xl border border-amber-200 bg-white px-4 py-3"
+                  >
+                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-semibold text-zinc-900">
+                          {draft.fileName}
+                        </div>
+                        <div className="mt-1 text-xs text-zinc-600">
+                          {draft.modality || "Imaging"}
+                          {draft.bodyPart ? ` • ${draft.bodyPart}` : ""}
+                          {typeof draft.percent === "number" ? ` • ${draft.percent}%` : ""}
+                        </div>
+                        <div className="mt-1 text-xs text-zinc-500">
+                          Ultimo aggiornamento: {formatInsertedAtIT(draft.updatedAt)}
+                        </div>
+                      </div>
+
+                      <div className="shrink-0">
+                        <button
+                          type="button"
+                          className="rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800 shadow-sm transition hover:bg-zinc-50"
+                          onClick={() => {
+                            setNewType("imaging");
+                            setNewImagingModality(draft.modality || "RX");
+                            setNewImagingBodyPart(draft.bodyPart || "");
+                            setResumeHint(
+                              `Bozza trovata per "${draft.fileName}". Riseleziona lo stesso file per riprendere dal punto interrotto.`
+                            );
+                            window.scrollTo({ top: 0, behavior: "smooth" });
+                          }}
+                        >
+                          Riprendi
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
           <div className="mt-5 grid gap-4 md:grid-cols-12">
             <label className="block md:col-span-3">
               <span className={FIELD_LABEL_CLASS}>Tipo evento</span>
@@ -1632,6 +1712,12 @@ export default function ClinicaPage() {
                 <div className="mt-1.5 text-[11px] leading-5 text-zinc-600">
                   📎 <span className="font-semibold">{newFiles.length}</span>
                   {newType === "imaging" ? ` • ${newFiles[0]?.name || ""}` : ""}
+                </div>
+              ) : null}
+
+              {resumeHint ? (
+                <div className="mt-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-800">
+                  {resumeHint}
                 </div>
               ) : null}
             </label>
@@ -1791,23 +1877,20 @@ export default function ClinicaPage() {
                     : "Salva evento e aggiorna timeline"}
               </button>
 
-              {saving && uploadPhase ? (
-                <div className="mt-2 space-y-2">
-                  <div className="text-xs font-medium text-zinc-500">{uploadPhase}</div>
-
-                  {newType === "imaging" && uploadProgress > 0 ? (
-                    <div>
-                      <div className="mb-1 text-[11px] text-zinc-500">
-                        Upload completato: {uploadProgress}%
-                      </div>
-                      <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-200">
-                        <div
-                          className="h-full rounded-full bg-emerald-500 transition-all"
-                          style={{ width: `${uploadProgress}%` }}
-                        />
-                      </div>
-                    </div>
+              {saving && (uploadStatus || uploadProgress > 0) ? (
+                <div className="mt-3 space-y-2">
+                  {uploadStatus ? (
+                    <div className="text-xs font-medium text-zinc-600">{uploadStatus}</div>
                   ) : null}
+
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-200">
+                    <div
+                      className="h-full rounded-full bg-emerald-500 transition-all"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+
+                  <div className="text-[11px] text-zinc-500">{uploadProgress}%</div>
                 </div>
               ) : null}
             </div>
