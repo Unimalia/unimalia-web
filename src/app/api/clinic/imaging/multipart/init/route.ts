@@ -1,29 +1,15 @@
-import { S3Client, CreateMultipartUploadCommand } from "@aws-sdk/client-s3";
+const key = `imaging/${Date.now()}-${fileName}`;
 
-const s3 = new S3Client({
-  endpoint: process.env.CLOUDFLARE_R2_ENDPOINT,
-  region: "auto",
-  credentials: {
-    accessKeyId: process.env.CLOUDFLARE_R2_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY!,
-  },
-});
+const partSize = 5 * 1024 * 1024;
+const totalParts = Math.ceil(fileSize / partSize);
 
-export async function POST(req: Request) {
-  const { fileName, fileType } = await req.json();
+// crea multipart su R2
+// crea record DB
 
-  const key = `imaging/${Date.now()}-${fileName}`;
-
-  const res = await s3.send(
-    new CreateMultipartUploadCommand({
-      Bucket: process.env.CLOUDFLARE_R2_BUCKET!,
-      Key: key,
-      ContentType: fileType,
-    })
-  );
-
-  return Response.json({
-    uploadId: res.UploadId,
-    key,
-  });
-}
+return {
+  sessionId,
+  uploadId,
+  key,
+  partSize,
+  totalParts
+};

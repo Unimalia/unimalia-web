@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { requireOwnerOrGrant } from "@/lib/server/requireOwnerOrGrant";
 import { writeAudit } from "@/lib/server/audit";
 import { supabaseAdmin } from "@/lib/supabase/server";
@@ -69,12 +69,51 @@ function parseWeightKg(v: unknown): number | null {
   return null;
 }
 
+function sanitizeMeta(input: unknown): Record<string, any> | null {
+  if (!input || typeof input !== "object" || Array.isArray(input)) return null;
+
+  const reservedKeys = new Set([
+    "weight_kg",
+    "therapy_start_date",
+    "therapy_end_date",
+    "created_by_member_label",
+    "created_by_member_id",
+    "created_by_org_name",
+    "has_attachments",
+    "priority",
+  ]);
+
+  const output: Record<string, any> = {};
+
+  for (const [key, value] of Object.entries(input)) {
+    if (!key || reservedKeys.has(key)) continue;
+    output[key] = value;
+  }
+
+  return output;
+}
+
+async function safeWriteAudit(
+  supabase: SupabaseClient<any, "public", any>,
+  payload: Parameters<typeof writeAudit>[1]
+) {
+  try {
+    await writeAudit(supabase as any, payload);
+  } catch (error) {
+    console.error("[AUDIT_WRITE_ERROR]", error);
+  }
+}
+
 export async function POST(req: Request) {
   const token = getBearerToken(req);
-  if (!token) return NextResponse.json({ error: "Missing Bearer token" }, { status: 401 });
+
+  if (!token) {
+    return NextResponse.json({ error: "Missing Bearer token" }, { status: 401 });
+  }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
   if (!supabaseUrl || !supabaseAnon) {
     return NextResponse.json(
       { error: "Server misconfigured (Supabase env missing)" },
@@ -90,12 +129,19 @@ export async function POST(req: Request) {
 
   const { data: userData, error: userErr } = await supabase.auth.getUser(token);
   const user = userData?.user;
-  if (userErr || !user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  if (userErr || !user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   const body = (await req.json().catch(() => null)) as Body | null;
-  if (!body) return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
 
-  const animalId = (body.animalId || "").trim();
+  if (!body) {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
+  const animalId = String(body.animalId || "").trim();
+
   if (!animalId) {
     return NextResponse.json({ error: "animalId required" }, { status: 400 });
   }
@@ -104,9 +150,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "animalId invalid" }, { status: 400 });
   }
 
-  const grant = await requireOwnerOrGrant(supabase, user.id, animalId, "write");
+  const grant = await requireOwnerOrGrant(supabase as any, user.id, animalId, "write");
+
   if (!grant.ok) {
-    await writeAudit(supabase, {
+    await safeWriteAudit(supabase, {
       req,
       actor_user_id: user.id,
       actor_org_id: null,
@@ -117,11 +164,12 @@ export async function POST(req: Request) {
       result: "denied",
       reason: grant.reason,
     });
+
     return NextResponse.json({ error: grant.reason }, { status: 403 });
   }
 
-  const type = (body.type || "").trim();
-  const title = (body.title || "").trim();
+  const type = String(body.type || "").trim();
+  const title = String(body.title || "").trim();
   const description = (body.description ?? "").toString().trim() || null;
 
   const visibility =
@@ -131,13 +179,29 @@ export async function POST(req: Request) {
       ? body.visibility
       : "professionals";
 
-  const source =
+  let source: "owner" | "professional" | "veterinarian" =
     body.source === "owner" || body.source === "professional" || body.source === "veterinarian"
       ? body.source
       : "professional";
 
-  const dateStr = (body.eventDate || "").trim();
-  if (!type || !title) return NextResponse.json({ error: "type/title required" }, { status: 400 });
+  if (!type || !title) {
+    return NextResponse.json({ error: "type/title required" }, { status: 400 });
+  }
+
+  if (type.length > 80) {
+    return NextResponse.json({ error: "type too long" }, { status: 400 });
+  }
+
+  if (title.length > 200) {
+    return NextResponse.json({ error: "title too long" }, { status: 400 });
+  }
+
+  if (description && description.length > 5000) {
+    return NextResponse.json({ error: "description too long" }, { status: 400 });
+  }
+
+  const dateStr = String(body.eventDate || "").trim();
+
   if (!dateStr || !isValidDateYYYYMMDD(dateStr)) {
     return NextResponse.json({ error: "eventDate must be YYYY-MM-DD" }, { status: 400 });
   }
@@ -146,6 +210,18 @@ export async function POST(req: Request) {
   const weightKg = parseWeightKg(body.weightKg);
   const therapyStartDate = parseDateOnly(body.therapyStartDate);
   const therapyEndDate = parseDateOnly(body.therapyEndDate);
+
+  if (
+    therapyStartDate &&
+    therapyEndDate &&
+    new Date(`${therapyEndDate}T00:00:00.000Z`).getTime() <
+      new Date(`${therapyStartDate}T00:00:00.000Z`).getTime()
+  ) {
+    return NextResponse.json(
+      { error: "therapyEndDate cannot be before therapyStartDate" },
+      { status: 400 }
+    );
+  }
 
   const vetSignature =
     typeof body.vetSignature === "string" ? body.vetSignature.trim() || null : null;
@@ -192,10 +268,12 @@ export async function POST(req: Request) {
       null;
   }
 
-  const meta: Record<string, any> = {};
+  if (source === "veterinarian" && !grant.actor_org_id) {
+    source = "professional";
+  }
 
-  const incomingMeta =
-    body.meta && typeof body.meta === "object" && !Array.isArray(body.meta) ? body.meta : null;
+  const meta: Record<string, any> = {};
+  const incomingMeta = sanitizeMeta(body.meta);
 
   if (incomingMeta) {
     Object.assign(meta, incomingMeta);
@@ -214,6 +292,7 @@ export async function POST(req: Request) {
   }
 
   try {
+    const nowIso = new Date().toISOString();
     const verifiedByOrgId =
       source === "veterinarian" && grant.actor_org_id ? grant.actor_org_id : null;
 
@@ -228,9 +307,11 @@ export async function POST(req: Request) {
         source,
         created_by: user.id,
         event_date: dateStr,
-        verified_at: source === "veterinarian" ? new Date().toISOString() : null,
+        verified_at: source === "veterinarian" ? nowIso : null,
         verified_by: source === "veterinarian" ? user.id : null,
         verified_by_org_id: verifiedByOrgId,
+        verified_by_member_id: source === "veterinarian" ? vetSignatureMemberId : null,
+        verified_by_label: source === "veterinarian" ? vetSignature || "Veterinario" : null,
         meta,
         priority: priority || null,
         status: "active",
@@ -241,7 +322,7 @@ export async function POST(req: Request) {
       .single();
 
     if (error || !data) {
-      await writeAudit(supabase, {
+      await safeWriteAudit(supabase, {
         req,
         actor_user_id: user.id,
         actor_org_id: grant.actor_org_id,
@@ -252,19 +333,24 @@ export async function POST(req: Request) {
         result: "error",
         reason: error?.message || "insert failed",
       });
+
       return NextResponse.json({ error: error?.message || "Create failed" }, { status: 400 });
     }
 
-    await admin.from("animal_clinic_event_audit").insert({
-      event_id: data.id,
-      animal_id: animalId,
-      actor_user_id: user.id,
-      actor_org_id: grant.actor_org_id,
-      actor_member_id: vetSignatureMemberId,
-      action: "create",
-      previous_data: null,
-      next_data: data,
-    });
+    try {
+      await admin.from("animal_clinic_event_audit").insert({
+        event_id: data.id,
+        animal_id: animalId,
+        actor_user_id: user.id,
+        actor_org_id: grant.actor_org_id,
+        actor_member_id: vetSignatureMemberId,
+        action: "create",
+        previous_data: null,
+        next_data: data,
+      });
+    } catch (auditInsertError) {
+      console.error("[CLINIC_EVENT_AUDIT_INSERT_ERROR]", auditInsertError);
+    }
 
     let animalRow:
       | {
@@ -387,7 +473,7 @@ export async function POST(req: Request) {
       }
     }
 
-    await writeAudit(supabase, {
+    await safeWriteAudit(supabase, {
       req,
       actor_user_id: user.id,
       actor_org_id: grant.actor_org_id,
@@ -399,8 +485,8 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ ok: true, event: data }, { status: 200 });
-  } catch {
-    await writeAudit(supabase, {
+  } catch (error) {
+    await safeWriteAudit(supabase, {
       req,
       actor_user_id: user.id,
       actor_org_id: grant.actor_org_id,
@@ -409,8 +495,9 @@ export async function POST(req: Request) {
       target_id: animalId,
       animal_id: animalId,
       result: "error",
-      reason: "Unhandled server error",
+      reason: error instanceof Error ? error.message : "Unhandled server error",
     });
+
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
