@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireOwnerOrGrant } from "@/lib/server/requireOwnerOrGrant";
 import { writeAudit } from "@/lib/server/audit";
@@ -16,8 +16,20 @@ function isUuid(value: string) {
   );
 }
 
+async function safeWriteAudit(
+  supabase: SupabaseClient<any, "public", any>,
+  payload: Parameters<typeof writeAudit>[1]
+) {
+  try {
+    await writeAudit(supabase as any, payload);
+  } catch (error) {
+    console.error("[AUDIT_WRITE_ERROR]", error);
+  }
+}
+
 export async function GET(req: Request) {
   const token = getBearerToken(req);
+
   if (!token) {
     return NextResponse.json({ error: "Missing Bearer token" }, { status: 401 });
   }
@@ -69,7 +81,7 @@ export async function GET(req: Request) {
 
   const animalId = String(ev.animal_id);
 
-  const grant = await requireOwnerOrGrant(supabase, user.id, animalId, "read");
+  const grant = await requireOwnerOrGrant(supabase as any, user.id, animalId, "read");
 
   let canAccess = grant.ok;
   let accessMode: "full" | "own_only" | "denied" = grant.ok ? "full" : "denied";
@@ -82,7 +94,7 @@ export async function GET(req: Request) {
   if (!canAccess) {
     const denyReason = grant.ok ? "Accesso negato" : grant.reason;
 
-    await writeAudit(supabase, {
+    await safeWriteAudit(supabase, {
       req,
       actor_user_id: user.id,
       action: "file.list",
@@ -96,14 +108,21 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: denyReason }, { status: 403 });
   }
 
-  const { data, error } = await admin
+  let query = admin
     .from("animal_clinic_event_files")
     .select("id, event_id, animal_id, path, filename, mime, size, created_by, created_at")
     .eq("event_id", eventId)
+    .eq("animal_id", animalId)
     .order("created_at", { ascending: true });
 
+  if (accessMode === "own_only") {
+    query = query.eq("created_by", user.id);
+  }
+
+  const { data, error } = await query;
+
   if (error) {
-    await writeAudit(supabase, {
+    await safeWriteAudit(supabase, {
       req,
       actor_user_id: user.id,
       actor_org_id: grant.ok ? grant.actor_org_id : null,
@@ -118,7 +137,22 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: error.message || "Query failed" }, { status: 400 });
   }
 
-  await writeAudit(supabase, {
+  if (accessMode === "own_only" && (!data || data.length === 0)) {
+    await safeWriteAudit(supabase, {
+      req,
+      actor_user_id: user.id,
+      action: "file.list",
+      target_type: "event",
+      target_id: eventId,
+      animal_id: animalId,
+      result: "denied",
+      reason: "Nessun file del proprio evento disponibile",
+    });
+
+    return NextResponse.json({ error: "Accesso negato" }, { status: 403 });
+  }
+
+  await safeWriteAudit(supabase, {
     req,
     actor_user_id: user.id,
     actor_org_id: grant.ok ? grant.actor_org_id : null,

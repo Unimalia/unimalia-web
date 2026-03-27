@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { createClient, supabaseAdmin } from "@/lib/supabase/server";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createClient as createServerClient, supabaseAdmin } from "@/lib/supabase/server";
 import { requireOwnerOrGrant } from "@/lib/server/requireOwnerOrGrant";
 import { writeAudit } from "@/lib/server/audit";
 
@@ -7,6 +8,17 @@ function isUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
     value
   );
+}
+
+async function safeWriteAudit(
+  supabase: SupabaseClient<any, "public", any>,
+  payload: Parameters<typeof writeAudit>[1]
+) {
+  try {
+    await writeAudit(supabase as any, payload);
+  } catch (error) {
+    console.error("[AUDIT_WRITE_ERROR]", error);
+  }
 }
 
 export async function GET(req: Request) {
@@ -22,7 +34,7 @@ export async function GET(req: Request) {
   }
 
   try {
-    const supabase = await createClient();
+    const supabase = await createServerClient();
     const admin = supabaseAdmin();
 
     const {
@@ -34,7 +46,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const grant = await requireOwnerOrGrant(supabase, user.id, animalId, "read");
+    const grant = await requireOwnerOrGrant(supabase as any, user.id, animalId, "read");
 
     let query = admin
       .from("animal_clinic_events")
@@ -47,15 +59,13 @@ export async function GET(req: Request) {
       .order("created_at", { ascending: false });
 
     if (!grant.ok) {
-      // Fallback: senza grant il professionista vede solo gli eventi creati da lui.
-      // ASSUNZIONE: animal_clinic_events.created_by contiene user.id dell'utente autenticato.
       query = query.eq("created_by", user.id);
     }
 
     const { data, error } = await query;
 
     if (error) {
-      await writeAudit(supabase, {
+      await safeWriteAudit(supabase as any, {
         req,
         actor_user_id: user.id,
         actor_org_id: grant.ok ? grant.actor_org_id : null,
@@ -74,7 +84,7 @@ export async function GET(req: Request) {
     }
 
     if (!grant.ok && (!data || data.length === 0)) {
-      await writeAudit(supabase, {
+      await safeWriteAudit(supabase as any, {
         req,
         actor_user_id: user.id,
         actor_org_id: null,
@@ -89,7 +99,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: grant.reason }, { status: 403 });
     }
 
-    await writeAudit(supabase, {
+    await safeWriteAudit(supabase as any, {
       req,
       actor_user_id: user.id,
       actor_org_id: grant.ok ? grant.actor_org_id : null,
@@ -110,9 +120,6 @@ export async function GET(req: Request) {
       { status: 200 }
     );
   } catch (error: any) {
-    return NextResponse.json(
-      { error: error?.message || "Server error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error?.message || "Server error" }, { status: 500 });
   }
 }

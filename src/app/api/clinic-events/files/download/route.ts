@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireOwnerOrGrant } from "@/lib/server/requireOwnerOrGrant";
 import { writeAudit } from "@/lib/server/audit";
@@ -16,8 +16,20 @@ function isUuid(value: string) {
   );
 }
 
+async function safeWriteAudit(
+  supabase: SupabaseClient<any, "public", any>,
+  payload: Parameters<typeof writeAudit>[1]
+) {
+  try {
+    await writeAudit(supabase as any, payload);
+  } catch (error) {
+    console.error("[AUDIT_WRITE_ERROR]", error);
+  }
+}
+
 export async function GET(req: Request) {
   const token = getBearerToken(req);
+
   if (!token) {
     return NextResponse.json({ error: "Missing Bearer token" }, { status: 401 });
   }
@@ -49,7 +61,14 @@ export async function GET(req: Request) {
   const fileId = (url.searchParams.get("fileId") || "").trim();
   const pathParam = (url.searchParams.get("path") || "").trim();
 
-  let fileRow: any = null;
+  let fileRow: {
+    id: string;
+    animal_id: string;
+    event_id: string;
+    path: string;
+    filename: string | null;
+    created_by?: string | null;
+  } | null = null;
 
   if (fileId) {
     if (!isUuid(fileId)) {
@@ -58,7 +77,7 @@ export async function GET(req: Request) {
 
     const { data, error } = await admin
       .from("animal_clinic_event_files")
-      .select("id, animal_id, event_id, path, filename")
+      .select("id, animal_id, event_id, path, filename, created_by")
       .eq("id", fileId)
       .single();
 
@@ -70,7 +89,7 @@ export async function GET(req: Request) {
   } else if (pathParam) {
     const { data, error } = await admin
       .from("animal_clinic_event_files")
-      .select("id, animal_id, event_id, path, filename")
+      .select("id, animal_id, event_id, path, filename, created_by")
       .eq("path", pathParam)
       .maybeSingle();
 
@@ -86,7 +105,7 @@ export async function GET(req: Request) {
   const animalId = String(fileRow.animal_id);
   const eventId = String(fileRow.event_id);
 
-  const grant = await requireOwnerOrGrant(supabase, user.id, animalId, "read");
+  const grant = await requireOwnerOrGrant(supabase as any, user.id, animalId, "read");
 
   let canAccess = grant.ok;
   let accessMode: "full" | "own_only" | "denied" = grant.ok ? "full" : "denied";
@@ -101,7 +120,7 @@ export async function GET(req: Request) {
       .maybeSingle();
 
     if (eventError) {
-      await writeAudit(supabase, {
+      await safeWriteAudit(supabase, {
         req,
         actor_user_id: user.id,
         action: "file.download",
@@ -115,7 +134,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Errore verifica accesso file." }, { status: 500 });
     }
 
-    if (eventRow && eventRow.created_by === user.id) {
+    if (eventRow && eventRow.created_by === user.id && fileRow.created_by === user.id) {
       canAccess = true;
       accessMode = "own_only";
     }
@@ -124,7 +143,7 @@ export async function GET(req: Request) {
   if (!canAccess) {
     const denyReason = grant.ok ? "Accesso negato" : grant.reason;
 
-    await writeAudit(supabase, {
+    await safeWriteAudit(supabase, {
       req,
       actor_user_id: user.id,
       action: "file.download",
@@ -143,7 +162,7 @@ export async function GET(req: Request) {
     .createSignedUrl(fileRow.path, 60);
 
   if (error || !data?.signedUrl) {
-    await writeAudit(supabase, {
+    await safeWriteAudit(supabase, {
       req,
       actor_user_id: user.id,
       actor_org_id: grant.ok ? grant.actor_org_id : null,
@@ -158,7 +177,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Impossibile generare link download." }, { status: 500 });
   }
 
-  await writeAudit(supabase, {
+  await safeWriteAudit(supabase, {
     req,
     actor_user_id: user.id,
     actor_org_id: grant.ok ? grant.actor_org_id : null,
