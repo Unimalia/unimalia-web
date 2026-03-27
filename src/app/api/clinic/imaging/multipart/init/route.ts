@@ -1,76 +1,87 @@
 import { NextResponse } from "next/server";
-import { randomUUID } from "crypto";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { requireOwnerOrGrant } from "@/lib/server/requireOwnerOrGrant";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { randomUUID } from "crypto";
+
+const PART_SIZE = 5 * 1024 * 1024;
 
 export async function POST(req: Request) {
-  try {
-    const body = await req.json();
+  const supabase = await createServerSupabaseClient();
+  const admin = supabaseAdmin();
 
-    const { animalId, fileName, fileSize, fileType } = body;
+  const { data: userData } = await supabase.auth.getUser();
+  const user = userData?.user;
 
-    if (!animalId || !fileName || !fileSize) {
-      return NextResponse.json({ error: "Missing params" }, { status: 400 });
-    }
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    const admin = supabaseAdmin();
+  const body = await req.json();
 
-    // ⚠️ qui devi già avere user autenticato lato route (lo aggiungiamo dopo)
-    const userId = body.userId || null;
+  const { fileName, fileSize, fileType, animalId, modality, bodyPart } = body;
 
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  if (!fileName || !fileSize || !animalId) {
+    return NextResponse.json({ error: "Missing params" }, { status: 400 });
+  }
 
-    // 🔐 permessi
-    const grant = await requireOwnerOrGrant(admin, userId, animalId, "upload");
+  // 🔥 cerca sessione esistente
+  const { data: existing } = await admin
+    .from("clinic_imaging_upload_sessions")
+    .select("*")
+    .eq("created_by", user.id)
+    .eq("animal_id", animalId)
+    .eq("file_name", fileName)
+    .eq("file_size", fileSize)
+    .in("status", ["initiated", "uploading"])
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
-    if (!grant.ok) {
-      return NextResponse.json({ error: grant.reason }, { status: 403 });
-    }
+  if (existing) {
+    return NextResponse.json({
+      uploadId: existing.upload_id,
+      sessionId: existing.id,
+      key: existing.storage_key,
+      partSize: existing.part_size,
+      totalParts: existing.total_parts,
+      resumed: true,
+    });
+  }
 
-    const partSize = 5 * 1024 * 1024; // 5MB
-    const totalParts = Math.ceil(fileSize / partSize);
+  const totalParts = Math.ceil(fileSize / PART_SIZE);
+  const uploadId = randomUUID();
+  const key = `${animalId}/${randomUUID()}_${fileName}`;
 
-    const sessionId = randomUUID();
-    const storageKey = `imaging/${animalId}/${sessionId}_${fileName}`;
-
-    // ⚠️ MOCK uploadId (poi lo colleghiamo a R2 reale)
-    const uploadId = randomUUID();
-
-    const { error } = await admin.from("clinic_imaging_upload_sessions").insert({
-      id: sessionId,
+  const { data: inserted, error } = await admin
+    .from("clinic_imaging_upload_sessions")
+    .insert({
       animal_id: animalId,
-      created_by: userId,
+      created_by: user.id,
       file_name: fileName,
       file_size: fileSize,
-      file_type: fileType || null,
-      storage_key: storageKey,
+      file_type: fileType,
+      modality,
+      body_part: bodyPart,
+      storage_key: key,
       upload_id: uploadId,
-      part_size: partSize,
+      part_size: PART_SIZE,
       total_parts: totalParts,
       uploaded_parts: [],
       status: "initiated",
-    });
+    })
+    .select("*")
+    .single();
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    return NextResponse.json({
-      ok: true,
-      data: {
-        sessionId,
-        uploadId,
-        storageKey,
-        partSize,
-        totalParts,
-      },
-    });
-  } catch (err: any) {
-    return NextResponse.json(
-      { error: err?.message || "Init error" },
-      { status: 500 }
-    );
+  if (error || !inserted) {
+    return NextResponse.json({ error: error?.message }, { status: 500 });
   }
+
+  return NextResponse.json({
+    uploadId,
+    sessionId: inserted.id,
+    key,
+    partSize: PART_SIZE,
+    totalParts,
+    resumed: false,
+  });
 }
