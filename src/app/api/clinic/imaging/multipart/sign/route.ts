@@ -1,26 +1,47 @@
-import { S3Client, UploadPartCommand } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-
-const s3 = new S3Client({
-  endpoint: process.env.CLOUDFLARE_R2_ENDPOINT,
-  region: "auto",
-  credentials: {
-    accessKeyId: process.env.CLOUDFLARE_R2_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY!,
-  },
-});
+import { NextResponse } from "next/server";
+import { supabaseAdmin } from "@/lib/supabase/server";
+import { createSignedUploadUrl } from "@/lib/storage";
 
 export async function POST(req: Request) {
-  const { uploadId, key, partNumber } = await req.json();
+  try {
+    const body = await req.json();
+    const { sessionId, partNumber } = body;
 
-  const command = new UploadPartCommand({
-    Bucket: process.env.CLOUDFLARE_R2_BUCKET!,
-    Key: key,
-    UploadId: uploadId,
-    PartNumber: partNumber,
-  });
+    if (!sessionId || !partNumber) {
+      return NextResponse.json({ error: "Missing params" }, { status: 400 });
+    }
 
-  const url = await getSignedUrl(s3, command, { expiresIn: 600 });
+    const admin = supabaseAdmin();
 
-  return Response.json({ url });
+    const { data: session, error } = await admin
+      .from("clinic_imaging_upload_sessions")
+      .select("*")
+      .eq("id", sessionId)
+      .single();
+
+    if (error || !session) {
+      return NextResponse.json({ error: "Session not found" }, { status: 404 });
+    }
+
+    const path = `${session.storage_key}.part${partNumber}`;
+
+    const signed = await createSignedUploadUrl({
+      path,
+      contentType: "application/octet-stream",
+      expiresInSeconds: 60 * 15,
+    });
+
+    return NextResponse.json({
+      ok: true,
+      data: {
+        url: signed.url,
+        path,
+      },
+    });
+  } catch (err: any) {
+    return NextResponse.json(
+      { error: err?.message || "Sign error" },
+      { status: 500 }
+    );
+  }
 }
