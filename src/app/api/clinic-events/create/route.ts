@@ -219,11 +219,6 @@ export async function POST(req: Request) {
   const vetSignature =
     typeof body.vetSignature === "string" ? body.vetSignature.trim() || null : null;
 
-  const vetSignatureMemberId =
-    typeof body.vetSignatureMemberId === "string"
-      ? body.vetSignatureMemberId.trim() || null
-      : null;
-
   const priority =
     ["low", "normal", "high", "urgent"].includes(String(body.priority || ""))
       ? String(body.priority)
@@ -273,8 +268,14 @@ export async function POST(req: Request) {
   }
 
   if (weightKg) meta.weight_kg = weightKg;
-  if (vetSignature) meta.created_by_member_label = vetSignature;
-  if (vetSignatureMemberId) meta.created_by_member_id = vetSignatureMemberId;
+
+  // 🔒 FIRMA SICURA
+  meta.created_by_member_id = user.id;
+  meta.created_by_member_label =
+    vetSignature && vetSignature.length <= 120
+      ? vetSignature
+      : user.email || "Veterinario";
+
   if (priority) meta.priority = priority;
   if (actorOrgName) meta.created_by_org_name = actorOrgName;
   if (hasAttachments) meta.has_attachments = true;
@@ -303,8 +304,8 @@ export async function POST(req: Request) {
         verified_at: source === "veterinarian" ? nowIso : null,
         verified_by: source === "veterinarian" ? user.id : null,
         verified_by_org_id: verifiedByOrgId,
-        verified_by_member_id: source === "veterinarian" ? vetSignatureMemberId : null,
-        verified_by_label: source === "veterinarian" ? vetSignature || "Veterinario" : null,
+        verified_by_member_id: source === "veterinarian" ? user.id : null,
+        verified_by_label: source === "veterinarian" ? (user.email || "Veterinario") : null,
         meta,
         priority: priority || null,
         status: "active",
@@ -336,7 +337,7 @@ export async function POST(req: Request) {
         animal_id: animalId,
         actor_user_id: user.id,
         actor_org_id: grant.actor_org_id,
-        actor_member_id: vetSignatureMemberId,
+        actor_member_id: user.id,
         action: "create",
         previous_data: null,
         next_data: data,
