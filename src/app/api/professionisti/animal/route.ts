@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, supabaseAdmin } from "@/lib/supabase/server";
 import { getProfessionalOrgId } from "@/lib/professionisti/org";
+import { isUuid } from "@/lib/server/validators";
 
 type AnimalPayload = {
   name?: string;
@@ -18,12 +19,6 @@ type AnimalPayload = {
   ownerEmail?: string | null;
   pending_owner_email?: string | null;
 };
-
-function isUuid(value: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    value
-  );
-}
 
 function normalizeChip(value?: string | null) {
   const digits = String(value ?? "").replace(/\D+/g, "").trim();
@@ -182,11 +177,7 @@ async function getOwnerDetails(ownerId?: string | null) {
 async function findAnimalByChip(chipNumber: string) {
   const admin = supabaseAdmin();
 
-  const result = await admin
-    .from("animals")
-    .select("*")
-    .eq("chip_number", chipNumber)
-    .limit(2);
+  const result = await admin.from("animals").select("*").eq("chip_number", chipNumber).limit(2);
 
   if (result.error) {
     throw result.error;
@@ -284,7 +275,9 @@ export async function GET(req: NextRequest) {
 
     const grantResult = await admin
       .from("animal_access_grants")
-      .select("id, grantee_id, status, valid_to, revoked_at, scope_read, scope_write")
+      .select(
+        "id, grantee_id, status, valid_from, valid_to, revoked_at, scope_read, scope_write"
+      )
       .eq("animal_id", animal.id)
       .eq("grantee_type", "org")
       .in("grantee_id", refs)
@@ -303,6 +296,12 @@ export async function GET(req: NextRequest) {
       (grantResult.data ?? []).find((g: any) => {
         if (g.status !== "active" && g.status !== "approved") return false;
         if (!g.scope_read && !g.scope_write) return false;
+
+        if (g.valid_from) {
+          const validFromMs = new Date(g.valid_from).getTime();
+          if (!Number.isNaN(validFromMs) && validFromMs > now) return false;
+        }
+
         if (!g.valid_to) return true;
 
         const validToMs = new Date(g.valid_to).getTime();
@@ -502,14 +501,10 @@ export async function POST(req: NextRequest) {
       if (!matchedAnimal.chip_number && chipNumber) patch.chip_number = chipNumber;
       if (!matchedAnimal.pending_owner_email && ownerEmail) patch.pending_owner_email = ownerEmail;
       if (!matchedAnimal.origin_org_id) patch.origin_org_id = orgId;
+      if (matchedAnimal.microchip_verified == null) patch.microchip_verified = false;
 
       if (Object.keys(patch).length > 1) {
-        const upd = await admin
-          .from("animals")
-          .update(patch)
-          .eq("id", matchedAnimal.id)
-          .select("*")
-          .single();
+        const upd = await admin.from("animals").update(patch).eq("id", matchedAnimal.id).select("*").single();
 
         if (upd.error || !upd.data) {
           return NextResponse.json(

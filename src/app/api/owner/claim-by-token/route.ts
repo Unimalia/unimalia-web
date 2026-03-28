@@ -40,7 +40,9 @@ export async function POST(req: NextRequest) {
 
     const animalResult = await admin
       .from("animals")
-      .select("id, owner_id")
+      .select(
+        "id, owner_id, created_by_org_id, origin_org_id, chip_number, microchip_verified, pending_owner_email"
+      )
       .eq("id", claim.animal_id)
       .single();
 
@@ -72,6 +74,26 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    let userEmail: string | null = null;
+
+    try {
+      const authUser = await admin.auth.admin.getUserById(user.id);
+      userEmail = authUser.data.user?.email?.trim().toLowerCase() ?? null;
+    } catch {
+      userEmail = null;
+    }
+
+    const pendingOwnerEmail = String(animal.pending_owner_email ?? "")
+      .trim()
+      .toLowerCase();
+
+    if (pendingOwnerEmail && userEmail && pendingOwnerEmail !== userEmail) {
+      return NextResponse.json(
+        { error: "Questo invito non corrisponde all'email del proprietario." },
+        { status: 403 }
+      );
+    }
+
     const nowIso = new Date().toISOString();
 
     const animalUpdate = await admin
@@ -80,10 +102,11 @@ export async function POST(req: NextRequest) {
         owner_id: user.id,
         owner_claim_status: "claimed",
         owner_claimed_at: nowIso,
+        pending_owner_email: null,
         pending_owner_invited_at: null,
       })
       .eq("id", claim.animal_id)
-      .select("id")
+      .select("id, created_by_org_id, origin_org_id")
       .single();
 
     if (animalUpdate.error || !animalUpdate.data) {
@@ -99,13 +122,83 @@ export async function POST(req: NextRequest) {
         used_by: user.id,
         used_at: nowIso,
       })
-      .eq("id", claim.id);
+      .eq("id", claim.id)
+      .is("used_at", null);
 
     if (claimUpdate.error) {
       return NextResponse.json(
         { error: claimUpdate.error.message || "Errore aggiornamento invito" },
         { status: 500 }
       );
+    }
+
+    const originOrgId =
+      animalUpdate.data.created_by_org_id || animalUpdate.data.origin_org_id || null;
+
+    if (originOrgId) {
+      const existingGrantResult = await admin
+        .from("animal_access_grants")
+        .select("id, status, revoked_at")
+        .eq("animal_id", claim.animal_id)
+        .eq("grantee_type", "org")
+        .eq("grantee_id", originOrgId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (existingGrantResult.error) {
+        return NextResponse.json(
+          { error: existingGrantResult.error.message || "Errore verifica grant clinica" },
+          { status: 500 }
+        );
+      }
+
+      if (existingGrantResult.data?.id) {
+        const shouldReactivate =
+          existingGrantResult.data.status !== "active" || !!existingGrantResult.data.revoked_at;
+
+        if (shouldReactivate) {
+          const reactivateGrant = await admin
+            .from("animal_access_grants")
+            .update({
+              granted_by_user_id: user.id,
+              status: "active",
+              revoked_at: null,
+              valid_to: null,
+              scope_read: true,
+              scope_write: true,
+              scope_upload: true,
+            })
+            .eq("id", existingGrantResult.data.id);
+
+          if (reactivateGrant.error) {
+            return NextResponse.json(
+              { error: reactivateGrant.error.message || "Errore riattivazione grant clinica" },
+              { status: 500 }
+            );
+          }
+        }
+      } else {
+        const insertGrant = await admin.from("animal_access_grants").insert({
+          animal_id: claim.animal_id,
+          grantee_type: "org",
+          grantee_id: originOrgId,
+          granted_by_user_id: user.id,
+          status: "active",
+          valid_to: null,
+          revoked_at: null,
+          scope_read: true,
+          scope_write: true,
+          scope_upload: true,
+        });
+
+        if (insertGrant.error) {
+          return NextResponse.json(
+            { error: insertGrant.error.message || "Errore creazione grant clinica" },
+            { status: 500 }
+          );
+        }
+      }
     }
 
     return NextResponse.json({
