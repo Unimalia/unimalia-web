@@ -121,7 +121,7 @@ export async function GET(req: Request) {
       const { data, error } = await admin
         .from("animal_clinic_events")
         .select(
-          "id, animal_id, event_date, type, title, description, visibility, source, verified_at, verified_by, verified_by_org_id, verified_by_member_id, verified_by_label, created_by, created_at, updated_at, status, meta, priority"
+          "id, animal_id, event_date, type, title, description, visibility, source, verified_at, verified_by, verified_by_org_id, verified_by_member_id, verified_by_label, created_at, updated_at, status, meta, priority"
         )
         .eq("animal_id", animalId)
         .neq("status", "void")
@@ -192,7 +192,7 @@ export async function GET(req: Request) {
     const { data, error } = await admin
       .from("animal_clinic_events")
       .select(
-        "id, animal_id, event_date, type, title, description, visibility, source, verified_at, verified_by, verified_by_org_id, verified_by_member_id, verified_by_label, created_by, created_at, updated_at, status, meta, priority"
+        "id, animal_id, event_date, type, title, description, visibility, source, verified_at, verified_by, verified_by_org_id, verified_by_member_id, verified_by_label, created_at, updated_at, status, meta, priority"
       )
       .eq("animal_id", animalId)
       .neq("status", "void")
