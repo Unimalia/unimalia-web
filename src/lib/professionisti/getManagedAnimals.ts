@@ -77,7 +77,13 @@ export async function getManagedAnimals(userId: string): Promise<ManagedAnimalRo
   const admin = supabaseAdmin();
   const refs = await getProfessionalRefs(userId);
 
+  console.log("[getManagedAnimals] start", {
+    userId,
+    refs,
+  });
+
   if (refs.length === 0) {
+    console.log("[getManagedAnimals] no refs");
     return [];
   }
 
@@ -91,8 +97,14 @@ export async function getManagedAnimals(userId: string): Promise<ManagedAnimalRo
     .is("revoked_at", null);
 
   if (grantsError) {
+    console.error("[getManagedAnimals] grantsError", grantsError);
     throw grantsError;
   }
+
+  console.log("[getManagedAnimals] raw grants", {
+    count: grants?.length ?? 0,
+    grants,
+  });
 
   const grantedAnimalIds = Array.from(
     new Set(
@@ -108,23 +120,43 @@ export async function getManagedAnimals(userId: string): Promise<ManagedAnimalRo
     )
   );
 
+  console.log("[getManagedAnimals] grantedAnimalIds", {
+    count: grantedAnimalIds.length,
+    grantedAnimalIds,
+  });
+
   const grantedAnimalIdSet = new Set<string>(grantedAnimalIds);
 
   const createdOrOriginatedIds = new Set<string>();
 
+  const createdOrOriginatedFilter = refs
+    .map((ref) => `created_by_org_id.eq.${ref},origin_org_id.eq.${ref}`)
+    .join(",");
+
+  console.log("[getManagedAnimals] created/origin filter", {
+    createdOrOriginatedFilter,
+  });
+
   const { data: createdOrOriginated, error: createdError } = await admin
     .from("animals")
     .select("id, created_by_org_id, origin_org_id")
-    .or(refs.map((ref) => `created_by_org_id.eq.${ref},origin_org_id.eq.${ref}`).join(","))
+    .or(createdOrOriginatedFilter)
     .limit(5000);
 
   if (createdError) {
+    console.error("[getManagedAnimals] createdError", createdError);
     throw createdError;
   }
 
   for (const row of createdOrOriginated ?? []) {
     if (row.id) createdOrOriginatedIds.add(row.id);
   }
+
+  console.log("[getManagedAnimals] createdOrOriginated", {
+    count: createdOrOriginated?.length ?? 0,
+    ids: Array.from(createdOrOriginatedIds),
+    rows: createdOrOriginated,
+  });
 
   const { data: ownHistoryRows, error: ownHistoryError } = await admin
     .from("animal_clinic_events")
@@ -134,6 +166,7 @@ export async function getManagedAnimals(userId: string): Promise<ManagedAnimalRo
     .limit(5000);
 
   if (ownHistoryError) {
+    console.error("[getManagedAnimals] ownHistoryError", ownHistoryError);
     throw ownHistoryError;
   }
 
@@ -141,6 +174,11 @@ export async function getManagedAnimals(userId: string): Promise<ManagedAnimalRo
     new Set((ownHistoryRows ?? []).map((row: any) => row.animal_id).filter(Boolean))
   );
   const ownHistoryAnimalIdSet = new Set<string>(ownHistoryAnimalIds);
+
+  console.log("[getManagedAnimals] ownHistoryAnimalIds", {
+    count: ownHistoryAnimalIds.length,
+    ownHistoryAnimalIds,
+  });
 
   const animalIds = Array.from(
     new Set([
@@ -150,7 +188,13 @@ export async function getManagedAnimals(userId: string): Promise<ManagedAnimalRo
     ])
   );
 
+  console.log("[getManagedAnimals] final animalIds", {
+    count: animalIds.length,
+    animalIds,
+  });
+
   if (animalIds.length === 0) {
+    console.log("[getManagedAnimals] no animalIds after merge");
     return [];
   }
 
@@ -163,8 +207,14 @@ export async function getManagedAnimals(userId: string): Promise<ManagedAnimalRo
     .order("name", { ascending: true });
 
   if (animalsError) {
+    console.error("[getManagedAnimals] animalsError", animalsError);
     throw animalsError;
   }
+
+  console.log("[getManagedAnimals] animals loaded", {
+    count: animals?.length ?? 0,
+    animals,
+  });
 
   const ownerIds = Array.from(
     new Set(
@@ -183,6 +233,7 @@ export async function getManagedAnimals(userId: string): Promise<ManagedAnimalRo
       .in("id", ownerIds);
 
     if (profilesError) {
+      console.error("[getManagedAnimals] profilesError", profilesError);
       throw profilesError;
     }
 
@@ -191,7 +242,7 @@ export async function getManagedAnimals(userId: string): Promise<ManagedAnimalRo
     }
   }
 
-  return (animals ?? []).map((row: any) => {
+  const result = (animals ?? []).map((row: any) => {
     const hasActiveGrant = grantedAnimalIdSet.has(row.id);
     const hasOwnHistory = ownHistoryAnimalIdSet.has(row.id);
     const isClinicOrigin =
@@ -226,4 +277,11 @@ export async function getManagedAnimals(userId: string): Promise<ManagedAnimalRo
       has_own_history: hasOwnHistory,
     };
   });
+
+  console.log("[getManagedAnimals] result", {
+    count: result.length,
+    result,
+  });
+
+  return result;
 }
