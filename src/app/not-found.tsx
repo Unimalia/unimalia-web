@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function NotFound() {
   return (
     <main className="max-w-3xl">
@@ -6,18 +8,18 @@ export default function NotFound() {
         Il link potrebbe essere errato oppure la pagina non esiste più.
       </p>
       <div className="mt-6 flex gap-2">
-        <a
+        <Link
           href="/"
           className="rounded-lg bg-black px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
         >
           Torna alla Home
-        </a>
-        <a
+        </Link>
+        <Link
           href="/smarrimenti"
           className="rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
         >
           Vedi smarrimenti
-        </a>
+        </Link>
       </div>
     </main>
   );

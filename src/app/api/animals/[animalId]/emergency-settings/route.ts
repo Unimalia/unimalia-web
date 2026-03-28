@@ -50,6 +50,16 @@ const DEFAULT_SETTINGS: Omit<EmergencySettingsRow, "animal_id" | "updated_at"> =
   emergency_notes: null,
 };
 
+function notFoundResponse() {
+  return NextResponse.json(
+    { error: "Not found" },
+    {
+      status: 404,
+      headers: { "Cache-Control": "no-store" },
+    }
+  );
+}
+
 async function requireOwnedAnimal(animalId: string, userId: string) {
   const admin = supabaseAdmin();
 
@@ -59,10 +69,16 @@ async function requireOwnedAnimal(animalId: string, userId: string) {
     .eq("id", animalId)
     .maybeSingle();
 
-  if (error) throw new Error(error.message);
-  if (!animal) return { ok: false as const, status: 404, error: "Animale non trovato" };
+  if (error) {
+    throw new Error("DB_ERROR");
+  }
+
+  if (!animal) {
+    return { ok: false as const };
+  }
+
   if (animal.owner_id !== userId) {
-    return { ok: false as const, status: 403, error: "Forbidden" };
+    return { ok: false as const };
   }
 
   return { ok: true as const };
@@ -73,7 +89,7 @@ export async function GET(_req: Request, context: RouteContext) {
     const { animalId } = await context.params;
 
     if (!animalId || !isUuid(animalId)) {
-      return NextResponse.json({ error: "animalId non valido" }, { status: 400 });
+      return notFoundResponse();
     }
 
     const supabase = await createServerSupabaseClient();
@@ -83,12 +99,12 @@ export async function GET(_req: Request, context: RouteContext) {
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return NextResponse.json({ error: "Non autenticato" }, { status: 401 });
+      return notFoundResponse();
     }
 
     const owned = await requireOwnedAnimal(animalId, user.id);
     if (!owned.ok) {
-      return NextResponse.json({ error: owned.error }, { status: owned.status });
+      return notFoundResponse();
     }
 
     const admin = supabaseAdmin();
@@ -105,7 +121,10 @@ export async function GET(_req: Request, context: RouteContext) {
     };
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json(
+        { error: "Server error" },
+        { status: 500, headers: { "Cache-Control": "no-store" } }
+      );
     }
 
     return NextResponse.json(
@@ -122,10 +141,10 @@ export async function GET(_req: Request, context: RouteContext) {
         headers: { "Cache-Control": "no-store" },
       }
     );
-  } catch (error: any) {
+  } catch {
     return NextResponse.json(
-      { error: error?.message || "Errore interno lettura settings emergenza" },
-      { status: 500 }
+      { error: "Server error" },
+      { status: 500, headers: { "Cache-Control": "no-store" } }
     );
   }
 }
@@ -135,7 +154,7 @@ export async function POST(req: Request, context: RouteContext) {
     const { animalId } = await context.params;
 
     if (!animalId || !isUuid(animalId)) {
-      return NextResponse.json({ error: "animalId non valido" }, { status: 400 });
+      return notFoundResponse();
     }
 
     const supabase = await createServerSupabaseClient();
@@ -145,15 +164,18 @@ export async function POST(req: Request, context: RouteContext) {
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return NextResponse.json({ error: "Non autenticato" }, { status: 401 });
+      return notFoundResponse();
     }
 
     const owned = await requireOwnedAnimal(animalId, user.id);
     if (!owned.ok) {
-      return NextResponse.json({ error: owned.error }, { status: owned.status });
+      return notFoundResponse();
     }
 
-    const body = (await req.json().catch(() => ({}))) as Partial<EmergencySettingsRow>;
+    const body = (await req.json().catch(() => null)) as Partial<EmergencySettingsRow> | null;
+    if (!body || typeof body !== "object") {
+      return notFoundResponse();
+    }
 
     const payload = {
       animal_id: animalId,
@@ -188,7 +210,10 @@ export async function POST(req: Request, context: RouteContext) {
     };
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json(
+        { error: "Server error" },
+        { status: 500, headers: { "Cache-Control": "no-store" } }
+      );
     }
 
     return NextResponse.json(
@@ -197,10 +222,10 @@ export async function POST(req: Request, context: RouteContext) {
         headers: { "Cache-Control": "no-store" },
       }
     );
-  } catch (error: any) {
+  } catch {
     return NextResponse.json(
-      { error: error?.message || "Errore interno salvataggio settings emergenza" },
-      { status: 500 }
+      { error: "Server error" },
+      { status: 500, headers: { "Cache-Control": "no-store" } }
     );
   }
 }

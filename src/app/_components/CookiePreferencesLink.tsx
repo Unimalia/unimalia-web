@@ -5,7 +5,7 @@ export function CookiePreferencesLink() {
     <button
       type="button"
       onClick={() => {
-        // @ts-ignore
+        // @ts-expect-error iubenda injects _iub on window at runtime
         if (window?._iub?.cs?.api?.openPreferences) window._iub.cs.api.openPreferences();
       }}
       className="text-sm underline underline-offset-4 hover:text-zinc-900"

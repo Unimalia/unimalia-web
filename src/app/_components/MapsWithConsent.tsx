@@ -7,14 +7,13 @@ export default function MapsWithConsent({ children }: { children: React.ReactNod
 
   useEffect(() => {
     const check = () => {
-      // @ts-ignore
+      // @ts-expect-error iubenda injects _iub on window at runtime
       const c = Boolean(window?._iub?.cs?.consent);
       setConsented(c);
     };
 
     check();
 
-    // Poll leggero: quando l'utente accetta dal banner, lo prendiamo.
     const t = window.setInterval(check, 1000);
     return () => window.clearInterval(t);
   }, []);
@@ -32,7 +31,7 @@ export default function MapsWithConsent({ children }: { children: React.ReactNod
         <button
           type="button"
           onClick={() => {
-            // @ts-ignore
+            // @ts-expect-error iubenda injects _iub on window at runtime
             if (window?._iub?.cs?.api?.openPreferences) window._iub.cs.api.openPreferences();
           }}
           className="mt-4 inline-flex items-center justify-center rounded-2xl bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-zinc-800"
@@ -43,6 +42,5 @@ export default function MapsWithConsent({ children }: { children: React.ReactNod
     );
   }
 
-  // Se c'è consenso, renderizziamo i tuoi componenti mappa reali (es. <GoogleMap .../>)
   return <>{children}</>;
 }

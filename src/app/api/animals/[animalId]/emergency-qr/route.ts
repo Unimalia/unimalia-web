@@ -15,82 +15,98 @@ type RouteContext = {
   }>;
 };
 
+function notFoundResponse() {
+  return NextResponse.json(
+    { error: "Not found" },
+    {
+      status: 404,
+      headers: { "Cache-Control": "no-store" },
+    }
+  );
+}
+
 export async function GET(_req: Request, context: RouteContext) {
-  const { animalId } = await context.params;
+  try {
+    const { animalId } = await context.params;
 
-  if (!animalId || animalId === "undefined") {
-    return NextResponse.json({ error: "animalId mancante" }, { status: 400 });
-  }
+    if (!animalId || animalId === "undefined" || !isUuid(animalId)) {
+      return notFoundResponse();
+    }
 
-  if (!isUuid(animalId)) {
-    return NextResponse.json({ error: "animalId non valido" }, { status: 400 });
-  }
+    const supabase = await createServerSupabaseClient();
 
-  const supabase = await createServerSupabaseClient();
+    const {
+      data: { user },
+      error: authErr,
+    } = await supabase.auth.getUser();
 
-  const {
-    data: { user },
-    error: authErr,
-  } = await supabase.auth.getUser();
+    if (authErr || !user) {
+      return notFoundResponse();
+    }
 
-  if (authErr) {
-    return NextResponse.json({ error: authErr.message }, { status: 401 });
-  }
+    const { data: animal, error: animalErr } = await supabase
+      .from("animals")
+      .select("id, owner_id, name")
+      .eq("id", animalId)
+      .maybeSingle();
 
-  if (!user) {
-    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-  }
+    if (animalErr) {
+      return NextResponse.json(
+        { error: "Server error" },
+        {
+          status: 500,
+          headers: { "Cache-Control": "no-store" },
+        }
+      );
+    }
 
-  const { data: animal, error: animalErr } = await supabase
-    .from("animals")
-    .select("id, owner_id, name")
-    .eq("id", animalId)
-    .maybeSingle();
+    if (!animal) {
+      return notFoundResponse();
+    }
 
-  if (animalErr) {
-    return NextResponse.json({ error: animalErr.message }, { status: 500 });
-  }
+    if (!animal.owner_id || animal.owner_id !== user.id) {
+      return notFoundResponse();
+    }
 
-  if (!animal) {
-    return NextResponse.json({ error: "Animal not found" }, { status: 404 });
-  }
+    const admin = supabaseAdmin();
 
-  if (!animal.owner_id || animal.owner_id !== user.id) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+    const { error: rotateError } = await admin
+      .from("emergency_qr_tokens" as never)
+      .update({ status: "rotated" } as never)
+      .eq("animal_id", animalId)
+      .eq("status", "active");
 
-  const admin = supabaseAdmin();
+    if (rotateError) {
+      return NextResponse.json(
+        { error: "Server error" },
+        {
+          status: 500,
+          headers: { "Cache-Control": "no-store" },
+        }
+      );
+    }
 
-  const { error: rotateError } = await admin
-    .from("emergency_qr_tokens" as never)
-    .update({ status: "rotated" } as never)
-    .eq("animal_id", animalId)
-    .eq("status", "active");
+    const created = await createEmergencyQrToken(animalId);
 
-  if (rotateError) {
     return NextResponse.json(
-      { error: rotateError.message },
       {
-        status: 500,
+        status: "created",
+        token: created.token,
+        url: created.url,
+      },
+      {
         headers: {
           "Cache-Control": "no-store",
         },
       }
     );
+  } catch {
+    return NextResponse.json(
+      { error: "Server error" },
+      {
+        status: 500,
+        headers: { "Cache-Control": "no-store" },
+      }
+    );
   }
-
-  const created = await createEmergencyQrToken(animalId);
-
-  return NextResponse.json(
-    {
-      status: "created",
-      token: created.token,
-      url: created.url,
-    },
-    {
-      headers: {
-        "Cache-Control": "no-store",
-      },
-    }
-  );
 }

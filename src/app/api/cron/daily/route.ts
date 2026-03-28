@@ -1,6 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { resend, EMAIL_FROM_NO_REPLY, getBaseUrl } from "@/lib/email/resend";
-import { askIfFoundEmail, expiringSoonEmail } from "@/lib/email/templates";
+import { resend, EMAIL_FROM_NO_REPLY } from "@/lib/email/resend";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -40,18 +39,6 @@ function isoDateFromUTC(d: Date) {
   return d.toISOString().slice(0, 10);
 }
 
-function addDays(dateIso: string, days: number) {
-  const d = new Date(dateIso);
-  d.setUTCDate(d.getUTCDate() + days);
-  return isoDateFromUTC(d);
-}
-
-function subDays(dateIso: string, days: number) {
-  const d = new Date(dateIso);
-  d.setUTCDate(d.getUTCDate() - days);
-  return isoDateFromUTC(d);
-}
-
 type ReminderRow = {
   id: string;
   animal_id: string;
@@ -63,61 +50,18 @@ type ReminderRow = {
   status: "scheduled" | "sent" | "cancelled";
 };
 
-type ReportRow = {
-  id: string;
-  title: string;
-  contact_email: string;
-  email_verified: boolean;
-  status: string;
-  created_at: string;
-  expires_at: string | null;
-  claim_token: string;
-};
-
-async function alreadySent(
-  supabase: ReturnType<typeof getSupabaseAdmin>,
-  reportId: string,
-  kind: string
-) {
-  const { data, error } = await supabase
-    .from("report_email_logs")
-    .select("id")
-    .eq("report_id", reportId)
-    .eq("kind", kind)
-    .maybeSingle();
-
-  if (error) throw new Error(error.message);
-  return !!data;
-}
-
-async function markSent(
-  supabase: ReturnType<typeof getSupabaseAdmin>,
-  reportId: string,
-  kind: string
-) {
-  const { error } = await supabase.from("report_email_logs").insert({
-    report_id: reportId,
-    kind,
-  });
-
-  if (error) throw new Error(error.message);
-}
-
 export async function POST(req: Request) {
   try {
-    // 🔒 SOLO POST
     if (req.method !== "POST") {
       return new Response("Method Not Allowed", { status: 405 });
     }
 
-    // 🔒 AUTH CRON
     if (!isAuthorized(req)) {
       return new Response("Unauthorized", { status: 401 });
     }
 
     const supabase = getSupabaseAdmin();
     const todayISO = utcTodayISODate();
-    const baseUrl = getBaseUrl();
 
     const { data: reminders, error: rErr } = await supabase
       .from("animal_reminders")

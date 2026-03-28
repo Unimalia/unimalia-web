@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase/server";
 import { resend, EMAIL_FROM_MESSAGES, getBaseUrl } from "@/lib/email/resend";
 import { protectedConversationEmail } from "@/lib/email/templates";
+import { supabaseAdmin } from "@/lib/supabase/server";
 
 function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -53,7 +53,6 @@ export async function POST(req: Request) {
     }
 
     let conversationId: string | null = null;
-    let requesterToken: string | null = null;
     let ownerToken: string | null = null;
 
     const { data: existingConversation } = await admin
@@ -65,7 +64,6 @@ export async function POST(req: Request) {
 
     if (existingConversation) {
       conversationId = existingConversation.id;
-      requesterToken = existingConversation.requester_token;
       ownerToken = existingConversation.owner_token;
     } else {
       const { data: createdConversation, error: conversationError } = await admin
@@ -86,7 +84,6 @@ export async function POST(req: Request) {
       }
 
       conversationId = createdConversation.id;
-      requesterToken = createdConversation.requester_token;
       ownerToken = createdConversation.owner_token;
     }
 
@@ -127,9 +124,12 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ ok: true });
-  } catch (e: any) {
+  } catch (e: unknown) {
+    const message =
+      e instanceof Error ? e.message : "Errore server";
+
     return NextResponse.json(
-      { error: e?.message || "Errore server" },
+      { error: message },
       { status: 500 }
     );
   }

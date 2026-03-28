@@ -580,37 +580,37 @@ export default function HomePage() {
           </p>
 
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            <a
+            <Link
               href="/smarriti/animale-smarrito-cosa-fare"
               className="rounded-xl border p-4 hover:bg-zinc-50"
             >
               <p className="font-semibold">Animale smarrito: cosa fare</p>
               <p className="mt-1 text-sm text-zinc-500">Guida completa per agire subito</p>
-            </a>
+            </Link>
 
-            <a
+            <Link
               href="/identita-animale/cos-e-identita-animale-digitale"
               className="rounded-xl border p-4 hover:bg-zinc-50"
             >
               <p className="font-semibold">Cos’è l’identità animale digitale</p>
               <p className="mt-1 text-sm text-zinc-500">Spiegazione semplice e utile</p>
-            </a>
+            </Link>
 
-            <a
+            <Link
               href="/smarriti/cane-smarrito/firenze"
               className="rounded-xl border p-4 hover:bg-zinc-50"
             >
               <p className="font-semibold">Cane smarrito a Firenze</p>
               <p className="mt-1 text-sm text-zinc-500">Esempio guida locale</p>
-            </a>
+            </Link>
 
-            <a
+            <Link
               href="/identita-animale/come-registrare-un-animale"
               className="rounded-xl border p-4 hover:bg-zinc-50"
             >
               <p className="font-semibold">Come registrare un animale</p>
               <p className="mt-1 text-sm text-zinc-500">Passaggi semplici</p>
-            </a>
+            </Link>
           </div>
         </div>
       </section>
