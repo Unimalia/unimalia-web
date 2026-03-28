@@ -4,12 +4,7 @@ import { createSignedDownloadUrl } from "@/lib/storage";
 import { requireOwnerOrGrant } from "@/lib/server/requireOwnerOrGrant";
 import { writeAudit } from "@/lib/server/audit";
 import { supabaseAdmin } from "@/lib/supabase/server";
-
-function getBearerToken(req: Request) {
-  const h = req.headers.get("authorization") || req.headers.get("Authorization") || "";
-  const m = h.match(/^Bearer\s+(.+)$/i);
-  return m?.[1] || null;
-}
+import { getBearerToken } from "@/lib/server/bearer";
 
 export async function POST(req: Request) {
   const token = getBearerToken(req);

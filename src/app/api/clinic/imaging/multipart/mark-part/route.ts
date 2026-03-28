@@ -1,12 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/lib/supabase/server";
-
-function getBearerToken(req: Request) {
-  const h = req.headers.get("authorization") || "";
-  const m = h.match(/^Bearer\s+(.+)$/i);
-  return m?.[1] || null;
-}
+import { getBearerToken } from "@/lib/server/bearer";
 
 export async function POST(req: Request) {
   try {
@@ -39,7 +34,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing params" }, { status: 400 });
     }
 
-    // 🔥 recupera sessione
     const { data: session } = await admin
       .from("clinic_imaging_upload_sessions")
       .select("uploaded_parts")
@@ -50,14 +44,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Session not found" }, { status: 404 });
     }
 
-    // 🔥 merge corretto
     const existing = Array.isArray(session.uploaded_parts)
       ? session.uploaded_parts
       : [];
 
     const updated = Array.from(new Set([...existing, partNumber]));
 
-    // 🔥 update
     const { error } = await admin
       .from("clinic_imaging_upload_sessions")
       .update({

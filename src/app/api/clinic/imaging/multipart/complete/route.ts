@@ -7,12 +7,7 @@ import {
   deletePrivateFile,
 } from "@/lib/storage";
 import { randomUUID } from "crypto";
-
-function getBearerToken(req: Request) {
-  const h = req.headers.get("authorization") || req.headers.get("Authorization") || "";
-  const m = h.match(/^Bearer\s+(.+)$/i);
-  return m?.[1] || null;
-}
+import { getBearerToken } from "@/lib/server/bearer";
 
 async function uploadToOrthanc(buffer: Buffer) {
   const baseUrl = process.env.ORTHANC_BASE_URL;
@@ -100,7 +95,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // 🔥 scarico tutti i chunk
     const buffers: Buffer[] = [];
 
     for (const part of parts.sort((a: any, b: any) => a.PartNumber - b.PartNumber)) {
@@ -118,7 +112,6 @@ export async function POST(req: Request) {
       buffers.push(Buffer.from(arrayBuffer));
     }
 
-    // 🔥 unione
     const finalBuffer = Buffer.concat(buffers);
 
     const finalPath = session.storage_key;
@@ -140,10 +133,8 @@ export async function POST(req: Request) {
 
     uploadedFinalPath = finalPath;
 
-    // 🔥 ORTHANC
     const orthanc = await uploadToOrthanc(finalBuffer);
 
-    // 🔥 EVENTO CLINICO
     const eventId = randomUUID();
     const fileId = randomUUID();
 
@@ -192,7 +183,6 @@ export async function POST(req: Request) {
       created_by: user.id,
     });
 
-    // 🔥 update session
     await admin
       .from("clinic_imaging_upload_sessions")
       .update({
@@ -201,7 +191,6 @@ export async function POST(req: Request) {
       })
       .eq("id", sessionId);
 
-    // 🔥 cleanup chunk
     for (const part of parts) {
       const path = `${session.storage_key}.part${part.PartNumber}`;
       await deletePrivateFile(path).catch(() => {});

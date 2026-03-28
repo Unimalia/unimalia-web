@@ -10,12 +10,7 @@ import {
 import { createServerSupabaseClient, supabaseAdmin } from "@/lib/supabase/server";
 import { requireOwnerOrGrant } from "@/lib/server/requireOwnerOrGrant";
 import { writeAudit } from "@/lib/server/audit";
-
-function getBearerToken(req: Request) {
-  const h = req.headers.get("authorization") || req.headers.get("Authorization") || "";
-  const m = h.match(/^Bearer\s+(.+)$/i);
-  return m?.[1] || null;
-}
+import { getBearerToken } from "@/lib/server/bearer";
 
 async function resolveAuthenticatedUser(req: Request) {
   const token = getBearerToken(req);

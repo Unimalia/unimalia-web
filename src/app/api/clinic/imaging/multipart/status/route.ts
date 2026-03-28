@@ -1,12 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/lib/supabase/server";
-
-function getBearerToken(req: Request) {
-  const h = req.headers.get("authorization") || req.headers.get("Authorization") || "";
-  const m = h.match(/^Bearer\s+(.+)$/i);
-  return m?.[1] || null;
-}
+import { getBearerToken } from "@/lib/server/bearer";
 
 export async function GET(req: Request) {
   try {
