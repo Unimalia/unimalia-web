@@ -122,7 +122,7 @@ export async function requireOwnerOrGrant(
 
   const orgGrant = activeGrants.find(
     (g: any) =>
-      g.grantee_type === "org" &&
+      g.grantee_type === "organization" &&
       refs.includes(String(g.grantee_id)) &&
       hasRequiredScope(g, scope)
   );

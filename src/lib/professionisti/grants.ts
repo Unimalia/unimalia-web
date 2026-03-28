@@ -107,7 +107,7 @@ export async function hasActiveGrantForAnimal(animalId: string) {
       return true;
     }
 
-    if (g.grantee_type === "org" && refs.includes(String(g.grantee_id))) {
+    if (g.grantee_type === "organization" && refs.includes(String(g.grantee_id))) {
       return true;
     }
 

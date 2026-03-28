@@ -86,7 +86,7 @@ export async function getManagedAnimals(userId: string): Promise<ManagedAnimalRo
   const { data: grants, error: grantsError } = await admin
     .from("animal_access_grants")
     .select("animal_id, grantee_id, status, valid_to, revoked_at, scope_read, scope_write")
-    .eq("grantee_type", "org")
+    .eq("grantee_type", "organization")
     .in("grantee_id", refs)
     .is("revoked_at", null);
 

@@ -106,7 +106,7 @@ export async function GET(req: Request) {
         "id, grantee_id, grantee_type, status, valid_from, valid_to, revoked_at, scope_read, scope_write, scope_upload"
       )
       .eq("animal_id", animalId)
-      .eq("grantee_type", "org")
+      .eq("grantee_type", "organization")
       .in("grantee_id", ids)
       .is("revoked_at", null);
 
@@ -121,7 +121,7 @@ export async function GET(req: Request) {
 
     const activeGrant =
       (grants ?? []).find((g: any) => {
-        if (g.grantee_type !== "org") return false;
+        if (g.grantee_type !== "organization") return false;
         if (g.status !== "active" && g.status !== "approved") return false;
         if (!g.scope_read && !g.scope_write && !g.scope_upload) return false;
 
