@@ -1,22 +1,12 @@
 import { NextResponse } from "next/server";
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "@supabase/supabase-js";
 import { requireOwnerOrGrant } from "@/lib/server/requireOwnerOrGrant";
-import { writeAudit } from "@/lib/server/audit";
+import { safeWriteAudit } from "@/lib/server/safeAudit";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { sendOwnerAnimalUpdateEmail } from "@/lib/email/sendOwnerAnimalUpdateEmail";
 import { createClinicalEventOwnerNotification } from "@/lib/notifications/create-owner-notification";
-
-function getBearerToken(req: Request) {
-  const h = req.headers.get("authorization") || req.headers.get("Authorization") || "";
-  const m = h.match(/^Bearer\s+(.+)$/i);
-  return m?.[1] || null;
-}
-
-function isUuid(value: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    value
-  );
-}
+import { getBearerToken } from "@/lib/server/bearer";
+import { isUuid } from "@/lib/server/validators";
 
 type Body = {
   animalId: string;
@@ -91,17 +81,6 @@ function sanitizeMeta(input: unknown): Record<string, any> | null {
   }
 
   return output;
-}
-
-async function safeWriteAudit(
-  supabase: SupabaseClient<any, "public", any>,
-  payload: Parameters<typeof writeAudit>[1]
-) {
-  try {
-    await writeAudit(supabase as any, payload);
-  } catch (error) {
-    console.error("[AUDIT_WRITE_ERROR]", error);
-  }
 }
 
 export async function POST(req: Request) {

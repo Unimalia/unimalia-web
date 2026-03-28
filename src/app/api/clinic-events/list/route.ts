@@ -1,25 +1,8 @@
 import { NextResponse } from "next/server";
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { createClient as createServerClient, supabaseAdmin } from "@/lib/supabase/server";
 import { requireOwnerOrGrant } from "@/lib/server/requireOwnerOrGrant";
-import { writeAudit } from "@/lib/server/audit";
-
-function isUuid(value: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    value
-  );
-}
-
-async function safeWriteAudit(
-  supabase: SupabaseClient<any, "public", any>,
-  payload: Parameters<typeof writeAudit>[1]
-) {
-  try {
-    await writeAudit(supabase as any, payload);
-  } catch (error) {
-    console.error("[AUDIT_WRITE_ERROR]", error);
-  }
-}
+import { safeWriteAudit } from "@/lib/server/safeAudit";
+import { isUuid } from "@/lib/server/validators";
 
 export async function GET(req: Request) {
   const url = new URL(req.url);

@@ -1,31 +1,10 @@
 import { NextResponse } from "next/server";
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireOwnerOrGrant } from "@/lib/server/requireOwnerOrGrant";
-import { writeAudit } from "@/lib/server/audit";
-
-function getBearerToken(req: Request) {
-  const h = req.headers.get("authorization") || req.headers.get("Authorization") || "";
-  const m = h.match(/^Bearer\s+(.+)$/i);
-  return m?.[1] || null;
-}
-
-function isUuid(value: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    value
-  );
-}
-
-async function safeWriteAudit(
-  supabase: SupabaseClient<any, "public", any>,
-  payload: Parameters<typeof writeAudit>[1]
-) {
-  try {
-    await writeAudit(supabase as any, payload);
-  } catch (error) {
-    console.error("[AUDIT_WRITE_ERROR]", error);
-  }
-}
+import { safeWriteAudit } from "@/lib/server/safeAudit";
+import { getBearerToken } from "@/lib/server/bearer";
+import { isUuid } from "@/lib/server/validators";
 
 export async function GET(req: Request) {
   const token = getBearerToken(req);
@@ -58,17 +37,10 @@ export async function GET(req: Request) {
   }
 
   const url = new URL(req.url);
-  const fileId = (url.searchParams.get("fileId") || "").trim();
-  const pathParam = (url.searchParams.get("path") || "").trim();
+  const fileId = String(url.searchParams.get("fileId") || "").trim();
+  const pathParam = String(url.searchParams.get("path") || "").trim();
 
-  let fileRow: {
-    id: string;
-    animal_id: string;
-    event_id: string;
-    path: string;
-    filename: string | null;
-    created_by?: string | null;
-  } | null = null;
+  let fileRow: any = null;
 
   if (fileId) {
     if (!isUuid(fileId)) {
@@ -77,7 +49,7 @@ export async function GET(req: Request) {
 
     const { data, error } = await admin
       .from("animal_clinic_event_files")
-      .select("id, animal_id, event_id, path, filename, created_by")
+      .select("id, animal_id, event_id, path, filename")
       .eq("id", fileId)
       .single();
 
@@ -89,7 +61,7 @@ export async function GET(req: Request) {
   } else if (pathParam) {
     const { data, error } = await admin
       .from("animal_clinic_event_files")
-      .select("id, animal_id, event_id, path, filename, created_by")
+      .select("id, animal_id, event_id, path, filename")
       .eq("path", pathParam)
       .maybeSingle();
 
@@ -102,8 +74,16 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "fileId or path required" }, { status: 400 });
   }
 
-  const animalId = String(fileRow.animal_id);
-  const eventId = String(fileRow.event_id);
+  const animalId = String(fileRow.animal_id || "");
+  const eventId = String(fileRow.event_id || "");
+
+  if (!animalId || !isUuid(animalId)) {
+    return NextResponse.json({ error: "Invalid file animal_id" }, { status: 400 });
+  }
+
+  if (!eventId || !isUuid(eventId)) {
+    return NextResponse.json({ error: "Invalid file event_id" }, { status: 400 });
+  }
 
   const grant = await requireOwnerOrGrant(supabase as any, user.id, animalId, "read");
 
@@ -134,7 +114,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Errore verifica accesso file." }, { status: 500 });
     }
 
-    if (eventRow && eventRow.created_by === user.id && fileRow.created_by === user.id) {
+    if (eventRow && eventRow.created_by === user.id) {
       canAccess = true;
       accessMode = "own_only";
     }

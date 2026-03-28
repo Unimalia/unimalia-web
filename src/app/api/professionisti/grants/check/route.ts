@@ -3,17 +3,12 @@ import {
   createServerSupabaseClient,
   supabaseAdmin,
 } from "@/lib/supabase/server";
-
-function isUuid(value: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    value
-  );
-}
+import { isUuid } from "@/lib/server/validators";
 
 export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
-    const animalId = (url.searchParams.get("animal_id") || "").trim();
+    const animalId = String(url.searchParams.get("animal_id") || "").trim();
 
     if (!animalId) {
       return NextResponse.json(
@@ -95,7 +90,7 @@ export async function GET(req: Request) {
     const professionalId = (professionalResult.data as any)?.id ?? null;
     if (professionalId) candidateIds.add(String(professionalId));
 
-    const ids = Array.from(candidateIds).filter(Boolean);
+    const ids = Array.from(candidateIds);
 
     if (ids.length === 0) {
       return NextResponse.json({
@@ -107,7 +102,9 @@ export async function GET(req: Request) {
 
     const { data: grants, error: grantError } = await admin
       .from("animal_access_grants")
-      .select("id, grantee_id, status, valid_to, revoked_at")
+      .select(
+        "id, grantee_id, grantee_type, status, valid_from, valid_to, revoked_at, scope_read, scope_write, scope_upload"
+      )
       .eq("animal_id", animalId)
       .eq("grantee_type", "org")
       .in("grantee_id", ids)
@@ -124,7 +121,14 @@ export async function GET(req: Request) {
 
     const activeGrant =
       (grants ?? []).find((g: any) => {
+        if (g.grantee_type !== "org") return false;
         if (g.status !== "active" && g.status !== "approved") return false;
+        if (!g.scope_read && !g.scope_write && !g.scope_upload) return false;
+
+        if (g.valid_from) {
+          const validFromMs = new Date(g.valid_from).getTime();
+          if (!Number.isNaN(validFromMs) && validFromMs > now) return false;
+        }
 
         if (!g.valid_to) return true;
 
@@ -137,13 +141,16 @@ export async function GET(req: Request) {
     return NextResponse.json({
       ok: true,
       hasGrant: Boolean(activeGrant),
+      matchedGranteeId: activeGrant?.grantee_id ?? null,
+      checkedIds: ids,
     });
   } catch (error) {
     return NextResponse.json(
       {
         ok: false,
         hasGrant: false,
-        error: error instanceof Error ? error.message : "Errore verifica grant",
+        error:
+          error instanceof Error ? error.message : "Errore verifica grant",
       },
       { status: 500 }
     );

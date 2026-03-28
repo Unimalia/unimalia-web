@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient, supabaseAdmin } from "@/lib/supabase/server";
+import { isUuid } from "@/lib/server/validators";
 
 type Action = "approve" | "reject" | "block" | "revoke";
 type Duration = "24h" | "7d" | "6m" | "forever";
@@ -10,12 +11,6 @@ function isValidAction(value: string): value is Action {
 
 function isValidDuration(value: string): value is Duration {
   return value === "24h" || value === "7d" || value === "6m" || value === "forever";
-}
-
-function isUuid(value: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    value
-  );
 }
 
 function computeValidTo(duration: Duration) {
@@ -37,23 +32,26 @@ async function tryResolveOrgNames(admin: ReturnType<typeof supabaseAdmin>, orgId
   try {
     const { data, error } = await admin
       .from("organizations")
-      .select("id, name, display_name, ragione_sociale")
+      .select("id, name, display_name, ragione_sociale, legal_name")
       .in("id", orgIds);
 
     if (!error) {
       for (const row of data ?? []) {
         orgNameById.set(
           row.id,
-          (row as any).name ??
-            (row as any).display_name ??
+          (row as any).display_name ??
+            (row as any).name ??
             (row as any).ragione_sociale ??
+            (row as any).legal_name ??
             row.id
         );
       }
 
       if (orgNameById.size > 0) return orgNameById;
     }
-  } catch {}
+  } catch {
+    // fallback sotto
+  }
 
   try {
     const { data, error } = await admin
@@ -74,15 +72,26 @@ async function tryResolveOrgNames(admin: ReturnType<typeof supabaseAdmin>, orgId
         orgNameById.set(row.id, name || row.id);
       }
     }
-  } catch {}
+  } catch {
+    // se fallisce anche questo, useremo org_id
+  }
 
   return orgNameById;
+}
+
+function normalizeRequestedScope(input: unknown): Array<"read" | "write"> {
+  const raw = Array.isArray(input) ? input : [];
+  const filtered = raw
+    .map((item) => String(item).trim().toLowerCase())
+    .filter((item): item is "read" | "write" => item === "read" || item === "write");
+
+  return Array.from(new Set(filtered));
 }
 
 export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
-    const animalId = (url.searchParams.get("animalId") || "").trim();
+    const animalId = String(url.searchParams.get("animalId") || "").trim();
 
     if (animalId && !isUuid(animalId)) {
       return NextResponse.json({ error: "animalId non valido" }, { status: 400 });
@@ -96,8 +105,13 @@ export async function GET(req: Request) {
       error: userErr,
     } = await supabase.auth.getUser();
 
-    if (userErr) return NextResponse.json({ error: userErr.message }, { status: 401 });
-    if (!user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    if (userErr) {
+      return NextResponse.json({ error: userErr.message }, { status: 401 });
+    }
+
+    if (!user) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
 
     let q = admin
       .from("animal_access_requests")
@@ -106,7 +120,9 @@ export async function GET(req: Request) {
       .order("created_at", { ascending: false })
       .limit(100);
 
-    if (animalId) q = q.eq("animal_id", animalId);
+    if (animalId) {
+      q = q.eq("animal_id", animalId);
+    }
 
     const { data, error } = await q;
 
@@ -145,7 +161,7 @@ export async function GET(req: Request) {
       org_name: orgNameById.get(r.org_id) ?? r.org_id,
     }));
 
-    return NextResponse.json({ rows: enriched });
+    return NextResponse.json({ rows: enriched }, { status: 200 });
   } catch (error: any) {
     return NextResponse.json(
       { error: error?.message || "Errore caricamento richieste owner" },
@@ -164,27 +180,37 @@ export async function POST(req: Request) {
       error: userErr,
     } = await supabase.auth.getUser();
 
-    if (userErr) return NextResponse.json({ error: userErr.message }, { status: 401 });
-    if (!user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    if (userErr) {
+      return NextResponse.json({ error: userErr.message }, { status: 401 });
+    }
+
+    if (!user) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
 
     const body = await req.json().catch(() => null);
+
+    if (!body || typeof body !== "object") {
+      return NextResponse.json({ error: "Body non valido" }, { status: 400 });
+    }
 
     if (!body?.id || !body?.action) {
       return NextResponse.json({ error: "Missing id/action" }, { status: 400 });
     }
 
     const id = String(body.id).trim();
+    const actionRaw = String(body.action).trim();
+
     if (!isUuid(id)) {
-      return NextResponse.json({ error: "Invalid id" }, { status: 400 });
+      return NextResponse.json({ error: "id non valido" }, { status: 400 });
     }
 
-    const actionRaw = String(body.action).trim();
     if (!isValidAction(actionRaw)) {
       return NextResponse.json({ error: "Unknown action" }, { status: 400 });
     }
 
     const action: Action = actionRaw;
-    const durationRaw = body.duration ? String(body.duration) : "7d";
+    const durationRaw = body.duration ? String(body.duration).trim() : "7d";
     const duration: Duration = isValidDuration(durationRaw) ? durationRaw : "7d";
 
     const { data: reqRow, error: reqErr } = await admin
@@ -193,59 +219,63 @@ export async function POST(req: Request) {
       .eq("id", id)
       .maybeSingle();
 
-    if (reqErr) return NextResponse.json({ error: reqErr.message }, { status: 500 });
-    if (!reqRow) return NextResponse.json({ error: "Request not found" }, { status: 404 });
+    if (reqErr) {
+      return NextResponse.json({ error: reqErr.message }, { status: 500 });
+    }
+
+    if (!reqRow) {
+      return NextResponse.json({ error: "Request not found" }, { status: 404 });
+    }
 
     if (reqRow.owner_id !== user.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    if (!reqRow.animal_id || !isUuid(String(reqRow.animal_id))) {
+      return NextResponse.json({ error: "animal_id non valido nella richiesta" }, { status: 400 });
+    }
+
     if (action === "approve") {
-      if (reqRow.status !== "pending") {
-        return NextResponse.json({ error: "Request is not pending" }, { status: 409 });
-      }
-
       const validTo = computeValidTo(duration);
-
-      const requestedScopeRaw = Array.isArray(reqRow.requested_scope) ? reqRow.requested_scope : [];
-      const requestedScope = Array.from(
-        new Set(requestedScopeRaw.filter((item) => item === "read" || item === "write"))
-      );
+      const requestedScope = normalizeRequestedScope(reqRow.requested_scope);
 
       if (requestedScope.length === 0) {
-        return NextResponse.json({ error: "Invalid requested scope" }, { status: 400 });
+        return NextResponse.json(
+          { error: "Richiesta senza scope validi approvabili" },
+          { status: 400 }
+        );
       }
 
-      const { data: existingGrants, error: existingGrantErr } = await admin
+      const { data: existingGrant, error: existingGrantErr } = await admin
         .from("animal_access_grants")
         .select("id")
         .eq("animal_id", reqRow.animal_id)
         .eq("grantee_type", "org")
         .eq("grantee_id", reqRow.org_id)
         .is("revoked_at", null)
-        .limit(2);
+        .maybeSingle();
 
       if (existingGrantErr) {
         return NextResponse.json({ error: existingGrantErr.message }, { status: 500 });
       }
 
-      const existingGrant = (existingGrants ?? [])[0] ?? null;
+      const grantPayload = {
+        granted_by_user_id: user.id,
+        scope_read: requestedScope.includes("read"),
+        scope_write: requestedScope.includes("write"),
+        scope_upload: false,
+        purpose: "owner_approved_request",
+        valid_from: new Date().toISOString(),
+        valid_to: validTo,
+        status: "active",
+        revoked_at: null,
+        revoked_by_user_id: null,
+      };
 
       if (existingGrant?.id) {
         const { error: updGrantErr } = await admin
           .from("animal_access_grants")
-          .update({
-            granted_by_user_id: user.id,
-            scope_read: requestedScope.includes("read"),
-            scope_write: requestedScope.includes("write"),
-            scope_upload: false,
-            purpose: "owner_approved_request",
-            valid_from: new Date().toISOString(),
-            valid_to: validTo,
-            status: "active",
-            revoked_at: null,
-            revoked_by_user_id: null,
-          })
+          .update(grantPayload)
           .eq("id", existingGrant.id);
 
         if (updGrantErr) {
@@ -254,16 +284,9 @@ export async function POST(req: Request) {
       } else {
         const { error: grantErr } = await admin.from("animal_access_grants").insert({
           animal_id: reqRow.animal_id,
-          granted_by_user_id: user.id,
           grantee_type: "org",
           grantee_id: reqRow.org_id,
-          scope_read: requestedScope.includes("read"),
-          scope_write: requestedScope.includes("write"),
-          scope_upload: false,
-          purpose: "owner_approved_request",
-          valid_from: new Date().toISOString(),
-          valid_to: validTo,
-          status: "active",
+          ...grantPayload,
         });
 
         if (grantErr) {
@@ -279,20 +302,21 @@ export async function POST(req: Request) {
         .eq("id", id)
         .eq("owner_id", user.id);
 
-      if (updErr) return NextResponse.json({ error: updErr.message }, { status: 500 });
+      if (updErr) {
+        return NextResponse.json({ error: updErr.message }, { status: 500 });
+      }
 
-      return NextResponse.json({
-        ok: true,
-        status: "approved",
-        expires_at: validTo,
-      });
+      return NextResponse.json(
+        {
+          ok: true,
+          status: "approved",
+          expires_at: validTo,
+        },
+        { status: 200 }
+      );
     }
 
     if (action === "reject") {
-      if (reqRow.status !== "pending") {
-        return NextResponse.json({ error: "Request is not pending" }, { status: 409 });
-      }
-
       const { error: updErr } = await admin
         .from("animal_access_requests")
         .update({
@@ -301,16 +325,14 @@ export async function POST(req: Request) {
         .eq("id", id)
         .eq("owner_id", user.id);
 
-      if (updErr) return NextResponse.json({ error: updErr.message }, { status: 500 });
+      if (updErr) {
+        return NextResponse.json({ error: updErr.message }, { status: 500 });
+      }
 
-      return NextResponse.json({ ok: true, status: "rejected" });
+      return NextResponse.json({ ok: true, status: "rejected" }, { status: 200 });
     }
 
     if (action === "block") {
-      if (reqRow.status !== "pending") {
-        return NextResponse.json({ error: "Request is not pending" }, { status: 409 });
-      }
-
       const { error: updErr } = await admin
         .from("animal_access_requests")
         .update({
@@ -319,32 +341,14 @@ export async function POST(req: Request) {
         .eq("id", id)
         .eq("owner_id", user.id);
 
-      if (updErr) return NextResponse.json({ error: updErr.message }, { status: 500 });
+      if (updErr) {
+        return NextResponse.json({ error: updErr.message }, { status: 500 });
+      }
 
-      return NextResponse.json({ ok: true, status: "blocked" });
+      return NextResponse.json({ ok: true, status: "blocked" }, { status: 200 });
     }
 
     if (action === "revoke") {
-      if (reqRow.status !== "approved" && reqRow.status !== "revoked") {
-        // consentiamo revoke su approved; se è già revoked ritorniamo ok
-        const { data: activeGrants, error: activeGrantCheckErr } = await admin
-          .from("animal_access_grants")
-          .select("id")
-          .eq("animal_id", reqRow.animal_id)
-          .eq("grantee_type", "org")
-          .eq("grantee_id", reqRow.org_id)
-          .is("revoked_at", null)
-          .limit(1);
-
-        if (activeGrantCheckErr) {
-          return NextResponse.json({ error: activeGrantCheckErr.message }, { status: 500 });
-        }
-
-        if (!activeGrants || activeGrants.length === 0) {
-          return NextResponse.json({ ok: true, status: "revoked" });
-        }
-      }
-
       const { error: revErr } = await admin
         .from("animal_access_grants")
         .update({
@@ -357,7 +361,9 @@ export async function POST(req: Request) {
         .eq("grantee_id", reqRow.org_id)
         .is("revoked_at", null);
 
-      if (revErr) return NextResponse.json({ error: revErr.message }, { status: 500 });
+      if (revErr) {
+        return NextResponse.json({ error: revErr.message }, { status: 500 });
+      }
 
       const { error: updErr } = await admin
         .from("animal_access_requests")
@@ -367,9 +373,11 @@ export async function POST(req: Request) {
         .eq("id", id)
         .eq("owner_id", user.id);
 
-      if (updErr) return NextResponse.json({ error: updErr.message }, { status: 500 });
+      if (updErr) {
+        return NextResponse.json({ error: updErr.message }, { status: 500 });
+      }
 
-      return NextResponse.json({ ok: true, status: "revoked" });
+      return NextResponse.json({ ok: true, status: "revoked" }, { status: 200 });
     }
 
     return NextResponse.json({ error: "Unknown action" }, { status: 400 });

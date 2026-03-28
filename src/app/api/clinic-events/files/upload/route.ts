@@ -1,21 +1,11 @@
 import { NextResponse } from "next/server";
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { requireOwnerOrGrant } from "@/lib/server/requireOwnerOrGrant";
-import { writeAudit } from "@/lib/server/audit";
+import { createClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { requireOwnerOrGrant } from "@/lib/server/requireOwnerOrGrant";
+import { safeWriteAudit } from "@/lib/server/safeAudit";
 import { sendOwnerAnimalUpdateEmail } from "@/lib/email/sendOwnerAnimalUpdateEmail";
-
-function getBearerToken(req: Request) {
-  const h = req.headers.get("authorization") || req.headers.get("Authorization") || "";
-  const m = h.match(/^Bearer\s+(.+)$/i);
-  return m?.[1] || null;
-}
-
-function isUuid(value: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    value
-  );
-}
+import { getBearerToken } from "@/lib/server/bearer";
+import { isUuid } from "@/lib/server/validators";
 
 const MAX_FILE_SIZE_BYTES = 500 * 1024 * 1024; // 500MB
 
@@ -47,17 +37,6 @@ function getSafeFilename(originalName?: string | null) {
     .slice(0, 120);
 
   return safe || "documento";
-}
-
-async function safeWriteAudit(
-  supabase: SupabaseClient<any, "public", any>,
-  payload: Parameters<typeof writeAudit>[1]
-) {
-  try {
-    await writeAudit(supabase as any, payload);
-  } catch (error) {
-    console.error("[AUDIT_WRITE_ERROR]", error);
-  }
 }
 
 export async function POST(req: Request) {
@@ -129,7 +108,11 @@ export async function POST(req: Request) {
     );
   }
 
-  const animalId = String(ev.animal_id);
+  const animalId = String(ev.animal_id || "");
+
+  if (!animalId || !isUuid(animalId)) {
+    return NextResponse.json({ error: "Invalid event animal_id" }, { status: 400 });
+  }
 
   const grant = await requireOwnerOrGrant(supabase as any, user.id, animalId, "write");
 
