@@ -8,11 +8,23 @@ import { isUuid } from "@/lib/server/validators";
 
 type Body = { id: string };
 
+function badRequest(message: string) {
+  return NextResponse.json({ error: message }, { status: 400 });
+}
+
+function unauthorized(message = "Non autorizzato") {
+  return NextResponse.json({ error: message }, { status: 401 });
+}
+
+function forbidden(message: string) {
+  return NextResponse.json({ error: message }, { status: 403 });
+}
+
 export async function POST(req: Request) {
   const token = getBearerToken(req);
 
   if (!token) {
-    return NextResponse.json({ error: "Missing Bearer token" }, { status: 401 });
+    return unauthorized("Token Bearer mancante");
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -20,7 +32,7 @@ export async function POST(req: Request) {
 
   if (!supabaseUrl || !supabaseAnon) {
     return NextResponse.json(
-      { error: "Server misconfigured (Supabase env missing)" },
+      { error: "Server configurato in modo non valido" },
       { status: 500 }
     );
   }
@@ -33,23 +45,23 @@ export async function POST(req: Request) {
   const user = userData?.user;
 
   if (userErr || !user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return unauthorized();
   }
 
   const body = (await req.json().catch(() => null)) as Body | null;
 
   if (!body) {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    return badRequest("Body JSON non valido");
   }
 
   const id = String(body.id || "").trim();
 
   if (!id) {
-    return NextResponse.json({ error: "id required" }, { status: 400 });
+    return badRequest("id obbligatorio");
   }
 
   if (!isUuid(id)) {
-    return NextResponse.json({ error: "id invalid" }, { status: 400 });
+    return badRequest("id non valido");
   }
 
   const { data: current, error: readErr } = await supabase
@@ -59,7 +71,7 @@ export async function POST(req: Request) {
     .single();
 
   if (readErr || !current) {
-    return NextResponse.json({ error: "Event not found" }, { status: 404 });
+    return NextResponse.json({ error: "Evento non trovato" }, { status: 404 });
   }
 
   if ((current as any).status === "void") {
@@ -69,7 +81,7 @@ export async function POST(req: Request) {
   const animalId = String((current as any).animal_id || "");
 
   if (!animalId || !isUuid(animalId)) {
-    return NextResponse.json({ error: "Invalid event animal_id" }, { status: 400 });
+    return badRequest("animal_id evento non valido");
   }
 
   const grant = await requireOwnerOrGrant(supabase as any, user.id, animalId, "write");
@@ -86,7 +98,7 @@ export async function POST(req: Request) {
       reason: grant.reason,
     });
 
-    return NextResponse.json({ error: grant.reason }, { status: 403 });
+    return forbidden(grant.reason);
   }
 
   const source = String((current as any).source || "");
@@ -108,7 +120,7 @@ export async function POST(req: Request) {
         reason,
       });
 
-      return NextResponse.json({ error: reason }, { status: 403 });
+      return forbidden(reason);
     }
   }
 
@@ -130,7 +142,7 @@ export async function POST(req: Request) {
       reason: error.message,
     });
 
-    return NextResponse.json({ error: error.message || "Delete failed" }, { status: 400 });
+    return badRequest(error.message || "Eliminazione evento non riuscita");
   }
 
   try {

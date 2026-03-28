@@ -29,6 +29,22 @@ type Body = {
   hasAttachments?: boolean;
 };
 
+function badRequest(message: string) {
+  return NextResponse.json({ error: message }, { status: 400 });
+}
+
+function unauthorized(message = "Non autorizzato") {
+  return NextResponse.json({ error: message }, { status: 401 });
+}
+
+function forbidden(message: string) {
+  return NextResponse.json({ error: message }, { status: 403 });
+}
+
+function serverError(message: string) {
+  return NextResponse.json({ error: message }, { status: 500 });
+}
+
 function isValidDateYYYYMMDD(s: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(s);
 }
@@ -87,17 +103,14 @@ export async function POST(req: Request) {
   const token = getBearerToken(req);
 
   if (!token) {
-    return NextResponse.json({ error: "Missing Bearer token" }, { status: 401 });
+    return unauthorized("Token Bearer mancante");
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseAnon) {
-    return NextResponse.json(
-      { error: "Server misconfigured (Supabase env missing)" },
-      { status: 500 }
-    );
+    return serverError("Server configurato in modo non valido");
   }
 
   const supabase = createClient(supabaseUrl, supabaseAnon, {
@@ -110,23 +123,23 @@ export async function POST(req: Request) {
   const user = userData?.user;
 
   if (userErr || !user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return unauthorized();
   }
 
   const body = (await req.json().catch(() => null)) as Body | null;
 
   if (!body) {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    return badRequest("Body JSON non valido");
   }
 
   const animalId = String(body.animalId || "").trim();
 
   if (!animalId) {
-    return NextResponse.json({ error: "animalId required" }, { status: 400 });
+    return badRequest("animalId obbligatorio");
   }
 
   if (!isUuid(animalId)) {
-    return NextResponse.json({ error: "animalId invalid" }, { status: 400 });
+    return badRequest("animalId non valido");
   }
 
   const grant = await requireOwnerOrGrant(supabase as any, user.id, animalId, "write");
@@ -144,7 +157,7 @@ export async function POST(req: Request) {
       reason: grant.reason,
     });
 
-    return NextResponse.json({ error: grant.reason }, { status: 403 });
+    return forbidden(grant.reason);
   }
 
   const type = String(body.type || "").trim();
@@ -163,26 +176,30 @@ export async function POST(req: Request) {
       ? body.source
       : "professional";
 
-  if (!type || !title) {
-    return NextResponse.json({ error: "type/title required" }, { status: 400 });
+  if (!type) {
+    return badRequest("type obbligatorio");
+  }
+
+  if (!title) {
+    return badRequest("title obbligatorio");
   }
 
   if (type.length > 80) {
-    return NextResponse.json({ error: "type too long" }, { status: 400 });
+    return badRequest("type troppo lungo");
   }
 
   if (title.length > 200) {
-    return NextResponse.json({ error: "title too long" }, { status: 400 });
+    return badRequest("title troppo lungo");
   }
 
   if (description && description.length > 5000) {
-    return NextResponse.json({ error: "description too long" }, { status: 400 });
+    return badRequest("description troppo lunga");
   }
 
   const dateStr = String(body.eventDate || "").trim();
 
   if (!dateStr || !isValidDateYYYYMMDD(dateStr)) {
-    return NextResponse.json({ error: "eventDate must be YYYY-MM-DD" }, { status: 400 });
+    return badRequest("eventDate deve essere in formato YYYY-MM-DD");
   }
 
   const hasAttachments = body.hasAttachments === true;
@@ -196,10 +213,7 @@ export async function POST(req: Request) {
     new Date(`${therapyEndDate}T00:00:00.000Z`).getTime() <
       new Date(`${therapyStartDate}T00:00:00.000Z`).getTime()
   ) {
-    return NextResponse.json(
-      { error: "therapyEndDate cannot be before therapyStartDate" },
-      { status: 400 }
-    );
+    return badRequest("therapyEndDate non può essere precedente a therapyStartDate");
   }
 
   const vetSignature =
@@ -313,7 +327,7 @@ export async function POST(req: Request) {
         reason: error?.message || "insert failed",
       });
 
-      return NextResponse.json({ error: error?.message || "Create failed" }, { status: 400 });
+      return badRequest(error?.message || "Creazione evento non riuscita");
     }
 
     try {
@@ -425,9 +439,7 @@ export async function POST(req: Request) {
             : null;
 
         const remindAt =
-          typeof body.remindAt === "string" && body.remindAt.trim()
-            ? body.remindAt.trim()
-            : null;
+          typeof body.remindAt === "string" && body.remindAt.trim() ? body.remindAt.trim() : null;
 
         const isValidYmd = (v: string | null) => !!v && /^\d{4}-\d{2}-\d{2}$/.test(v);
 
@@ -448,7 +460,7 @@ export async function POST(req: Request) {
           });
         }
       } catch (reminderError) {
-        console.error("Automatic vaccine reminder creation failed:", reminderError);
+        console.error("[AUTOMATIC_VACCINE_REMINDER_CREATE_ERROR]", reminderError);
       }
     }
 
@@ -477,6 +489,6 @@ export async function POST(req: Request) {
       reason: error instanceof Error ? error.message : "Unhandled server error",
     });
 
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+    return serverError("Errore interno del server");
   }
 }

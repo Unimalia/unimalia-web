@@ -79,6 +79,15 @@ function buildCsp(nonce: string) {
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
+  // 🔒 blocco definitivo debug
+  if (
+    pathname.startsWith("/api/debug") ||
+    pathname.startsWith("/api/_debug")
+  ) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  // bypass statici e api
   if (
     pathname.startsWith("/api") ||
     pathname.startsWith("/_next") ||
@@ -104,13 +113,18 @@ export function middleware(req: NextRequest) {
 
   response.headers.set("Content-Security-Policy", csp);
 
+  // hardening base (safe)
+  response.headers.set("X-Frame-Options", "DENY");
+  response.headers.set("X-Content-Type-Options", "nosniff");
+
   return response;
 }
 
 export const config = {
   matcher: [
     {
-      source: "/((?!api|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|manifest.webmanifest).*)",
+      source:
+        "/((?!api|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|manifest.webmanifest).*)",
       missing: [
         { type: "header", key: "next-router-prefetch" },
         { type: "header", key: "purpose", value: "prefetch" },

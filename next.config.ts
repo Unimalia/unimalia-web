@@ -11,8 +11,6 @@ const nextConfig: NextConfig = {
         value: "max-age=63072000; includeSubDomains; preload",
       },
       { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
-      { key: "X-Frame-Options", value: "DENY" },
-      { key: "X-Content-Type-Options", value: "nosniff" },
       { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
       { key: "Cross-Origin-Resource-Policy", value: "same-site" },
     ];
@@ -24,7 +22,8 @@ const nextConfig: NextConfig = {
           ...commonSecurityHeaders,
           {
             key: "Permissions-Policy",
-            value: "geolocation=(), microphone=(), camera=(), usb=(), payment=()",
+            value:
+              "geolocation=(), microphone=(), camera=(), usb=(), payment=()",
           },
           {
             key: "Cache-Control",
@@ -46,7 +45,8 @@ const nextConfig: NextConfig = {
           ...commonSecurityHeaders,
           {
             key: "Permissions-Policy",
-            value: "geolocation=(), microphone=(), camera=(self), usb=(self), payment=()",
+            value:
+              "geolocation=(), microphone=(), camera=(self), usb=(self), payment=()",
           },
         ],
       },
@@ -56,7 +56,8 @@ const nextConfig: NextConfig = {
           ...commonSecurityHeaders,
           {
             key: "Permissions-Policy",
-            value: "geolocation=(), microphone=(), camera=(), usb=(), payment=()",
+            value:
+              "geolocation=(), microphone=(), camera=(), usb=(), payment=()",
           },
         ],
       },

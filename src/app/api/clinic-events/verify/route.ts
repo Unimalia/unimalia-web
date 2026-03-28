@@ -11,11 +11,23 @@ type Body = {
   verifyAll?: boolean;
 };
 
+function badRequest(message: string) {
+  return NextResponse.json({ error: message }, { status: 400 });
+}
+
+function unauthorized(message = "Non autorizzato") {
+  return NextResponse.json({ error: message }, { status: 401 });
+}
+
+function forbidden(message: string) {
+  return NextResponse.json({ error: message }, { status: 403 });
+}
+
 export async function POST(req: Request) {
   const token = getBearerToken(req);
 
   if (!token) {
-    return NextResponse.json({ error: "Missing Bearer token" }, { status: 401 });
+    return unauthorized("Token Bearer mancante");
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -23,7 +35,7 @@ export async function POST(req: Request) {
 
   if (!supabaseUrl || !supabaseAnon) {
     return NextResponse.json(
-      { error: "Server misconfigured (Supabase env missing)" },
+      { error: "Server configurato in modo non valido" },
       { status: 500 }
     );
   }
@@ -36,32 +48,29 @@ export async function POST(req: Request) {
   const user = userData?.user;
 
   if (userErr || !user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return unauthorized();
   }
 
   const isVet = user.app_metadata?.is_vet === true;
 
   if (!isVet) {
-    return NextResponse.json(
-      { error: "Solo i veterinari possono verificare eventi clinici" },
-      { status: 403 }
-    );
+    return forbidden("Solo i veterinari possono verificare eventi clinici");
   }
 
   const body = (await req.json().catch(() => null)) as Body | null;
 
   if (!body) {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    return badRequest("Body JSON non valido");
   }
 
   const animalId = String(body.animalId || "").trim();
 
   if (!animalId) {
-    return NextResponse.json({ error: "animalId required" }, { status: 400 });
+    return badRequest("animalId obbligatorio");
   }
 
   if (!isUuid(animalId)) {
-    return NextResponse.json({ error: "animalId invalid" }, { status: 400 });
+    return badRequest("animalId non valido");
   }
 
   const grant = await requireOwnerOrGrant(supabase as any, user.id, animalId, "write");
@@ -78,24 +87,18 @@ export async function POST(req: Request) {
       reason: grant.reason,
     });
 
-    return NextResponse.json({ error: grant.reason }, { status: 403 });
+    return forbidden(grant.reason);
   }
 
   const verifyAll = body.verifyAll === true;
 
   const eventIds = Array.isArray(body.eventIds)
-    ? Array.from(
-        new Set(
-          body.eventIds
-            .map((id) => String(id).trim())
-            .filter((id) => isUuid(id))
-        )
-      )
+    ? Array.from(new Set(body.eventIds.map((id) => String(id).trim()).filter((id) => isUuid(id))))
     : [];
 
   try {
     if (!verifyAll && eventIds.length === 0) {
-      return NextResponse.json({ error: "eventIds required" }, { status: 400 });
+      return badRequest("eventIds obbligatorio se verifyAll è false");
     }
 
     let candidateQuery = supabase
@@ -124,7 +127,7 @@ export async function POST(req: Request) {
         reason: candidateErr.message,
       });
 
-      return NextResponse.json({ error: candidateErr.message || "Verify failed" }, { status: 400 });
+      return badRequest(candidateErr.message || "Verifica eventi non riuscita");
     }
 
     const candidateIds = (candidates ?? []).map((row: any) => String(row.id));
@@ -173,7 +176,7 @@ export async function POST(req: Request) {
         reason: error.message,
       });
 
-      return NextResponse.json({ error: error.message || "Verify failed" }, { status: 400 });
+      return badRequest(error.message || "Verifica eventi non riuscita");
     }
 
     await safeWriteAudit(supabase, {
@@ -209,6 +212,6 @@ export async function POST(req: Request) {
       reason: error instanceof Error ? error.message : "Unhandled server error",
     });
 
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+    return NextResponse.json({ error: "Errore interno del server" }, { status: 500 });
   }
 }

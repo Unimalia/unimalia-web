@@ -18,6 +18,18 @@ type Body = {
   meta?: Record<string, any> | null;
 };
 
+function badRequest(message: string) {
+  return NextResponse.json({ error: message }, { status: 400 });
+}
+
+function unauthorized(message = "Non autorizzato") {
+  return NextResponse.json({ error: message }, { status: 401 });
+}
+
+function forbidden(message: string) {
+  return NextResponse.json({ error: message }, { status: 403 });
+}
+
 function isValidDateYYYYMMDD(s: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(s);
 }
@@ -57,7 +69,7 @@ export async function POST(req: Request) {
   const token = getBearerToken(req);
 
   if (!token) {
-    return NextResponse.json({ error: "Missing Bearer token" }, { status: 401 });
+    return unauthorized("Token Bearer mancante");
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -65,7 +77,7 @@ export async function POST(req: Request) {
 
   if (!supabaseUrl || !supabaseAnon) {
     return NextResponse.json(
-      { error: "Server misconfigured (Supabase env missing)" },
+      { error: "Server configurato in modo non valido" },
       { status: 500 }
     );
   }
@@ -78,13 +90,13 @@ export async function POST(req: Request) {
   const user = userData?.user;
 
   if (userErr || !user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return unauthorized();
   }
 
   const body = (await req.json().catch(() => null)) as Body | null;
 
   if (!body) {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    return badRequest("Body JSON non valido");
   }
 
   const id = String(body.id || "").trim();
@@ -94,35 +106,35 @@ export async function POST(req: Request) {
   const description = (body.description ?? "").toString().trim() || null;
 
   if (!id) {
-    return NextResponse.json({ error: "id required" }, { status: 400 });
+    return badRequest("id obbligatorio");
   }
 
   if (!isUuid(id)) {
-    return NextResponse.json({ error: "id invalid" }, { status: 400 });
+    return badRequest("id non valido");
   }
 
   if (!title) {
-    return NextResponse.json({ error: "title required" }, { status: 400 });
+    return badRequest("title obbligatorio");
   }
 
   if (!type) {
-    return NextResponse.json({ error: "type required" }, { status: 400 });
+    return badRequest("type obbligatorio");
   }
 
   if (!eventDate || !isValidDateYYYYMMDD(eventDate)) {
-    return NextResponse.json({ error: "eventDate must be YYYY-MM-DD" }, { status: 400 });
+    return badRequest("eventDate deve essere in formato YYYY-MM-DD");
   }
 
   if (title.length > 200) {
-    return NextResponse.json({ error: "title too long" }, { status: 400 });
+    return badRequest("title troppo lungo");
   }
 
   if (type.length > 80) {
-    return NextResponse.json({ error: "type too long" }, { status: 400 });
+    return badRequest("type troppo lungo");
   }
 
   if (description && description.length > 5000) {
-    return NextResponse.json({ error: "description too long" }, { status: 400 });
+    return badRequest("description troppo lunga");
   }
 
   const { data: current, error: readErr } = await supabase
@@ -132,13 +144,13 @@ export async function POST(req: Request) {
     .single();
 
   if (readErr || !current) {
-    return NextResponse.json({ error: "Event not found" }, { status: 404 });
+    return NextResponse.json({ error: "Evento non trovato" }, { status: 404 });
   }
 
   const animalId = String((current as any).animal_id || "");
 
   if (!animalId || !isUuid(animalId)) {
-    return NextResponse.json({ error: "Invalid event animal_id" }, { status: 400 });
+    return badRequest("animal_id evento non valido");
   }
 
   const grant = await requireOwnerOrGrant(supabase as any, user.id, animalId, "write");
@@ -155,7 +167,7 @@ export async function POST(req: Request) {
       reason: grant.reason,
     });
 
-    return NextResponse.json({ error: grant.reason }, { status: 403 });
+    return forbidden(grant.reason);
   }
 
   const source = String((current as any).source || "");
@@ -177,7 +189,7 @@ export async function POST(req: Request) {
         reason,
       });
 
-      return NextResponse.json({ error: reason }, { status: 403 });
+      return forbidden(reason);
     }
   }
 
@@ -190,10 +202,7 @@ export async function POST(req: Request) {
     new Date(`${therapyEndDate}T00:00:00.000Z`).getTime() <
       new Date(`${therapyStartDate}T00:00:00.000Z`).getTime()
   ) {
-    return NextResponse.json(
-      { error: "therapyEndDate cannot be before therapyStartDate" },
-      { status: 400 }
-    );
+    return badRequest("therapyEndDate non può essere precedente a therapyStartDate");
   }
 
   const priority =
@@ -274,7 +283,7 @@ export async function POST(req: Request) {
       reason: error?.message || "update failed",
     });
 
-    return NextResponse.json({ error: error?.message || "Update failed" }, { status: 400 });
+    return badRequest(error?.message || "Aggiornamento evento non riuscito");
   }
 
   try {
