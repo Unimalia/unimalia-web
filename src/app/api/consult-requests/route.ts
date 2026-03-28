@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { isUuid } from "@/lib/server/validators";
 
 function supabaseAdmin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -14,12 +15,6 @@ function supabaseAnon(authHeader: string | null) {
     auth: { persistSession: false },
     global: { headers: authHeader ? { Authorization: authHeader } : {} },
   });
-}
-
-function isUuid(value: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    value
-  );
 }
 
 async function requireUser(authHeader: string | null) {
@@ -41,7 +36,6 @@ export async function GET(req: Request) {
     : "pending";
   const q = (searchParams.get("q") || "").trim();
 
-  // lista per professionista = auth.uid()
   const sb = supabaseAnon(authHeader);
 
   let query = sb
@@ -53,7 +47,6 @@ export async function GET(req: Request) {
     .order("created_at", { ascending: false });
 
   if (q) {
-    // ilike su animal_name / owner_name
     query = query.or(`animal_name.ilike.%${q}%,owner_name.ilike.%${q}%`);
   }
 
@@ -114,7 +107,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  // 1) controlla impostazioni professionista (cap + blocco)
   const { data: settings } = await admin
     .from("professional_settings")
     .select("cap_pending,blocked")
@@ -124,7 +116,6 @@ export async function POST(req: Request) {
   const capPending = settings?.cap_pending ?? 20;
   const blocked = settings?.blocked ?? false;
 
-  // 2) controlla pending count
   const { count: pendingCount } = await admin
     .from("consult_requests")
     .select("id", { count: "exact", head: true })
@@ -133,7 +124,6 @@ export async function POST(req: Request) {
 
   const capReached = (pendingCount ?? 0) >= capPending;
 
-  // 3) verifica codice emergenza (se presente)
   let emergencyOk = false;
   let emergencyRowId: string | null = null;
   const code = (emergencyCode || "").trim().toUpperCase();
@@ -152,7 +142,6 @@ export async function POST(req: Request) {
     }
   }
 
-  // 4) blocchi: passano solo emergenze valide
   if ((blocked || capReached) && !emergencyOk) {
     return NextResponse.json(
       { error: "Professional is not accepting new requests. Try later." },
@@ -160,7 +149,6 @@ export async function POST(req: Request) {
     );
   }
 
-  // 5) crea richiesta
   const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
   const { data: inserted, error: insErr } = await admin
     .from("consult_requests")
@@ -181,7 +169,6 @@ export async function POST(req: Request) {
 
   if (insErr) return NextResponse.json({ error: insErr.message }, { status: 400 });
 
-  // 6) marca codice emergenza come usato (single-use)
   if (emergencyOk && emergencyRowId) {
     await admin.from("emergency_codes").update({ is_used: true }).eq("id", emergencyRowId);
   }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient, supabaseAdmin } from "@/lib/supabase/server";
 import type { EmergencyPublicPayload } from "@/lib/emergency/public";
+import { isUuid } from "@/lib/server/validators";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -43,12 +44,6 @@ const PRIVATE_HEADERS = {
   Pragma: "no-cache",
   "X-Robots-Tag": "noindex, nofollow, noarchive, nosnippet",
 };
-
-function isUuid(value: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    value
-  );
-}
 
 function normalizePublicRef(value: string) {
   const raw = String(value || "").trim();

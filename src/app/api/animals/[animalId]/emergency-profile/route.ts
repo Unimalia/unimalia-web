@@ -1,9 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient, supabaseAdmin } from "@/lib/supabase/server";
-
-function isUuid(value: string) {
-  return /^[0-9a-f-]{36}$/i.test(value);
-}
+import { isUuid } from "@/lib/server/validators";
 
 export async function GET(
   _req: Request,

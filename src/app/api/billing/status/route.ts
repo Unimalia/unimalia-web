@@ -1,6 +1,7 @@
 import "server-only";
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { getBearerToken } from "@/lib/server/bearer";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,12 +14,6 @@ type SubscriptionRow = {
   current_period_end: string | null;
   trial_end: string | null;
 };
-
-function getBearerToken(req: Request) {
-  const h = req.headers.get("authorization") || "";
-  const m = h.match(/^Bearer\s+(.+)$/i);
-  return m?.[1] ?? null;
-}
 
 export async function GET(req: Request) {
   try {

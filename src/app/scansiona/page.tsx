@@ -5,12 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { BrowserMultiFormatReader } from "@zxing/browser";
 import { supabase } from "@/lib/supabaseClient";
 import { normalizeScanResult } from "@/lib/normalizeScanResult";
-
-function isUuid(v: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    v
-  );
-}
+import { isUuid } from "@/lib/server/validators";
 
 function publicTokenFromValue(raw: string) {
   const value = normalizeScanResult(raw);
@@ -48,37 +43,40 @@ export default function ScansionaPage() {
     setRunning(false);
   }, []);
 
-  const routeDirectValue = useCallback(async (raw: string) => {
-    const normalized = normalizeScanResult(raw);
-    const publicToken = publicTokenFromValue(normalized);
+  const routeDirectValue = useCallback(
+    async (raw: string) => {
+      const normalized = normalizeScanResult(raw);
+      const publicToken = publicTokenFromValue(normalized);
 
-    if (!publicToken) {
-      setError("Codice QR non valido.");
-      setRouting(false);
-      return;
-    }
-
-    try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      const isProfessional =
-        user?.app_metadata?.is_professional === true ||
-        user?.app_metadata?.is_vet === true;
-
-      if (isProfessional) {
-        router.replace(
-          `/professionisti/scansiona?value=${encodeURIComponent(normalized)}`
-        );
+      if (!publicToken) {
+        setError("Codice QR non valido.");
+        setRouting(false);
         return;
       }
 
-      router.replace(`/a/${encodeURIComponent(publicToken)}`);
-    } catch {
-      router.replace(`/a/${encodeURIComponent(publicToken)}`);
-    }
-  }, [router]);
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        const isProfessional =
+          user?.app_metadata?.is_professional === true ||
+          user?.app_metadata?.is_vet === true;
+
+        if (isProfessional) {
+          router.replace(
+            `/professionisti/scansiona?value=${encodeURIComponent(normalized)}`
+          );
+          return;
+        }
+
+        router.replace(`/a/${encodeURIComponent(publicToken)}`);
+      } catch {
+        router.replace(`/a/${encodeURIComponent(publicToken)}`);
+      }
+    },
+    [router]
+  );
 
   const start = useCallback(async () => {
     if (startingRef.current) return;

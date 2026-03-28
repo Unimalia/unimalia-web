@@ -8,6 +8,7 @@ import {
   getEmergencyTokenPrefix,
   hashEmergencyToken,
 } from "@/lib/emergency/token";
+import { isUuid } from "@/lib/server/validators";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,12 +29,6 @@ type EmergencyTokenRow = {
   expires_at: string | null;
   created_at?: string | null;
 };
-
-function isUuid(value: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    value
-  );
-}
 
 function buildPublicUrl(token: string) {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://unimalia.it";

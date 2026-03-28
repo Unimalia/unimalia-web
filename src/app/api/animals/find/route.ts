@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { isUuid } from "@/lib/server/validators";
 
 export const dynamic = "force-dynamic";
 
@@ -14,10 +15,6 @@ type AnimalRow = {
   created_at?: string | null;
   unimalia_code?: string | null;
 };
-
-function isUuid(v: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
-}
 
 function digitsOnly(v: string) {
   return (v || "").replace(/\D+/g, "");

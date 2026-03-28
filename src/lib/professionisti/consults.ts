@@ -4,6 +4,7 @@ import { createServerSupabaseClient, supabaseAdmin } from "@/lib/supabase/server
 import { getProfessionalOrgId } from "@/lib/professionisti/org";
 import { hasActiveGrantForAnimal } from "@/lib/professionisti/grants";
 import { buildClinicalQuickSummary } from "@/lib/clinic/quickSummary";
+import { isUuid } from "@/lib/server/validators";
 
 export type ConsultBox = "received" | "sent" | "archive";
 export type ConsultStatus =
@@ -57,12 +58,6 @@ function normalizeStatus<T extends { status: string; expires_at: string | null }
     }
   }
   return item;
-}
-
-function isUuid(value: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    value
-  );
 }
 
 async function getAuthenticatedUserId() {

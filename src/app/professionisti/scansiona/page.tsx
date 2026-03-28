@@ -5,13 +5,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import UsbScannerMode from "./UsbScannerMode";
 import { normalizeScanResult } from "@/lib/normalizeScanResult";
 import CameraScanner from "./CameraScanner";
+import { isUuid } from "@/lib/server/validators";
 
 type Mode = "camera" | "codice";
 type Banner = { kind: "success" | "error" | "info"; text: string } | null;
-
-function isUuid(v: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
-}
 
 function digitsOnly(v: string) {
   return (v || "").replace(/\D+/g, "");
