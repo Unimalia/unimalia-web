@@ -68,12 +68,11 @@ export function AdottaFilters({
     [breeds, current.breedId]
   );
 
-  const [breedQuery, setBreedQuery] = useState(selectedBreed?.name ?? "");
+  const [breedQuery, setBreedQuery] = useState("");
   const [breedOpen, setBreedOpen] = useState(false);
 
-  useEffect(() => {
-    setBreedQuery(selectedBreed?.name ?? "");
-  }, [selectedBreed]);
+  const selectedBreedName = selectedBreed?.name ?? "";
+  const breedInputValue = breedOpen ? breedQuery : selectedBreedName || breedQuery;
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -272,7 +271,7 @@ export function AdottaFilters({
           <label className="text-xs font-medium text-zinc-700">Razza</label>
 
           <input
-            value={breedQuery}
+            value={breedInputValue}
             onChange={(e) => {
               const nextValue = e.target.value;
               setBreedQuery(nextValue);
@@ -282,7 +281,10 @@ export function AdottaFilters({
                 setParam("breedId", "");
               }
             }}
-            onFocus={() => setBreedOpen(true)}
+            onFocus={() => {
+              setBreedQuery(selectedBreedName || breedQuery);
+              setBreedOpen(true);
+            }}
             placeholder="Cerca razza..."
             className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm outline-none"
           />

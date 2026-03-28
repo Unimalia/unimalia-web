@@ -9,6 +9,8 @@ import {
   extractFollowUpDate
 } from "@/lib/clinic/meta";
 
+type ClinicTimelineCardMeta = Record<string, unknown> | null | undefined;
+
 export type ClinicTimelineCardEvent = {
   id: string;
   type: string;
@@ -20,15 +22,16 @@ export type ClinicTimelineCardEvent = {
   source?: string;
   verified_at?: string | null;
   verified_by_label?: string | null;
-  meta?: any;
+  meta?: ClinicTimelineCardMeta;
 };
 
 function extractBloodTypeLabel(ev: ClinicTimelineCardEvent): string | null {
+  const meta = ev.meta ?? {};
   const value =
-    ev?.meta?.blood_type ??
-    ev?.meta?.bloodType ??
-    ev?.meta?.group_blood ??
-    ev?.meta?.groupBlood ??
+    meta["blood_type"] ??
+    meta["bloodType"] ??
+    meta["group_blood"] ??
+    meta["groupBlood"] ??
     ev.description ??
     ev.title;
 

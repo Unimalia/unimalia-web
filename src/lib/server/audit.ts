@@ -11,7 +11,7 @@ type AuditInput = {
   animal_id?: string | null;
   result: "success" | "denied" | "error";
   reason?: string | null;
-  diff?: any | null;
+  diff?: unknown | null;
 };
 
 export async function writeAudit(supabase: SupabaseClient, input: AuditInput) {

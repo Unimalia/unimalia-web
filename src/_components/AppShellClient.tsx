@@ -58,9 +58,6 @@ export default function AppShellClient({
   proHref: string;
 }) {
   const [open, setOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -82,7 +79,7 @@ export default function AppShellClient({
   const items = useMemo(() => nav, [nav]);
 
   const mobileDrawer =
-    open && mounted
+    open && typeof document !== "undefined"
       ? createPortal(
           <div className="fixed inset-0 z-[1000] md:hidden">
             <button

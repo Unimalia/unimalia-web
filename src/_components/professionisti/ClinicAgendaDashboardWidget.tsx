@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 import {
   loadAgendaAppointments,
   loadAgendaOverrides,
@@ -19,18 +19,34 @@ import {
   VetScheduleOverride,
 } from "@/lib/agenda/types";
 
-export default function ClinicAgendaDashboardWidget() {
-  const [loaded, setLoaded] = useState(false);
-  const [settings, setSettings] = useState<AgendaSettings | null>(null);
-  const [overrides, setOverrides] = useState<VetScheduleOverride[]>([]);
-  const [appointments, setAppointments] = useState<AgendaAppointment[]>([]);
+type AgendaSnapshot = {
+  settings: AgendaSettings | null;
+  overrides: VetScheduleOverride[];
+  appointments: AgendaAppointment[];
+};
 
-  useEffect(() => {
-    setSettings(loadAgendaSettings());
-    setOverrides(loadAgendaOverrides());
-    setAppointments(loadAgendaAppointments());
-    setLoaded(true);
-  }, []);
+function getAgendaSnapshot(): AgendaSnapshot {
+  return {
+    settings: loadAgendaSettings(),
+    overrides: loadAgendaOverrides(),
+    appointments: loadAgendaAppointments(),
+  };
+}
+
+function getAgendaServerSnapshot(): AgendaSnapshot {
+  return {
+    settings: null,
+    overrides: [],
+    appointments: [],
+  };
+}
+
+export default function ClinicAgendaDashboardWidget() {
+  const { settings, overrides, appointments } = useSyncExternalStore(
+    () => () => {},
+    getAgendaSnapshot,
+    getAgendaServerSnapshot
+  );
 
   const today = todayIsoLocal();
 
@@ -45,7 +61,7 @@ export default function ClinicAgendaDashboardWidget() {
     return settings.vets.filter((vet) => resolveVetShift(vet, today, overrides).enabled);
   }, [settings, today, overrides]);
 
-  if (!loaded || !settings) {
+  if (!settings) {
     return (
       <div className="rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm">
         <div className="text-sm text-neutral-500">Caricamento agenda...</div>

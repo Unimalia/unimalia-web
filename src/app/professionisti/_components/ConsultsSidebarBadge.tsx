@@ -5,26 +5,36 @@ import { useEffect, useState } from "react";
 export default function ConsultsSidebarBadge() {
   const [count, setCount] = useState(0);
 
-  async function loadCount() {
-    try {
-      const res = await fetch("/api/professionisti/consults?box=received", {
-        cache: "no-store",
-      });
-      const json = await res.json();
-
-      if (!res.ok) {
-        setCount(0);
-        return;
-      }
-
-      setCount(Array.isArray(json.items) ? json.items.length : 0);
-    } catch {
-      setCount(0);
-    }
-  }
-
   useEffect(() => {
-    loadCount();
+    let cancelled = false;
+
+    async function loadCount() {
+      try {
+        const res = await fetch("/api/professionisti/consults?box=received", {
+          cache: "no-store",
+        });
+        const json = await res.json();
+
+        if (cancelled) return;
+
+        if (!res.ok) {
+          setCount(0);
+          return;
+        }
+
+        setCount(Array.isArray(json.items) ? json.items.length : 0);
+      } catch {
+        if (!cancelled) {
+          setCount(0);
+        }
+      }
+    }
+
+    void loadCount();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   if (count <= 0) return null;
