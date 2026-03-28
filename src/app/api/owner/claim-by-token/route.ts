@@ -140,7 +140,7 @@ export async function POST(req: NextRequest) {
         .from("animal_access_grants")
         .select("id, status, revoked_at")
         .eq("animal_id", claim.animal_id)
-        .eq("grantee_type", "org")
+        .eq("grantee_type", "organization")
         .eq("grantee_id", originOrgId)
         .order("created_at", { ascending: false })
         .limit(1)
@@ -181,7 +181,7 @@ export async function POST(req: NextRequest) {
       } else {
         const insertGrant = await admin.from("animal_access_grants").insert({
           animal_id: claim.animal_id,
-          grantee_type: "org",
+          grantee_type: "organization",
           grantee_id: originOrgId,
           granted_by_user_id: user.id,
           status: "active",

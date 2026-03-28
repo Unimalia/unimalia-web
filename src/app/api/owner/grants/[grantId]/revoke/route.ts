@@ -51,7 +51,7 @@ export async function POST(
       return NextResponse.json({ error: "Grant not found" }, { status: 404 });
     }
 
-    if (grant.grantee_type !== "org") {
+    if (grant.grantee_type !== "organization") {
       return NextResponse.json({ error: "Grant type non supportato" }, { status: 400 });
     }
 

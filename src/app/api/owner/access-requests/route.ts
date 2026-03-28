@@ -260,7 +260,7 @@ export async function POST(req: Request) {
         .from("animal_access_grants")
         .select("id")
         .eq("animal_id", reqRow.animal_id)
-        .eq("grantee_type", "org")
+        .eq("grantee_type", "organization")
         .eq("grantee_id", reqRow.org_id)
         .is("revoked_at", null)
         .maybeSingle();
@@ -300,7 +300,7 @@ export async function POST(req: Request) {
       } else {
         const { error: grantErr } = await admin.from("animal_access_grants").insert({
           animal_id: reqRow.animal_id,
-          grantee_type: "org",
+          grantee_type: "organization",
           grantee_id: reqRow.org_id,
           ...grantPayload,
         });
@@ -391,7 +391,7 @@ export async function POST(req: Request) {
           status: "revoked",
         })
         .eq("animal_id", reqRow.animal_id)
-        .eq("grantee_type", "org")
+        .eq("grantee_type", "organization")
         .eq("grantee_id", reqRow.org_id)
         .is("revoked_at", null);
 

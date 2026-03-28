@@ -90,7 +90,7 @@ export async function GET(_req: Request, ctx: RouteContext) {
     }
 
     const requestRows = requests ?? [];
-    const grantRows = (grants ?? []).filter((g: any) => g.grantee_type === "org");
+    const grantRows = (grants ?? []).filter((g: any) => g.grantee_type === "organization");
 
     const orgIdsFromRequests = requestRows
       .map((r: any) => r.org_id)

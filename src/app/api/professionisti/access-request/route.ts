@@ -74,10 +74,10 @@ export async function POST(req: NextRequest) {
       Array.isArray((body as any).permissions)
         ? (body as any).permissions
         : Array.isArray((body as any).requestedScope)
-        ? (body as any).requestedScope
-        : Array.isArray((body as any).requested_scope)
-        ? (body as any).requested_scope
-        : []
+          ? (body as any).requestedScope
+          : Array.isArray((body as any).requested_scope)
+            ? (body as any).requested_scope
+            : []
     );
 
     if (!animalId || !isUuid(animalId)) {
@@ -108,7 +108,7 @@ export async function POST(req: NextRequest) {
       .from("animal_access_grants")
       .select("id, status, revoked_at")
       .eq("animal_id", animalId)
-      .eq("grantee_type", "org")
+      .eq("grantee_type", "organization")
       .eq("grantee_id", orgId)
       .in("status", ["active", "approved"])
       .is("revoked_at", null)

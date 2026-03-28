@@ -100,7 +100,7 @@ async function ensureProfessionalAnimalAccess(userId: string, animalId: string) 
     .from("animal_access_grants")
     .select("id, grantee_id, status, valid_to, revoked_at, scope_read, scope_write")
     .eq("animal_id", animalId)
-    .eq("grantee_type", "org")
+    .eq("grantee_type", "organization")
     .in("grantee_id", refs)
     .is("revoked_at", null);
 

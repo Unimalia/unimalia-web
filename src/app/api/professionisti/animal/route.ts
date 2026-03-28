@@ -279,7 +279,7 @@ export async function GET(req: NextRequest) {
         "id, grantee_id, status, valid_from, valid_to, revoked_at, scope_read, scope_write"
       )
       .eq("animal_id", animal.id)
-      .eq("grantee_type", "org")
+      .eq("grantee_type", "organization")
       .in("grantee_id", refs)
       .is("revoked_at", null);
 
