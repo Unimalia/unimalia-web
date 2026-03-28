@@ -226,6 +226,49 @@ async function findAnimalByPendingOwnerEmailAndCoreData(params: {
   return rows[0] ?? null;
 }
 
+async function hasProfessionalAuditHistory(params: {
+  animalId: string;
+  userId: string;
+  refs: string[];
+}) {
+  const admin = supabaseAdmin();
+
+  const ownAuditResult = await admin
+    .from("animal_clinic_event_audit")
+    .select("id", { count: "exact", head: true })
+    .eq("animal_id", params.animalId)
+    .eq("actor_user_id", params.userId)
+    .in("action", ["create", "update"]);
+
+  if (ownAuditResult.error) {
+    throw ownAuditResult.error;
+  }
+
+  const ownCount = ownAuditResult.count ?? 0;
+  if (ownCount > 0) return true;
+
+  const orgRefs = params.refs.filter(
+    (ref) => typeof ref === "string" && ref.length > 0 && ref !== params.userId
+  );
+
+  if (orgRefs.length === 0) {
+    return false;
+  }
+
+  const orgAuditResult = await admin
+    .from("animal_clinic_event_audit")
+    .select("id", { count: "exact", head: true })
+    .eq("animal_id", params.animalId)
+    .in("actor_org_id", orgRefs)
+    .in("action", ["create", "update"]);
+
+  if (orgAuditResult.error) {
+    throw orgAuditResult.error;
+  }
+
+  return (orgAuditResult.count ?? 0) > 0;
+}
+
 export async function GET(req: NextRequest) {
   try {
     const supabase = await createClient();
@@ -316,21 +359,21 @@ export async function GET(req: NextRequest) {
       refs.includes(String(animal.created_by_org_id ?? "")) ||
       refs.includes(String(animal.origin_org_id ?? ""));
 
-    const ownEventsResult = await admin
-      .from("animal_clinic_events")
-      .select("id", { count: "exact", head: true })
-      .eq("animal_id", animal.id)
-      .eq("created_by", user.id)
-      .neq("status", "void");
+    let hasOwnHistory = false;
 
-    if (ownEventsResult.error) {
+    try {
+      hasOwnHistory = await hasProfessionalAuditHistory({
+        animalId: String(animal.id),
+        userId: user.id,
+        refs,
+      });
+    } catch (historyError: any) {
       return NextResponse.json(
-        { error: ownEventsResult.error.message || "Errore verifica storico clinico" },
+        { error: historyError?.message || "Errore verifica storico clinico" },
         { status: 500 }
       );
     }
 
-    const hasOwnHistory = (ownEventsResult.count ?? 0) > 0;
     const canAccess = hasGrant || isClinicOrigin || hasOwnHistory;
 
     if (!canAccess) {
