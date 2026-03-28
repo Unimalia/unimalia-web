@@ -130,7 +130,29 @@ export async function getManagedAnimals(userId: string): Promise<ManagedAnimalRo
     if (row.id) createdOrOriginatedIds.add(row.id);
   }
 
-  const ownHistoryAnimalIds: string[] = [];
+  const ownAuditResult = await admin
+    .from("animal_clinic_event_audit")
+    .select("animal_id, actor_user_id, actor_org_id, action")
+    .in("action", ["create", "update"]);
+
+  if (ownAuditResult.error) {
+    throw ownAuditResult.error;
+  }
+
+  const ownHistoryAnimalIds = Array.from(
+    new Set(
+      (ownAuditResult.data ?? [])
+        .filter((row: any) => {
+          const actorUserId = String(row.actor_user_id || "").trim();
+          const actorOrgId = String(row.actor_org_id || "").trim();
+
+          return actorUserId === userId || refs.includes(actorOrgId);
+        })
+        .map((row: any) => String(row.animal_id || "").trim())
+        .filter(Boolean)
+    )
+  );
+
   const ownHistoryAnimalIdSet = new Set<string>(ownHistoryAnimalIds);
 
   const animalIds = Array.from(
