@@ -1,9 +1,10 @@
 import "server-only";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
-import { supabaseAdmin } from "@/lib/supabase/server";
 import { resend, EMAIL_FROM_NO_REPLY, getBaseUrl } from "@/lib/email/resend";
 import { reportPublishedEmail, verificationEmail } from "@/lib/email/templates";
+import { getBearerToken } from "@/lib/server/bearer";
+import { supabaseAdmin } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -135,10 +136,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Bad request" }, { status: 400 });
     }
 
-    const authHeader = req.headers.get("authorization") || "";
-    const accessToken = authHeader.startsWith("Bearer ")
-      ? authHeader.slice("Bearer ".length).trim()
-      : "";
+    const accessToken = getBearerToken(req);
 
     let authenticatedUserId: string | null = null;
 

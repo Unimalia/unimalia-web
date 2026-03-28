@@ -1,9 +1,9 @@
 import "server-only";
-import { supabaseAdmin } from "@/lib/supabase/server"; // <-- usa il tuo path reale
+import { getBearerToken } from "@/lib/server/bearer";
+import { supabaseAdmin } from "@/lib/supabase/server";
 import { supabaseServer } from "@/lib/supabaseServer";
 
 export async function getCurrentUserFromRequestOrThrow(req: Request) {
-  // 1) Prova cookie-based (in futuro)
   try {
     const supabase = await supabaseServer();
     const { data } = await supabase.auth.getUser();
@@ -14,9 +14,7 @@ export async function getCurrentUserFromRequestOrThrow(req: Request) {
     // ignora e passa al bearer
   }
 
-  // 2) Bearer token (ora funziona perché il client ha la session in localStorage)
-  const auth = req.headers.get("authorization") || "";
-  const token = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+  const token = getBearerToken(req);
 
   if (!token) throw new Error("UNAUTHORIZED");
 

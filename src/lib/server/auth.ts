@@ -1,11 +1,11 @@
 import "server-only";
-import { supabaseAdmin } from "@/lib/supabase/server"; // <-- se nel tuo progetto è diverso, vedi nota sotto
+import { getBearerToken } from "@/lib/server/bearer";
+import { supabaseAdmin } from "@/lib/supabase/server";
 
 export type CurrentUser = { id: string; email: string | null };
 
 export async function getCurrentUserFromBearerOrThrow(req: Request): Promise<CurrentUser> {
-  const auth = req.headers.get("authorization") || "";
-  const token = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+  const token = getBearerToken(req);
 
   if (!token) throw new Error("UNAUTHORIZED");
 

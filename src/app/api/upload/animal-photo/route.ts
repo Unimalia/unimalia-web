@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { getBearerToken } from "@/lib/server/bearer";
 
 export const runtime = "nodejs";
 
@@ -34,10 +35,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing Supabase env vars" }, { status: 500 });
     }
 
-    const authHeader = req.headers.get("authorization") || "";
-    const token = authHeader.startsWith("Bearer ")
-      ? authHeader.slice("Bearer ".length).trim()
-      : "";
+    const token = getBearerToken(req);
 
     if (!token) {
       return NextResponse.json({ error: "Missing auth token" }, { status: 401 });
