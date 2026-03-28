@@ -4,6 +4,19 @@ import { getCoreSystemFlags } from "@/lib/systemFlags";
 import { getProfessionalOrgId } from "@/lib/professionisti/org";
 import { isUuid } from "@/lib/server/validators";
 
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+function notFoundResponse() {
+  return NextResponse.json(
+    { error: "Not found" },
+    {
+      status: 404,
+      headers: { "Cache-Control": "no-store" },
+    }
+  );
+}
+
 function normalizeRequestedScope(input: unknown): Array<"read" | "write"> {
   const raw = Array.isArray(input) ? input : [];
   const filtered = raw
@@ -17,11 +30,12 @@ export async function POST(req: NextRequest) {
   try {
     const flags = await getCoreSystemFlags();
 
-    if (!flags.owner_access_requests_enabled || flags.emergency_mode || flags.maintenance_mode) {
-      return NextResponse.json(
-        { error: "Richieste accesso temporaneamente non disponibili" },
-        { status: 403 }
-      );
+    if (
+      !flags.owner_access_requests_enabled ||
+      flags.emergency_mode ||
+      flags.maintenance_mode
+    ) {
+      return notFoundResponse();
     }
 
     const supabase = await createClient();
@@ -33,7 +47,7 @@ export async function POST(req: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return NextResponse.json({ error: "Non autorizzato" }, { status: 401 });
+      return notFoundResponse();
     }
 
     let orgId: string | null = null;
@@ -45,18 +59,13 @@ export async function POST(req: NextRequest) {
     }
 
     if (!orgId) {
-      return NextResponse.json(
-        {
-          error: "Profilo professionista non valido o organizzazione non associata.",
-        },
-        { status: 403 }
-      );
+      return notFoundResponse();
     }
 
     const body = await req.json().catch(() => null);
 
     if (!body || typeof body !== "object") {
-      return NextResponse.json({ error: "Body non valido" }, { status: 400 });
+      return notFoundResponse();
     }
 
     const animalId = String((body as any).animalId ?? (body as any).animal_id ?? "").trim();
@@ -71,19 +80,12 @@ export async function POST(req: NextRequest) {
         : []
     );
 
-    if (!animalId) {
-      return NextResponse.json({ error: "animalId mancante" }, { status: 400 });
-    }
-
-    if (!isUuid(animalId)) {
-      return NextResponse.json({ error: "animalId non valido" }, { status: 400 });
+    if (!animalId || !isUuid(animalId)) {
+      return notFoundResponse();
     }
 
     if (requestedScope.length === 0) {
-      return NextResponse.json(
-        { error: "Devi richiedere almeno uno scope valido (read o write)" },
-        { status: 400 }
-      );
+      return notFoundResponse();
     }
 
     const animalResult = await admin
@@ -93,19 +95,13 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (animalResult.error || !animalResult.data) {
-      return NextResponse.json({ error: "Animale non trovato" }, { status: 404 });
+      return notFoundResponse();
     }
 
     const animal = animalResult.data;
 
     if (!animal.owner_id) {
-      return NextResponse.json(
-        {
-          error:
-            "Questo animale non ha ancora un proprietario collegato. Usa 'Collega proprietario' invece di richiedere accesso.",
-        },
-        { status: 409 }
-      );
+      return notFoundResponse();
     }
 
     const existingGrant = await admin
@@ -120,16 +116,19 @@ export async function POST(req: NextRequest) {
 
     if (existingGrant.error) {
       return NextResponse.json(
-        { error: existingGrant.error.message || "Errore verifica grant" },
-        { status: 500 }
+        { error: "Server error" },
+        { status: 500, headers: { "Cache-Control": "no-store" } }
       );
     }
 
     if (existingGrant.data) {
-      return NextResponse.json({
-        ok: true,
-        alreadyGranted: true,
-      });
+      return NextResponse.json(
+        {
+          ok: true,
+          alreadyGranted: true,
+        },
+        { headers: { "Cache-Control": "no-store" } }
+      );
     }
 
     const existingRequest = await admin
@@ -143,16 +142,19 @@ export async function POST(req: NextRequest) {
 
     if (existingRequest.error) {
       return NextResponse.json(
-        { error: existingRequest.error.message || "Errore verifica richiesta esistente" },
-        { status: 500 }
+        { error: "Server error" },
+        { status: 500, headers: { "Cache-Control": "no-store" } }
       );
     }
 
     if (existingRequest.data) {
-      return NextResponse.json({
-        ok: true,
-        alreadyPending: true,
-      });
+      return NextResponse.json(
+        {
+          ok: true,
+          alreadyPending: true,
+        },
+        { headers: { "Cache-Control": "no-store" } }
+      );
     }
 
     const insertResult = await admin
@@ -170,18 +172,22 @@ export async function POST(req: NextRequest) {
 
     if (insertResult.error || !insertResult.data) {
       return NextResponse.json(
-        {
-          error: insertResult.error?.message || "Errore richiesta accesso",
-        },
-        { status: 500 }
+        { error: "Server error" },
+        { status: 500, headers: { "Cache-Control": "no-store" } }
       );
     }
 
-    return NextResponse.json({
-      ok: true,
-      requestId: insertResult.data.id,
-    });
-  } catch (error: any) {
-    return NextResponse.json({ error: error?.message || "Errore interno" }, { status: 500 });
+    return NextResponse.json(
+      {
+        ok: true,
+        requestId: insertResult.data.id,
+      },
+      { headers: { "Cache-Control": "no-store" } }
+    );
+  } catch {
+    return NextResponse.json(
+      { error: "Server error" },
+      { status: 500, headers: { "Cache-Control": "no-store" } }
+    );
   }
 }

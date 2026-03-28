@@ -5,6 +5,19 @@ import { isUuid } from "@/lib/server/validators";
 type Action = "approve" | "reject" | "block" | "revoke";
 type Duration = "24h" | "7d" | "6m" | "forever";
 
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+function notFoundResponse() {
+  return NextResponse.json(
+    { error: "Not found" },
+    {
+      status: 404,
+      headers: { "Cache-Control": "no-store" },
+    }
+  );
+}
+
 function isValidAction(value: string): value is Action {
   return value === "approve" || value === "reject" || value === "block" || value === "revoke";
 }
@@ -49,9 +62,7 @@ async function tryResolveOrgNames(admin: ReturnType<typeof supabaseAdmin>, orgId
 
       if (orgNameById.size > 0) return orgNameById;
     }
-  } catch {
-    // fallback sotto
-  }
+  } catch {}
 
   try {
     const { data, error } = await admin
@@ -72,9 +83,7 @@ async function tryResolveOrgNames(admin: ReturnType<typeof supabaseAdmin>, orgId
         orgNameById.set(row.id, name || row.id);
       }
     }
-  } catch {
-    // se fallisce anche questo, useremo org_id
-  }
+  } catch {}
 
   return orgNameById;
 }
@@ -94,7 +103,7 @@ export async function GET(req: Request) {
     const animalId = String(url.searchParams.get("animalId") || "").trim();
 
     if (animalId && !isUuid(animalId)) {
-      return NextResponse.json({ error: "animalId non valido" }, { status: 400 });
+      return notFoundResponse();
     }
 
     const supabase = await createServerSupabaseClient();
@@ -105,12 +114,8 @@ export async function GET(req: Request) {
       error: userErr,
     } = await supabase.auth.getUser();
 
-    if (userErr) {
-      return NextResponse.json({ error: userErr.message }, { status: 401 });
-    }
-
-    if (!user) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    if (userErr || !user) {
+      return notFoundResponse();
     }
 
     let q = admin
@@ -127,7 +132,10 @@ export async function GET(req: Request) {
     const { data, error } = await q;
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json(
+        { error: "Server error" },
+        { status: 500, headers: { "Cache-Control": "no-store" } }
+      );
     }
 
     const rows = data ?? [];
@@ -144,7 +152,10 @@ export async function GET(req: Request) {
         .in("id", animalIds);
 
       if (animalsErr) {
-        return NextResponse.json({ error: animalsErr.message }, { status: 500 });
+        return NextResponse.json(
+          { error: "Server error" },
+          { status: 500, headers: { "Cache-Control": "no-store" } }
+        );
       }
 
       for (const a of animals ?? []) {
@@ -161,11 +172,14 @@ export async function GET(req: Request) {
       org_name: orgNameById.get(r.org_id) ?? r.org_id,
     }));
 
-    return NextResponse.json({ rows: enriched }, { status: 200 });
-  } catch (error: any) {
     return NextResponse.json(
-      { error: error?.message || "Errore caricamento richieste owner" },
-      { status: 500 }
+      { rows: enriched },
+      { status: 200, headers: { "Cache-Control": "no-store" } }
+    );
+  } catch {
+    return NextResponse.json(
+      { error: "Server error" },
+      { status: 500, headers: { "Cache-Control": "no-store" } }
     );
   }
 }
@@ -180,33 +194,29 @@ export async function POST(req: Request) {
       error: userErr,
     } = await supabase.auth.getUser();
 
-    if (userErr) {
-      return NextResponse.json({ error: userErr.message }, { status: 401 });
-    }
-
-    if (!user) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    if (userErr || !user) {
+      return notFoundResponse();
     }
 
     const body = await req.json().catch(() => null);
 
     if (!body || typeof body !== "object") {
-      return NextResponse.json({ error: "Body non valido" }, { status: 400 });
+      return notFoundResponse();
     }
 
     if (!body?.id || !body?.action) {
-      return NextResponse.json({ error: "Missing id/action" }, { status: 400 });
+      return notFoundResponse();
     }
 
     const id = String(body.id).trim();
     const actionRaw = String(body.action).trim();
 
     if (!isUuid(id)) {
-      return NextResponse.json({ error: "id non valido" }, { status: 400 });
+      return notFoundResponse();
     }
 
     if (!isValidAction(actionRaw)) {
-      return NextResponse.json({ error: "Unknown action" }, { status: 400 });
+      return notFoundResponse();
     }
 
     const action: Action = actionRaw;
@@ -220,19 +230,22 @@ export async function POST(req: Request) {
       .maybeSingle();
 
     if (reqErr) {
-      return NextResponse.json({ error: reqErr.message }, { status: 500 });
+      return NextResponse.json(
+        { error: "Server error" },
+        { status: 500, headers: { "Cache-Control": "no-store" } }
+      );
     }
 
     if (!reqRow) {
-      return NextResponse.json({ error: "Request not found" }, { status: 404 });
+      return notFoundResponse();
     }
 
     if (reqRow.owner_id !== user.id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return notFoundResponse();
     }
 
     if (!reqRow.animal_id || !isUuid(String(reqRow.animal_id))) {
-      return NextResponse.json({ error: "animal_id non valido nella richiesta" }, { status: 400 });
+      return notFoundResponse();
     }
 
     if (action === "approve") {
@@ -240,10 +253,7 @@ export async function POST(req: Request) {
       const requestedScope = normalizeRequestedScope(reqRow.requested_scope);
 
       if (requestedScope.length === 0) {
-        return NextResponse.json(
-          { error: "Richiesta senza scope validi approvabili" },
-          { status: 400 }
-        );
+        return notFoundResponse();
       }
 
       const { data: existingGrant, error: existingGrantErr } = await admin
@@ -256,7 +266,10 @@ export async function POST(req: Request) {
         .maybeSingle();
 
       if (existingGrantErr) {
-        return NextResponse.json({ error: existingGrantErr.message }, { status: 500 });
+        return NextResponse.json(
+          { error: "Server error" },
+          { status: 500, headers: { "Cache-Control": "no-store" } }
+        );
       }
 
       const grantPayload = {
@@ -279,7 +292,10 @@ export async function POST(req: Request) {
           .eq("id", existingGrant.id);
 
         if (updGrantErr) {
-          return NextResponse.json({ error: updGrantErr.message }, { status: 500 });
+          return NextResponse.json(
+            { error: "Server error" },
+            { status: 500, headers: { "Cache-Control": "no-store" } }
+          );
         }
       } else {
         const { error: grantErr } = await admin.from("animal_access_grants").insert({
@@ -290,7 +306,10 @@ export async function POST(req: Request) {
         });
 
         if (grantErr) {
-          return NextResponse.json({ error: grantErr.message }, { status: 500 });
+          return NextResponse.json(
+            { error: "Server error" },
+            { status: 500, headers: { "Cache-Control": "no-store" } }
+          );
         }
       }
 
@@ -303,7 +322,10 @@ export async function POST(req: Request) {
         .eq("owner_id", user.id);
 
       if (updErr) {
-        return NextResponse.json({ error: updErr.message }, { status: 500 });
+        return NextResponse.json(
+          { error: "Server error" },
+          { status: 500, headers: { "Cache-Control": "no-store" } }
+        );
       }
 
       return NextResponse.json(
@@ -312,7 +334,7 @@ export async function POST(req: Request) {
           status: "approved",
           expires_at: validTo,
         },
-        { status: 200 }
+        { status: 200, headers: { "Cache-Control": "no-store" } }
       );
     }
 
@@ -326,10 +348,16 @@ export async function POST(req: Request) {
         .eq("owner_id", user.id);
 
       if (updErr) {
-        return NextResponse.json({ error: updErr.message }, { status: 500 });
+        return NextResponse.json(
+          { error: "Server error" },
+          { status: 500, headers: { "Cache-Control": "no-store" } }
+        );
       }
 
-      return NextResponse.json({ ok: true, status: "rejected" }, { status: 200 });
+      return NextResponse.json(
+        { ok: true, status: "rejected" },
+        { status: 200, headers: { "Cache-Control": "no-store" } }
+      );
     }
 
     if (action === "block") {
@@ -342,10 +370,16 @@ export async function POST(req: Request) {
         .eq("owner_id", user.id);
 
       if (updErr) {
-        return NextResponse.json({ error: updErr.message }, { status: 500 });
+        return NextResponse.json(
+          { error: "Server error" },
+          { status: 500, headers: { "Cache-Control": "no-store" } }
+        );
       }
 
-      return NextResponse.json({ ok: true, status: "blocked" }, { status: 200 });
+      return NextResponse.json(
+        { ok: true, status: "blocked" },
+        { status: 200, headers: { "Cache-Control": "no-store" } }
+      );
     }
 
     if (action === "revoke") {
@@ -362,7 +396,10 @@ export async function POST(req: Request) {
         .is("revoked_at", null);
 
       if (revErr) {
-        return NextResponse.json({ error: revErr.message }, { status: 500 });
+        return NextResponse.json(
+          { error: "Server error" },
+          { status: 500, headers: { "Cache-Control": "no-store" } }
+        );
       }
 
       const { error: updErr } = await admin
@@ -374,17 +411,23 @@ export async function POST(req: Request) {
         .eq("owner_id", user.id);
 
       if (updErr) {
-        return NextResponse.json({ error: updErr.message }, { status: 500 });
+        return NextResponse.json(
+          { error: "Server error" },
+          { status: 500, headers: { "Cache-Control": "no-store" } }
+        );
       }
 
-      return NextResponse.json({ ok: true, status: "revoked" }, { status: 200 });
+      return NextResponse.json(
+        { ok: true, status: "revoked" },
+        { status: 200, headers: { "Cache-Control": "no-store" } }
+      );
     }
 
-    return NextResponse.json({ error: "Unknown action" }, { status: 400 });
-  } catch (error: any) {
+    return notFoundResponse();
+  } catch {
     return NextResponse.json(
-      { error: error?.message || "Errore gestione richiesta owner" },
-      { status: 500 }
+      { error: "Server error" },
+      { status: 500, headers: { "Cache-Control": "no-store" } }
     );
   }
 }

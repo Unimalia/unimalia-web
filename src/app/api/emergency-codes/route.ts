@@ -14,6 +14,16 @@ function supabaseAnon(authHeader: string | null) {
   });
 }
 
+function notFoundResponse() {
+  return NextResponse.json(
+    { error: "Not found" },
+    {
+      status: 404,
+      headers: { "Cache-Control": "no-store" },
+    }
+  );
+}
+
 async function requireProfessionalUser(authHeader: string | null) {
   const sb = supabaseAnon(authHeader);
   const { data, error } = await sb.auth.getUser();
@@ -21,7 +31,9 @@ async function requireProfessionalUser(authHeader: string | null) {
   if (error || !data.user) return null;
 
   const user = data.user;
-  const isProfessional = user.app_metadata?.is_professional === true || user.app_metadata?.is_vet === true;
+  const isProfessional =
+    user.app_metadata?.is_professional === true ||
+    user.app_metadata?.is_vet === true;
 
   if (!isProfessional) return null;
 
@@ -33,61 +45,74 @@ function genCode() {
 }
 
 export async function POST(req: Request) {
-  const authHeader = req.headers.get("authorization");
-  const user = await requireProfessionalUser(authHeader);
+  try {
+    const authHeader = req.headers.get("authorization");
+    const user = await requireProfessionalUser(authHeader);
 
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+    if (!user) {
+      return notFoundResponse();
+    }
 
-  const sb = supabaseAnon(authHeader);
-  const now = new Date();
-  const expiresAt = new Date(now.getTime() + 15 * 60 * 1000).toISOString();
+    const sb = supabaseAnon(authHeader);
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + 15 * 60 * 1000).toISOString();
 
-  const { data: existing, error: existingError } = await sb
-    .from("emergency_codes")
-    .select("code, expires_at")
-    .eq("professional_id", user.id)
-    .eq("is_used", false)
-    .gt("expires_at", now.toISOString())
-    .order("expires_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    const { data: existing, error: existingError } = await sb
+      .from("emergency_codes")
+      .select("code, expires_at")
+      .eq("professional_id", user.id)
+      .eq("is_used", false)
+      .gt("expires_at", now.toISOString())
+      .order("expires_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-  if (existingError) {
-    return NextResponse.json({ error: existingError.message }, { status: 400 });
-  }
+    if (existingError) {
+      return NextResponse.json(
+        { error: "Server error" },
+        { status: 500, headers: { "Cache-Control": "no-store" } }
+      );
+    }
 
-  if (existing?.code && existing?.expires_at) {
+    if (existing?.code && existing?.expires_at) {
+      return NextResponse.json(
+        { code: existing.code, expires_at: existing.expires_at },
+        {
+          headers: {
+            "Cache-Control": "no-store",
+          },
+        }
+      );
+    }
+
+    const code = genCode();
+
+    const { error } = await sb.from("emergency_codes").insert({
+      professional_id: user.id,
+      code,
+      expires_at: expiresAt,
+      is_used: false,
+    });
+
+    if (error) {
+      return NextResponse.json(
+        { error: "Server error" },
+        { status: 500, headers: { "Cache-Control": "no-store" } }
+      );
+    }
+
     return NextResponse.json(
-      { code: existing.code, expires_at: existing.expires_at },
+      { code, expires_at: expiresAt },
       {
         headers: {
           "Cache-Control": "no-store",
         },
       }
     );
+  } catch {
+    return NextResponse.json(
+      { error: "Server error" },
+      { status: 500, headers: { "Cache-Control": "no-store" } }
+    );
   }
-
-  const code = genCode();
-
-  const { error } = await sb.from("emergency_codes").insert({
-    professional_id: user.id,
-    code,
-    expires_at: expiresAt,
-    is_used: false,
-  });
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
-  }
-
-  return NextResponse.json(
-    { code, expires_at: expiresAt },
-    {
-      headers: {
-        "Cache-Control": "no-store",
-      },
-    }
-  );
 }

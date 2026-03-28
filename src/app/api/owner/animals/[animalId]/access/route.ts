@@ -2,19 +2,29 @@ import { NextResponse } from "next/server";
 import { createServerSupabaseClient, supabaseAdmin } from "@/lib/supabase/server";
 import { isUuid } from "@/lib/server/validators";
 
-export async function GET(
-  _req: Request,
-  ctx: { params: Promise<{ animalId: string }> }
-) {
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+type RouteContext = {
+  params: Promise<{ animalId: string }>;
+};
+
+function notFoundResponse() {
+  return NextResponse.json(
+    { error: "Not found" },
+    {
+      status: 404,
+      headers: { "Cache-Control": "no-store" },
+    }
+  );
+}
+
+export async function GET(_req: Request, ctx: RouteContext) {
   try {
     const { animalId } = await ctx.params;
 
-    if (!animalId || animalId === "undefined") {
-      return NextResponse.json({ error: "animalId mancante" }, { status: 400 });
-    }
-
-    if (!isUuid(animalId)) {
-      return NextResponse.json({ error: "animalId non valido" }, { status: 400 });
+    if (!animalId || animalId === "undefined" || !isUuid(animalId)) {
+      return notFoundResponse();
     }
 
     const supabase = await createServerSupabaseClient();
@@ -24,12 +34,8 @@ export async function GET(
       error: authErr,
     } = await supabase.auth.getUser();
 
-    if (authErr) {
-      return NextResponse.json({ error: authErr.message }, { status: 401 });
-    }
-
-    if (!user) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    if (authErr || !user) {
+      return notFoundResponse();
     }
 
     const { data: animal, error: animalErr } = await supabase
@@ -39,25 +45,22 @@ export async function GET(
       .maybeSingle();
 
     if (animalErr) {
-      return NextResponse.json({ error: animalErr.message }, { status: 500 });
-    }
-
-    if (!animal) {
-      return NextResponse.json({ error: "Animal not found" }, { status: 404 });
-    }
-
-    if (!animal.owner_id) {
       return NextResponse.json(
-        {
-          requests: [],
-          grants: [],
-        },
-        { status: 200 }
+        { error: "Server error" },
+        { status: 500, headers: { "Cache-Control": "no-store" } }
       );
     }
 
+    if (!animal) {
+      return notFoundResponse();
+    }
+
+    if (!animal.owner_id) {
+      return notFoundResponse();
+    }
+
     if (animal.owner_id !== user.id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return notFoundResponse();
     }
 
     const requestsQ = supabase
@@ -79,12 +82,11 @@ export async function GET(
     const [{ data: requests, error: reqErr }, { data: grants, error: grantErr }] =
       await Promise.all([requestsQ, grantsQ]);
 
-    if (reqErr) {
-      return NextResponse.json({ error: reqErr.message }, { status: 500 });
-    }
-
-    if (grantErr) {
-      return NextResponse.json({ error: grantErr.message }, { status: 500 });
+    if (reqErr || grantErr) {
+      return NextResponse.json(
+        { error: "Server error" },
+        { status: 500, headers: { "Cache-Control": "no-store" } }
+      );
     }
 
     const requestRows = requests ?? [];
@@ -100,7 +102,7 @@ export async function GET(
 
     const orgIds = Array.from(new Set([...orgIdsFromRequests, ...orgIdsFromGrants]));
 
-    let orgNameById = new Map<string, string>();
+    const orgNameById = new Map<string, string>();
 
     if (orgIds.length > 0) {
       const { data: orgs, error: orgErr } = await admin
@@ -109,7 +111,10 @@ export async function GET(
         .in("id", orgIds);
 
       if (orgErr) {
-        return NextResponse.json({ error: orgErr.message }, { status: 500 });
+        return NextResponse.json(
+          { error: "Server error" },
+          { status: 500, headers: { "Cache-Control": "no-store" } }
+        );
       }
 
       for (const o of orgs ?? []) {
@@ -126,10 +131,17 @@ export async function GET(
       const missingIds = orgIds.filter((id) => !orgNameById.has(id));
 
       if (missingIds.length > 0) {
-        const { data: professionals } = await admin
+        const { data: professionals, error: professionalsErr } = await admin
           .from("professionals")
           .select("id, display_name, business_name, first_name, last_name")
           .in("id", missingIds);
+
+        if (professionalsErr) {
+          return NextResponse.json(
+            { error: "Server error" },
+            { status: 500, headers: { "Cache-Control": "no-store" } }
+          );
+        }
 
         for (const p of professionals ?? []) {
           const label =
@@ -162,12 +174,15 @@ export async function GET(
         requests: enrichedRequests,
         grants: enrichedGrants,
       },
-      { status: 200 }
+      {
+        status: 200,
+        headers: { "Cache-Control": "no-store" },
+      }
     );
-  } catch (error: any) {
+  } catch {
     return NextResponse.json(
-      { error: error?.message || "Errore caricamento accessi animale" },
-      { status: 500 }
+      { error: "Server error" },
+      { status: 500, headers: { "Cache-Control": "no-store" } }
     );
   }
 }
