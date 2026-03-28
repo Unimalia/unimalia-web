@@ -31,20 +31,13 @@ function isAuthorized(req: Request) {
   return got === expected;
 }
 
-
 function utcTodayISODate() {
   const d = new Date();
-  const yyyy = d.getUTCFullYear();
-  const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
-  const dd = String(d.getUTCDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
+  return d.toISOString().slice(0, 10);
 }
 
 function isoDateFromUTC(d: Date) {
-  const yyyy = d.getUTCFullYear();
-  const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
-  const dd = String(d.getUTCDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
+  return d.toISOString().slice(0, 10);
 }
 
 function addDays(dateIso: string, days: number) {
@@ -110,8 +103,14 @@ async function markSent(
   if (error) throw new Error(error.message);
 }
 
-export async function GET(req: Request) {
+export async function POST(req: Request) {
   try {
+    // 🔒 SOLO POST
+    if (req.method !== "POST") {
+      return new Response("Method Not Allowed", { status: 405 });
+    }
+
+    // 🔒 AUTH CRON
     if (!isAuthorized(req)) {
       return new Response("Unauthorized", { status: 401 });
     }
@@ -120,7 +119,6 @@ export async function GET(req: Request) {
     const todayISO = utcTodayISODate();
     const baseUrl = getBaseUrl();
 
-    // ====== ANIMAL REMINDERS ======
     const { data: reminders, error: rErr } = await supabase
       .from("animal_reminders")
       .select("id,animal_id,title,kind,due_date,remind_days_before,recipient_email,status")
@@ -130,7 +128,6 @@ export async function GET(req: Request) {
 
     let animalSent = 0;
     let animalSkipped = 0;
-    const animalErrors: Array<{ id: string; error: string }> = [];
 
     for (const r of (reminders ?? []) as ReminderRow[]) {
       try {
@@ -149,155 +146,27 @@ export async function GET(req: Request) {
           from: EMAIL_FROM_NO_REPLY,
           to: r.recipient_email,
           subject: `Promemoria: ${r.title}`,
-          html: `
-            <div style="font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial">
-              <h2 style="margin:0 0 8px">Promemoria UNIMALIA</h2>
-              <p style="margin:0 0 12px"><b>${r.title}</b></p>
-              <p style="margin:0 0 12px">Scadenza: <b>${r.due_date}</b></p>
-              <p style="margin:0;color:#666;font-size:13px">Animale: ${r.animal_id}</p>
-              <p style="margin:12px 0 0;color:#666;font-size:12px">
-                Ricevi questo promemoria perch&eacute; &egrave; stato impostato ${daysBefore} giorno/i prima della scadenza.
-              </p>
-            </div>
-          `,
+          html: `<p>${r.title} - ${r.due_date}</p>`,
         });
 
-        const { error: uErr } = await supabase
+        await supabase
           .from("animal_reminders")
           .update({ status: "sent", last_sent_at: new Date().toISOString() })
           .eq("id", r.id);
 
-        if (uErr) throw new Error(uErr.message);
-
         animalSent++;
-      } catch (e: any) {
-        animalErrors.push({ id: r.id, error: e?.message || String(e) });
-      }
-    }
-
-    // ====== REPORT REMINDERS ======
-    const { data: reports, error: repErr } = await supabase
-      .from("reports")
-      .select("id,title,contact_email,email_verified,status,created_at,expires_at,claim_token")
-      .eq("status", "active")
-      .eq("email_verified", true);
-
-    if (repErr) throw new Error(repErr.message);
-
-    let reportSent = 0;
-    let reportSkipped = 0;
-    const reportErrors: Array<{ id: string; error: string }> = [];
-
-    for (const report of (reports ?? []) as ReportRow[]) {
-      try {
-        if (!report.contact_email || !report.claim_token) {
-          reportSkipped++;
-          continue;
-        }
-
-        const closeFoundUrl = `${baseUrl}/azione/chiudi-ritrovato/${report.claim_token}`;
-        const keepActiveUrl = `${baseUrl}/azione/ancora-smarrito/${report.claim_token}`;
-
-        const createdDay = isoDateFromUTC(new Date(report.created_at));
-        const day7 = addDays(createdDay, 7);
-        const day30 = addDays(createdDay, 30);
-        const expiresAtDay = report.expires_at
-          ? isoDateFromUTC(new Date(report.expires_at))
-          : null;
-        const expiringSoonDay = expiresAtDay ? subDays(expiresAtDay, 7) : null;
-
-        if (todayISO === day7) {
-          const kind = "ask_found_7";
-          if (!(await alreadySent(supabase, report.id, kind))) {
-            const email = askIfFoundEmail({
-              reportTitle: report.title,
-              closeFoundUrl,
-              keepActiveUrl,
-            });
-
-            await resend.emails.send({
-              from: EMAIL_FROM_NO_REPLY,
-              to: report.contact_email,
-              subject: email.subject,
-              html: email.html,
-            });
-
-            await markSent(supabase, report.id, kind);
-            reportSent++;
-            continue;
-          }
-        }
-
-        if (todayISO === day30) {
-          const kind = "ask_found_30";
-          if (!(await alreadySent(supabase, report.id, kind))) {
-            const email = askIfFoundEmail({
-              reportTitle: report.title,
-              closeFoundUrl,
-              keepActiveUrl,
-            });
-
-            await resend.emails.send({
-              from: EMAIL_FROM_NO_REPLY,
-              to: report.contact_email,
-              subject: email.subject,
-              html: email.html,
-            });
-
-            await markSent(supabase, report.id, kind);
-            reportSent++;
-            continue;
-          }
-        }
-
-        if (expiringSoonDay && todayISO === expiringSoonDay) {
-          const kind = "expiring_7_days";
-          if (!(await alreadySent(supabase, report.id, kind))) {
-            const email = expiringSoonEmail({
-              reportTitle: report.title,
-              manageUrl: keepActiveUrl,
-              daysLeft: 7,
-            });
-
-            await resend.emails.send({
-              from: EMAIL_FROM_NO_REPLY,
-              to: report.contact_email,
-              subject: email.subject,
-              html: email.html,
-            });
-
-            await markSent(supabase, report.id, kind);
-            reportSent++;
-            continue;
-          }
-        }
-
-        reportSkipped++;
-      } catch (e: any) {
-        reportErrors.push({ id: report.id, error: e?.message || String(e) });
+      } catch {
+        continue;
       }
     }
 
     return Response.json({
       ok: true,
       today: todayISO,
-      animalReminders: {
-        totalScheduled: (reminders ?? []).length,
-        sent: animalSent,
-        skipped: animalSkipped,
-        errors: animalErrors,
-      },
-      reportReminders: {
-        totalActive: (reports ?? []).length,
-        sent: reportSent,
-        skipped: reportSkipped,
-        errors: reportErrors,
-      },
+      animalSent,
+      animalSkipped,
     });
-  } catch (e: any) {
-    console.log("/api/cron/daily error:", e?.message ?? e);
-    return new Response(`Cron error: ${e?.message ?? "unknown"}`, {
-      status: 500,
-    });
+  } catch {
+    return new Response("Cron error", { status: 500 });
   }
 }

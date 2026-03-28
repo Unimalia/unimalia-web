@@ -1,10 +1,15 @@
+import "server-only";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { resend, EMAIL_FROM_NO_REPLY, getBaseUrl } from "@/lib/email/resend";
 import { reportPublishedEmail, verificationEmail } from "@/lib/email/templates";
 
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const MAX_REPORTS_PER_IP_PER_DAY = 10;
+const MAX_PHOTO_URLS = 6;
 
 function hashIp(ip: string) {
   return crypto.createHash("sha256").update(ip).digest("hex");
@@ -34,11 +39,30 @@ function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+function isValidPhotoUrl(value: unknown) {
+  if (typeof value !== "string") return false;
+
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:";
+  } catch {
+    return false;
+  }
+}
+
+function sanitizePhotoUrls(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter(isValidPhotoUrl)
+    .map((v) => String(v).trim())
+    .slice(0, MAX_PHOTO_URLS);
+}
+
 async function verifyTurnstileToken(token: string, ip?: string) {
   const secret = process.env.TURNSTILE_SECRET_KEY;
 
   if (!secret) {
-    return { ok: false, error: "TURNSTILE_SECRET_KEY mancante." };
+    return { ok: false };
   }
 
   const formData = new FormData();
@@ -57,10 +81,7 @@ async function verifyTurnstileToken(token: string, ip?: string) {
   const data = await res.json().catch(() => null);
 
   if (!res.ok || !data?.success) {
-    return {
-      ok: false,
-      error: "Controllo sicurezza non valido.",
-    };
+    return { ok: false };
   }
 
   return { ok: true };
@@ -96,24 +117,22 @@ export async function POST(req: Request) {
       req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
 
     const ip_hash = hashIp(ip);
-    const body = await req.json().catch(() => ({}));
+    const body = await req.json().catch(() => null);
+
+    if (!body || typeof body !== "object") {
+      return NextResponse.json({ error: "Bad request" }, { status: 400 });
+    }
 
     const turnstileToken = String(body?.turnstileToken || "").trim();
 
     if (!turnstileToken) {
-      return NextResponse.json(
-        { error: "Controllo sicurezza mancante." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Bad request" }, { status: 400 });
     }
 
     const turnstile = await verifyTurnstileToken(turnstileToken, ip);
 
     if (!turnstile.ok) {
-      return NextResponse.json(
-        { error: "Controllo sicurezza non valido." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Bad request" }, { status: 400 });
     }
 
     const authHeader = req.headers.get("authorization") || "";
@@ -174,7 +193,7 @@ export async function POST(req: Request) {
         ? body.lng
         : null;
 
-    const photo_urls = Array.isArray(body?.photo_urls) ? body.photo_urls : [];
+    const photo_urls = sanitizePhotoUrls(body?.photo_urls);
 
     if (
       !contact_email ||
@@ -185,32 +204,23 @@ export async function POST(req: Request) {
       !location_text ||
       !event_date
     ) {
-      return NextResponse.json({ error: "Dati mancanti" }, { status: 400 });
+      return NextResponse.json({ error: "Bad request" }, { status: 400 });
     }
 
     if (!isValidEmail(contact_email)) {
-      return NextResponse.json({ error: "Email non valida." }, { status: 400 });
+      return NextResponse.json({ error: "Bad request" }, { status: 400 });
     }
 
     if (type === "lost" && !animal_name) {
-      return NextResponse.json(
-        { error: "Per lo smarrimento il nome animale è obbligatorio." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Bad request" }, { status: 400 });
     }
 
-    if (type === "lost" && (!Array.isArray(photo_urls) || photo_urls.length === 0)) {
-      return NextResponse.json(
-        { error: "Per uno smarrimento è obbligatorio caricare almeno una foto." },
-        { status: 400 }
-      );
+    if (type === "lost" && photo_urls.length === 0) {
+      return NextResponse.json({ error: "Bad request" }, { status: 400 });
     }
 
     if (!consent) {
-      return NextResponse.json(
-        { error: "Devi accettare l’informativa per pubblicare." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Bad request" }, { status: 400 });
     }
 
     const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
@@ -222,14 +232,12 @@ export async function POST(req: Request) {
       .gte("created_at", since);
 
     if (countErr) {
-      return NextResponse.json({ error: countErr.message }, { status: 400 });
+      return NextResponse.json({ error: "Server error" }, { status: 500 });
     }
 
-    const limit = Number(body?.rate_limit ?? 10);
-
-    if ((count || 0) >= limit) {
+    if ((count || 0) >= MAX_REPORTS_PER_IP_PER_DAY) {
       return NextResponse.json(
-        { error: "Limite creazione annunci raggiunto. Riprova più tardi." },
+        { error: "Too many requests" },
         { status: 429 }
       );
     }
@@ -246,17 +254,11 @@ export async function POST(req: Request) {
         .single();
 
       if (animalError || !animalRow) {
-        return NextResponse.json(
-          { error: "Animale collegato non valido." },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: "Bad request" }, { status: 400 });
       }
 
       if (animalRow.owner_id !== authenticatedUserId) {
-        return NextResponse.json(
-          { error: "Questo animale non appartiene al tuo profilo." },
-          { status: 403 }
-        );
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
 
       linkedAnimalId = animalRow.id;
@@ -309,14 +311,11 @@ export async function POST(req: Request) {
     const { data, error } = await admin
       .from("reports")
       .insert(insertRow)
-      .select("*")
+      .select("id,title,type,status,email_verified,created_at,expires_at,claim_token")
       .single();
 
     if (error || !data) {
-      return NextResponse.json(
-        { error: error?.message || "Errore creazione annuncio" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Server error" }, { status: 500 });
     }
 
     if (linkedAnimalId) {
@@ -367,23 +366,28 @@ export async function POST(req: Request) {
           "published email"
         );
       }
-    } catch (mailError) {
+    } catch {
       emailQueued = false;
-      console.error("REPORT EMAIL ERROR:", mailError);
+      console.error("report email error");
     }
 
     return NextResponse.json(
       {
         ok: true,
-        report: data,
+        report: {
+          id: data.id,
+          title: data.title,
+          type: data.type,
+          status: data.status,
+          email_verified: data.email_verified,
+          created_at: data.created_at,
+          expires_at: data.expires_at,
+        },
         emailQueued,
       },
       { status: 200 }
     );
-  } catch (e: any) {
-    return NextResponse.json(
-      { error: e?.message || "Errore server" },
-      { status: 500 }
-    );
+  } catch {
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

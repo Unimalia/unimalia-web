@@ -1,4 +1,8 @@
+import "server-only";
 import Stripe from "stripe";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 type Role =
   | "owner"
@@ -10,10 +14,36 @@ type Role =
 
 type Interval = "monthly" | "yearly";
 
+const ALLOWED_ROLES: Role[] = [
+  "owner",
+  "veterinarian",
+  "groomer",
+  "petsitter",
+  "boarding",
+  "trainer",
+];
+
+const ALLOWED_INTERVALS: Interval[] = ["monthly", "yearly"];
+
 function requireEnv(name: string): string {
   const v = process.env[name];
   if (!v) throw new Error(`Missing env: ${name}`);
   return v;
+}
+
+function isRole(value: unknown): value is Role {
+  return typeof value === "string" && ALLOWED_ROLES.includes(value as Role);
+}
+
+function isInterval(value: unknown): value is Interval {
+  return (
+    typeof value === "string" &&
+    ALLOWED_INTERVALS.includes(value as Interval)
+  );
+}
+
+function isValidEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
 function getPriceId(role: Role, interval: Interval): string {
@@ -60,14 +90,23 @@ export async function POST(req: Request) {
     const stripe = new Stripe(requireEnv("STRIPE_SECRET_KEY"));
     const appUrl = requireEnv("APP_URL");
 
-    const body = await req.json();
-    const userId = String(body?.userId ?? "");
-    const email = String(body?.email ?? "");
-    const role = body?.role as Role;
-    const interval = body?.interval as Interval;
+    const body = await req.json().catch(() => null);
 
-    if (!userId || !email || !role || !interval) {
-      return new Response("Missing fields", { status: 400 });
+    const userId =
+      typeof body?.userId === "string" ? body.userId.trim() : "";
+    const email =
+      typeof body?.email === "string"
+        ? body.email.trim().toLowerCase()
+        : "";
+    const role = body?.role;
+    const interval = body?.interval;
+
+    if (!userId || !email || !isRole(role) || !isInterval(interval)) {
+      return new Response("Bad request", { status: 400 });
+    }
+
+    if (!isValidEmail(email)) {
+      return new Response("Bad request", { status: 400 });
     }
 
     const priceId = getPriceId(role, interval);
@@ -78,8 +117,6 @@ export async function POST(req: Request) {
       line_items: [{ price: priceId, quantity: 1 }],
       success_url: `${appUrl}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${appUrl}/billing/cancel`,
-
-      // IMPORTANTISSIMO: copia metadata sulla Subscription (non solo sulla session)
       subscription_data: {
         metadata: {
           user_id: userId,
@@ -87,7 +124,6 @@ export async function POST(req: Request) {
           billing_interval: interval,
         },
       },
-
       metadata: {
         user_id: userId,
         role,
@@ -95,8 +131,12 @@ export async function POST(req: Request) {
       },
     });
 
-    return Response.json({ url: session.url });
-  } catch (e: any) {
-    return new Response(`Checkout error: ${e?.message ?? "unknown"}`, { status: 500 });
+    if (!session.url) {
+      return new Response("Server error", { status: 500 });
+    }
+
+    return Response.json({ url: session.url }, { status: 200 });
+  } catch {
+    return new Response("Server error", { status: 500 });
   }
 }

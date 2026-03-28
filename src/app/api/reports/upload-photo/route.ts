@@ -1,3 +1,4 @@
+import "server-only";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { createClient } from "@supabase/supabase-js";
@@ -21,10 +22,19 @@ const EXPLICITLY_UNSUPPORTED_IOS_TYPES = new Set([
   "image/heif",
 ]);
 
-function extFromFileName(name: string) {
+function extFromFileName(name: string, mime: string) {
   const n = (name || "").toLowerCase();
   const m = n.match(/\.([a-z0-9]+)$/);
-  return m?.[1] || "jpg";
+  const ext = m?.[1] || "";
+
+  if (["jpg", "jpeg", "png", "webp", "gif"].includes(ext)) {
+    return ext === "jpeg" ? "jpg" : ext;
+  }
+
+  if (mime === "image/png") return "png";
+  if (mime === "image/webp") return "webp";
+  if (mime === "image/gif") return "gif";
+  return "jpg";
 }
 
 function randomSuffix() {
@@ -33,21 +43,18 @@ function randomSuffix() {
 
 export async function POST(req: Request) {
   try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 
     if (!supabaseUrl || !serviceKey) {
-      return NextResponse.json(
-        { error: "Configurazione Supabase mancante." },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "Server error" }, { status: 500 });
     }
 
     const form = await req.formData();
-    const file = form.get("file") as File | null;
+    const file = form.get("file");
 
-    if (!file) {
-      return NextResponse.json({ error: "File mancante." }, { status: 400 });
+    if (!(file instanceof File)) {
+      return NextResponse.json({ error: "Bad request" }, { status: 400 });
     }
 
     const mime = String(file.type || "").toLowerCase();
@@ -56,7 +63,7 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           error:
-            "La foto selezionata è in formato HEIC/HEIF (tipico di iPhone) e al momento non è supportata. Salva o esporta la foto come JPG/PNG e riprova.",
+            "Formato HEIC/HEIF non supportato. Salva o esporta la foto come JPG, PNG, WEBP o GIF e riprova.",
         },
         { status: 400 }
       );
@@ -64,7 +71,7 @@ export async function POST(req: Request) {
 
     if (!ALLOWED_MIME_TYPES.has(mime)) {
       return NextResponse.json(
-        { error: "Formato file non valido. Usa JPG, PNG, WEBP o GIF." },
+        { error: "Formato file non valido." },
         { status: 400 }
       );
     }
@@ -80,10 +87,10 @@ export async function POST(req: Request) {
     const buffer = Buffer.from(arrayBuffer);
 
     const supaAdmin = createClient(supabaseUrl, serviceKey, {
-      auth: { persistSession: false },
+      auth: { persistSession: false, autoRefreshToken: false },
     });
 
-    const ext = extFromFileName(file.name);
+    const ext = extFromFileName(file.name, mime);
     const fileName = `report_${Date.now()}_${randomSuffix()}.${ext}`;
     const dayKey = new Date().toISOString().slice(0, 10);
     const path = `${REPORTS_FOLDER}/${dayKey}/${crypto.randomUUID()}_${fileName}`;
@@ -97,25 +104,20 @@ export async function POST(req: Request) {
       });
 
     if (upErr) {
-      return NextResponse.json({ error: upErr.message }, { status: 500 });
+      console.error("report photo upload storage error");
+      return NextResponse.json({ error: "Server error" }, { status: 500 });
     }
 
     const { data: pub } = supaAdmin.storage.from(BUCKET).getPublicUrl(path);
     const publicUrl = pub?.publicUrl ? `${pub.publicUrl}?t=${Date.now()}` : "";
 
     if (!publicUrl) {
-      return NextResponse.json(
-        { error: "Foto caricata ma URL pubblico non disponibile." },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "Server error" }, { status: 500 });
     }
 
     return NextResponse.json({ publicUrl }, { status: 200 });
-  } catch (e: any) {
-    console.error("REPORT PHOTO UPLOAD ERROR:", e);
-    return NextResponse.json(
-      { error: e?.message || "Errore server durante upload foto." },
-      { status: 500 }
-    );
+  } catch {
+    console.error("report photo upload error");
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

@@ -4,9 +4,7 @@ export const dynamic = "force-dynamic";
 
 export async function POST() {
   return NextResponse.json(
-    {
-      error: "Endpoint disabilitato. Usa /api/professionisti/animal",
-    },
-    { status: 403 }
+    { error: "Not found" },
+    { status: 404 }
   );
 }
