@@ -6,6 +6,27 @@ import { safeWriteAudit } from "@/lib/server/safeAudit";
 import { getBearerToken } from "@/lib/server/bearer";
 import { isUuid } from "@/lib/server/validators";
 
+type ClinicEventRow = {
+  id: string;
+  animal_id: string;
+  status: string | null;
+  created_by_user_id: string | null;
+};
+
+type ClinicEventFileRow = {
+  id: string;
+  event_id: string;
+  animal_id: string;
+  path: string;
+  filename: string | null;
+  mime: string | null;
+  size: number | null;
+  created_by_user_id: string | null;
+  created_at: string;
+};
+
+type RequireOwnerOrGrantClient = Parameters<typeof requireOwnerOrGrant>[0];
+
 export async function GET(req: Request) {
   const token = getBearerToken(req);
 
@@ -52,7 +73,7 @@ export async function GET(req: Request) {
     .select("id, animal_id, status, created_by_user_id")
     .eq("id", eventId)
     .neq("status", "void")
-    .single();
+    .single<ClinicEventRow>();
 
   if (evErr || !ev) {
     return NextResponse.json({ error: "Event not found" }, { status: 404 });
@@ -60,7 +81,12 @@ export async function GET(req: Request) {
 
   const animalId = String(ev.animal_id);
 
-  const grant = await requireOwnerOrGrant(supabase as any, user.id, animalId, "read");
+  const grant = await requireOwnerOrGrant(
+    supabase as RequireOwnerOrGrantClient,
+    user.id,
+    animalId,
+    "read"
+  );
 
   let canAccess = grant.ok;
   let accessMode: "full" | "own_only" | "denied" = grant.ok ? "full" : "denied";
@@ -91,7 +117,8 @@ export async function GET(req: Request) {
     .from("animal_clinic_event_files")
     .select("id, event_id, animal_id, path, filename, mime, size, created_by_user_id, created_at")
     .eq("event_id", eventId)
-    .order("created_at", { ascending: true });
+    .order("created_at", { ascending: true })
+    .returns<ClinicEventFileRow[]>();
 
   if (error) {
     await safeWriteAudit(supabase, {

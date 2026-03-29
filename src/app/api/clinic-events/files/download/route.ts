@@ -6,6 +6,23 @@ import { safeWriteAudit } from "@/lib/server/safeAudit";
 import { getBearerToken } from "@/lib/server/bearer";
 import { isUuid } from "@/lib/server/validators";
 
+type ClinicEventFileRow = {
+  id: string;
+  animal_id: string;
+  event_id: string;
+  path: string;
+  filename: string | null;
+};
+
+type ClinicEventAccessRow = {
+  id: string;
+  created_by_user_id: string | null;
+  animal_id: string;
+  status: string | null;
+};
+
+type RequireOwnerOrGrantClient = Parameters<typeof requireOwnerOrGrant>[0];
+
 export async function GET(req: Request) {
   const token = getBearerToken(req);
 
@@ -40,7 +57,7 @@ export async function GET(req: Request) {
   const fileId = String(url.searchParams.get("fileId") || "").trim();
   const pathParam = String(url.searchParams.get("path") || "").trim();
 
-  let fileRow: any = null;
+  let fileRow: ClinicEventFileRow | null = null;
 
   if (fileId) {
     if (!isUuid(fileId)) {
@@ -51,7 +68,7 @@ export async function GET(req: Request) {
       .from("animal_clinic_event_files")
       .select("id, animal_id, event_id, path, filename")
       .eq("id", fileId)
-      .single();
+      .single<ClinicEventFileRow>();
 
     if (error || !data) {
       return NextResponse.json({ error: "File not found" }, { status: 404 });
@@ -63,7 +80,7 @@ export async function GET(req: Request) {
       .from("animal_clinic_event_files")
       .select("id, animal_id, event_id, path, filename")
       .eq("path", pathParam)
-      .maybeSingle();
+      .maybeSingle<ClinicEventFileRow>();
 
     if (error || !data) {
       return NextResponse.json({ error: "File not found" }, { status: 404 });
@@ -85,7 +102,12 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Invalid file event_id" }, { status: 400 });
   }
 
-  const grant = await requireOwnerOrGrant(supabase as any, user.id, animalId, "read");
+  const grant = await requireOwnerOrGrant(
+    supabase as RequireOwnerOrGrantClient,
+    user.id,
+    animalId,
+    "read"
+  );
 
   let canAccess = grant.ok;
   let accessMode: "full" | "own_only" | "denied" = grant.ok ? "full" : "denied";
@@ -97,7 +119,7 @@ export async function GET(req: Request) {
       .eq("id", eventId)
       .eq("animal_id", animalId)
       .neq("status", "void")
-      .maybeSingle();
+      .maybeSingle<ClinicEventAccessRow>();
 
     if (eventError) {
       await safeWriteAudit(supabase, {

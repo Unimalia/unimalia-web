@@ -5,6 +5,8 @@ import { safeWriteAudit } from "@/lib/server/safeAudit";
 import { getBearerToken } from "@/lib/server/bearer";
 import { isUuid } from "@/lib/server/validators";
 
+type RequireOwnerOrGrantClient = Parameters<typeof requireOwnerOrGrant>[0];
+
 export async function GET(req: Request) {
   const token = getBearerToken(req);
 
@@ -49,7 +51,12 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "eventId invalid" }, { status: 400 });
   }
 
-  const grant = await requireOwnerOrGrant(supabase as any, user.id, animalId, "read");
+  const grant = await requireOwnerOrGrant(
+    supabase as RequireOwnerOrGrantClient,
+    user.id,
+    animalId,
+    "read"
+  );
 
   if (!grant.ok) {
     await safeWriteAudit(supabase, {

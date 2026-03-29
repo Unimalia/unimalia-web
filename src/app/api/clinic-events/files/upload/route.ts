@@ -16,6 +16,41 @@ const ALLOWED_MIME_TYPES = new Set([
   "image/webp",
 ]);
 
+type EventPriority = "low" | "normal" | "high" | "urgent";
+type EventVisibility = "owner" | "professionals" | "emergency";
+type EventSource = "owner" | "professional" | "veterinarian";
+
+type ClinicEventMeta = Record<string, unknown>;
+
+type ClinicEventRow = {
+  id: string;
+  animal_id: string;
+  title: string | null;
+  description: string | null;
+  event_date: string | null;
+  type: string | null;
+  visibility: EventVisibility | null;
+  source: EventSource | null;
+  priority: EventPriority | null;
+  meta: ClinicEventMeta | null;
+  status: string | null;
+  created_by_user_id: string | null;
+};
+
+type UploadedFileRow = {
+  id: string;
+  event_id: string;
+  animal_id: string;
+  path: string;
+  filename: string | null;
+  mime: string | null;
+  size: number | null;
+  created_by_user_id: string | null;
+  created_at: string;
+};
+
+type RequireOwnerOrGrantClient = Parameters<typeof requireOwnerOrGrant>[0];
+
 function isDicomFile(fileName?: string | null, mimeType?: string | null) {
   const lowerName = String(fileName || "").toLowerCase().trim();
   const lowerMime = String(mimeType || "").toLowerCase().trim();
@@ -37,6 +72,25 @@ function getSafeFilename(originalName?: string | null) {
     .slice(0, 120);
 
   return safe || "documento";
+}
+
+function parseMetaNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    const normalized = value.trim().replace(",", ".");
+    if (!normalized) return null;
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  return null;
+}
+
+function parseMetaString(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value : null;
 }
 
 export async function POST(req: Request) {
@@ -93,7 +147,7 @@ export async function POST(req: Request) {
     )
     .eq("id", eventId)
     .neq("status", "void")
-    .single();
+    .single<ClinicEventRow>();
 
   if (evErr || !ev) {
     return NextResponse.json({ error: "Event not found" }, { status: 404 });
@@ -114,7 +168,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid event animal_id" }, { status: 400 });
   }
 
-  const grant = await requireOwnerOrGrant(supabase as any, user.id, animalId, "write");
+  const grant = await requireOwnerOrGrant(
+    supabase as RequireOwnerOrGrantClient,
+    user.id,
+    animalId,
+    "write"
+  );
 
   if (!grant.ok) {
     await safeWriteAudit(supabase, {
@@ -154,17 +213,7 @@ export async function POST(req: Request) {
   }
 
   const bucket = "clinic-event-files";
-  const uploaded: Array<{
-    id: string;
-    event_id: string;
-    animal_id: string;
-    path: string;
-    filename: string | null;
-    mime: string | null;
-    size: number | null;
-    created_by_user_id: string | null;
-    created_at: string;
-  }> = [];
+  const uploaded: UploadedFileRow[] = [];
 
   const uploadedPaths: string[] = [];
 
@@ -236,7 +285,7 @@ export async function POST(req: Request) {
           },
         ])
         .select("id, event_id, animal_id, path, filename, mime, size, created_by_user_id, created_at")
-        .single();
+        .single<UploadedFileRow>();
 
       if (insErr || !row) {
         await safeWriteAudit(supabase, {
@@ -302,23 +351,13 @@ export async function POST(req: Request) {
           eventNotes: ev.description || null,
           action: "created",
           eventType: ev.type || null,
-          visibility: (ev.visibility as "owner" | "professionals" | "emergency" | null) ?? null,
-          source: (ev.source as "owner" | "professional" | "veterinarian" | null) ?? null,
-          priority: (ev.priority as "low" | "normal" | "high" | "urgent" | null) ?? null,
-          weightKg:
-            typeof ev.meta?.weight_kg === "number"
-              ? ev.meta.weight_kg
-              : ev.meta?.weight_kg
-              ? Number(ev.meta.weight_kg)
-              : null,
-          therapyStartDate:
-            typeof ev.meta?.therapy_start_date === "string" ? ev.meta.therapy_start_date : null,
-          therapyEndDate:
-            typeof ev.meta?.therapy_end_date === "string" ? ev.meta.therapy_end_date : null,
-          vetSignature:
-            typeof ev.meta?.created_by_member_label === "string"
-              ? ev.meta.created_by_member_label
-              : null,
+          visibility: ev.visibility ?? null,
+          source: ev.source ?? null,
+          priority: ev.priority ?? null,
+          weightKg: parseMetaNumber(ev.meta?.weight_kg),
+          therapyStartDate: parseMetaString(ev.meta?.therapy_start_date),
+          therapyEndDate: parseMetaString(ev.meta?.therapy_end_date),
+          vetSignature: parseMetaString(ev.meta?.created_by_member_label),
           meta: ev.meta ?? null,
           attachments: signedAttachments,
         });
@@ -328,7 +367,7 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ ok: true, files: uploaded }, { status: 200 });
-  } catch (error) {
+  } catch (error: unknown) {
     if (uploadedPaths.length > 0) {
       try {
         await admin.storage.from(bucket).remove(uploadedPaths);

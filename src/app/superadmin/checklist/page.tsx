@@ -125,7 +125,7 @@ export default function SuperAdminChecklistPage() {
             note="Base pronta per hardening e arricchimento futuro con IP, user agent e policy più strette."
           />
           <Item
-            title="Emergency mode reale"
+            title="Modalità emergenza"
             status="partial"
             note="Base settings presente, enforcement profondo ancora da estendere."
           />
