@@ -5,6 +5,45 @@ import { isUuid } from "@/lib/server/validators";
 type Action = "approve" | "reject" | "block" | "revoke";
 type Duration = "24h" | "7d" | "6m" | "forever";
 
+type OrganizationRow = {
+  id: string;
+  name: string | null;
+  display_name: string | null;
+  ragione_sociale: string | null;
+  legal_name: string | null;
+};
+
+type ProfessionalRow = {
+  id: string;
+  display_name: string | null;
+  business_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+};
+
+type AnimalRow = {
+  id: string;
+  name: string | null;
+};
+
+type AccessRequestRow = {
+  id: string;
+  created_at: string;
+  animal_id: string;
+  owner_id: string;
+  org_id: string;
+  status: string;
+  requested_scope: unknown;
+};
+
+type AccessGrantLookupRow = {
+  id: string;
+};
+
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -49,13 +88,13 @@ async function tryResolveOrgNames(admin: ReturnType<typeof supabaseAdmin>, orgId
       .in("id", orgIds);
 
     if (!error) {
-      for (const row of data ?? []) {
+      for (const row of (data ?? []) as OrganizationRow[]) {
         orgNameById.set(
           row.id,
-          (row as any).display_name ??
-            (row as any).name ??
-            (row as any).ragione_sociale ??
-            (row as any).legal_name ??
+          row.display_name ??
+            row.name ??
+            row.ragione_sociale ??
+            row.legal_name ??
             row.id
         );
       }
@@ -71,13 +110,15 @@ async function tryResolveOrgNames(admin: ReturnType<typeof supabaseAdmin>, orgId
       .in("id", orgIds);
 
     if (!error) {
-      for (const row of data ?? []) {
+      for (const row of (data ?? []) as ProfessionalRow[]) {
+        const fullName = [row.first_name?.trim() ?? "", row.last_name?.trim() ?? ""]
+          .filter(Boolean)
+          .join(" ");
+
         const name =
-          (row as any).display_name ??
-          (row as any).business_name ??
-          [((row as any).first_name ?? "").trim(), ((row as any).last_name ?? "").trim()]
-            .filter(Boolean)
-            .join(" ") ??
+          row.display_name ??
+          row.business_name ??
+          fullName ??
           row.id;
 
         orgNameById.set(row.id, name || row.id);
@@ -138,10 +179,10 @@ export async function GET(req: Request) {
       );
     }
 
-    const rows = data ?? [];
+    const rows = (data ?? []) as AccessRequestRow[];
 
-    const animalIds = Array.from(new Set(rows.map((r: any) => r.animal_id).filter(Boolean)));
-    const orgIds = Array.from(new Set(rows.map((r: any) => r.org_id).filter(Boolean)));
+    const animalIds = Array.from(new Set(rows.map((r) => r.animal_id).filter(Boolean)));
+    const orgIds = Array.from(new Set(rows.map((r) => r.org_id).filter(Boolean)));
 
     const animalNameById = new Map<string, string>();
 
@@ -158,14 +199,14 @@ export async function GET(req: Request) {
         );
       }
 
-      for (const a of animals ?? []) {
+      for (const a of (animals ?? []) as AnimalRow[]) {
         animalNameById.set(a.id, a.name ?? a.id);
       }
     }
 
     const orgNameById = await tryResolveOrgNames(admin, orgIds);
 
-    const enriched = rows.map((r: any) => ({
+    const enriched = rows.map((r) => ({
       ...r,
       expires_at: null,
       animal_name: animalNameById.get(r.animal_id) ?? r.animal_id,
@@ -200,11 +241,11 @@ export async function POST(req: Request) {
 
     const body = await req.json().catch(() => null);
 
-    if (!body || typeof body !== "object") {
+    if (!isObjectRecord(body)) {
       return notFoundResponse();
     }
 
-    if (!body?.id || !body?.action) {
+    if (!body.id || !body.action) {
       return notFoundResponse();
     }
 
@@ -236,21 +277,23 @@ export async function POST(req: Request) {
       );
     }
 
-    if (!reqRow) {
+    const requestRow = reqRow as AccessRequestRow | null;
+
+    if (!requestRow) {
       return notFoundResponse();
     }
 
-    if (reqRow.owner_id !== user.id) {
+    if (requestRow.owner_id !== user.id) {
       return notFoundResponse();
     }
 
-    if (!reqRow.animal_id || !isUuid(String(reqRow.animal_id))) {
+    if (!requestRow.animal_id || !isUuid(String(requestRow.animal_id))) {
       return notFoundResponse();
     }
 
     if (action === "approve") {
       const validTo = computeValidTo(duration);
-      const requestedScope = normalizeRequestedScope(reqRow.requested_scope);
+      const requestedScope = normalizeRequestedScope(requestRow.requested_scope);
 
       if (requestedScope.length === 0) {
         return notFoundResponse();
@@ -259,9 +302,9 @@ export async function POST(req: Request) {
       const { data: existingGrant, error: existingGrantErr } = await admin
         .from("animal_access_grants")
         .select("id")
-        .eq("animal_id", reqRow.animal_id)
+        .eq("animal_id", requestRow.animal_id)
         .eq("grantee_type", "organization")
-        .eq("grantee_id", reqRow.org_id)
+        .eq("grantee_id", requestRow.org_id)
         .is("revoked_at", null)
         .maybeSingle();
 
@@ -271,6 +314,8 @@ export async function POST(req: Request) {
           { status: 500, headers: { "Cache-Control": "no-store" } }
         );
       }
+
+      const existingGrantRow = existingGrant as AccessGrantLookupRow | null;
 
       const grantPayload = {
         granted_by_user_id: user.id,
@@ -285,11 +330,11 @@ export async function POST(req: Request) {
         revoked_by_user_id: null,
       };
 
-      if (existingGrant?.id) {
+      if (existingGrantRow?.id) {
         const { error: updGrantErr } = await admin
           .from("animal_access_grants")
           .update(grantPayload)
-          .eq("id", existingGrant.id);
+          .eq("id", existingGrantRow.id);
 
         if (updGrantErr) {
           return NextResponse.json(
@@ -299,9 +344,9 @@ export async function POST(req: Request) {
         }
       } else {
         const { error: grantErr } = await admin.from("animal_access_grants").insert({
-          animal_id: reqRow.animal_id,
+          animal_id: requestRow.animal_id,
           grantee_type: "organization",
-          grantee_id: reqRow.org_id,
+          grantee_id: requestRow.org_id,
           ...grantPayload,
         });
 
@@ -390,9 +435,9 @@ export async function POST(req: Request) {
           revoked_by_user_id: user.id,
           status: "revoked",
         })
-        .eq("animal_id", reqRow.animal_id)
+        .eq("animal_id", requestRow.animal_id)
         .eq("grantee_type", "organization")
-        .eq("grantee_id", reqRow.org_id)
+        .eq("grantee_id", requestRow.org_id)
         .is("revoked_at", null);
 
       if (revErr) {

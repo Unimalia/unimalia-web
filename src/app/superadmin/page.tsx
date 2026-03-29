@@ -178,8 +178,8 @@ export default async function SuperAdminPage() {
             Dashboard superadmin
           </h1>
           <p className="mt-4 text-base leading-relaxed text-zinc-600">
-            Questa dashboard mostra numeri reali del sistema professionisti e ti dà un punto di
-            controllo rapido prima di entrare nella revisione dettagliata.
+            Questa dashboard mostra una panoramica rapida dei professionisti registrati e offre un
+            punto di controllo immediato prima di entrare nella revisione dettagliata.
           </p>
 
           {hasError ? (
@@ -194,37 +194,37 @@ export default async function SuperAdminPage() {
         <StatCard
           title="Professionisti totali"
           value={String(totalProfessionals ?? 0)}
-          description="Numero complessivo dei profili presenti in professionals."
+          description="Numero complessivo dei profili professionali registrati."
           href="/superadmin/professionisti"
         />
         <StatCard
           title="Approvati"
           value={String(approvedProfessionals ?? 0)}
-          description="Profili con approved = true."
+          description="Profili già approvati."
           href="/superadmin/professionisti?status=approved"
         />
         <StatCard
           title="Da verificare"
           value={String(reviewProfessionals ?? 0)}
-          description="Profili con approved = null."
+          description="Profili in attesa di revisione."
           href="/superadmin/professionisti?status=review"
         />
         <StatCard
           title="Rifiutati / non approvati"
           value={String(rejectedProfessionals ?? 0)}
-          description="Profili con approved = false."
+          description="Profili non approvati o rifiutati."
           href="/superadmin/professionisti?status=rejected"
         />
         <StatCard
           title="Veterinari"
           value={String(vetsCount ?? 0)}
-          description="Profili con is_vet = true."
+          description="Profili con ruolo veterinario."
           href="/superadmin/professionisti?vet=yes"
         />
         <StatCard
           title="Visibili pubblicamente"
           value={String(publicCount ?? 0)}
-          description="Profili con public_visible = true."
+          description="Profili attualmente visibili nell’area pubblica."
           href="/superadmin/professionisti"
         />
       </section>
@@ -257,7 +257,9 @@ export default async function SuperAdminPage() {
                         <td className="px-4 py-4">
                           <div className="text-sm font-semibold text-zinc-900">{getDisplayName(p)}</div>
                           <div className="mt-1 text-xs text-zinc-500">{p.email || p.id}</div>
-                          <div className="mt-1 text-xs text-zinc-500">Creato: {formatDateTime(p.created_at)}</div>
+                          <div className="mt-1 text-xs text-zinc-500">
+                            Creato il: {formatDateTime(p.created_at)}
+                          </div>
                         </td>
 
                         <td className="px-4 py-4 text-sm text-zinc-600">{p.category || "—"}</td>
@@ -301,7 +303,7 @@ export default async function SuperAdminPage() {
 
         <SectionCard
           title="Categorie più presenti"
-          description="Distribuzione rapida dei profili per category."
+          description="Distribuzione rapida dei profili per categoria."
         >
           {topCategories.length === 0 ? (
             <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-4 text-sm text-zinc-600">
@@ -365,11 +367,11 @@ export default async function SuperAdminPage() {
         >
           <div className="space-y-3 text-sm text-zinc-600">
             <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3">
-              La console gestisce già revisione professionisti, ruolo veterinario, visibilità pubblica
-              e sincronizzazione Auth.
+              La console gestisce già la revisione dei professionisti, il ruolo veterinario, la
+              visibilità pubblica e la sincronizzazione degli accessi.
             </div>
             <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3">
-              Il prossimo blocco sensato è aggiungere funzioni sistemiche come feature flag,
+              Il prossimo blocco sensato è aggiungere funzioni sistemiche come flag di sistema,
               impostazioni globali ed emergency mode.
             </div>
             <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3">

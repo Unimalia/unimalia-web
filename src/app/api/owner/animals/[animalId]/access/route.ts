@@ -9,6 +9,54 @@ type RouteContext = {
   params: Promise<{ animalId: string }>;
 };
 
+type AnimalRow = {
+  id: string;
+  owner_id: string | null;
+  name: string | null;
+};
+
+type AccessRequestRow = {
+  id: string;
+  created_at: string;
+  animal_id: string;
+  owner_id: string;
+  org_id: string;
+  status: string;
+  requested_scope: unknown;
+  expires_at: string | null;
+};
+
+type AccessGrantRow = {
+  id: string;
+  created_at: string;
+  animal_id: string;
+  grantee_type: string;
+  grantee_id: string;
+  status: string;
+  valid_from: string | null;
+  valid_to: string | null;
+  revoked_at: string | null;
+  scope_read: boolean | null;
+  scope_write: boolean | null;
+  scope_upload: boolean | null;
+};
+
+type OrganizationRow = {
+  id: string;
+  name: string | null;
+  display_name: string | null;
+  legal_name: string | null;
+  ragione_sociale: string | null;
+};
+
+type ProfessionalRow = {
+  id: string;
+  display_name: string | null;
+  business_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+};
+
 function notFoundResponse() {
   return NextResponse.json(
     { error: "Not found" },
@@ -51,15 +99,17 @@ export async function GET(_req: Request, ctx: RouteContext) {
       );
     }
 
-    if (!animal) {
+    const animalRow = animal as AnimalRow | null;
+
+    if (!animalRow) {
       return notFoundResponse();
     }
 
-    if (!animal.owner_id) {
+    if (!animalRow.owner_id) {
       return notFoundResponse();
     }
 
-    if (animal.owner_id !== user.id) {
+    if (animalRow.owner_id !== user.id) {
       return notFoundResponse();
     }
 
@@ -89,16 +139,18 @@ export async function GET(_req: Request, ctx: RouteContext) {
       );
     }
 
-    const requestRows = requests ?? [];
-    const grantRows = (grants ?? []).filter((g: any) => g.grantee_type === "organization");
+    const requestRows = (requests ?? []) as AccessRequestRow[];
+    const grantRows = ((grants ?? []) as AccessGrantRow[]).filter(
+      (g) => g.grantee_type === "organization"
+    );
 
     const orgIdsFromRequests = requestRows
-      .map((r: any) => r.org_id)
-      .filter((v: unknown): v is string => typeof v === "string" && v.length > 0);
+      .map((r) => r.org_id)
+      .filter((v): v is string => typeof v === "string" && v.length > 0);
 
     const orgIdsFromGrants = grantRows
-      .map((g: any) => g.grantee_id)
-      .filter((v: unknown): v is string => typeof v === "string" && v.length > 0);
+      .map((g) => g.grantee_id)
+      .filter((v): v is string => typeof v === "string" && v.length > 0);
 
     const orgIds = Array.from(new Set([...orgIdsFromRequests, ...orgIdsFromGrants]));
 
@@ -117,13 +169,13 @@ export async function GET(_req: Request, ctx: RouteContext) {
         );
       }
 
-      for (const o of orgs ?? []) {
+      for (const o of (orgs ?? []) as OrganizationRow[]) {
         orgNameById.set(
           o.id,
-          (o as any).display_name ??
-            (o as any).name ??
-            (o as any).legal_name ??
-            (o as any).ragione_sociale ??
+          o.display_name ??
+            o.name ??
+            o.legal_name ??
+            o.ragione_sociale ??
             o.id
         );
       }
@@ -143,13 +195,15 @@ export async function GET(_req: Request, ctx: RouteContext) {
           );
         }
 
-        for (const p of professionals ?? []) {
+        for (const p of (professionals ?? []) as ProfessionalRow[]) {
+          const fullName = [p.first_name?.trim() ?? "", p.last_name?.trim() ?? ""]
+            .filter(Boolean)
+            .join(" ");
+
           const label =
-            (p as any).display_name ??
-            (p as any).business_name ??
-            [((p as any).first_name ?? "").trim(), ((p as any).last_name ?? "").trim()]
-              .filter(Boolean)
-              .join(" ") ??
+            p.display_name ??
+            p.business_name ??
+            fullName ??
             p.id;
 
           orgNameById.set(p.id, label || p.id);
@@ -157,15 +211,15 @@ export async function GET(_req: Request, ctx: RouteContext) {
       }
     }
 
-    const enrichedRequests = requestRows.map((r: any) => ({
+    const enrichedRequests = requestRows.map((r) => ({
       ...r,
-      animal_name: animal.name ?? animal.id,
+      animal_name: animalRow.name ?? animalRow.id,
       org_name: orgNameById.get(r.org_id) ?? r.org_id,
     }));
 
-    const enrichedGrants = grantRows.map((g: any) => ({
+    const enrichedGrants = grantRows.map((g) => ({
       ...g,
-      animal_name: animal.name ?? animal.id,
+      animal_name: animalRow.name ?? animalRow.id,
       org_name: orgNameById.get(g.grantee_id) ?? g.grantee_id,
     }));
 

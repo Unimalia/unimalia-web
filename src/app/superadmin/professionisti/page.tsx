@@ -241,13 +241,12 @@ export default async function SuperAdminProfessionistiPage({
             Professionisti registrati
           </h1>
           <p className="mt-4 text-base leading-relaxed text-zinc-600">
-            Dalla lista puoi filtrare rapidamente i profili e aprire il dettaglio completo per revisione,
-            visibilità pubblica, note e verifica.
+            Filtra rapidamente i profili e accedi al dettaglio completo per revisione, visibilità e verifica.
           </p>
 
           {error ? (
             <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-              Errore caricamento professionals: {error.message}
+              Errore nel caricamento dei dati: {error.message}
             </div>
           ) : null}
         </div>
@@ -257,22 +256,22 @@ export default async function SuperAdminProfessionistiPage({
         <StatCard
           title="Totale professionisti"
           value={String(professionals.length)}
-          description="Numero complessivo profili presenti in professionals."
+          description="Numero complessivo dei profili registrati."
         />
         <StatCard
           title="Approvati"
           value={String(approvedCount)}
-          description="Profili con approved = true."
+          description="Profili già approvati."
         />
         <StatCard
           title="Da verificare"
           value={String(reviewCount)}
-          description="Profili con approved = false e verification_status = pending."
+          description="Profili in attesa di revisione."
         />
         <StatCard
           title="Veterinari"
           value={String(vetCount)}
-          description="Profili con is_vet = true."
+          description="Profili con ruolo veterinario."
         />
       </section>
 
@@ -283,7 +282,7 @@ export default async function SuperAdminProfessionistiPage({
               type="text"
               name="q"
               defaultValue={resolved?.q || ""}
-              placeholder="Cerca per nome, email, città, provincia, categoria"
+              placeholder="Cerca per nome, email, città, provincia o categoria"
               className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 outline-none placeholder:text-zinc-400 focus:border-zinc-400"
             />
 
@@ -295,7 +294,7 @@ export default async function SuperAdminProfessionistiPage({
               <option value="all">Tutti gli stati</option>
               <option value="approved">Approvati</option>
               <option value="review">Da verificare</option>
-              <option value="rejected">Rifiutati / non approvati</option>
+              <option value="rejected">Rifiutati</option>
             </select>
 
             <select
@@ -321,38 +320,23 @@ export default async function SuperAdminProfessionistiPage({
               Reset
             </FilterLink>
 
-            <FilterLink
-              href={buildHref({ q: resolved?.q, status: "review", vet })}
-              active={status === "review"}
-            >
+            <FilterLink href={buildHref({ q: resolved?.q, status: "review", vet })} active={status === "review"}>
               Solo da verificare
             </FilterLink>
 
-            <FilterLink
-              href={buildHref({ q: resolved?.q, status: "approved", vet })}
-              active={status === "approved"}
-            >
+            <FilterLink href={buildHref({ q: resolved?.q, status: "approved", vet })} active={status === "approved"}>
               Solo approvati
             </FilterLink>
 
-            <FilterLink
-              href={buildHref({ q: resolved?.q, status: "rejected", vet })}
-              active={status === "rejected"}
-            >
+            <FilterLink href={buildHref({ q: resolved?.q, status: "rejected", vet })} active={status === "rejected"}>
               Solo rifiutati
             </FilterLink>
 
-            <FilterLink
-              href={buildHref({ q: resolved?.q, status, vet: "yes" })}
-              active={vet === "yes"}
-            >
+            <FilterLink href={buildHref({ q: resolved?.q, status, vet: "yes" })} active={vet === "yes"}>
               Solo veterinari
             </FilterLink>
 
-            <FilterLink
-              href={buildHref({ q: resolved?.q, status, vet: "no" })}
-              active={vet === "no"}
-            >
+            <FilterLink href={buildHref({ q: resolved?.q, status, vet: "no" })} active={vet === "no"}>
               Solo non veterinari
             </FilterLink>
           </div>
@@ -413,7 +397,7 @@ export default async function SuperAdminProfessionistiPage({
                         ) : p.approved === false && p.verification_status === "pending" ? (
                           <Badge tone="warning">Da verificare</Badge>
                         ) : (
-                          <Badge tone="danger">Rifiutato / non approvato</Badge>
+                          <Badge tone="danger">Rifiutato</Badge>
                         )}
                       </td>
 
@@ -446,7 +430,7 @@ export default async function SuperAdminProfessionistiPage({
                             action="/api/superadmin/professionals/sync-auth"
                             professionalId={p.id}
                             redirectTo={redirectTo}
-                            label="Sync Auth"
+                            label="Sincronizza accesso"
                           />
                         </div>
                       </td>

@@ -187,7 +187,7 @@ export default async function SuperAdminProfessionalDetailPage({
                 <Badge tone="warning">Da verificare</Badge>
               ) : null}
               {p.approved === false && p.verification_status !== "pending" ? (
-                <Badge tone="danger">Rifiutato / non approvato</Badge>
+                <Badge tone="danger">Rifiutato</Badge>
               ) : null}
               {p.is_vet === true ? <Badge tone="info">Veterinario</Badge> : <Badge>Non veterinario</Badge>}
               {p.public_visible === true ? <Badge tone="success">Pubblico</Badge> : <Badge>Non pubblico</Badge>}
@@ -198,13 +198,13 @@ export default async function SuperAdminProfessionalDetailPage({
             </h1>
 
             <p className="mt-3 text-sm leading-relaxed text-zinc-600">
-              Da qui puoi gestire revisione, stato veterinario, visibilità pubblica e dati di verifica
+              Da qui puoi gestire revisione, ruolo veterinario, visibilità pubblica e dati di verifica
               del professionista selezionato.
             </p>
 
             <div className="mt-4 space-y-1 text-sm text-zinc-500">
               <div>ID profilo: {p.id}</div>
-              <div>Owner/Auth user: {p.owner_id || "—"}</div>
+              <div>Utente proprietario/Auth: {p.owner_id || "—"}</div>
               <div>Creato il: {p.created_at ? new Date(p.created_at).toLocaleString("it-IT") : "—"}</div>
             </div>
           </div>
@@ -242,7 +242,7 @@ export default async function SuperAdminProfessionalDetailPage({
                 action="/api/superadmin/professionals/set-vet"
                 professionalId={p.id}
                 redirectTo={redirectTo}
-                label="Imposta vet"
+                label="Imposta veterinario"
                 tone="info"
               />
             ) : (
@@ -250,7 +250,7 @@ export default async function SuperAdminProfessionalDetailPage({
                 action="/api/superadmin/professionals/unset-vet"
                 professionalId={p.id}
                 redirectTo={redirectTo}
-                label="Rimuovi vet"
+                label="Rimuovi veterinario"
               />
             )}
 
@@ -275,7 +275,7 @@ export default async function SuperAdminProfessionalDetailPage({
               action="/api/superadmin/professionals/sync-auth"
               professionalId={p.id}
               redirectTo={redirectTo}
-              label="Sync Auth"
+              label="Sincronizza accesso"
             />
           </div>
         </div>
@@ -284,15 +284,17 @@ export default async function SuperAdminProfessionalDetailPage({
       <Section title="Stato operativo">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <div className="rounded-2xl border border-zinc-200 p-4">
-            <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Approved</div>
+            <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Approvazione</div>
             <div className="mt-2 text-sm font-semibold text-zinc-900">
-              {p.approved === true ? "true" : p.approved === false ? "false" : "null"}
+              {p.approved === true ? "Approvato" : p.approved === false ? "Non approvato" : "Non definito"}
             </div>
           </div>
 
           <div className="rounded-2xl border border-zinc-200 p-4">
-            <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Veterinario</div>
-            <div className="mt-2 text-sm font-semibold text-zinc-900">{p.is_vet === true ? "true" : "false"}</div>
+            <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Ruolo veterinario</div>
+            <div className="mt-2 text-sm font-semibold text-zinc-900">
+              {p.is_vet === true ? "Sì" : "No"}
+            </div>
           </div>
 
           <div className="rounded-2xl border border-zinc-200 p-4">
@@ -303,7 +305,7 @@ export default async function SuperAdminProfessionalDetailPage({
           </div>
 
           <div className="rounded-2xl border border-zinc-200 p-4">
-            <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Verification status</div>
+            <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Stato verifica</div>
             <div className="mt-2 text-sm font-semibold text-zinc-900">{p.verification_status || "—"}</div>
           </div>
         </div>
@@ -316,7 +318,7 @@ export default async function SuperAdminProfessionalDetailPage({
 
           <div className="grid gap-4 lg:grid-cols-2">
             <div>
-              <label className="mb-2 block text-sm font-semibold text-zinc-800">Verification status</label>
+              <label className="mb-2 block text-sm font-semibold text-zinc-800">Stato verifica</label>
               <input
                 type="text"
                 name="verification_status"
@@ -327,7 +329,7 @@ export default async function SuperAdminProfessionalDetailPage({
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-semibold text-zinc-800">Verification level</label>
+              <label className="mb-2 block text-sm font-semibold text-zinc-800">Livello verifica</label>
               <input
                 type="text"
                 name="verification_level"
@@ -359,15 +361,15 @@ export default async function SuperAdminProfessionalDetailPage({
           </div>
 
           <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600">
-            <div>Verified at: {p.verified_at ? new Date(p.verified_at).toLocaleString("it-IT") : "—"}</div>
-            <div className="mt-1">Verified by: {p.verified_by_user_id || "—"}</div>
+            <div>Verificato il: {p.verified_at ? new Date(p.verified_at).toLocaleString("it-IT") : "—"}</div>
+            <div className="mt-1">Verificato da: {p.verified_by_user_id || "—"}</div>
           </div>
         </form>
       </Section>
 
       <Section title="Dati professionali">
         <div className="grid gap-x-8 md:grid-cols-2">
-          <Row label="Display name" value={p.display_name} />
+          <Row label="Nome visualizzato" value={p.display_name} />
           <Row label="Nome" value={p.first_name} />
           <Row label="Cognome" value={p.last_name} />
           <Row label="Categoria" value={p.category} />
@@ -378,22 +380,22 @@ export default async function SuperAdminProfessionalDetailPage({
           <Row label="Città" value={p.city} />
           <Row label="Provincia" value={p.province} />
           <Row label="Indirizzo" value={p.address} />
-          <Row label="Business / persona giuridica" value={p.is_business === true ? "Sì" : "No"} />
+          <Row label="Persona giuridica / attività" value={p.is_business === true ? "Sì" : "No"} />
         </div>
       </Section>
 
       <Section title="Dati fiscali e fatturazione">
         <div className="grid gap-x-8 md:grid-cols-2">
-          <Row label="Business name" value={p.business_name} />
-          <Row label="Legal name" value={p.legal_name} />
+          <Row label="Ragione sociale" value={p.business_name} />
+          <Row label="Denominazione legale" value={p.legal_name} />
           <Row label="Partita IVA" value={p.vat_number} />
           <Row label="Codice fiscale" value={p.tax_code} />
           <Row label="PEC" value={p.pec} />
           <Row label="Codice SDI" value={p.sdi_code} />
-          <Row label="Billing address" value={p.billing_address} />
-          <Row label="Billing city" value={p.billing_city} />
-          <Row label="Billing province" value={p.billing_province} />
-          <Row label="Billing CAP" value={p.billing_cap} />
+          <Row label="Indirizzo di fatturazione" value={p.billing_address} />
+          <Row label="Città di fatturazione" value={p.billing_city} />
+          <Row label="Provincia di fatturazione" value={p.billing_province} />
+          <Row label="CAP di fatturazione" value={p.billing_cap} />
         </div>
       </Section>
 
@@ -410,9 +412,9 @@ export default async function SuperAdminProfessionalDetailPage({
 
       <Section title="Abbonamento">
         <div className="grid gap-x-8 md:grid-cols-2">
-          <Row label="Subscription status" value={p.subscription_status} />
+          <Row label="Stato abbonamento" value={p.subscription_status} />
           <Row
-            label="Subscription expires at"
+            label="Scadenza abbonamento"
             value={p.subscription_expires_at ? new Date(p.subscription_expires_at).toLocaleString("it-IT") : "—"}
           />
         </div>

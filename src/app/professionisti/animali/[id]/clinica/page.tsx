@@ -19,6 +19,34 @@ type ClinicEventType =
   | "follow_up"
   | "imaging";
 
+type ImagingOrthancMeta = {
+  studyInstanceUid?: string | null;
+};
+
+type ImagingFileMeta = {
+  id?: string | null;
+  path?: string | null;
+  name?: string | null;
+  mime?: string | null;
+  size?: number | null;
+  orthanc?: ImagingOrthancMeta | null;
+};
+
+type ClinicEventMeta = {
+  weight_kg?: number | string | null;
+  weightKg?: number | string | null;
+  therapy_start_date?: string | null;
+  therapy_end_date?: string | null;
+  imaging?: {
+    modality?: string | null;
+    body_part?: string | null;
+    files?: ImagingFileMeta[] | null;
+  } | null;
+  vaccine_types?: string[] | null;
+  batch_number?: string | null;
+  next_due_date?: string | null;
+} & Record<string, unknown>;
+
 type ClinicEventRow = {
   id: string;
   animal_id: string;
@@ -35,7 +63,7 @@ type ClinicEventRow = {
   verified_by_member_id: string | null;
   verified_by_label: string | null;
   created_at?: string | null;
-  meta?: any;
+  meta?: ClinicEventMeta | null;
 };
 
 type VetOption = {
@@ -72,6 +100,20 @@ type FilterKey =
   | "chronic_condition"
   | "follow_up"
   | "imaging";
+
+type UploadDraft = {
+  uploadId: string;
+  fileName: string;
+  modality?: string | null;
+  bodyPart?: string | null;
+  percent?: number | null;
+  updatedAt?: string | null;
+};
+
+type DetailFile = {
+  id: string;
+  filename: string;
+};
 
 const FILTERS: Array<{ key: FilterKey; label: string }> = [
   { key: "all", label: "Tutti" },
@@ -257,29 +299,41 @@ function normalizeChip(raw?: string | null) {
   return String(raw || "").replace(/\s+/g, "").trim();
 }
 
-function extractWeightKg(e: any): number | null {
-  if (!e) return null;
+function toRecord(value: unknown): Record<string, unknown> | null {
+  return typeof value === "object" && value !== null ? (value as Record<string, unknown>) : null;
+}
+
+function readNested(source: unknown, key: string): unknown {
+  const record = toRecord(source);
+  if (!record) return undefined;
+  return record[key];
+}
+
+function extractWeightKg(e: unknown): number | null {
   const direct =
-    e.weight_kg ??
-    e.weightKg ??
-    e?.meta?.weight_kg ??
-    e?.meta?.weightKg ??
-    e?.data?.weightKg ??
-    e?.data?.weight_kg ??
-    e?.payload?.weightKg ??
-    e?.payload?.weight_kg;
+    readNested(e, "weight_kg") ??
+    readNested(e, "weightKg") ??
+    readNested(readNested(e, "meta"), "weight_kg") ??
+    readNested(readNested(e, "meta"), "weightKg") ??
+    readNested(readNested(e, "data"), "weightKg") ??
+    readNested(readNested(e, "data"), "weight_kg") ??
+    readNested(readNested(e, "payload"), "weightKg") ??
+    readNested(readNested(e, "payload"), "weight_kg");
+
   if (direct === null || direct === undefined) return null;
   const n = typeof direct === "number" ? direct : Number(String(direct).replace(",", "."));
   if (!Number.isFinite(n) || n <= 0) return null;
   return Math.round(n * 10) / 10;
 }
 
-function extractTherapyStartDate(e: any): string | null {
-  return e?.meta?.therapy_start_date || null;
+function extractTherapyStartDate(e: unknown): string | null {
+  const value = readNested(readNested(e, "meta"), "therapy_start_date");
+  return typeof value === "string" && value.trim() ? value : null;
 }
 
-function extractTherapyEndDate(e: any): string | null {
-  return e?.meta?.therapy_end_date || null;
+function extractTherapyEndDate(e: unknown): string | null {
+  const value = readNested(readNested(e, "meta"), "therapy_end_date");
+  return typeof value === "string" && value.trim() ? value : null;
 }
 
 function formatWeightLabel(kg: number) {
@@ -347,7 +401,7 @@ export default function ClinicaPage() {
   const [newVetSignature, setNewVetSignature] = useState<string>("");
   const [newImagingModality, setNewImagingModality] = useState<string>("RX");
   const [newImagingBodyPart, setNewImagingBodyPart] = useState<string>("");
-  const [uploadDrafts, setUploadDrafts] = useState<any[]>([]);
+  const [uploadDrafts, setUploadDrafts] = useState<UploadDraft[]>([]);
   const [resumeHint, setResumeHint] = useState<string | null>(null);
   const [vetOptions] = useState<VetOption[]>([]);
   const [selectedVetId] = useState<string>("");
@@ -365,16 +419,13 @@ export default function ClinicaPage() {
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [uploadStatus, setUploadStatus] = useState<string>("");
 
-  const [modality, setModality] = useState<string | null>(null);
-  const [bodyPart, setBodyPart] = useState<string | null>(null);
-
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
   const [verifyErr, setVerifyErr] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkVerifying, setBulkVerifying] = useState(false);
 
   const [detailEvent, setDetailEvent] = useState<ClinicEventRow | null>(null);
-  const [detailFiles, setDetailFiles] = useState<any[]>([]);
+  const [detailFiles, setDetailFiles] = useState<DetailFile[]>([]);
   const [detailFilesLoading, setDetailFilesLoading] = useState(false);
   const [filesCountByEventId, setFilesCountByEventId] = useState<Record<string, number>>({});
   const [shareLoadingByFileId, setShareLoadingByFileId] = useState<Record<string, boolean>>({});
@@ -529,7 +580,7 @@ export default function ClinicaPage() {
       );
       if (!res.ok) return;
       const json = await res.json().catch(() => ({}));
-      setUploadDrafts(Array.isArray(json?.drafts) ? json.drafts : []);
+      setUploadDrafts(Array.isArray(json?.drafts) ? (json.drafts as UploadDraft[]) : []);
     } catch {
       // no-op
     }
@@ -562,7 +613,7 @@ export default function ClinicaPage() {
     }
   }
 
-  function buildOrthancViewerUrl(file: any) {
+  function buildOrthancViewerUrl(file: ImagingFileMeta) {
     const orthanc = file?.orthanc;
     if (!orthanc) return null;
 
@@ -572,7 +623,7 @@ export default function ClinicaPage() {
     return `/api/clinic/imaging/view?studyInstanceUid=${encodeURIComponent(studyInstanceUid)}`;
   }
 
-  async function openImagingViewerOrFile(eventId: string, file: any) {
+  async function openImagingViewerOrFile(eventId: string, file: ImagingFileMeta) {
     const viewerUrl = buildOrthancViewerUrl(file);
 
     if (viewerUrl) {
@@ -580,10 +631,10 @@ export default function ClinicaPage() {
       return;
     }
 
-    await openImagingFile(eventId, file.path);
+    await openImagingFile(eventId, String(file.path || ""));
   }
 
-  async function createImagingShareLink(eventId: string, animalId: string, file: any) {
+  async function createImagingShareLink(eventId: string, animalId: string, file: ImagingFileMeta) {
     const fileId = String(file?.id || "").trim();
     if (!fileId) {
       alert("File imaging non valido.");
@@ -635,7 +686,7 @@ export default function ClinicaPage() {
     }
   }
 
-  async function copyImagingShareLink(file: any) {
+  async function copyImagingShareLink(file: ImagingFileMeta) {
     const fileId = String(file?.id || "").trim();
     const shareUrl = String(shareLinkByFileId[fileId] || "").trim();
 
@@ -668,36 +719,6 @@ export default function ClinicaPage() {
     } catch {
       return iso;
     }
-  }
-
-  async function uploadFileWithProgress(file: File, uploadUrl: string) {
-    return await new Promise<void>((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-
-      xhr.open("PUT", uploadUrl, true);
-      xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
-
-      xhr.upload.onprogress = (event) => {
-        if (event.lengthComputable) {
-          const percent = Math.round((event.loaded / event.total) * 100);
-          setUploadProgress(percent);
-        }
-      };
-
-      xhr.onload = () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          setUploadProgress(100);
-          resolve();
-        } else {
-          reject(new Error(`Upload failed with status ${xhr.status}`));
-        }
-      };
-
-      xhr.onerror = () => reject(new Error("Network error during upload"));
-      xhr.onabort = () => reject(new Error("Upload aborted"));
-
-      xhr.send(file);
-    });
   }
 
   useEffect(() => {
@@ -737,7 +758,7 @@ export default function ClinicaPage() {
     setDetailFiles([]);
     setDetailFilesLoading(true);
 
-    (async () => {
+    void (async () => {
       try {
         const res = await fetch(
           `/api/clinic-events/files/list?eventId=${encodeURIComponent(eventId)}`,
@@ -749,7 +770,7 @@ export default function ClinicaPage() {
           }
         );
         const j = await res.json().catch(() => ({}));
-        setDetailFiles((j?.files as any[]) ?? []);
+        setDetailFiles((j?.files as DetailFile[]) ?? []);
         setFilesCountByEventId((prev) => ({ ...prev, [eventId]: j?.files?.length ?? 0 }));
       } catch {
         setDetailFiles([]);
@@ -865,10 +886,8 @@ export default function ClinicaPage() {
 
         setUploadPhase("Caricamento file su storage…");
 
-        let uploadedKey: string | null = null;
-
         try {
-          const result = await multipartUpload({
+          await multipartUpload({
             file,
             animalId: String(id),
             modality: newImagingModality,
@@ -876,8 +895,6 @@ export default function ClinicaPage() {
             onProgress: (p) => setUploadProgress(p),
             onStatus: (msg) => setUploadStatus(msg),
           });
-
-          uploadedKey = result.key;
         } catch (err) {
           console.error("Multipart upload error", err);
           setSaveErr("Upload imaging fallito.");
@@ -2419,7 +2436,7 @@ export default function ClinicaPage() {
                                 </div>
                                 <div>
                                   <span className="font-semibold">Viewer DICOM:</span>{" "}
-                                  {detailEvent.meta?.imaging?.files?.some((f: any) => !!f?.orthanc)
+                                  {detailEvent.meta?.imaging?.files?.some((f) => !!f?.orthanc)
                                     ? "Disponibile"
                                     : "Non disponibile"}
                                 </div>
@@ -2436,7 +2453,7 @@ export default function ClinicaPage() {
                               {Array.isArray(detailEvent.meta?.imaging?.files) &&
                               detailEvent.meta.imaging.files.length > 0 ? (
                                 <div className="mt-4 space-y-3">
-                                  {detailEvent.meta.imaging.files.map((file: any) => {
+                                  {detailEvent.meta.imaging.files.map((file) => {
                                     const isImage =
                                       file.mime?.startsWith("image/") ||
                                       file.name?.toLowerCase().endsWith(".jpg") ||
@@ -2671,7 +2688,7 @@ export default function ClinicaPage() {
                                       }
                                     );
                                     const j = await res.json().catch(() => ({}));
-                                    const refreshedFiles = (j?.files as any[]) ?? [];
+                                    const refreshedFiles = (j?.files as DetailFile[]) ?? [];
                                     setDetailFiles(refreshedFiles);
                                     setFilesCountByEventId((prev) => ({
                                       ...prev,
