@@ -166,7 +166,7 @@ export async function POST(req: NextRequest) {
           animal_id: animalId,
           email,
           claim_token: token,
-          created_by: user.id,
+          created_by_user_id: user.id,
         })
         .select("id")
         .single();

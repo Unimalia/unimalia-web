@@ -54,7 +54,7 @@ export async function POST(req: Request) {
       approved: true,
       verification_status: "verified",
       verified_at: new Date().toISOString(),
-      verified_by: user.id,
+      verified_by_user_id: user.id,
       rejection_reason: null,
     })
     .eq("id", professionalId);

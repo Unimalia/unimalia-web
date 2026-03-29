@@ -49,7 +49,7 @@ export async function POST(req: Request) {
       verification_level,
       rejection_reason,
       verified_at: new Date().toISOString(),
-      verified_by: user.id,
+      verified_by_user_id: user.id,
     })
     .eq("id", professionalId);
 
