@@ -3,6 +3,15 @@ import { createClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getBearerToken } from "@/lib/server/bearer";
 
+type MarkPartBody = {
+  uploadId?: string;
+  partNumber?: number;
+};
+
+type UploadSessionRow = {
+  uploaded_parts: number[] | null;
+};
+
 export async function POST(req: Request) {
   try {
     const token = getBearerToken(req);
@@ -28,7 +37,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { uploadId, partNumber } = await req.json();
+    const { uploadId, partNumber } = (await req.json()) as MarkPartBody;
 
     if (!uploadId || !partNumber) {
       return NextResponse.json({ error: "Missing params" }, { status: 400 });
@@ -38,7 +47,7 @@ export async function POST(req: Request) {
       .from("clinic_imaging_upload_sessions")
       .select("uploaded_parts")
       .eq("upload_id", uploadId)
-      .single();
+      .single<UploadSessionRow>();
 
     if (!session) {
       return NextResponse.json({ error: "Session not found" }, { status: 404 });
@@ -64,11 +73,11 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ ok: true, uploadedParts: updated });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("MARK PART ERROR:", err);
 
     return NextResponse.json(
-      { error: err?.message || "Error mark-part" },
+      { error: err instanceof Error ? err.message : "Error mark-part" },
       { status: 500 }
     );
   }

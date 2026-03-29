@@ -12,7 +12,38 @@ import { requireOwnerOrGrant } from "@/lib/server/requireOwnerOrGrant";
 import { writeAudit } from "@/lib/server/audit";
 import { getBearerToken } from "@/lib/server/bearer";
 
-async function resolveAuthenticatedUser(req: Request) {
+type AuthenticatedUserResult = {
+  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>;
+  user: {
+    id: string;
+    email?: string | null;
+  };
+};
+
+type OrthancMainDicomTags = {
+  StudyInstanceUID?: string | null;
+  SeriesInstanceUID?: string | null;
+  SOPInstanceUID?: string | null;
+};
+
+type OrthancInstanceResource = {
+  ID?: string;
+  ParentStudy?: string;
+  ParentSeries?: string;
+  ParentPatient?: string;
+  Path?: string | null;
+  MainDicomTags?: OrthancMainDicomTags | null;
+};
+
+type OrthancStudyResource = {
+  MainDicomTags?: OrthancMainDicomTags | null;
+};
+
+type OrthancSeriesResource = {
+  MainDicomTags?: OrthancMainDicomTags | null;
+};
+
+async function resolveAuthenticatedUser(req: Request): Promise<AuthenticatedUserResult | null> {
   const token = getBearerToken(req);
 
   if (token) {
@@ -31,7 +62,7 @@ async function resolveAuthenticatedUser(req: Request) {
 
     if (!bearerUserResp.error && bearerUserResp.data?.user) {
       return {
-        supabase: bearerSupabase,
+        supabase: bearerSupabase as Awaited<ReturnType<typeof createServerSupabaseClient>>,
         user: bearerUserResp.data.user,
       };
     }
@@ -124,7 +155,7 @@ async function fetchOrthancResource(
   basicAuth: string,
   resource: "studies" | "series" | "instances",
   id: string
-) {
+): Promise<OrthancInstanceResource | OrthancStudyResource | OrthancSeriesResource> {
   const resp = await fetch(`${baseUrl}/${resource}/${id}`, {
     method: "GET",
     headers: {
@@ -134,7 +165,11 @@ async function fetchOrthancResource(
     cache: "no-store",
   });
 
-  const json = await resp.json().catch(() => null);
+  const json = (await resp.json().catch(() => null)) as
+    | OrthancInstanceResource
+    | OrthancStudyResource
+    | OrthancSeriesResource
+    | null;
 
   if (!resp.ok || !json) {
     throw new Error(`Recupero metadata Orthanc fallito su ${resource}/${id} (${resp.status})`);
@@ -181,7 +216,12 @@ async function uploadDicomToOrthancFromR2(params: {
     cache: "no-store",
   });
 
-  const uploadJson = await uploadResp.json().catch(() => null);
+  const uploadJson = (await uploadResp.json().catch(() => null)) as {
+    ID?: string;
+    ParentStudy?: string;
+    ParentSeries?: string;
+    ParentPatient?: string;
+  } | null;
 
   if (
     !uploadResp.ok ||
@@ -200,9 +240,24 @@ async function uploadDicomToOrthancFromR2(params: {
   const seriesId = String(uploadJson.ParentSeries);
   const patientId = String(uploadJson.ParentPatient);
 
-  const instanceJson = await fetchOrthancResource(baseUrl, basicAuth, "instances", instanceId);
-  const studyJson = await fetchOrthancResource(baseUrl, basicAuth, "studies", studyId);
-  const seriesJson = await fetchOrthancResource(baseUrl, basicAuth, "series", seriesId);
+  const instanceJson = (await fetchOrthancResource(
+    baseUrl,
+    basicAuth,
+    "instances",
+    instanceId
+  )) as OrthancInstanceResource;
+  const studyJson = (await fetchOrthancResource(
+    baseUrl,
+    basicAuth,
+    "studies",
+    studyId
+  )) as OrthancStudyResource;
+  const seriesJson = (await fetchOrthancResource(
+    baseUrl,
+    basicAuth,
+    "series",
+    seriesId
+  )) as OrthancSeriesResource;
 
   const instanceMainTags = instanceJson?.MainDicomTags ?? {};
   const studyMainTags = studyJson?.MainDicomTags ?? {};
@@ -549,7 +604,7 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ error: "Mode non valido" }, { status: 400 });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("UPLOAD IMAGING ERROR:", err);
 
     try {
@@ -580,7 +635,7 @@ export async function POST(req: Request) {
     return NextResponse.json(
       {
         error: "Errore upload imaging",
-        details: err?.message ?? "Unknown error",
+        details: err instanceof Error ? err.message : "Unknown error",
       },
       { status: 500 }
     );

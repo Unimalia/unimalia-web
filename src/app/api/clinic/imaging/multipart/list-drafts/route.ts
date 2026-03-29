@@ -3,6 +3,45 @@ import { createClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getBearerToken } from "@/lib/server/bearer";
 
+type UploadedPartValue = number | string | { PartNumber?: number | string } | null;
+
+type ImagingUploadSessionRow = {
+  id: string;
+  upload_id: string | null;
+  file_name: string | null;
+  file_size: number | string | null;
+  part_size: number | string | null;
+  modality: string | null;
+  body_part: string | null;
+  status: string | null;
+  updated_at: string | null;
+  uploaded_parts: UploadedPartValue[] | null;
+};
+
+function normalizePartNumber(value: UploadedPartValue): number | null {
+  if (typeof value === "number") {
+    return Number.isInteger(value) && value > 0 ? value : null;
+  }
+
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+  }
+
+  if (value && typeof value === "object") {
+    const partNumber = value.PartNumber;
+    if (typeof partNumber === "number") {
+      return Number.isInteger(partNumber) && partNumber > 0 ? partNumber : null;
+    }
+    if (typeof partNumber === "string") {
+      const parsed = Number(partNumber);
+      return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+    }
+  }
+
+  return null;
+}
+
 export async function GET(req: Request) {
   try {
     const token = getBearerToken(req);
@@ -47,18 +86,19 @@ export async function GET(req: Request) {
       .eq("created_by_user_id", user.id)
       .eq("animal_id", animalId)
       .in("status", ["initiated", "uploading"])
-      .order("updated_at", { ascending: false });
+      .order("updated_at", { ascending: false })
+      .returns<ImagingUploadSessionRow[]>();
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    const drafts = (data || []).map((row: any) => {
+    const drafts = (data || []).map((row) => {
       const uploadedPartNumbers = Array.isArray(row.uploaded_parts)
         ? row.uploaded_parts
-            .map((n: any) => Number(n))
-            .filter((n: number) => Number.isInteger(n) && n > 0)
-            .sort((a: number, b: number) => a - b)
+            .map(normalizePartNumber)
+            .filter((n): n is number => n !== null)
+            .sort((a, b) => a - b)
         : [];
 
       const fileSize = Number(row.file_size || 0);
@@ -92,12 +132,12 @@ export async function GET(req: Request) {
       ok: true,
       drafts,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("IMAGING MULTIPART LIST-DRAFTS ERROR:", err);
 
     return NextResponse.json(
       {
-        error: err?.message || "List drafts error",
+        error: err instanceof Error ? err.message : "List drafts error",
       },
       { status: 500 }
     );

@@ -9,7 +9,35 @@ import {
 import { randomUUID } from "crypto";
 import { getBearerToken } from "@/lib/server/bearer";
 
-async function uploadToOrthanc(buffer: Buffer) {
+type OrthancUploadResponse = {
+  ID?: string;
+  ParentStudy?: string;
+  ParentSeries?: string;
+  ParentPatient?: string;
+};
+
+type UploadedPartRow = {
+  PartNumber: number;
+};
+
+type ImagingUploadSessionRow = {
+  id: string;
+  storage_key: string;
+  uploaded_parts: UploadedPartRow[] | null;
+  total_parts: number;
+  file_name: string | null;
+  file_size: number | null;
+  file_type: string | null;
+};
+
+type CompleteBody = {
+  sessionId?: string;
+  animalId?: string;
+  modality?: string | null;
+  bodyPart?: string | null;
+};
+
+async function uploadToOrthanc(buffer: Buffer): Promise<OrthancUploadResponse> {
   const baseUrl = process.env.ORTHANC_BASE_URL;
   const username = process.env.ORTHANC_USERNAME;
   const password = process.env.ORTHANC_PASSWORD;
@@ -29,7 +57,7 @@ async function uploadToOrthanc(buffer: Buffer) {
     body: new Uint8Array(buffer),
   });
 
-  const json = await resp.json().catch(() => null);
+  const json = (await resp.json().catch(() => null)) as OrthancUploadResponse | null;
 
   if (!resp.ok || !json?.ID) {
     throw new Error("Upload Orthanc fallito");
@@ -64,7 +92,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await req.json();
+    const body = (await req.json()) as CompleteBody;
 
     const sessionId = body.sessionId;
     const animalId = body.animalId;
@@ -79,7 +107,7 @@ export async function POST(req: Request) {
       .from("clinic_imaging_upload_sessions")
       .select("*")
       .eq("id", sessionId)
-      .single();
+      .single<ImagingUploadSessionRow>();
 
     if (!session) {
       return NextResponse.json({ error: "Session not found" }, { status: 404 });
@@ -94,7 +122,7 @@ export async function POST(req: Request) {
 
     const buffers: Buffer[] = [];
 
-    for (const part of parts.sort((a: any, b: any) => a.PartNumber - b.PartNumber)) {
+    for (const part of parts.sort((a, b) => a.PartNumber - b.PartNumber)) {
       const path = `${session.storage_key}.part${part.PartNumber}`;
 
       const url = await createSignedDownloadUrl(path, 60);
@@ -199,7 +227,7 @@ export async function POST(req: Request) {
         path: finalPath,
       },
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("MULTIPART COMPLETE ERROR:", err);
 
     if (uploadedFinalPath) {
@@ -208,7 +236,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json(
       {
-        error: err?.message || "Complete error",
+        error: err instanceof Error ? err.message : "Complete error",
       },
       { status: 500 }
     );

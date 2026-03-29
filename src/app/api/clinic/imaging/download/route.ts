@@ -6,6 +6,18 @@ import { writeAudit } from "@/lib/server/audit";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getBearerToken } from "@/lib/server/bearer";
 
+type DownloadBody = {
+  eventId?: string;
+  filePath?: string;
+};
+
+type ImagingFileRow = {
+  id: string;
+  event_id: string;
+  animal_id: string;
+  path: string;
+};
+
 export async function POST(req: Request) {
   const token = getBearerToken(req);
   if (!token) {
@@ -29,7 +41,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const body = await req.json();
+    const body = (await req.json()) as DownloadBody;
     const eventId = body?.eventId;
     const filePath = body?.filePath;
 
@@ -42,7 +54,7 @@ export async function POST(req: Request) {
       .select("id, event_id, animal_id, path")
       .eq("event_id", eventId)
       .eq("path", filePath)
-      .single();
+      .single<ImagingFileRow>();
 
     if (fileError || !fileRow) {
       return NextResponse.json({ error: "File non trovato" }, { status: 404 });
@@ -81,9 +93,9 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ ok: true, url: signedUrl });
-  } catch (err: any) {
+  } catch (err: unknown) {
     return NextResponse.json(
-      { error: err?.message || "Errore download imaging" },
+      { error: err instanceof Error ? err.message : "Errore download imaging" },
       { status: 500 }
     );
   }

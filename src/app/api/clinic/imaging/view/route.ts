@@ -27,11 +27,11 @@ export async function GET(req: NextRequest) {
     )}`;
 
     return NextResponse.redirect(redirectUrl);
-  } catch (err: any) {
+  } catch (err: unknown) {
     return NextResponse.json(
       {
         error: "Errore apertura viewer",
-        details: err?.message ?? "Unknown error",
+        details: err instanceof Error ? err.message : "Unknown error",
       },
       { status: 500 }
     );

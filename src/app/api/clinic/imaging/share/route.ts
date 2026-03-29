@@ -5,7 +5,45 @@ import { requireOwnerOrGrant } from "@/lib/server/requireOwnerOrGrant";
 import { writeAudit } from "@/lib/server/audit";
 import { getBearerToken } from "@/lib/server/bearer";
 
-async function resolveAuthenticatedUser(req: Request) {
+type AuthenticatedUserResult = {
+  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>;
+  user: {
+    id: string;
+    email?: string | null;
+  };
+};
+
+type ImagingEventFileMeta = {
+  id?: string;
+  name?: string | null;
+  mime?: string | null;
+  orthanc?: {
+    studyInstanceUid?: string | null;
+    studyId?: string | null;
+    seriesId?: string | null;
+    instanceId?: string | null;
+  } | null;
+};
+
+type ImagingEventMeta = {
+  imaging?: {
+    files?: ImagingEventFileMeta[];
+  } | null;
+};
+
+type ImagingEventRow = {
+  id: string;
+  animal_id: string;
+  meta: ImagingEventMeta | null;
+};
+
+type ShareBody = {
+  animalId?: string;
+  eventId?: string;
+  fileId?: string;
+};
+
+async function resolveAuthenticatedUser(req: Request): Promise<AuthenticatedUserResult | null> {
   const token = getBearerToken(req);
 
   if (token) {
@@ -26,7 +64,7 @@ async function resolveAuthenticatedUser(req: Request) {
 
     if (!bearerUserResp.error && bearerUserResp.data?.user) {
       return {
-        supabase: bearerSupabase,
+        supabase: bearerSupabase as Awaited<ReturnType<typeof createServerSupabaseClient>>,
         user: bearerUserResp.data.user,
       };
     }
@@ -73,7 +111,7 @@ export async function POST(req: Request) {
   const admin = supabaseAdmin();
 
   try {
-    const body = await req.json().catch(() => ({}));
+    const body = (await req.json().catch(() => ({}))) as ShareBody;
 
     const animalId = String(body?.animalId || "").trim();
     const eventId = String(body?.eventId || "").trim();
@@ -108,14 +146,14 @@ export async function POST(req: Request) {
       .select("id, animal_id, meta")
       .eq("id", eventId)
       .eq("animal_id", animalId)
-      .single();
+      .single<ImagingEventRow>();
 
     if (eventError || !eventRow) {
       return NextResponse.json({ error: "Evento imaging non trovato." }, { status: 404 });
     }
 
     const files = eventRow?.meta?.imaging?.files;
-    const file = Array.isArray(files) ? files.find((f: any) => String(f?.id) === fileId) : null;
+    const file = Array.isArray(files) ? files.find((f) => String(f?.id) === fileId) : null;
 
     if (!file) {
       return NextResponse.json({ error: "File imaging non trovato nell'evento." }, { status: 404 });
@@ -186,13 +224,13 @@ export async function POST(req: Request) {
         accessType: "single_imaging_view",
       },
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("IMAGING SHARE CREATE ERROR:", err);
 
     return NextResponse.json(
       {
         error: "Errore creazione link imaging",
-        details: err?.message ?? "Unknown error",
+        details: err instanceof Error ? err.message : "Unknown error",
       },
       { status: 500 }
     );
