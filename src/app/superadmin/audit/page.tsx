@@ -182,7 +182,7 @@ export default async function SuperAdminAuditPage({
       <section className="rounded-[2rem] border border-zinc-200 bg-white p-7 shadow-sm">
         <div className="max-w-4xl">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge tone="info">Audit log</Badge>
+            <Badge tone="info">Registro attività</Badge>
             <Badge>Ultimi 100 eventi</Badge>
           </div>
 
@@ -192,12 +192,12 @@ export default async function SuperAdminAuditPage({
 
           <p className="mt-4 text-base leading-relaxed text-zinc-600">
             Qui puoi leggere gli eventi amministrativi registrati dalla console: approvazioni,
-            sincronizzazioni Auth, modifiche di revisione e impostazioni di sistema.
+            sincronizzazioni accesso, modifiche di revisione e impostazioni di sistema.
           </p>
 
           {error ? (
             <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-              Errore caricamento audit log: {error.message}
+              Errore caricamento registro attività: {error.message}
             </div>
           ) : null}
         </div>
@@ -207,7 +207,7 @@ export default async function SuperAdminAuditPage({
         <StatCard
           title="Eventi totali"
           value={String(totalCount ?? 0)}
-          description="Numero totale record presenti in admin_audit_log."
+          description="Numero totale record presenti nel registro admin."
         />
         <StatCard
           title="Eventi professionisti"
@@ -228,7 +228,7 @@ export default async function SuperAdminAuditPage({
               type="text"
               name="q"
               defaultValue={resolved?.q || ""}
-              placeholder="Cerca per azione, target, admin_id, target_id, meta"
+              placeholder="Cerca per azione, target, ID admin, ID target, metadati"
               className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 outline-none placeholder:text-zinc-400 focus:border-zinc-400"
             />
 
@@ -282,7 +282,7 @@ export default async function SuperAdminAuditPage({
               href={buildHref({ q: resolved?.q, action: "professional_sync_auth", target: targetFilter })}
               active={actionFilter === "professional_sync_auth"}
             >
-              Sync Auth
+              Sincronizzazione accesso
             </FilterLink>
 
             <FilterLink
@@ -312,8 +312,8 @@ export default async function SuperAdminAuditPage({
                 <th className="px-4 py-3">Target</th>
                 <th className="px-4 py-3">Admin</th>
                 <th className="px-4 py-3">IP</th>
-                <th className="px-4 py-3">User agent</th>
-                <th className="px-4 py-3">Meta</th>
+                <th className="px-4 py-3">Client</th>
+                <th className="px-4 py-3">Metadati</th>
               </tr>
             </thead>
 

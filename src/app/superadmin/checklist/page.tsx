@@ -72,10 +72,10 @@ export default function SuperAdminChecklistPage() {
           <Item
             title="Gestione professionisti"
             status="ok"
-            note="Elenco, filtri, dettaglio singolo, approvazione, rifiuto, ruolo vet, visibilità e review."
+            note="Elenco, filtri, dettaglio singolo, approvazione, rifiuto, ruolo vet, visibilità e revisione."
           />
           <Item
-            title="Sync Auth"
+            title="Sincronizzazione accesso"
             status="ok"
             note="Allineamento metadata Auth con lo stato reale del professionista."
           />
@@ -95,7 +95,7 @@ export default function SuperAdminChecklistPage() {
             note="Applicato su smarrimenti, nuova registrazione professionisti, consulti e richieste accesso."
           />
           <Item
-            title="Audit log admin"
+            title="Registro attività admin"
             status="ok"
             note="Scrittura eventi e pagina dedicata per consultazione."
           />
@@ -120,7 +120,7 @@ export default function SuperAdminChecklistPage() {
             note="La logica esiste, ma route e namespace andranno rifiniti nella chat sicurezza."
           />
           <Item
-            title="Audit log"
+            title="Registro attività"
             status="ok"
             note="Base pronta per hardening e arricchimento futuro con IP, user agent e policy più strette."
           />
@@ -166,7 +166,7 @@ export default function SuperAdminChecklistPage() {
             href="/superadmin/audit"
             className="rounded-2xl border border-zinc-200 bg-white px-4 py-4 text-sm font-semibold text-zinc-900 shadow-sm hover:bg-zinc-50"
           >
-            Audit log
+            Registro attività
           </Link>
         </div>
       </Section>
