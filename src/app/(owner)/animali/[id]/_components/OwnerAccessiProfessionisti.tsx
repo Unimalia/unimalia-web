@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 type AccessRequest = {
@@ -74,6 +74,11 @@ function formatOrgLabel(name?: string | null, fallbackId?: string | null) {
   return name?.trim() || fallbackId || "Professionista";
 }
 
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) return error.message;
+  return "Errore";
+}
+
 export default function OwnerAccessiProfessionisti({ animalId }: { animalId: string }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -85,7 +90,7 @@ export default function OwnerAccessiProfessionisti({ animalId }: { animalId: str
 
   const [durationByRequestId, setDurationByRequestId] = useState<Record<string, Duration>>({});
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -105,16 +110,16 @@ export default function OwnerAccessiProfessionisti({ animalId }: { animalId: str
         }
         return next;
       });
-    } catch (e: any) {
-      setError(e?.message || "Errore");
+    } catch (e: unknown) {
+      setError(getErrorMessage(e));
     } finally {
       setLoading(false);
     }
-  }
+  }, [animalId]);
 
   useEffect(() => {
     void load();
-  }, [animalId]);
+  }, [load]);
 
   const pendingRequests = useMemo(() => requests.filter((r) => r.status === "pending"), [requests]);
 

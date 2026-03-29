@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   AgendaSettings,
   Room,
@@ -75,12 +75,36 @@ function createVisitType(label: string): VisitType {
   };
 }
 
+function getInitialAgendaSettingsState() {
+  if (typeof window === "undefined") {
+    const defaultSettings = createDefaultAgendaSettings();
+
+    return {
+      loaded: false,
+      settings: defaultSettings,
+      overrides: [] as VetScheduleOverride[],
+      overrideVetId: "",
+    };
+  }
+
+  const loadedSettings = loadAgendaSettings();
+  const loadedOverrides = loadAgendaOverrides();
+
+  return {
+    loaded: true,
+    settings: loadedSettings,
+    overrides: loadedOverrides,
+    overrideVetId: loadedSettings.vets[0]?.id || "",
+  };
+}
+
 export default function AgendaSettingsPage() {
-  const [loaded, setLoaded] = useState(false);
-  const [settings, setSettings] = useState<AgendaSettings>(createDefaultAgendaSettings());
-  const [overrides, setOverrides] = useState<VetScheduleOverride[]>([]);
+  const initialState = useMemo(() => getInitialAgendaSettingsState(), []);
+  const [loaded] = useState(initialState.loaded);
+  const [settings, setSettings] = useState<AgendaSettings>(initialState.settings);
+  const [overrides, setOverrides] = useState<VetScheduleOverride[]>(initialState.overrides);
   const [vetSearch, setVetSearch] = useState("");
-  const [overrideVetId, setOverrideVetId] = useState("");
+  const [overrideVetId, setOverrideVetId] = useState(initialState.overrideVetId);
   const [overrideDate, setOverrideDate] = useState(todayIsoLocal());
   const [overrideEnabled, setOverrideEnabled] = useState(true);
   const [overrideStart, setOverrideStart] = useState("09:00");
@@ -88,16 +112,6 @@ export default function AgendaSettingsPage() {
   const [overrideBreakStart, setOverrideBreakStart] = useState("13:00");
   const [overrideBreakEnd, setOverrideBreakEnd] = useState("14:00");
   const [overrideReason, setOverrideReason] = useState("");
-
-  useEffect(() => {
-    const loadedSettings = loadAgendaSettings();
-    const loadedOverrides = loadAgendaOverrides();
-
-    setSettings(loadedSettings);
-    setOverrides(loadedOverrides);
-    setOverrideVetId(loadedSettings.vets[0]?.id || "");
-    setLoaded(true);
-  }, []);
 
   function persistSettings(next: AgendaSettings) {
     setSettings(next);

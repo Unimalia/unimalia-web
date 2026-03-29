@@ -32,9 +32,9 @@ type ClinicEventRow = {
   visibility: "owner" | "professionals" | "emergency";
   source: "owner" | "professional";
   verified_at: string | null;
-  verified_by: string | null;
+  verified_by_user_id: string | null;
   created_at: string;
-  created_by?: string | null;
+  created_by_user_id?: string | null;
   verified_by_label?: string | null;
   verified_by_org_id?: string | null;
   verified_by_member_id?: string | null;
@@ -247,7 +247,7 @@ export default function AnimalClinicalPage() {
     const { data, error } = await supabase
       .from("animal_clinic_events")
       .select(
-        "id, animal_id, event_date, type, title, description, visibility, source, verified_at, verified_by, created_at, created_by, verified_by_label, verified_by_org_id, verified_by_member_id, meta, status"
+        "id, animal_id, event_date, type, title, description, visibility, source, verified_at, verified_by_user_id, created_at, created_by_user_id, verified_by_label, verified_by_org_id, verified_by_member_id, meta, status"
       )
       .eq("animal_id", animalId)
       .neq("status", "void")
@@ -387,10 +387,10 @@ export default function AnimalClinicalPage() {
       title,
       description: cleanDescription || null,
       visibility: "owner" as const,
-      created_by: sessionData.session.user.id,
+      created_by_user_id: sessionData.session.user.id,
       source: "owner" as const,
       verified_at: null,
-      verified_by: null,
+      verified_by_user_id: null,
       meta,
     };
 
@@ -469,7 +469,7 @@ export default function AnimalClinicalPage() {
                 event_date: fromDateTimeLocalValue(editDateLocal).toISOString(),
                 description: editDescription.trim() || null,
                 verified_at: null,
-                verified_by: null,
+                verified_by_user_id: null,
                 meta: {
                   ...(prev.meta || {}),
                   therapy_start_date: editType === "therapy" ? editTherapyStartDate || null : null,

@@ -34,6 +34,11 @@ function labelDuration(d: Duration) {
   return "Senza scadenza";
 }
 
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) return error.message;
+  return "Errore";
+}
+
 export default function OwnerAccessRequestsTable({ animalId }: { animalId?: string }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -65,8 +70,8 @@ export default function OwnerAccessRequestsTable({ animalId }: { animalId?: stri
         }
         return next;
       });
-    } catch (e: any) {
-      setErr(e?.message || "Errore");
+    } catch (e: unknown) {
+      setErr(getErrorMessage(e));
     } finally {
       setLoading(false);
     }
