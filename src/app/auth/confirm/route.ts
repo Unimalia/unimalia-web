@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 
+type UserMetadata = {
+  full_name?: string;
+  city?: string;
+  fiscal_code?: string;
+};
+
 function normalizeCF(s: string) {
   return (s || "").replace(/\s+/g, "").trim().toUpperCase();
 }
@@ -43,7 +49,7 @@ export async function GET(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   if (user) {
-    const meta = (user.user_metadata ?? {}) as Record<string, any>;
+    const meta = (user.user_metadata ?? {}) as UserMetadata;
 
     await supabase.from("profiles").upsert(
       {

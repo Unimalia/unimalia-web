@@ -8,6 +8,33 @@ import { sendProfessionalApprovedEmail } from "@/lib/email/sendProfessionalAppro
 
 export const dynamic = "force-dynamic";
 
+type ProfessionalBeforeRow = {
+  id: string;
+  owner_id: string | null;
+  email: string | null;
+  display_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  business_name: string | null;
+  category: string | null;
+  is_vet: boolean | null;
+};
+
+type AuthUserByIdResponse = {
+  data?: {
+    user?: {
+      email?: string | null;
+    } | null;
+  } | null;
+  error?: {
+    message?: string;
+  } | null;
+};
+
+type ApprovalEmailResult =
+  | { ok: true; to: string }
+  | { ok: false; error: string };
+
 function sanitizeRedirectTo(value: FormDataEntryValue | null) {
   const raw = String(value || "").trim();
   if (!raw.startsWith("/superadmin")) return "/superadmin/professionisti";
@@ -39,7 +66,7 @@ export async function POST(req: Request) {
     .from("professionals")
     .select("id, owner_id, email, display_name, first_name, last_name, business_name, category, is_vet")
     .eq("id", professionalId)
-    .single();
+    .single<ProfessionalBeforeRow>();
 
   if (professionalReadError || !professionalBefore) {
     return NextResponse.json(
@@ -95,12 +122,12 @@ export async function POST(req: Request) {
   let email = "";
 
   if (professionalBefore.owner_id) {
-    const { data: authUserData, error: authUserError } = await admin.auth.admin.getUserById(
+    const authUserData = (await admin.auth.admin.getUserById(
       professionalBefore.owner_id
-    );
+    )) as AuthUserByIdResponse;
 
-    if (!authUserError && authUserData?.user?.email) {
-      email = String(authUserData.user.email).trim().toLowerCase();
+    if (!authUserData.error && authUserData?.data?.user?.email) {
+      email = String(authUserData.data.user.email).trim().toLowerCase();
     }
   }
 
@@ -108,9 +135,7 @@ export async function POST(req: Request) {
     email = String(professionalBefore.email || "").trim().toLowerCase();
   }
 
-  let emailResult:
-    | { ok: true; to: string }
-    | { ok: false; error: string } = email
+  let emailResult: ApprovalEmailResult = email
     ? { ok: true, to: email }
     : { ok: false, error: "Email professionista assente sia nel profilo sia in Auth" };
 
@@ -130,8 +155,8 @@ export async function POST(req: Request) {
       });
 
       emailResult = { ok: true, to: email };
-    } catch (e: any) {
-      const message = e?.message || "Errore invio email approvazione";
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "Errore invio email approvazione";
       console.error("[professional_approved_email] failed", {
         professionalId,
         email,

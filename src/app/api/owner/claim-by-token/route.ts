@@ -1,6 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, supabaseAdmin } from "@/lib/supabase/server";
 
+type ClaimByTokenBody = {
+  token?: string;
+};
+
+type ClaimRow = {
+  id: string;
+  animal_id: string | null;
+  used_at: string | null;
+  expires_at: string | null;
+};
+
+type AnimalClaimRow = {
+  id: string;
+  owner_id: string | null;
+  created_by_org_id: string | null;
+  origin_org_id: string | null;
+  chip_number: string | null;
+  microchip_verified: boolean | null;
+  pending_owner_email: string | null;
+};
+
+type ExistingGrantRow = {
+  id: string;
+  status: string | null;
+  revoked_at: string | null;
+};
+
 export async function POST(req: NextRequest) {
   try {
     const supabase = await createClient();
@@ -15,7 +42,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Non autorizzato" }, { status: 401 });
     }
 
-    const body = await req.json().catch(() => null);
+    const body = (await req.json().catch(() => null)) as ClaimByTokenBody | null;
     const token = String(body?.token ?? "").trim();
 
     if (!token) {
@@ -26,7 +53,7 @@ export async function POST(req: NextRequest) {
       .from("animal_owner_claims")
       .select("id, animal_id, used_at, expires_at")
       .eq("claim_token", token)
-      .single();
+      .single<ClaimRow>();
 
     if (claimResult.error || !claimResult.data) {
       return NextResponse.json({ error: "Invito non valido" }, { status: 404 });
@@ -44,7 +71,7 @@ export async function POST(req: NextRequest) {
         "id, owner_id, created_by_org_id, origin_org_id, chip_number, microchip_verified, pending_owner_email"
       )
       .eq("id", claim.animal_id)
-      .single();
+      .single<AnimalClaimRow>();
 
     if (animalResult.error || !animalResult.data) {
       return NextResponse.json({ error: "Animale non trovato" }, { status: 404 });
@@ -107,7 +134,7 @@ export async function POST(req: NextRequest) {
       })
       .eq("id", claim.animal_id)
       .select("id, created_by_org_id, origin_org_id")
-      .single();
+      .single<{ id: string; created_by_org_id: string | null; origin_org_id: string | null }>();
 
     if (animalUpdate.error || !animalUpdate.data) {
       return NextResponse.json(
@@ -144,7 +171,7 @@ export async function POST(req: NextRequest) {
         .eq("grantee_id", originOrgId)
         .order("created_at", { ascending: false })
         .limit(1)
-        .maybeSingle();
+        .maybeSingle<ExistingGrantRow>();
 
       if (existingGrantResult.error) {
         return NextResponse.json(
@@ -205,7 +232,10 @@ export async function POST(req: NextRequest) {
       ok: true,
       animalId: animalUpdate.data.id,
     });
-  } catch (error: any) {
-    return NextResponse.json({ error: error?.message || "Errore interno" }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Errore interno" },
+      { status: 500 }
+    );
   }
 }

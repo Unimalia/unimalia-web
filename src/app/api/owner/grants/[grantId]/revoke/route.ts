@@ -5,6 +5,20 @@ import {
 } from "@/lib/supabase/server";
 import { isUuid } from "@/lib/server/validators";
 
+type GrantRow = {
+  id: string;
+  animal_id: string;
+  grantee_type: string;
+  grantee_id: string;
+  revoked_at: string | null;
+  status: string | null;
+};
+
+type AnimalOwnerRow = {
+  id: string;
+  owner_id: string | null;
+};
+
 export async function POST(
   _req: Request,
   ctx: { params: Promise<{ grantId: string }> }
@@ -41,7 +55,7 @@ export async function POST(
       .from("animal_access_grants")
       .select("id, animal_id, grantee_type, grantee_id, revoked_at, status")
       .eq("id", grantId)
-      .maybeSingle();
+      .maybeSingle<GrantRow>();
 
     if (gErr) {
       return NextResponse.json({ error: gErr.message }, { status: 500 });
@@ -63,7 +77,7 @@ export async function POST(
       .from("animals")
       .select("id, owner_id")
       .eq("id", grant.animal_id)
-      .maybeSingle();
+      .maybeSingle<AnimalOwnerRow>();
 
     if (aErr) {
       return NextResponse.json({ error: aErr.message }, { status: 500 });
@@ -94,9 +108,9 @@ export async function POST(
     }
 
     return NextResponse.json({ ok: true }, { status: 200 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
-      { error: error?.message || "Errore revoca grant" },
+      { error: error instanceof Error ? error.message : "Errore revoca grant" },
       { status: 500 }
     );
   }

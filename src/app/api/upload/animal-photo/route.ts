@@ -96,8 +96,11 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ publicUrl });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("UPLOAD API ERROR:", e);
-    return NextResponse.json({ error: e?.message || "Server upload error" }, { status: 500 });
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : "Server upload error" },
+      { status: 500 }
+    );
   }
 }
