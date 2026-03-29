@@ -7,6 +7,34 @@ import {
 } from "@/lib/professionisti/history";
 import { isUuid } from "@/lib/server/validators";
 
+type ProfessionalProfileRow = {
+  user_id: string;
+  org_id: string | null;
+};
+
+type ProfessionalRow = {
+  id: string;
+  owner_id: string;
+  display_name?: string | null;
+  category?: string | null;
+};
+
+type AnimalAccessRow = {
+  id: string;
+  created_by_org_id: string | null;
+  origin_org_id: string | null;
+};
+
+type AnimalGrantRow = {
+  id: string;
+  grantee_id: string;
+  status: string;
+  valid_to: string | null;
+  revoked_at: string | null;
+  scope_read: boolean | null;
+  scope_write: boolean | null;
+};
+
 async function getProfessionalRefs(userId: string) {
   const admin = supabaseAdmin();
   const refs = new Set<string>();
@@ -16,7 +44,7 @@ async function getProfessionalRefs(userId: string) {
     .from("professional_profiles")
     .select("user_id, org_id")
     .eq("user_id", userId)
-    .maybeSingle();
+    .maybeSingle<ProfessionalProfileRow>();
 
   if (profileResult.error) {
     throw profileResult.error;
@@ -32,7 +60,7 @@ async function getProfessionalRefs(userId: string) {
     .eq("owner_id", userId)
     .order("created_at", { ascending: false })
     .limit(1)
-    .maybeSingle();
+    .maybeSingle<ProfessionalRow>();
 
   if (professionalResult.error) {
     throw professionalResult.error;
@@ -54,7 +82,7 @@ async function getProfessionalSnapshot(userId: string) {
     .eq("owner_id", userId)
     .order("created_at", { ascending: false })
     .limit(1)
-    .maybeSingle();
+    .maybeSingle<ProfessionalRow>();
 
   if (result.error) {
     throw result.error;
@@ -79,7 +107,7 @@ async function ensureProfessionalAnimalAccess(userId: string, animalId: string) 
     .from("animals")
     .select("id, created_by_org_id, origin_org_id")
     .eq("id", animalId)
-    .maybeSingle();
+    .maybeSingle<AnimalAccessRow>();
 
   if (animalResult.error) {
     throw animalResult.error;
@@ -102,14 +130,15 @@ async function ensureProfessionalAnimalAccess(userId: string, animalId: string) 
     .eq("animal_id", animalId)
     .eq("grantee_type", "organization")
     .in("grantee_id", refs)
-    .is("revoked_at", null);
+    .is("revoked_at", null)
+    .returns<AnimalGrantRow[]>();
 
   if (grantResult.error) {
     throw grantResult.error;
   }
 
   const activeGrant =
-    (grantResult.data ?? []).find((g: any) => {
+    (grantResult.data ?? []).find((g) => {
       if (g.status !== "active" && g.status !== "approved") return false;
       if (!g.scope_read && !g.scope_write) return false;
       if (!g.valid_to) return true;
@@ -185,8 +214,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       events: (result.data ?? []) as AnimalHistoryEventRow[],
     });
-  } catch (error: any) {
-    return NextResponse.json({ error: error?.message || "Errore interno" }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Errore interno" },
+      { status: 500 }
+    );
   }
 }
 
@@ -276,7 +308,10 @@ export async function POST(req: NextRequest) {
       },
       { status: 201 }
     );
-  } catch (error: any) {
-    return NextResponse.json({ error: error?.message || "Errore interno" }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Errore interno" },
+      { status: 500 }
+    );
   }
 }

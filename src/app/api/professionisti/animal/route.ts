@@ -20,6 +20,62 @@ type AnimalPayload = {
   pending_owner_email?: string | null;
 };
 
+type ProfessionalProfileRow = {
+  user_id: string;
+  org_id: string | null;
+};
+
+type ProfessionalRow = {
+  id: string;
+  owner_id: string;
+};
+
+type AnimalRow = {
+  id: string;
+  name: string | null;
+  species: string | null;
+  breed: string | null;
+  color: string | null;
+  size: string | null;
+  sex: string | null;
+  sterilized: boolean | null;
+  birth_date: string | null;
+  chip_number: string | null;
+  photo_url: string | null;
+  owner_id: string | null;
+  pending_owner_email: string | null;
+  created_by_org_id: string | null;
+  origin_org_id: string | null;
+  microchip_verified: boolean | null;
+  unimalia_code?: string | null;
+};
+
+type AnimalGrantRow = {
+  id: string;
+  grantee_id: string;
+  status: string;
+  valid_from: string | null;
+  valid_to: string | null;
+  revoked_at: string | null;
+  scope_read: boolean | null;
+  scope_write: boolean | null;
+};
+
+type AnimalAuditRow = {
+  id: string;
+};
+
+type ProfileRow = {
+  full_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  phone: string | null;
+};
+
+type OrgRow = {
+  id: string;
+};
+
 function normalizeChip(value?: string | null) {
   const digits = String(value ?? "").replace(/\D+/g, "").trim();
   return digits.length ? digits : null;
@@ -64,7 +120,7 @@ async function getProfessionalRefs(userId: string) {
     .from("professional_profiles")
     .select("user_id, org_id")
     .eq("user_id", userId)
-    .maybeSingle();
+    .maybeSingle<ProfessionalProfileRow>();
 
   if (profileResult.error) {
     throw profileResult.error;
@@ -80,7 +136,7 @@ async function getProfessionalRefs(userId: string) {
     .eq("owner_id", userId)
     .order("created_at", { ascending: false })
     .limit(1)
-    .maybeSingle();
+    .maybeSingle<ProfessionalRow>();
 
   if (professionalResult.error) {
     throw professionalResult.error;
@@ -105,7 +161,7 @@ async function resolveAnimalByRef(animalRef: string) {
   }
 
   if (isUuid(ref)) {
-    const byId = await admin.from("animals").select("*").eq("id", ref).maybeSingle();
+    const byId = await admin.from("animals").select("*").eq("id", ref).maybeSingle<AnimalRow>();
 
     if (byId.error) return byId;
     if (byId.data) return byId;
@@ -113,13 +169,21 @@ async function resolveAnimalByRef(animalRef: string) {
 
   const chip = digitsOnly(ref);
   if (chip.length === 15 || chip.length === 10) {
-    const byChip = await admin.from("animals").select("*").eq("chip_number", chip).maybeSingle();
+    const byChip = await admin
+      .from("animals")
+      .select("*")
+      .eq("chip_number", chip)
+      .maybeSingle<AnimalRow>();
 
     if (byChip.error) return byChip;
     if (byChip.data) return byChip;
   }
 
-  const byCode = await admin.from("animals").select("*").eq("unimalia_code", ref).maybeSingle();
+  const byCode = await admin
+    .from("animals")
+    .select("*")
+    .eq("unimalia_code", ref)
+    .maybeSingle<AnimalRow>();
 
   return byCode;
 }
@@ -141,7 +205,7 @@ async function getOwnerDetails(ownerId?: string | null) {
     .from("profiles")
     .select("full_name, first_name, last_name, phone")
     .eq("id", ownerId)
-    .maybeSingle();
+    .maybeSingle<ProfileRow>();
 
   if (profileResult.error) {
     throw profileResult.error;
@@ -177,7 +241,12 @@ async function getOwnerDetails(ownerId?: string | null) {
 async function findAnimalByChip(chipNumber: string) {
   const admin = supabaseAdmin();
 
-  const result = await admin.from("animals").select("*").eq("chip_number", chipNumber).limit(2);
+  const result = await admin
+    .from("animals")
+    .select("*")
+    .eq("chip_number", chipNumber)
+    .limit(2)
+    .returns<AnimalRow[]>();
 
   if (result.error) {
     throw result.error;
@@ -203,13 +272,14 @@ async function findAnimalByPendingOwnerEmailAndCoreData(params: {
     .from("animals")
     .select("*")
     .eq("pending_owner_email", params.ownerEmail)
-    .limit(10);
+    .limit(10)
+    .returns<AnimalRow[]>();
 
   if (result.error) {
     throw result.error;
   }
 
-  const rows = (result.data ?? []).filter((row: any) => {
+  const rows = (result.data ?? []).filter((row) => {
     const rowName = normalizeComparableText(row?.name);
     const rowSpecies = normalizeComparableText(row?.species);
 
@@ -238,7 +308,8 @@ async function hasProfessionalAuditHistory(params: {
     .select("id", { count: "exact", head: true })
     .eq("animal_id", params.animalId)
     .eq("actor_user_id", params.userId)
-    .in("action", ["create", "update"]);
+    .in("action", ["create", "update"])
+    .returns<AnimalAuditRow[]>();
 
   if (ownAuditResult.error) {
     throw ownAuditResult.error;
@@ -260,7 +331,8 @@ async function hasProfessionalAuditHistory(params: {
     .select("id", { count: "exact", head: true })
     .eq("animal_id", params.animalId)
     .in("actor_org_id", orgRefs)
-    .in("action", ["create", "update"]);
+    .in("action", ["create", "update"])
+    .returns<AnimalAuditRow[]>();
 
   if (orgAuditResult.error) {
     throw orgAuditResult.error;
@@ -314,7 +386,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Animale non trovato" }, { status: 404 });
     }
 
-    const animal = animalResult.data as Record<string, any>;
+    const animal = animalResult.data;
 
     const grantResult = await admin
       .from("animal_access_grants")
@@ -324,7 +396,8 @@ export async function GET(req: NextRequest) {
       .eq("animal_id", animal.id)
       .eq("grantee_type", "organization")
       .in("grantee_id", refs)
-      .is("revoked_at", null);
+      .is("revoked_at", null)
+      .returns<AnimalGrantRow[]>();
 
     if (grantResult.error) {
       return NextResponse.json(
@@ -336,7 +409,7 @@ export async function GET(req: NextRequest) {
     const now = Date.now();
 
     const activeGrant =
-      (grantResult.data ?? []).find((g: any) => {
+      (grantResult.data ?? []).find((g) => {
         if (g.status !== "active" && g.status !== "approved") return false;
         if (!g.scope_read && !g.scope_write) return false;
 
@@ -367,9 +440,14 @@ export async function GET(req: NextRequest) {
         userId: user.id,
         refs,
       });
-    } catch (historyError: any) {
+    } catch (historyError: unknown) {
       return NextResponse.json(
-        { error: historyError?.message || "Errore verifica storico clinico" },
+        {
+          error:
+            historyError instanceof Error
+              ? historyError.message
+              : "Errore verifica storico clinico",
+        },
         { status: 500 }
       );
     }
@@ -404,8 +482,11 @@ export async function GET(req: NextRequest) {
         has_own_history: hasOwnHistory,
       },
     });
-  } catch (error: any) {
-    return NextResponse.json({ error: error?.message || "Errore interno" }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Errore interno" },
+      { status: 500 }
+    );
   }
 }
 
@@ -436,7 +517,7 @@ export async function POST(req: NextRequest) {
         .from("professional_profiles")
         .select("org_id")
         .eq("user_id", user.id)
-        .maybeSingle();
+        .maybeSingle<ProfessionalProfileRow>();
 
       if (profileResult.error) {
         return NextResponse.json(
@@ -461,7 +542,7 @@ export async function POST(req: NextRequest) {
       .from("organizations")
       .select("id")
       .eq("id", orgId)
-      .maybeSingle();
+      .maybeSingle<OrgRow>();
 
     if (orgError) {
       return NextResponse.json(
@@ -505,7 +586,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    let matchedAnimal: any = null;
+    let matchedAnimal: AnimalRow | null = null;
     let matchReason: "chip" | "owner_email" | null = null;
 
     if (chipNumber) {
@@ -528,7 +609,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (matchedAnimal) {
-      const patch: Record<string, any> = {
+      const patch: Partial<AnimalRow> & { updated_at: string } = {
         updated_at: new Date().toISOString(),
       };
 
@@ -552,7 +633,7 @@ export async function POST(req: NextRequest) {
           .update(patch)
           .eq("id", matchedAnimal.id)
           .select("*")
-          .single();
+          .single<AnimalRow>();
 
         if (upd.error || !upd.data) {
           return NextResponse.json(
@@ -578,7 +659,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const insertPayload: Record<string, any> = {
+    const insertPayload = {
       name,
       species,
       breed: body.breed?.trim() || null,
@@ -598,7 +679,7 @@ export async function POST(req: NextRequest) {
       microchip_verified: false,
     };
 
-    const created = await admin.from("animals").insert(insertPayload).select("*").single();
+    const created = await admin.from("animals").insert(insertPayload).select("*").single<AnimalRow>();
 
     if (created.error || !created.data) {
       return NextResponse.json(
@@ -618,7 +699,10 @@ export async function POST(req: NextRequest) {
       },
       { status: 201 }
     );
-  } catch (error: any) {
-    return NextResponse.json({ error: error?.message || "Errore interno" }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Errore interno" },
+      { status: 500 }
+    );
   }
 }

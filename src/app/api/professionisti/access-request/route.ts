@@ -7,6 +7,14 @@ import { isUuid } from "@/lib/server/validators";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+type AccessRequestBody = {
+  animalId?: string;
+  animal_id?: string;
+  permissions?: unknown;
+  requestedScope?: unknown;
+  requested_scope?: unknown;
+};
+
 function notFoundResponse() {
   return NextResponse.json(
     { error: "Not found" },
@@ -62,21 +70,21 @@ export async function POST(req: NextRequest) {
       return notFoundResponse();
     }
 
-    const body = await req.json().catch(() => null);
+    const body = (await req.json().catch(() => null)) as AccessRequestBody | null;
 
     if (!body || typeof body !== "object") {
       return notFoundResponse();
     }
 
-    const animalId = String((body as any).animalId ?? (body as any).animal_id ?? "").trim();
+    const animalId = String(body.animalId ?? body.animal_id ?? "").trim();
 
     const requestedScope = normalizeRequestedScope(
-      Array.isArray((body as any).permissions)
-        ? (body as any).permissions
-        : Array.isArray((body as any).requestedScope)
-          ? (body as any).requestedScope
-          : Array.isArray((body as any).requested_scope)
-            ? (body as any).requested_scope
+      Array.isArray(body.permissions)
+        ? body.permissions
+        : Array.isArray(body.requestedScope)
+          ? body.requestedScope
+          : Array.isArray(body.requested_scope)
+            ? body.requested_scope
             : []
     );
 
@@ -92,7 +100,7 @@ export async function POST(req: NextRequest) {
       .from("animals")
       .select("id, owner_id")
       .eq("id", animalId)
-      .single();
+      .single<{ id: string; owner_id: string | null }>();
 
     if (animalResult.error || !animalResult.data) {
       return notFoundResponse();
@@ -168,7 +176,7 @@ export async function POST(req: NextRequest) {
         status: "pending",
       })
       .select("id")
-      .single();
+      .single<{ id: string }>();
 
     if (insertResult.error || !insertResult.data) {
       return NextResponse.json(

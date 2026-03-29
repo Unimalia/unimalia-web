@@ -3,6 +3,44 @@ import { createClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getBearerToken } from "@/lib/server/bearer";
 
+type UploadedPartValue = number | string | { PartNumber?: number | string } | null;
+
+type ImagingUploadSessionRow = {
+  id: string;
+  created_by_user_id: string | null;
+  file_size: number | string | null;
+  total_parts: number | string | null;
+  uploaded_parts: UploadedPartValue[] | null;
+  part_size: number | string | null;
+  status: string | null;
+  file_name: string | null;
+  animal_id: string | null;
+};
+
+function normalizePartNumber(value: UploadedPartValue): number | null {
+  if (typeof value === "number") {
+    return Number.isInteger(value) && value > 0 ? value : null;
+  }
+
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+  }
+
+  if (value && typeof value === "object") {
+    const partNumber = value.PartNumber;
+    if (typeof partNumber === "number") {
+      return Number.isInteger(partNumber) && partNumber > 0 ? partNumber : null;
+    }
+    if (typeof partNumber === "string") {
+      const parsed = Number(partNumber);
+      return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+    }
+  }
+
+  return null;
+}
+
 export async function GET(req: Request) {
   try {
     const token = getBearerToken(req);
@@ -45,7 +83,7 @@ export async function GET(req: Request) {
       .from("clinic_imaging_upload_sessions")
       .select("*")
       .eq("upload_id", uploadId)
-      .single();
+      .single<ImagingUploadSessionRow>();
 
     if (sessionErr || !session) {
       return NextResponse.json({ error: "Upload session non trovata." }, { status: 404 });
@@ -60,9 +98,9 @@ export async function GET(req: Request) {
 
     const uploadedPartNumbers = Array.isArray(session.uploaded_parts)
       ? session.uploaded_parts
-          .map((n: any) => Number(n))
-          .filter((n: number) => Number.isInteger(n) && n > 0)
-          .sort((a: number, b: number) => a - b)
+          .map(normalizePartNumber)
+          .filter((n): n is number => n !== null)
+          .sort((a, b) => a - b)
       : [];
 
     const partSize = Number(session.part_size || 0);
@@ -100,12 +138,12 @@ export async function GET(req: Request) {
       percent,
       sessionId: session.id,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("IMAGING MULTIPART STATUS ERROR:", err);
 
     return NextResponse.json(
       {
-        error: err?.message || "Status error",
+        error: err instanceof Error ? err.message : "Status error",
       },
       { status: 500 }
     );

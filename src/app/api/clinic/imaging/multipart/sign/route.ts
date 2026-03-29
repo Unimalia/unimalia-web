@@ -2,9 +2,18 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { createSignedUploadUrl } from "@/lib/storage";
 
+type SignBody = {
+  sessionId?: string;
+  partNumber?: number;
+};
+
+type ImagingUploadSessionRow = {
+  storage_key: string;
+};
+
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
+    const body = (await req.json()) as SignBody;
     const { sessionId, partNumber } = body;
 
     if (!sessionId || !partNumber) {
@@ -17,7 +26,7 @@ export async function POST(req: Request) {
       .from("clinic_imaging_upload_sessions")
       .select("*")
       .eq("id", sessionId)
-      .single();
+      .single<ImagingUploadSessionRow>();
 
     if (error || !session) {
       return NextResponse.json({ error: "Session not found" }, { status: 404 });
@@ -38,9 +47,9 @@ export async function POST(req: Request) {
         path,
       },
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     return NextResponse.json(
-      { error: err?.message || "Sign error" },
+      { error: err instanceof Error ? err.message : "Sign error" },
       { status: 500 }
     );
   }

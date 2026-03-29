@@ -5,6 +5,44 @@ import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+type ProfessionalProfileRow = {
+  user_id: string;
+  org_id: string | null;
+};
+
+type OrganizationRow = {
+  id: string;
+  name: string | null;
+};
+
+type ProfessionalRow = {
+  business_name: string | null;
+  display_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+};
+
+type AnimalRow = {
+  id: string;
+  name: string | null;
+  created_by_org_id: string | null;
+  origin_org_id: string | null;
+  owner_id: string | null;
+  pending_owner_email: string | null;
+};
+
+type ClaimRow = {
+  id: string;
+  claim_token: string | null;
+  used_at: string | null;
+  created_at: string;
+};
+
+type ResendEmailResult = {
+  data?: { id?: string } | null;
+  error?: { message?: string } | null;
+};
+
 async function getProfessionalOrgId(userId: string) {
   const admin = supabaseAdmin();
 
@@ -12,7 +50,7 @@ async function getProfessionalOrgId(userId: string) {
     .from("professional_profiles")
     .select("user_id, org_id")
     .eq("user_id", userId)
-    .maybeSingle();
+    .maybeSingle<ProfessionalProfileRow>();
 
   if (profileResult.data?.org_id) {
     return {
@@ -46,8 +84,8 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json().catch(() => null);
-    const animalId = String(body?.animalId ?? "").trim();
-    const email = String(body?.email ?? "").trim().toLowerCase();
+    const animalId = String((body as { animalId?: string } | null)?.animalId ?? "").trim();
+    const email = String((body as { email?: string } | null)?.email ?? "").trim().toLowerCase();
 
     if (!animalId || !email) {
       return NextResponse.json({ error: "animalId o email mancanti" }, { status: 400 });
@@ -66,7 +104,7 @@ export async function POST(req: NextRequest) {
         .from("organizations")
         .select("id,name")
         .eq("id", orgLookup.orgId)
-        .maybeSingle();
+        .maybeSingle<OrganizationRow>();
 
       clinicName = orgRow?.name?.trim() || null;
     }
@@ -78,7 +116,7 @@ export async function POST(req: NextRequest) {
         .eq("owner_id", user.id)
         .order("created_at", { ascending: false })
         .limit(1)
-        .maybeSingle();
+        .maybeSingle<ProfessionalRow>();
 
       clinicName =
         professionalRow?.business_name?.trim() ||
@@ -98,7 +136,7 @@ export async function POST(req: NextRequest) {
       .from("animals")
       .select("id, name, created_by_org_id, origin_org_id, owner_id, pending_owner_email")
       .eq("id", animalId)
-      .single();
+      .single<AnimalRow>();
 
     if (animalResult.error || !animalResult.data) {
       return NextResponse.json({ error: "Animale non trovato" }, { status: 404 });
@@ -146,7 +184,7 @@ export async function POST(req: NextRequest) {
       .is("used_at", null)
       .order("created_at", { ascending: false })
       .limit(1)
-      .maybeSingle();
+      .maybeSingle<ClaimRow>();
 
     if (existingClaimResult.error) {
       return NextResponse.json(
@@ -185,7 +223,7 @@ export async function POST(req: NextRequest) {
 
     const fromEmail = process.env.RESEND_FROM_EMAIL || "UNIMALIA <no-reply@unimalia.it>";
 
-    const emailResult = await resend.emails.send({
+    const emailResult = (await resend.emails.send({
       from: fromEmail,
       to: email,
       subject: "Collega il tuo animale su UNIMALIA",
@@ -204,15 +242,15 @@ export async function POST(req: NextRequest) {
           </p>
         </div>
       `,
-    });
+    })) as ResendEmailResult;
 
-    if ((emailResult as { error?: { message?: string } })?.error) {
+    if (emailResult?.error) {
       console.error("[INVITE_OWNER_EMAIL_ERROR]", emailResult);
 
       return NextResponse.json(
         {
           error:
-            (emailResult as { error?: { message?: string } }).error?.message ||
+            emailResult.error?.message ||
             "Errore invio email",
         },
         { status: 500 }
@@ -223,16 +261,19 @@ export async function POST(req: NextRequest) {
       animalId,
       email,
       claimLink,
-      resendId: (emailResult as { data?: { id?: string } })?.data?.id ?? null,
+      resendId: emailResult?.data?.id ?? null,
     });
 
     return NextResponse.json({
       ok: true,
       claimLink,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[INVITE_OWNER_ROUTE_ERROR]", error);
 
-    return NextResponse.json({ error: error?.message || "Errore interno" }, { status: 500 });
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Errore interno" },
+      { status: 500 }
+    );
   }
 }

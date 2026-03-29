@@ -5,6 +5,29 @@ import {
 } from "@/lib/supabase/server";
 import { isUuid } from "@/lib/server/validators";
 
+type ProfessionalProfileRow = {
+  user_id: string;
+  org_id: string | null;
+};
+
+type ProfessionalRow = {
+  id: string;
+  owner_id: string;
+};
+
+type AnimalGrantRow = {
+  id: string;
+  grantee_id: string;
+  grantee_type: string;
+  status: string;
+  valid_from: string | null;
+  valid_to: string | null;
+  revoked_at: string | null;
+  scope_read: boolean | null;
+  scope_write: boolean | null;
+  scope_upload: boolean | null;
+};
+
 export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
@@ -52,7 +75,7 @@ export async function GET(req: Request) {
       .from("professional_profiles")
       .select("user_id, org_id")
       .eq("user_id", user.id)
-      .maybeSingle();
+      .maybeSingle<ProfessionalProfileRow>();
 
     if (profileResult.error) {
       return NextResponse.json(
@@ -65,7 +88,7 @@ export async function GET(req: Request) {
       );
     }
 
-    const profileOrgId = (profileResult.data as any)?.org_id ?? null;
+    const profileOrgId = profileResult.data?.org_id ?? null;
     if (profileOrgId) candidateIds.add(String(profileOrgId));
 
     const professionalResult = await admin
@@ -74,7 +97,7 @@ export async function GET(req: Request) {
       .eq("owner_id", user.id)
       .order("created_at", { ascending: false })
       .limit(1)
-      .maybeSingle();
+      .maybeSingle<ProfessionalRow>();
 
     if (professionalResult.error) {
       return NextResponse.json(
@@ -87,7 +110,7 @@ export async function GET(req: Request) {
       );
     }
 
-    const professionalId = (professionalResult.data as any)?.id ?? null;
+    const professionalId = professionalResult.data?.id ?? null;
     if (professionalId) candidateIds.add(String(professionalId));
 
     const ids = Array.from(candidateIds);
@@ -108,7 +131,8 @@ export async function GET(req: Request) {
       .eq("animal_id", animalId)
       .eq("grantee_type", "organization")
       .in("grantee_id", ids)
-      .is("revoked_at", null);
+      .is("revoked_at", null)
+      .returns<AnimalGrantRow[]>();
 
     if (grantError) {
       return NextResponse.json(
@@ -120,7 +144,7 @@ export async function GET(req: Request) {
     const now = Date.now();
 
     const activeGrant =
-      (grants ?? []).find((g: any) => {
+      (grants ?? []).find((g) => {
         if (g.grantee_type !== "organization") return false;
         if (g.status !== "active" && g.status !== "approved") return false;
         if (!g.scope_read && !g.scope_write && !g.scope_upload) return false;

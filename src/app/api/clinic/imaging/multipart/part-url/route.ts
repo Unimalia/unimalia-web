@@ -4,6 +4,13 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { createSignedUploadUrl } from "@/lib/storage";
 import { getBearerToken } from "@/lib/server/bearer";
 
+type ImagingUploadSessionRow = {
+  created_by_user_id: string | null;
+  storage_key: string | null;
+  status: string | null;
+  file_type: string | null;
+};
+
 export async function GET(req: Request) {
   try {
     const token = getBearerToken(req);
@@ -52,7 +59,7 @@ export async function GET(req: Request) {
       .from("clinic_imaging_upload_sessions")
       .select("*")
       .eq("upload_id", uploadId)
-      .single();
+      .single<ImagingUploadSessionRow>();
 
     if (sessionErr || !session) {
       return NextResponse.json({ error: "Upload session non trovata." }, { status: 404 });
@@ -97,12 +104,12 @@ export async function GET(req: Request) {
       path: partPath,
       partNumber,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("IMAGING MULTIPART PART-URL ERROR:", err);
 
     return NextResponse.json(
       {
-        error: err?.message || "Part URL error",
+        error: err instanceof Error ? err.message : "Part URL error",
       },
       { status: 500 }
     );
