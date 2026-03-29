@@ -14,7 +14,9 @@ type ShelterType = "canile" | "gattile" | "rifugio";
 type BreedOpt = { id: string; name: string };
 type ShelterOpt = { id: string; name: string; type: ShelterType; city: string | null };
 type CityRow = { city: string | null };
-type DbRow = Record<string, any>;
+type DbRow = Record<string, unknown>;
+type BreedRow = { id: string; name: string };
+type ShelterRow = { id: string; name: string; type: ShelterType; city: string | null };
 
 type AnimalRow = {
   id: string;
@@ -71,7 +73,9 @@ function readAnimalShelterType(animal: DbRow) {
     animal.shelter_type ??
       animal.structure_type ??
       animal.refuge_type ??
-      animal.shelters?.type
+      (typeof animal.shelters === "object" && animal.shelters !== null
+        ? (animal.shelters as { type?: unknown }).type
+        : undefined)
   ).toLowerCase();
 }
 
@@ -80,7 +84,9 @@ function readAnimalShelterId(animal: DbRow) {
     animal.shelter_id ??
       animal.structure_id ??
       animal.refuge_id ??
-      animal.shelters?.id
+      (typeof animal.shelters === "object" && animal.shelters !== null
+        ? (animal.shelters as { id?: unknown }).id
+        : undefined)
   );
 }
 
@@ -89,7 +95,13 @@ function readAnimalBreedId(animal: DbRow) {
 }
 
 function readAnimalCity(animal: DbRow) {
-  return str(animal.city ?? animal.location_city ?? animal.shelters?.city);
+  return str(
+    animal.city ??
+      animal.location_city ??
+      (typeof animal.shelters === "object" && animal.shelters !== null
+        ? (animal.shelters as { city?: unknown }).city
+        : undefined)
+  );
 }
 
 function readAnimalSex(animal: DbRow) {
@@ -227,7 +239,7 @@ export function AdottaClient() {
           setErrorMsg(breedsRes.error.message);
         }
       } else {
-        setBreeds((breedsRes.data ?? []).map((b: any) => ({ id: b.id, name: b.name })));
+        setBreeds((breedsRes.data ?? []).map((b: BreedRow) => ({ id: b.id, name: b.name })));
       }
 
       if (sheltersRes.error) {
@@ -240,7 +252,7 @@ export function AdottaClient() {
         }
       } else {
         setShelters(
-          (sheltersRes.data ?? []).map((s: any) => ({
+          (sheltersRes.data ?? []).map((s: ShelterRow) => ({
             id: s.id,
             name: s.name,
             type: s.type as ShelterType,

@@ -26,7 +26,7 @@ export async function POST(req: Request) {
       aborted_at: new Date().toISOString(),
     })
     .eq("upload_id", uploadId)
-    .eq("created_by", user.id);
+    .eq("created_by_user_id", user.id);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

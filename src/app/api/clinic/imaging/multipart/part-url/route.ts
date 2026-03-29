@@ -58,7 +58,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Upload session non trovata." }, { status: 404 });
     }
 
-    if (String(session.created_by) !== user.id) {
+    if (String(session.created_by_user_id) !== user.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

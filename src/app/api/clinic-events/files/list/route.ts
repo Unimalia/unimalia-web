@@ -89,7 +89,7 @@ export async function GET(req: Request) {
 
   const { data, error } = await admin
     .from("animal_clinic_event_files")
-    .select("id, event_id, animal_id, path, filename, mime, size, created_by, created_at")
+    .select("id, event_id, animal_id, path, filename, mime, size, created_by_user_id, created_at")
     .eq("event_id", eventId)
     .order("created_at", { ascending: true });
 
