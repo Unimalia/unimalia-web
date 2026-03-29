@@ -102,10 +102,10 @@ export async function POST(req: Request) {
   }
 
   const source = String((current as any).source || "");
-  const createdBy = ((current as any).created_by as string | null) ?? null;
+  const createdByUserId = ((current as any).created_by_user_id as string | null) ?? null;
 
   if (source !== "owner") {
-    if (!createdBy || createdBy !== user.id) {
+    if (!createdByUserId || createdByUserId !== user.id) {
       const reason = "Non autorizzato: puoi eliminare solo eventi owner o i tuoi eventi.";
 
       await safeWriteAudit(supabase, {

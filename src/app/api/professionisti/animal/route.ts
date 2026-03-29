@@ -547,7 +547,12 @@ export async function POST(req: NextRequest) {
       if (matchedAnimal.microchip_verified == null) patch.microchip_verified = false;
 
       if (Object.keys(patch).length > 1) {
-        const upd = await admin.from("animals").update(patch).eq("id", matchedAnimal.id).select("*").single();
+        const upd = await admin
+          .from("animals")
+          .update(patch)
+          .eq("id", matchedAnimal.id)
+          .select("*")
+          .single();
 
         if (upd.error || !upd.data) {
           return NextResponse.json(

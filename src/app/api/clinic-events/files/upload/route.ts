@@ -7,7 +7,7 @@ import { sendOwnerAnimalUpdateEmail } from "@/lib/email/sendOwnerAnimalUpdateEma
 import { getBearerToken } from "@/lib/server/bearer";
 import { isUuid } from "@/lib/server/validators";
 
-const MAX_FILE_SIZE_BYTES = 500 * 1024 * 1024; // 500MB
+const MAX_FILE_SIZE_BYTES = 500 * 1024 * 1024;
 
 const ALLOWED_MIME_TYPES = new Set([
   "application/pdf",
@@ -89,7 +89,7 @@ export async function POST(req: Request) {
   const { data: ev, error: evErr } = await admin
     .from("animal_clinic_events")
     .select(
-      "id, animal_id, title, description, event_date, type, visibility, source, priority, meta, status, created_by"
+      "id, animal_id, title, description, event_date, type, visibility, source, priority, meta, status, created_by_user_id"
     )
     .eq("id", eventId)
     .neq("status", "void")
@@ -133,9 +133,9 @@ export async function POST(req: Request) {
   }
 
   const source = String(ev.source || "");
-  const createdBy = String(ev.created_by || "");
+  const createdByUserId = String(ev.created_by_user_id || "");
 
-  if (source !== "owner" && createdBy && createdBy !== user.id) {
+  if (source !== "owner" && createdByUserId && createdByUserId !== user.id) {
     const reason = "Non autorizzato: puoi caricare file solo su eventi owner o sui tuoi eventi.";
 
     await safeWriteAudit(supabase, {

@@ -93,7 +93,7 @@ export async function GET(req: Request) {
   if (!grant.ok) {
     const { data: eventRow, error: eventError } = await admin
       .from("animal_clinic_events")
-      .select("id, created_by, animal_id, status")
+      .select("id, created_by_user_id, animal_id, status")
       .eq("id", eventId)
       .eq("animal_id", animalId)
       .neq("status", "void")
@@ -114,7 +114,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Errore verifica accesso file." }, { status: 500 });
     }
 
-    if (eventRow && eventRow.created_by === user.id) {
+    if (eventRow && eventRow.created_by_user_id === user.id) {
       canAccess = true;
       accessMode = "own_only";
     }

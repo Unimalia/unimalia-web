@@ -49,7 +49,7 @@ export async function GET(req: Request) {
 
   const { data: ev, error: evErr } = await admin
     .from("animal_clinic_events")
-    .select("id, animal_id, status, created_by")
+    .select("id, animal_id, status, created_by_user_id")
     .eq("id", eventId)
     .neq("status", "void")
     .single();
@@ -65,7 +65,7 @@ export async function GET(req: Request) {
   let canAccess = grant.ok;
   let accessMode: "full" | "own_only" | "denied" = grant.ok ? "full" : "denied";
 
-  if (!grant.ok && ev.created_by === user.id) {
+  if (!grant.ok && ev.created_by_user_id === user.id) {
     canAccess = true;
     accessMode = "own_only";
   }

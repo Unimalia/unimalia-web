@@ -171,10 +171,10 @@ export async function POST(req: Request) {
   }
 
   const source = String((current as any).source || "");
-  const createdBy = ((current as any).created_by as string | null) ?? null;
+  const createdByUserId = ((current as any).created_by_user_id as string | null) ?? null;
 
   if (source !== "owner") {
-    if (!createdBy || createdBy !== user.id) {
+    if (!createdByUserId || createdByUserId !== user.id) {
       const reason = "Non autorizzato: puoi modificare solo eventi owner o i tuoi eventi.";
 
       await safeWriteAudit(supabase, {
@@ -241,7 +241,7 @@ export async function POST(req: Request) {
     description: (current as any).description,
     meta: (current as any).meta,
     verified_at: (current as any).verified_at,
-    verified_by: (current as any).verified_by,
+    verified_by_user_id: (current as any).verified_by_user_id,
     verified_by_org_id: (current as any).verified_by_org_id,
     verified_by_member_id: (current as any).verified_by_member_id,
     verified_by_label: (current as any).verified_by_label,
@@ -257,7 +257,7 @@ export async function POST(req: Request) {
 
   if ((current as any).verified_at || source === "professional" || source === "veterinarian") {
     updateData.verified_at = null;
-    updateData.verified_by = null;
+    updateData.verified_by_user_id = null;
     updateData.verified_by_org_id = null;
     updateData.verified_by_member_id = null;
     updateData.verified_by_label = null;
@@ -331,7 +331,7 @@ export async function POST(req: Request) {
     description: (updated as any).description,
     meta: (updated as any).meta,
     verified_at: (updated as any).verified_at,
-    verified_by: (updated as any).verified_by,
+    verified_by_user_id: (updated as any).verified_by_user_id,
     verified_by_org_id: (updated as any).verified_by_org_id,
     verified_by_member_id: (updated as any).verified_by_member_id,
     verified_by_label: (updated as any).verified_by_label,

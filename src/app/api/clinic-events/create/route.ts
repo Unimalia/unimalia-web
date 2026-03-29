@@ -269,12 +269,9 @@ export async function POST(req: Request) {
 
   if (weightKg) meta.weight_kg = weightKg;
 
-  // 🔒 FIRMA SICURA
   meta.created_by_member_id = user.id;
   meta.created_by_member_label =
-    vetSignature && vetSignature.length <= 120
-      ? vetSignature
-      : user.email || "Veterinario";
+    vetSignature && vetSignature.length <= 120 ? vetSignature : user.email || "Veterinario";
 
   if (priority) meta.priority = priority;
   if (actorOrgName) meta.created_by_org_name = actorOrgName;
@@ -299,10 +296,10 @@ export async function POST(req: Request) {
         description,
         visibility,
         source,
-        created_by: user.id,
+        created_by_user_id: user.id,
         event_date: dateStr,
         verified_at: source === "veterinarian" ? nowIso : null,
-        verified_by: source === "veterinarian" ? user.id : null,
+        verified_by_user_id: source === "veterinarian" ? user.id : null,
         verified_by_org_id: verifiedByOrgId,
         verified_by_member_id: source === "veterinarian" ? user.id : null,
         verified_by_label: source === "veterinarian" ? (user.email || "Veterinario") : null,
@@ -311,7 +308,7 @@ export async function POST(req: Request) {
         status: "active",
       })
       .select(
-        "id, animal_id, event_date, type, title, description, visibility, source, verified_at, verified_by, verified_by_org_id, verified_by_member_id, verified_by_label, created_by, created_at, updated_at, status, meta"
+        "id, animal_id, event_date, type, title, description, visibility, source, verified_at, verified_by_user_id, verified_by_org_id, verified_by_member_id, verified_by_label, created_by_user_id, created_at, updated_at, status, meta, priority"
       )
       .single();
 
