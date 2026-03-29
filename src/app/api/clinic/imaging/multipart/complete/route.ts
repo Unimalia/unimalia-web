@@ -175,7 +175,7 @@ export async function POST(req: Request) {
       filename: session.file_name,
       mime: session.file_type,
       size: session.file_size,
-      created_by: user.id,
+      created_by_user_id: user.id,
     });
 
     await admin

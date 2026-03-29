@@ -463,7 +463,7 @@ export async function POST(req: Request) {
           filename: fileName,
           mime,
           size,
-          created_by: user.id,
+          created_by_user_id: user.id,
         });
 
       if (fileInsertError) {

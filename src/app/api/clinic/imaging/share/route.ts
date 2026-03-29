@@ -143,7 +143,7 @@ export async function POST(req: Request) {
         study_instance_uid: studyInstanceUid,
         access_type: "single_imaging_view",
         expires_at: expiresAt,
-        created_by: user.id,
+        created_by_user_id: user.id,
         meta: {
           filename: file?.name || null,
           mime: file?.mime || null,

@@ -162,7 +162,7 @@ export async function POST(req: Request) {
     filename: string | null;
     mime: string | null;
     size: number | null;
-    created_by: string | null;
+    created_by_user_id: string | null;
     created_at: string;
   }> = [];
 
@@ -232,10 +232,10 @@ export async function POST(req: Request) {
             filename: f.name || safeName,
             mime: f.type || null,
             size: f.size || null,
-            created_by: user.id,
+            created_by_user_id: user.id,
           },
         ])
-        .select("id, event_id, animal_id, path, filename, mime, size, created_by, created_at")
+        .select("id, event_id, animal_id, path, filename, mime, size, created_by_user_id, created_at")
         .single();
 
       if (insErr || !row) {

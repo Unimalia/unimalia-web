@@ -86,38 +86,51 @@ type SlotState =
   | { type: "offshift"; label: string }
   | { type: "break"; label: string }
   | { type: "busy-room"; label: string; appointment: AgendaAppointment }
-  | { type: "busy-vet"; label: string; appointment: AgendaAppointment }
+  | { type: "busy-vet"; label: string }
   | { type: "busy-start"; label: string; appointment: AgendaAppointment };
 
-export default function AgendaPage() {
-  const [loaded, setLoaded] = useState(false);
-  const [settings, setSettings] = useState<AgendaSettings | null>(null);
-  const [overrides, setOverrides] = useState<VetScheduleOverride[]>([]);
-  const [appointments, setAppointments] = useState<AgendaAppointment[]>([]);
-  const [selectedDate, setSelectedDate] = useState(todayIsoLocal());
-  const [selectedRoomFilter, setSelectedRoomFilter] = useState("all");
-  const [selectedVetFilter, setSelectedVetFilter] = useState("all");
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [form, setForm] = useState<AppointmentFormState>(EMPTY_FORM);
+function getInitialAgendaState() {
+  if (typeof window === "undefined") {
+    return {
+      loaded: false,
+      settings: null as AgendaSettings | null,
+      overrides: [] as VetScheduleOverride[],
+      appointments: [] as AgendaAppointment[],
+      form: EMPTY_FORM,
+    };
+  }
 
-  useEffect(() => {
-    const loadedSettings = loadAgendaSettings();
-    const loadedOverrides = loadAgendaOverrides();
-    const loadedAppointments = loadAgendaAppointments().map(normalizeAppointment);
+  const loadedSettings = loadAgendaSettings();
+  const loadedOverrides = loadAgendaOverrides();
+  const loadedAppointments = loadAgendaAppointments().map(normalizeAppointment);
 
-    setSettings(loadedSettings);
-    setOverrides(loadedOverrides);
-    setAppointments(loadedAppointments);
-    setForm({
+  return {
+    loaded: true,
+    settings: loadedSettings,
+    overrides: loadedOverrides,
+    appointments: loadedAppointments,
+    form: {
       ...EMPTY_FORM,
       date: todayIsoLocal(),
       roomId: loadedSettings.rooms[0]?.id || "",
       vetId: loadedSettings.vets[0]?.id || "",
       assignedVetIds: loadedSettings.vets[0]?.id ? [loadedSettings.vets[0].id] : [],
       visitTypeId: loadedSettings.visitTypes[0]?.id || "",
-    });
-    setLoaded(true);
-  }, []);
+    },
+  };
+}
+
+export default function AgendaPage() {
+  const initialState = useMemo(() => getInitialAgendaState(), []);
+  const [loaded] = useState(initialState.loaded);
+  const [settings] = useState<AgendaSettings | null>(initialState.settings);
+  const [overrides] = useState<VetScheduleOverride[]>(initialState.overrides);
+  const [appointments, setAppointments] = useState<AgendaAppointment[]>(initialState.appointments);
+  const [selectedDate, setSelectedDate] = useState(todayIsoLocal());
+  const [selectedRoomFilter, setSelectedRoomFilter] = useState("all");
+  const [selectedVetFilter, setSelectedVetFilter] = useState("all");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [form, setForm] = useState<AppointmentFormState>(initialState.form);
 
   useEffect(() => {
     if (!isModalOpen) return;
@@ -254,22 +267,6 @@ export default function AgendaPage() {
     });
   }
 
-  function getAppointmentCoveringVetAtSlot(
-    vetId: string,
-    date: string,
-    slotTime: string
-  ) {
-    const slotEnd = getSlotEndTime(slotTime);
-
-    return appointments.find((item) => {
-      if (item.date !== date) return false;
-      if (!appointmentIsActive(item)) return false;
-      if (!item.assignedVetIds.includes(vetId)) return false;
-
-      return doesIntervalOverlap(slotTime, slotEnd, item.startTime, item.endTime);
-    });
-  }
-
   function getShiftSlotStatus(vet: Vet, slotTime: string) {
     const shift = resolveVetShift(vet, selectedDate, overrides);
     const slotEnd = getSlotEndTime(slotTime);
@@ -347,7 +344,7 @@ export default function AgendaPage() {
         return { type: "offshift", label: "Fuori turno" };
       }
 
-      return { type: "busy-vet", label: "Veterinari occupati", appointment: roomAppointment as any };
+      return { type: "busy-vet", label: "Veterinari occupati" };
     }
 
     return { type: "available", label: "Prenota" };
@@ -440,42 +437,40 @@ export default function AgendaPage() {
     });
   }, [settings, form.date, form.startTime, formEndTime, form.id, appointments, overrides, form.roomId]);
 
-  const isSurgeryRoomSelected = useMemo(() => {
-    return isOperatingRoom(form.roomId);
-  }, [form.roomId, settings]);
+  const isSurgeryRoomSelected = isOperatingRoom(form.roomId);
 
-  useEffect(() => {
-    if (!isModalOpen) return;
+  const normalizedFormSelection = useMemo(() => {
+    if (!isModalOpen) {
+      return {
+        vetId: form.vetId,
+        assignedVetIds: form.assignedVetIds,
+      };
+    }
 
     if (!isSurgeryRoomSelected) {
       const stillValid = availableVetsForForm.some((vet) => vet.id === form.vetId);
       const nextPrimary = stillValid ? form.vetId : availableVetsForForm[0]?.id || "";
 
-      setForm((prev) => ({
-        ...prev,
+      return {
         vetId: nextPrimary,
         assignedVetIds: nextPrimary ? [nextPrimary] : [],
-      }));
-      return;
+      };
     }
 
     const validIds = availableVetsForForm.map((vet) => vet.id);
-    setForm((prev) => {
-      const cleaned = prev.assignedVetIds.filter((id) => validIds.includes(id));
-      const nextPrimary =
-        validIds.includes(prev.vetId) ? prev.vetId : cleaned[0] || validIds[0] || "";
+    const cleaned = form.assignedVetIds.filter((id) => validIds.includes(id));
+    const nextPrimary =
+      validIds.includes(form.vetId) ? form.vetId : cleaned[0] || validIds[0] || "";
 
-      const withPrimary = nextPrimary
-        ? Array.from(new Set([nextPrimary, ...cleaned]))
-        : cleaned;
+    const withPrimary = nextPrimary
+      ? Array.from(new Set([nextPrimary, ...cleaned]))
+      : cleaned;
 
-      return {
-        ...prev,
-        vetId: nextPrimary,
-        assignedVetIds: withPrimary,
-      };
-    });
-  }, [isModalOpen, isSurgeryRoomSelected, availableVetsForForm, form.vetId]);
+    return {
+      vetId: nextPrimary,
+      assignedVetIds: withPrimary,
+    };
+  }, [isModalOpen, isSurgeryRoomSelected, availableVetsForForm, form.vetId, form.assignedVetIds]);
 
   function toggleAssignedVet(vetId: string) {
     setForm((prev) => {
@@ -511,9 +506,9 @@ export default function AgendaPage() {
 
     const isSurgery = isOperatingRoom(form.roomId);
     const assignedVetIds = isSurgery
-      ? Array.from(new Set(form.assignedVetIds.filter(Boolean)))
-      : form.vetId
-      ? [form.vetId]
+      ? Array.from(new Set(normalizedFormSelection.assignedVetIds.filter(Boolean)))
+      : normalizedFormSelection.vetId
+      ? [normalizedFormSelection.vetId]
       : [];
 
     if (assignedVetIds.length === 0) {
@@ -667,16 +662,14 @@ export default function AgendaPage() {
     persistAppointments(appointments.filter((item) => item.id !== id));
   }
 
-  const stats = useMemo(() => {
-    return {
-      total: activeAppointmentsForDay.length,
-      rooms: visibleRooms.length,
-      vets: activeVetsForDay.length,
-      surgeries: activeAppointmentsForDay.filter((item) =>
-        isOperatingRoom(item.roomId)
-      ).length,
-    };
-  }, [activeAppointmentsForDay, visibleRooms.length, activeVetsForDay.length, settings]);
+  const stats = {
+    total: activeAppointmentsForDay.length,
+    rooms: visibleRooms.length,
+    vets: activeVetsForDay.length,
+    surgeries: activeAppointmentsForDay.filter((item) =>
+      isOperatingRoom(item.roomId)
+    ).length,
+  };
 
   if (!loaded || !settings) {
     return <div className="p-6 text-sm text-neutral-500">Caricamento agenda...</div>;
@@ -1127,7 +1120,7 @@ export default function AgendaPage() {
                       Veterinario principale
                     </label>
                     <select
-                      value={form.vetId}
+                      value={normalizedFormSelection.vetId}
                       onChange={(e) =>
                         setForm((prev) => ({
                           ...prev,
@@ -1159,7 +1152,7 @@ export default function AgendaPage() {
 
                       <div className="mt-4 grid gap-3 md:grid-cols-2">
                         {availableVetsForForm.map((vet) => {
-                          const checked = form.assignedVetIds.includes(vet.id);
+                          const checked = normalizedFormSelection.assignedVetIds.includes(vet.id);
 
                           return (
                             <label
@@ -1273,7 +1266,7 @@ export default function AgendaPage() {
                     <div className="mt-1 text-sm text-neutral-700">
                       Dottori selezionati:{" "}
                       {settings.vets
-                        .filter((vet) => form.assignedVetIds.includes(vet.id))
+                        .filter((vet) => normalizedFormSelection.assignedVetIds.includes(vet.id))
                         .map((vet) => vet.name)
                         .join(", ") || "-"}
                     </div>

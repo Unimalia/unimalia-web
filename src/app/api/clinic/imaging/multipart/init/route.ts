@@ -28,7 +28,7 @@ export async function POST(req: Request) {
   const { data: existing } = await admin
     .from("clinic_imaging_upload_sessions")
     .select("*")
-    .eq("created_by", user.id)
+    .eq("created_by_user_id", user.id)
     .eq("animal_id", animalId)
     .eq("file_name", fileName)
     .eq("file_size", fileSize)
@@ -56,7 +56,7 @@ export async function POST(req: Request) {
     .from("clinic_imaging_upload_sessions")
     .insert({
       animal_id: animalId,
-      created_by: user.id,
+      created_by_user_id: user.id,
       file_name: fileName,
       file_size: fileSize,
       file_type: fileType,
