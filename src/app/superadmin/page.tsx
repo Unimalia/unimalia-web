@@ -372,11 +372,11 @@ export default async function SuperAdminPage() {
             </div>
             <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3">
               Il prossimo blocco sensato è aggiungere funzioni sistemiche come flag di sistema,
-              impostazioni globali ed emergency mode.
+              impostazioni globali e modalità emergenza.
             </div>
             <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3">
-              La parte di hardening, audit log, Cloudflare e protezione avanzata verrà poi portata
-              nella chat sicurezza dedicata.
+              La parte di hardening, registro attività, Cloudflare e protezione avanzata verrà poi
+              portata nella chat sicurezza dedicata.
             </div>
           </div>
         </SectionCard>

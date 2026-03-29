@@ -122,17 +122,17 @@ export default async function SuperAdminSistemaPage() {
         <div className="max-w-4xl">
           <div className="flex flex-wrap items-center gap-2">
             <Badge tone="info">Controllo sistema</Badge>
-            {settings.emergency_mode ? <Badge tone="danger">Emergency mode attivo</Badge> : <Badge tone="success">Sistema normale</Badge>}
-            {settings.maintenance_mode ? <Badge tone="warning">Maintenance mode attivo</Badge> : null}
+            {settings.emergency_mode ? <Badge tone="danger">Modalità emergenza attiva</Badge> : <Badge tone="success">Sistema normale</Badge>}
+            {settings.maintenance_mode ? <Badge tone="warning">Modalità manutenzione attiva</Badge> : null}
           </div>
 
           <h1 className="mt-4 text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl">
-            Sistema, feature flag ed emergenza
+            Sistema, flag e modalità emergenza
           </h1>
 
           <p className="mt-4 text-base leading-relaxed text-zinc-600">
             Questa sezione governa i flag globali del sistema. Qui prepariamo la base funzionale per
-            emergency mode, manutenzione e controllo progressivo delle funzioni pubbliche e cliniche.
+            modalità emergenza, manutenzione e controllo progressivo delle funzioni pubbliche e cliniche.
           </p>
 
           {error ? (
@@ -159,7 +159,7 @@ export default async function SuperAdminSistemaPage() {
           <div className="grid gap-4">
             <ToggleRow
               name="emergency_mode"
-              label="Emergency mode"
+              label="Modalità emergenza"
               description="Modalità protetta del sistema. Base per mantenere operative le aree cliniche mentre il resto viene limitato in caso di attacco o traffico anomalo."
               checked={settings.emergency_mode === true}
               danger
@@ -167,7 +167,7 @@ export default async function SuperAdminSistemaPage() {
 
             <ToggleRow
               name="maintenance_mode"
-              label="Maintenance mode"
+              label="Modalità manutenzione"
               description="Modalità manutenzione generale. Utile per bloccare temporaneamente funzioni durante operazioni controllate."
               checked={settings.maintenance_mode === true}
             />
@@ -232,8 +232,8 @@ export default async function SuperAdminSistemaPage() {
           description="Lettura rapida dei flag principali."
         >
           <div className="flex flex-wrap gap-2">
-            {settings.emergency_mode ? <Badge tone="danger">Emergency mode: ON</Badge> : <Badge tone="success">Emergency mode: OFF</Badge>}
-            {settings.maintenance_mode ? <Badge tone="warning">Maintenance: ON</Badge> : <Badge tone="success">Maintenance: OFF</Badge>}
+            {settings.emergency_mode ? <Badge tone="danger">Modalità emergenza: ON</Badge> : <Badge tone="success">Modalità emergenza: OFF</Badge>}
+            {settings.maintenance_mode ? <Badge tone="warning">Manutenzione: ON</Badge> : <Badge tone="success">Manutenzione: OFF</Badge>}
             {settings.public_registration_enabled !== false ? <Badge tone="success">Registrazione pubblica: ON</Badge> : <Badge tone="danger">Registrazione pubblica: OFF</Badge>}
             {settings.professional_registration_enabled !== false ? <Badge tone="success">Registrazione professionisti: ON</Badge> : <Badge tone="danger">Registrazione professionisti: OFF</Badge>}
             {settings.lost_found_enabled !== false ? <Badge tone="success">Smarrimenti: ON</Badge> : <Badge tone="danger">Smarrimenti: OFF</Badge>}
@@ -258,15 +258,15 @@ export default async function SuperAdminSistemaPage() {
 
       <Section
         title="Uso previsto"
-        description="Questa è la base funzionale. La chat sicurezza si occuperà poi di enforcement globale, protezione route, Cloudflare, audit log e hardening delle azioni critiche."
+        description="Questa è la base funzionale. La chat sicurezza si occuperà poi di enforcement globale, protezione route, Cloudflare, registro attività e hardening delle azioni critiche."
       >
         <div className="space-y-3 text-sm text-zinc-600">
           <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3">
-            <strong>Emergency mode</strong> sarà il punto di attivazione rapido durante incidenti,
+            <strong>Modalità emergenza</strong> sarà il punto di attivazione rapido durante incidenti,
             mantenendo operative le aree cliniche e limitando le superfici pubbliche.
           </div>
           <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3">
-            <strong>Feature flag</strong> serviranno per spegnere o riaccendere moduli specifici senza
+            <strong>Flag di sistema</strong> serviranno per spegnere o riaccendere moduli specifici senza
             toccare direttamente il codice applicativo.
           </div>
           <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3">

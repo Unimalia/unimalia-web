@@ -22,12 +22,67 @@ type Body = {
   vetSignature?: string | null;
   vetSignatureMemberId?: string | null;
   priority?: "low" | "normal" | "high" | "urgent" | null;
-  meta?: Record<string, any> | null;
+  meta?: Record<string, unknown> | null;
   reminderEnabled?: boolean;
   remindAt?: string | null;
   remindEmail?: boolean;
   hasAttachments?: boolean;
 };
+
+type EventPriority = "low" | "normal" | "high" | "urgent";
+
+type ClinicEventMeta = Record<string, unknown>;
+
+type AnimalClinicEventRow = {
+  id: string;
+  animal_id: string;
+  event_date: string;
+  type: string;
+  title: string;
+  description: string | null;
+  visibility: "owner" | "professionals" | "emergency" | string;
+  source: "owner" | "professional" | "veterinarian" | string;
+  verified_at: string | null;
+  verified_by_user_id: string | null;
+  verified_by_org_id: string | null;
+  verified_by_member_id: string | null;
+  verified_by_label: string | null;
+  created_by_user_id: string | null;
+  created_at: string;
+  updated_at: string;
+  status: string;
+  meta: ClinicEventMeta | null;
+  priority: EventPriority | null;
+};
+
+type OrganizationRow = {
+  id: string;
+  name: string | null;
+  display_name: string | null;
+  ragione_sociale: string | null;
+};
+
+type ProfessionalRow = {
+  display_name: string | null;
+  business_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+};
+
+type AnimalRow = {
+  id: string;
+  name: string | null;
+  owner_id: string | null;
+  pending_owner_email: string | null;
+};
+
+type AnimalReminderRow = {
+  owner_id: string | null;
+  pending_owner_email: string | null;
+  name: string | null;
+};
+
+type RequireOwnerOrGrantClient = Parameters<typeof requireOwnerOrGrant>[0];
 
 function badRequest(message: string) {
   return NextResponse.json({ error: message }, { status: 400 });
@@ -75,7 +130,7 @@ function parseWeightKg(v: unknown): number | null {
   return null;
 }
 
-function sanitizeMeta(input: unknown): Record<string, any> | null {
+function sanitizeMeta(input: unknown): Record<string, unknown> | null {
   if (!input || typeof input !== "object" || Array.isArray(input)) return null;
 
   const reservedKeys = new Set([
@@ -89,7 +144,7 @@ function sanitizeMeta(input: unknown): Record<string, any> | null {
     "priority",
   ]);
 
-  const output: Record<string, any> = {};
+  const output: Record<string, unknown> = {};
 
   for (const [key, value] of Object.entries(input)) {
     if (!key || reservedKeys.has(key)) continue;
@@ -142,7 +197,12 @@ export async function POST(req: Request) {
     return badRequest("animalId non valido");
   }
 
-  const grant = await requireOwnerOrGrant(supabase as any, user.id, animalId, "write");
+  const grant = await requireOwnerOrGrant(
+    supabase as RequireOwnerOrGrantClient,
+    user.id,
+    animalId,
+    "write"
+  );
 
   if (!grant.ok) {
     await safeWriteAudit(supabase, {
@@ -219,9 +279,12 @@ export async function POST(req: Request) {
   const vetSignature =
     typeof body.vetSignature === "string" ? body.vetSignature.trim() || null : null;
 
-  const priority =
-    ["low", "normal", "high", "urgent"].includes(String(body.priority || ""))
-      ? String(body.priority)
+  const priority: EventPriority | null =
+    body.priority === "low" ||
+    body.priority === "normal" ||
+    body.priority === "high" ||
+    body.priority === "urgent"
+      ? body.priority
       : null;
 
   let actorOrgName: string | null = null;
@@ -231,7 +294,7 @@ export async function POST(req: Request) {
       .from("organizations")
       .select("id,name,display_name,ragione_sociale")
       .eq("id", grant.actor_org_id)
-      .maybeSingle();
+      .maybeSingle<OrganizationRow>();
 
     actorOrgName =
       orgRow?.display_name?.trim() ||
@@ -247,7 +310,7 @@ export async function POST(req: Request) {
       .eq("owner_id", user.id)
       .order("created_at", { ascending: false })
       .limit(1)
-      .maybeSingle();
+      .maybeSingle<ProfessionalRow>();
 
     actorOrgName =
       professionalRow?.business_name?.trim() ||
@@ -260,7 +323,7 @@ export async function POST(req: Request) {
     source = "professional";
   }
 
-  const meta: Record<string, any> = {};
+  const meta: ClinicEventMeta = {};
   const incomingMeta = sanitizeMeta(body.meta);
 
   if (incomingMeta) {
@@ -310,7 +373,7 @@ export async function POST(req: Request) {
       .select(
         "id, animal_id, event_date, type, title, description, visibility, source, verified_at, verified_by_user_id, verified_by_org_id, verified_by_member_id, verified_by_label, created_by_user_id, created_at, updated_at, status, meta, priority"
       )
-      .single();
+      .single<AnimalClinicEventRow>();
 
     if (error || !data) {
       await safeWriteAudit(supabase, {
@@ -343,21 +406,14 @@ export async function POST(req: Request) {
       console.error("[CLINIC_EVENT_AUDIT_INSERT_ERROR]", auditInsertError);
     }
 
-    let animalRow:
-      | {
-          id: string;
-          name: string | null;
-          owner_id: string | null;
-          pending_owner_email: string | null;
-        }
-      | null = null;
+    let animalRow: AnimalRow | null = null;
 
     try {
       const animalFetch = await admin
         .from("animals")
         .select("id, name, owner_id, pending_owner_email")
         .eq("id", animalId)
-        .single();
+        .single<AnimalRow>();
 
       if (animalFetch.error) {
         console.error("[OWNER_NOTIFICATION_ANIMAL_FETCH_ERROR]", animalFetch.error);
@@ -393,7 +449,7 @@ export async function POST(req: Request) {
           eventType: type || null,
           visibility,
           source,
-          priority: priority as any,
+          priority,
           weightKg,
           therapyStartDate,
           therapyEndDate,
@@ -412,13 +468,11 @@ export async function POST(req: Request) {
           .from("animals")
           .select("owner_id, pending_owner_email, name")
           .eq("id", animalId)
-          .single();
+          .single<AnimalReminderRow>();
 
-        const ownerId = (animalReminderRow as any)?.owner_id as string | undefined;
-        const pendingOwnerEmail =
-          ((animalReminderRow as any)?.pending_owner_email as string | undefined)?.trim() || null;
-        const animalName =
-          ((animalReminderRow as any)?.name as string | undefined) || "il tuo animale";
+        const ownerId = animalReminderRow?.owner_id ?? null;
+        const pendingOwnerEmail = animalReminderRow?.pending_owner_email?.trim() || null;
+        const animalName = animalReminderRow?.name || "il tuo animale";
 
         let ownerEmail: string | null = null;
 
@@ -474,7 +528,7 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ ok: true, event: data }, { status: 200 });
-  } catch (error) {
+  } catch (error: unknown) {
     await safeWriteAudit(supabase, {
       req,
       actor_user_id: user.id,

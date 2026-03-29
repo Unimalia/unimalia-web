@@ -4,6 +4,45 @@ import { requireOwnerOrGrant } from "@/lib/server/requireOwnerOrGrant";
 import { safeWriteAudit } from "@/lib/server/safeAudit";
 import { isUuid } from "@/lib/server/validators";
 
+type ProfessionalProfileRow = {
+  user_id: string;
+  org_id: string | null;
+};
+
+type ProfessionalRow = {
+  id: string;
+  owner_id: string;
+};
+
+type EventAuditRow = {
+  event_id: string | null;
+};
+
+type AnimalClinicEventRow = {
+  id: string;
+  animal_id: string;
+  event_date: string;
+  type: string;
+  title: string;
+  description: string | null;
+  visibility: string;
+  source: string;
+  verified_at: string | null;
+  verified_by_user_id: string | null;
+  verified_by_org_id: string | null;
+  verified_by_member_id: string | null;
+  verified_by_label: string | null;
+  created_by_user_id: string | null;
+  created_at: string;
+  updated_at: string;
+  status: string;
+  meta: Record<string, unknown> | null;
+  priority: "low" | "normal" | "high" | "urgent" | null;
+};
+
+type RequireOwnerOrGrantClient = Parameters<typeof requireOwnerOrGrant>[0];
+type SafeWriteAuditClient = Parameters<typeof safeWriteAudit>[0];
+
 async function getProfessionalRefs(userId: string) {
   const admin = supabaseAdmin();
   const refs = new Set<string>();
@@ -13,7 +52,7 @@ async function getProfessionalRefs(userId: string) {
     .from("professional_profiles")
     .select("user_id, org_id")
     .eq("user_id", userId)
-    .maybeSingle();
+    .maybeSingle<ProfessionalProfileRow>();
 
   if (profileResult.error) {
     throw profileResult.error;
@@ -29,7 +68,7 @@ async function getProfessionalRefs(userId: string) {
     .eq("owner_id", userId)
     .order("created_at", { ascending: false })
     .limit(1)
-    .maybeSingle();
+    .maybeSingle<ProfessionalRow>();
 
   if (professionalResult.error) {
     throw professionalResult.error;
@@ -79,12 +118,12 @@ async function getFallbackReadableEventIds(params: {
     }
 
     orgEventIds = (orgAuditResult.data ?? [])
-      .map((row: any) => String(row.event_id || "").trim())
+      .map((row: EventAuditRow) => String(row.event_id || "").trim())
       .filter(Boolean);
   }
 
   const ownEventIds = (ownAuditResult.data ?? [])
-    .map((row: any) => String(row.event_id || "").trim())
+    .map((row: EventAuditRow) => String(row.event_id || "").trim())
     .filter(Boolean);
 
   return Array.from(new Set([...ownEventIds, ...orgEventIds]));
@@ -115,7 +154,12 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const grant = await requireOwnerOrGrant(supabase as any, user.id, animalId, "read");
+    const grant = await requireOwnerOrGrant(
+      supabase as RequireOwnerOrGrantClient,
+      user.id,
+      animalId,
+      "read"
+    );
 
     if (grant.ok) {
       const { data, error } = await admin
@@ -126,10 +170,11 @@ export async function GET(req: Request) {
         .eq("animal_id", animalId)
         .neq("status", "void")
         .order("event_date", { ascending: false })
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .returns<AnimalClinicEventRow[]>();
 
       if (error) {
-        await safeWriteAudit(supabase as any, {
+        await safeWriteAudit(supabase as SafeWriteAuditClient, {
           req,
           actor_user_id: user.id,
           actor_org_id: grant.actor_org_id,
@@ -147,7 +192,7 @@ export async function GET(req: Request) {
         );
       }
 
-      await safeWriteAudit(supabase as any, {
+      await safeWriteAudit(supabase as SafeWriteAuditClient, {
         req,
         actor_user_id: user.id,
         actor_org_id: grant.actor_org_id,
@@ -174,7 +219,7 @@ export async function GET(req: Request) {
     });
 
     if (fallbackEventIds.length === 0) {
-      await safeWriteAudit(supabase as any, {
+      await safeWriteAudit(supabase as SafeWriteAuditClient, {
         req,
         actor_user_id: user.id,
         actor_org_id: null,
@@ -198,10 +243,11 @@ export async function GET(req: Request) {
       .neq("status", "void")
       .in("id", fallbackEventIds)
       .order("event_date", { ascending: false })
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .returns<AnimalClinicEventRow[]>();
 
     if (error) {
-      await safeWriteAudit(supabase as any, {
+      await safeWriteAudit(supabase as SafeWriteAuditClient, {
         req,
         actor_user_id: user.id,
         actor_org_id: null,
@@ -219,7 +265,7 @@ export async function GET(req: Request) {
       );
     }
 
-    await safeWriteAudit(supabase as any, {
+    await safeWriteAudit(supabase as SafeWriteAuditClient, {
       req,
       actor_user_id: user.id,
       actor_org_id: null,
@@ -239,7 +285,10 @@ export async function GET(req: Request) {
       },
       { status: 200 }
     );
-  } catch (error: any) {
-    return NextResponse.json({ error: error?.message || "Server error" }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Server error" },
+      { status: 500 }
+    );
   }
 }

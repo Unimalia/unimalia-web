@@ -8,6 +8,26 @@ import { isUuid } from "@/lib/server/validators";
 
 type Body = { id: string };
 
+type EventPriority = "low" | "normal" | "high" | "urgent";
+
+type ClinicEventMeta = Record<string, unknown>;
+
+type AnimalClinicEventRow = {
+  id: string;
+  animal_id: string;
+  status: string | null;
+  source: string | null;
+  created_by_user_id: string | null;
+  title: string | null;
+  event_date: string | null;
+  type: string | null;
+  description: string | null;
+  priority: string | null;
+  meta: ClinicEventMeta | null;
+};
+
+type RequireOwnerOrGrantClient = Parameters<typeof requireOwnerOrGrant>[0];
+
 function badRequest(message: string) {
   return NextResponse.json({ error: message }, { status: 400 });
 }
@@ -68,23 +88,28 @@ export async function POST(req: Request) {
     .from("animal_clinic_events")
     .select("*")
     .eq("id", id)
-    .single();
+    .single<AnimalClinicEventRow>();
 
   if (readErr || !current) {
     return NextResponse.json({ error: "Evento non trovato" }, { status: 404 });
   }
 
-  if ((current as any).status === "void") {
+  if (current.status === "void") {
     return NextResponse.json({ ok: true }, { status: 200 });
   }
 
-  const animalId = String((current as any).animal_id || "");
+  const animalId = String(current.animal_id || "");
 
   if (!animalId || !isUuid(animalId)) {
     return badRequest("animal_id evento non valido");
   }
 
-  const grant = await requireOwnerOrGrant(supabase as any, user.id, animalId, "write");
+  const grant = await requireOwnerOrGrant(
+    supabase as RequireOwnerOrGrantClient,
+    user.id,
+    animalId,
+    "write"
+  );
 
   if (!grant.ok) {
     await safeWriteAudit(supabase, {
@@ -101,8 +126,8 @@ export async function POST(req: Request) {
     return forbidden(grant.reason);
   }
 
-  const source = String((current as any).source || "");
-  const createdByUserId = ((current as any).created_by_user_id as string | null) ?? null;
+  const source = String(current.source || "");
+  const createdByUserId = current.created_by_user_id ?? null;
 
   if (source !== "owner") {
     if (!createdByUserId || createdByUserId !== user.id) {
@@ -147,13 +172,13 @@ export async function POST(req: Request) {
 
   try {
     await supabase.from("animal_clinic_event_audit").insert({
-      event_id: (current as any).id,
+      event_id: current.id,
       animal_id: animalId,
       actor_user_id: user.id,
       actor_org_id: grant.actor_org_id,
       action: "delete",
       previous_data: current,
-      next_data: { ...(current as any), status: "void" },
+      next_data: { ...current, status: "void" },
     });
   } catch (auditInsertError) {
     console.error("[CLINIC_EVENT_AUDIT_INSERT_ERROR]", auditInsertError);
@@ -161,35 +186,33 @@ export async function POST(req: Request) {
 
   try {
     const currentTitle =
-      typeof (current as any).title === "string" && (current as any).title.trim()
-        ? (current as any).title.trim()
+      typeof current.title === "string" && current.title.trim()
+        ? current.title.trim()
         : "Evento clinico annullato";
 
     const currentDate =
-      typeof (current as any).event_date === "string" && (current as any).event_date.trim()
-        ? (current as any).event_date.trim()
+      typeof current.event_date === "string" && current.event_date.trim()
+        ? current.event_date.trim()
         : null;
 
     const currentType =
-      typeof (current as any).type === "string" && (current as any).type.trim()
-        ? (current as any).type.trim()
-        : null;
+      typeof current.type === "string" && current.type.trim() ? current.type.trim() : null;
 
     const currentDescription =
-      typeof (current as any).description === "string" && (current as any).description.trim()
-        ? (current as any).description.trim()
+      typeof current.description === "string" && current.description.trim()
+        ? current.description.trim()
         : null;
 
-    const currentPriority =
-      typeof (current as any).priority === "string" &&
-      ["low", "normal", "high", "urgent"].includes((current as any).priority)
-        ? ((current as any).priority as "low" | "normal" | "high" | "urgent")
+    const currentPriority: EventPriority | null =
+      current.priority === "low" ||
+      current.priority === "normal" ||
+      current.priority === "high" ||
+      current.priority === "urgent"
+        ? current.priority
         : null;
 
     const currentMeta =
-      (current as any).meta && typeof (current as any).meta === "object"
-        ? (current as any).meta
-        : null;
+      current.meta && typeof current.meta === "object" ? current.meta : null;
 
     const notesParts = [
       "Questo evento clinico è stato annullato.",

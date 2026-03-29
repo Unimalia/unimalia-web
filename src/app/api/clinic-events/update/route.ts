@@ -15,8 +15,31 @@ type Body = {
   therapyStartDate?: string | null;
   therapyEndDate?: string | null;
   priority?: "low" | "normal" | "high" | "urgent" | null;
-  meta?: Record<string, any> | null;
+  meta?: Record<string, unknown> | null;
 };
+
+type EventPriority = "low" | "normal" | "high" | "urgent";
+
+type ClinicEventMeta = Record<string, unknown>;
+
+type AnimalClinicEventRow = {
+  id: string;
+  animal_id: string;
+  source: string | null;
+  created_by_user_id: string | null;
+  title: string | null;
+  type: string | null;
+  event_date: string | null;
+  description: string | null;
+  meta: ClinicEventMeta | null;
+  verified_at: string | null;
+  verified_by_user_id: string | null;
+  verified_by_org_id: string | null;
+  verified_by_member_id: string | null;
+  verified_by_label: string | null;
+};
+
+type RequireOwnerOrGrantClient = Parameters<typeof requireOwnerOrGrant>[0];
 
 function badRequest(message: string) {
   return NextResponse.json({ error: message }, { status: 400 });
@@ -41,7 +64,7 @@ function parseDateOnly(v: unknown): string | null {
   return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null;
 }
 
-function sanitizeMeta(input: unknown): Record<string, any> | null {
+function sanitizeMeta(input: unknown): Record<string, unknown> | null {
   if (!input || typeof input !== "object" || Array.isArray(input)) return null;
 
   const reservedKeys = new Set([
@@ -55,7 +78,7 @@ function sanitizeMeta(input: unknown): Record<string, any> | null {
     "weight_kg",
   ]);
 
-  const output: Record<string, any> = {};
+  const output: Record<string, unknown> = {};
 
   for (const [key, value] of Object.entries(input)) {
     if (!key || reservedKeys.has(key)) continue;
@@ -141,19 +164,24 @@ export async function POST(req: Request) {
     .from("animal_clinic_events")
     .select("*")
     .eq("id", id)
-    .single();
+    .single<AnimalClinicEventRow>();
 
   if (readErr || !current) {
     return NextResponse.json({ error: "Evento non trovato" }, { status: 404 });
   }
 
-  const animalId = String((current as any).animal_id || "");
+  const animalId = String(current.animal_id || "");
 
   if (!animalId || !isUuid(animalId)) {
     return badRequest("animal_id evento non valido");
   }
 
-  const grant = await requireOwnerOrGrant(supabase as any, user.id, animalId, "write");
+  const grant = await requireOwnerOrGrant(
+    supabase as RequireOwnerOrGrantClient,
+    user.id,
+    animalId,
+    "write"
+  );
 
   if (!grant.ok) {
     await safeWriteAudit(supabase, {
@@ -170,8 +198,8 @@ export async function POST(req: Request) {
     return forbidden(grant.reason);
   }
 
-  const source = String((current as any).source || "");
-  const createdByUserId = ((current as any).created_by_user_id as string | null) ?? null;
+  const source = String(current.source || "");
+  const createdByUserId = current.created_by_user_id ?? null;
 
   if (source !== "owner") {
     if (!createdByUserId || createdByUserId !== user.id) {
@@ -205,13 +233,16 @@ export async function POST(req: Request) {
     return badRequest("therapyEndDate non può essere precedente a therapyStartDate");
   }
 
-  const priority =
-    ["low", "normal", "high", "urgent"].includes(String(body.priority || ""))
-      ? String(body.priority)
+  const priority: EventPriority | null =
+    body.priority === "low" ||
+    body.priority === "normal" ||
+    body.priority === "high" ||
+    body.priority === "urgent"
+      ? body.priority
       : null;
 
-  const nextMeta: Record<string, any> = {
-    ...((((current as any).meta as Record<string, any>) || {}) as Record<string, any>),
+  const nextMeta: ClinicEventMeta = {
+    ...((current.meta || {}) as ClinicEventMeta),
   };
 
   const incomingMeta = sanitizeMeta(body.meta);
@@ -235,19 +266,30 @@ export async function POST(req: Request) {
   }
 
   const before = {
-    title: (current as any).title,
-    type: (current as any).type,
-    event_date: (current as any).event_date,
-    description: (current as any).description,
-    meta: (current as any).meta,
-    verified_at: (current as any).verified_at,
-    verified_by_user_id: (current as any).verified_by_user_id,
-    verified_by_org_id: (current as any).verified_by_org_id,
-    verified_by_member_id: (current as any).verified_by_member_id,
-    verified_by_label: (current as any).verified_by_label,
+    title: current.title,
+    type: current.type,
+    event_date: current.event_date,
+    description: current.description,
+    meta: current.meta,
+    verified_at: current.verified_at,
+    verified_by_user_id: current.verified_by_user_id,
+    verified_by_org_id: current.verified_by_org_id,
+    verified_by_member_id: current.verified_by_member_id,
+    verified_by_label: current.verified_by_label,
   };
 
-  const updateData: Record<string, any> = {
+  const updateData: {
+    title: string;
+    type: string;
+    event_date: string;
+    description: string | null;
+    meta: ClinicEventMeta;
+    verified_at?: null;
+    verified_by_user_id?: null;
+    verified_by_org_id?: null;
+    verified_by_member_id?: null;
+    verified_by_label?: null;
+  } = {
     title,
     type,
     event_date: eventDate,
@@ -255,7 +297,7 @@ export async function POST(req: Request) {
     meta: nextMeta,
   };
 
-  if ((current as any).verified_at || source === "professional" || source === "veterinarian") {
+  if (current.verified_at || source === "professional" || source === "veterinarian") {
     updateData.verified_at = null;
     updateData.verified_by_user_id = null;
     updateData.verified_by_org_id = null;
@@ -268,7 +310,7 @@ export async function POST(req: Request) {
     .update(updateData)
     .eq("id", id)
     .select("*")
-    .single();
+    .single<AnimalClinicEventRow>();
 
   if (error || !updated) {
     await safeWriteAudit(supabase, {
@@ -288,7 +330,7 @@ export async function POST(req: Request) {
 
   try {
     await supabase.from("animal_clinic_event_audit").insert({
-      event_id: (current as any).id,
+      event_id: current.id,
       animal_id: animalId,
       actor_user_id: user.id,
       actor_org_id: grant.actor_org_id,
@@ -308,13 +350,7 @@ export async function POST(req: Request) {
       eventDate: eventDate || null,
       eventNotes: description || null,
       eventType: type || null,
-      priority:
-        priority === "low" ||
-        priority === "normal" ||
-        priority === "high" ||
-        priority === "urgent"
-          ? priority
-          : null,
+      priority,
       therapyStartDate: therapyStartDate ?? null,
       therapyEndDate: therapyEndDate ?? null,
       meta: nextMeta ?? null,
@@ -325,16 +361,16 @@ export async function POST(req: Request) {
   }
 
   const after = {
-    title: (updated as any).title,
-    type: (updated as any).type,
-    event_date: (updated as any).event_date,
-    description: (updated as any).description,
-    meta: (updated as any).meta,
-    verified_at: (updated as any).verified_at,
-    verified_by_user_id: (updated as any).verified_by_user_id,
-    verified_by_org_id: (updated as any).verified_by_org_id,
-    verified_by_member_id: (updated as any).verified_by_member_id,
-    verified_by_label: (updated as any).verified_by_label,
+    title: updated.title,
+    type: updated.type,
+    event_date: updated.event_date,
+    description: updated.description,
+    meta: updated.meta,
+    verified_at: updated.verified_at,
+    verified_by_user_id: updated.verified_by_user_id,
+    verified_by_org_id: updated.verified_by_org_id,
+    verified_by_member_id: updated.verified_by_member_id,
+    verified_by_label: updated.verified_by_label,
   };
 
   await safeWriteAudit(supabase, {

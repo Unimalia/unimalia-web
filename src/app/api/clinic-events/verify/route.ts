@@ -9,6 +9,38 @@ type Body = {
   id: string;
 };
 
+type AnimalClinicEventVerifyRow = {
+  id: string;
+  animal_id: string;
+  status: string | null;
+  verified_at: string | null;
+  source: string | null;
+};
+
+type AnimalClinicEventRow = {
+  id: string;
+  animal_id: string;
+  event_date: string;
+  type: string;
+  title: string;
+  description: string | null;
+  visibility: string;
+  source: string;
+  verified_at: string | null;
+  verified_by_user_id: string | null;
+  verified_by_org_id: string | null;
+  verified_by_member_id: string | null;
+  verified_by_label: string | null;
+  created_by_user_id: string | null;
+  created_at: string;
+  updated_at: string;
+  status: string;
+  meta: Record<string, unknown> | null;
+  priority: "low" | "normal" | "high" | "urgent" | null;
+};
+
+type RequireOwnerOrGrantClient = Parameters<typeof requireOwnerOrGrant>[0];
+
 function badRequest(message: string) {
   return NextResponse.json({ error: message }, { status: 400 });
 }
@@ -69,19 +101,24 @@ export async function POST(req: Request) {
     .from("animal_clinic_events")
     .select("id, animal_id, status, verified_at, source")
     .eq("id", id)
-    .single();
+    .single<AnimalClinicEventVerifyRow>();
 
   if (readErr || !current) {
     return NextResponse.json({ error: "Evento non trovato" }, { status: 404 });
   }
 
-  const animalId = String((current as any).animal_id || "");
+  const animalId = String(current.animal_id || "");
 
   if (!animalId || !isUuid(animalId)) {
     return badRequest("animal_id evento non valido");
   }
 
-  const grant = await requireOwnerOrGrant(supabase as any, user.id, animalId, "write");
+  const grant = await requireOwnerOrGrant(
+    supabase as RequireOwnerOrGrantClient,
+    user.id,
+    animalId,
+    "write"
+  );
 
   if (!grant.ok) {
     await safeWriteAudit(supabase, {
@@ -98,7 +135,7 @@ export async function POST(req: Request) {
     return forbidden(grant.reason);
   }
 
-  if ((current as any).status === "void") {
+  if (current.status === "void") {
     return badRequest("Evento annullato non verificabile");
   }
 
@@ -118,7 +155,7 @@ export async function POST(req: Request) {
     .select(
       "id, animal_id, event_date, type, title, description, visibility, source, verified_at, verified_by_user_id, verified_by_org_id, verified_by_member_id, verified_by_label, created_by_user_id, created_at, updated_at, status, meta, priority"
     )
-    .single();
+    .single<AnimalClinicEventRow>();
 
   if (error || !updated) {
     await safeWriteAudit(supabase, {
