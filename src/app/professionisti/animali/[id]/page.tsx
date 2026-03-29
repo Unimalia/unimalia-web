@@ -71,7 +71,7 @@ type ClinicEventRow = {
   visibility: "owner" | "professionals" | "emergency";
   source: "owner" | "professional" | "veterinarian";
   verified_at: string | null;
-  verified_by: string | null;
+  verified_by_user_id: string | null;
 
   verified_by_label?: string | null;
   verified_by_org_id?: string | null;
@@ -85,9 +85,9 @@ type ClinicEventRow = {
 
   weight_kg?: number | null;
   weightKg?: number | null;
-  data?: any;
-  payload?: any;
-  meta?: any;
+  data?: Record<string, unknown> | null;
+  payload?: Record<string, unknown> | null;
+  meta?: Record<string, unknown> | null;
 };
 
 function statusLabel(status: string) {

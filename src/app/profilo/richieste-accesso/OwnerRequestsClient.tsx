@@ -34,6 +34,11 @@ function labelDuration(d: Duration) {
   return "Senza scadenza";
 }
 
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) return error.message;
+  return "Errore";
+}
+
 export default function OwnerRequestsClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -70,8 +75,8 @@ export default function OwnerRequestsClient() {
         }
         return next;
       });
-    } catch (e: any) {
-      setError(e?.message || "Errore");
+    } catch (e: unknown) {
+      setError(getErrorMessage(e));
     } finally {
       setLoading(false);
     }

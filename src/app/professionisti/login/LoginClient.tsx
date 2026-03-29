@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
@@ -29,6 +29,11 @@ function getPasswordIssues(password: string) {
   if (!/[^A-Za-z0-9]/.test(password)) issues.push("almeno un simbolo");
 
   return issues;
+}
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) return error.message;
+  return "Errore inatteso.";
 }
 
 export default function LoginClient() {
@@ -66,7 +71,7 @@ export default function LoginClient() {
     );
   }, [email, phone, password, confirmPassword, mode]);
 
-  async function handleProfessionalPostLoginRedirect(userId: string) {
+  const handleProfessionalPostLoginRedirect = useCallback(async (userId: string) => {
     const { data: proData, error: proErr } = await supabase
       .from("professionals")
       .select("id, approved")
@@ -105,7 +110,7 @@ export default function LoginClient() {
     }
 
     router.replace(next);
-  }
+  }, [next, router]);
 
   useEffect(() => {
     let alive = true;
@@ -136,7 +141,7 @@ export default function LoginClient() {
       alive = false;
       sub.subscription.unsubscribe();
     };
-  }, [router, next]);
+  }, [handleProfessionalPostLoginRedirect]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -245,9 +250,9 @@ export default function LoginClient() {
 
       await handleProfessionalPostLoginRedirect(user.id);
       setLoading(false);
-    } catch (e: any) {
+    } catch (e: unknown) {
       setLoading(false);
-      setErr(e?.message || "Errore inatteso.");
+      setErr(getErrorMessage(e));
     }
   }
 
@@ -275,8 +280,8 @@ export default function LoginClient() {
       }
 
       setMsg("Se l’email esiste, riceverai un link per reimpostare la password.");
-    } catch (e: any) {
-      setErr(e?.message || "Errore inatteso.");
+    } catch (e: unknown) {
+      setErr(getErrorMessage(e));
     } finally {
       setLoading(false);
     }

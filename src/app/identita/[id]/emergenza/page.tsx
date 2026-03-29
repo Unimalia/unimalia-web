@@ -48,7 +48,7 @@ type ClinicEventRow = {
   visibility: "owner" | "professionals" | "emergency";
   source: "owner" | "professional" | "veterinarian";
   verified_at: string | null;
-  verified_by: string | null;
+  verified_by_user_id: string | null;
   due_date?: string | null;
   due_at?: string | null;
   next_due_date?: string | null;

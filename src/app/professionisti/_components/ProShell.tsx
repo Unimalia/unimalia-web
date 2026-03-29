@@ -22,16 +22,22 @@ type Item = {
   description?: string;
 };
 
-function getEmail(u: any) {
+type ProUserLike = {
+  email?: string | null;
+  app_metadata?: Record<string, unknown> | null;
+  user_metadata?: Record<string, unknown> | null;
+};
+
+function getEmail(u: ProUserLike | null | undefined) {
   return String(u?.email || "").toLowerCase().trim();
 }
 
-export function isProfessionalUser(u: any) {
+export function isProfessionalUser(u: ProUserLike | null | undefined) {
   if (!u) return false;
   return Boolean(u?.app_metadata?.is_professional || u?.user_metadata?.is_professional);
 }
 
-export function isVetUser(u: any) {
+export function isVetUser(u: ProUserLike | null | undefined) {
   if (!u) return false;
   const email = getEmail(u);
   if (email === "valentinotwister@hotmail.it") return true;
@@ -112,7 +118,7 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
       }
 
       const { data, error } = await supabase.auth.getUser();
-      const msg = String((error as any)?.message || "");
+      const msg = error instanceof Error ? error.message : "";
 
       if (error && msg.toLowerCase().includes("refresh token")) {
         await hardRedirectToLogin();

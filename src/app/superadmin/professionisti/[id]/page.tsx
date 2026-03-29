@@ -31,7 +31,7 @@ type Professional = {
   verification_status: string | null;
   verification_level: string | null;
   verified_at: string | null;
-  verified_by: string | null;
+  verified_by_user_id: string | null;
   rejection_reason: string | null;
 
   subscription_status: string | null;
@@ -321,7 +321,7 @@ export default async function SuperAdminProfessionalDetailPage({
                 type="text"
                 name="verification_status"
                 defaultValue={p.verification_status || ""}
-                placeholder="es. approved, pending, rejected, draft"
+                placeholder="es. verified, pending, rejected, draft"
                 className="w-full rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 outline-none placeholder:text-zinc-400 focus:border-zinc-400"
               />
             </div>
@@ -360,7 +360,7 @@ export default async function SuperAdminProfessionalDetailPage({
 
           <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600">
             <div>Verified at: {p.verified_at ? new Date(p.verified_at).toLocaleString("it-IT") : "—"}</div>
-            <div className="mt-1">Verified by: {p.verified_by || "—"}</div>
+            <div className="mt-1">Verified by: {p.verified_by_user_id || "—"}</div>
           </div>
         </form>
       </Section>
