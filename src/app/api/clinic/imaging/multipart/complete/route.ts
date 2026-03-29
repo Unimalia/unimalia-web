@@ -89,10 +89,7 @@ export async function POST(req: Request) {
     const totalParts = session.total_parts;
 
     if (parts.length !== totalParts) {
-      return NextResponse.json(
-        { error: "Upload incompleto" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Upload incompleto" }, { status: 400 });
     }
 
     const buffers: Buffer[] = [];
@@ -101,7 +98,6 @@ export async function POST(req: Request) {
       const path = `${session.storage_key}.part${part.PartNumber}`;
 
       const url = await createSignedDownloadUrl(path, 60);
-
       const resp = await fetch(url);
 
       if (!resp.ok) {
@@ -113,7 +109,6 @@ export async function POST(req: Request) {
     }
 
     const finalBuffer = Buffer.concat(buffers);
-
     const finalPath = session.storage_key;
 
     const upload = await createSignedUploadUrl({
@@ -167,7 +162,7 @@ export async function POST(req: Request) {
       type: "imaging",
       title: modality || "Imaging",
       meta: eventMeta,
-      created_by: user.id,
+      created_by_user_id: user.id,
       source: "professional",
       status: "active",
     });

@@ -395,7 +395,10 @@ export async function POST(req: Request) {
         });
       }
 
-      const finalEventDate = eventDateRaw ? new Date(eventDateRaw).toISOString() : new Date().toISOString();
+      const finalEventDate = eventDateRaw
+        ? new Date(eventDateRaw).toISOString()
+        : new Date().toISOString();
+
       const title = buildImagingTitle(modality, bodyPart);
 
       const eventMeta = {
@@ -441,7 +444,7 @@ export async function POST(req: Request) {
           description,
           visibility,
           meta: eventMeta,
-          created_by: user.id,
+          created_by_user_id: user.id,
           source: "professional",
           status: "active",
         });
@@ -470,15 +473,12 @@ export async function POST(req: Request) {
       await admin.from("clinic_imaging_uploads").insert({
         clinic_id: grant.actor_org_id ?? null,
         user_id: user.id,
-
         animal_id: animalId,
         event_id: eventId,
         file_id: fileId,
-
         file_name: fileName,
         file_size: size,
         mime,
-
         modality,
         status: "completed",
       });
@@ -556,15 +556,12 @@ export async function POST(req: Request) {
       await admin.from("clinic_imaging_uploads").insert({
         clinic_id: null,
         user_id: user.id,
-
         animal_id: trackedAnimalId,
         event_id: null,
         file_id: null,
-
         file_name: null,
         file_size: null,
         mime: null,
-
         modality: null,
         status: "failed",
       });

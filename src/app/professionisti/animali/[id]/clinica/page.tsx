@@ -29,13 +29,12 @@ type ClinicEventRow = {
   visibility: "owner" | "professionals" | "emergency";
   source: "owner" | "professional" | "veterinarian";
   verified_at: string | null;
-  verified_by: string | null;
-  created_by?: string | null;
-  created_by_label?: string | null;
+  created_by_user_id: string | null;
+  verified_by_user_id: string | null;
+  verified_by_org_id: string | null;
+  verified_by_member_id: string | null;
+  verified_by_label: string | null;
   created_at?: string | null;
-  verified_by_label?: string | null;
-  verified_by_org_id?: string | null;
-  verified_by_member_id?: string | null;
   meta?: any;
 };
 
@@ -287,14 +286,21 @@ function formatWeightLabel(kg: number) {
   return Number.isInteger(kg) ? `${kg} kg` : `${kg} kg`;
 }
 
+function hasVerificationAudit(ev: ClinicEventRow) {
+  return Boolean(
+    ev.verified_at ||
+      ev.verified_by_user_id ||
+      ev.verified_by_org_id ||
+      ev.verified_by_member_id ||
+      ev.verified_by_label
+  );
+}
+
 function getEventAuthorLabel(ev: ClinicEventRow) {
-  const vet = ev?.meta?.created_by_member_label || ev.created_by_label || ev.verified_by_label || "";
-  const clinic = ev?.meta?.created_by_org_name || ev?.meta?.org_name || "";
-  if (vet && clinic) return `${vet} – ${clinic}`;
-  if (vet) return vet;
-  if (clinic) return clinic;
+  if (ev.verified_by_label) return ev.verified_by_label;
   if (ev.source === "owner") return "Proprietario";
   if (ev.source === "veterinarian") return "Veterinario";
+  if (ev.source === "professional") return "Clinica";
   return "Clinica";
 }
 
@@ -320,6 +326,7 @@ export default function ClinicaPage() {
   const [eventsLoading, setEventsLoading] = useState(false);
   const [events, setEvents] = useState<ClinicEventRow[]>([]);
   const [eventsErr, setEventsErr] = useState<string | null>(null);
+  const [canWriteClinicEvents, setCanWriteClinicEvents] = useState(true);
 
   const [filter, setFilter] = useState<FilterKey>("all");
   const [search, setSearch] = useState("");
@@ -419,6 +426,7 @@ export default function ClinicaPage() {
     if (!id) return;
     setEventsLoading(true);
     setEventsErr(null);
+
     try {
       const res = await fetch(`/api/clinic-events/list?animalId=${encodeURIComponent(id)}`, {
         cache: "no-store",
@@ -426,9 +434,11 @@ export default function ClinicaPage() {
           ...(await authHeaders()),
         },
       });
+
       if (!res.ok) {
         if (res.status === 401 || res.status === 403) {
           setEvents([]);
+          setCanWriteClinicEvents(false);
           setEventsErr("Cartella clinica: accesso riservato ai veterinari autorizzati.");
           setEventsLoading(false);
           return;
@@ -438,8 +448,15 @@ export default function ClinicaPage() {
         setEventsLoading(false);
         return;
       }
+
       const json = await res.json().catch(() => ({}));
       setEvents((json?.events as ClinicEventRow[]) ?? []);
+
+      if (typeof json?.canWrite === "boolean") {
+        setCanWriteClinicEvents(json.canWrite);
+      } else {
+        setCanWriteClinicEvents(true);
+      }
     } catch {
       setEvents([]);
       setEventsErr("Errore di rete durante il caricamento eventi.");
@@ -552,9 +569,7 @@ export default function ClinicaPage() {
     const studyInstanceUid = String(orthanc?.studyInstanceUid || "").trim();
     if (!studyInstanceUid) return null;
 
-    return `/api/clinic/imaging/view?studyInstanceUid=${encodeURIComponent(
-      studyInstanceUid
-    )}`;
+    return `/api/clinic/imaging/view?studyInstanceUid=${encodeURIComponent(studyInstanceUid)}`;
   }
 
   async function openImagingViewerOrFile(eventId: string, file: any) {
@@ -761,6 +776,11 @@ export default function ClinicaPage() {
 
   async function saveClinicEvent() {
     if (!id) return;
+    if (!canWriteClinicEvents) {
+      setSaveErr("Grant revocato: puoi leggere solo gli eventi consentiti ma non puoi scrivere.");
+      return;
+    }
+
     setSaving(true);
     setSaveErr(null);
     setSaveOk(null);
@@ -1049,6 +1069,11 @@ export default function ClinicaPage() {
 
   async function verifyEvent(eventId: string) {
     if (!id) return;
+    if (!canWriteClinicEvents) {
+      setVerifyErr("Grant revocato: non puoi validare o modificare eventi.");
+      return;
+    }
+
     setVerifyingId(eventId);
     setVerifyErr(null);
 
@@ -1074,6 +1099,7 @@ export default function ClinicaPage() {
             ? {
                 ...e,
                 verified_at: new Date().toISOString(),
+                verified_by_user_id: currentUserId,
                 verified_by_label: e.verified_by_label || "Veterinario",
               }
             : e
@@ -1090,7 +1116,7 @@ export default function ClinicaPage() {
   }
 
   function isEventVerified(ev: ClinicEventRow) {
-    return ev.source === "professional" || ev.source === "veterinarian" || !!ev.verified_at;
+    return hasVerificationAudit(ev) || ev.source === "professional" || ev.source === "veterinarian";
   }
 
   const pendingIds = useMemo(() => {
@@ -1127,6 +1153,11 @@ export default function ClinicaPage() {
 
   async function verifyMany(idsToVerify: string[]) {
     if (!id || idsToVerify.length === 0) return;
+    if (!canWriteClinicEvents) {
+      setVerifyErr("Grant revocato: non puoi validare o modificare eventi.");
+      return;
+    }
+
     setBulkVerifying(true);
     setVerifyErr(null);
 
@@ -1153,6 +1184,7 @@ export default function ClinicaPage() {
             ? {
                 ...e,
                 verified_at: nowIso,
+                verified_by_user_id: currentUserId,
                 verified_by_label: e.verified_by_label || "Veterinario",
               }
             : e
@@ -1170,14 +1202,19 @@ export default function ClinicaPage() {
   }
 
   function canEditOrDelete(ev: ClinicEventRow) {
-    if (ev.source === "owner") return true;
-    const createdBy = (ev as any).created_by as string | null | undefined;
-    if (!createdBy || !currentUserId) return false;
-    return createdBy === currentUserId;
+    if (!canWriteClinicEvents) return false;
+    if (!currentUserId) return false;
+    if (!ev.created_by_user_id) return false;
+    return ev.created_by_user_id === currentUserId;
   }
 
   async function updateDetailEvent() {
     if (!detailEvent) return;
+    if (!canWriteClinicEvents) {
+      setModalErr("Grant revocato: non puoi modificare eventi.");
+      return;
+    }
+
     setUpdating(true);
     setModalErr(null);
 
@@ -1224,6 +1261,11 @@ export default function ClinicaPage() {
 
   async function deleteDetailEvent() {
     if (!detailEvent) return;
+    if (!canWriteClinicEvents) {
+      setModalErr("Grant revocato: non puoi eliminare eventi.");
+      return;
+    }
+
     setDeleting(true);
     setModalErr(null);
 
@@ -1278,15 +1320,7 @@ export default function ClinicaPage() {
     if (!q) return base;
 
     return base.filter((e) => {
-      const hay = [
-        e.title,
-        e.description,
-        e.type,
-        e?.meta?.created_by_member_label,
-        e?.meta?.created_by_org_name,
-        e?.meta?.org_name,
-        getEventAuthorLabel(e),
-      ]
+      const hay = [e.title, e.description, e.type, e.verified_by_label, getEventAuthorLabel(e)]
         .filter(Boolean)
         .join(" ")
         .toLowerCase();
@@ -1336,7 +1370,7 @@ export default function ClinicaPage() {
   }, [groupedEvents, shownEventIds]);
 
   const hasMore = flattenedShownEvents.length < filteredEvents.length;
-  const canSave = !saving && !!newDate && !!newType;
+  const canSave = canWriteClinicEvents && !saving && !!newDate && !!newType;
 
   const detailInitialSnapshot = useMemo(() => {
     if (!detailEvent) return "";
@@ -1505,7 +1539,7 @@ export default function ClinicaPage() {
                 <button
                   type="button"
                   className="rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800 shadow-sm transition hover:bg-zinc-50 disabled:opacity-50"
-                  disabled={bulkVerifying}
+                  disabled={bulkVerifying || !canWriteClinicEvents}
                   onClick={() => selectAllPending()}
                 >
                   Seleziona tutti
@@ -1514,7 +1548,7 @@ export default function ClinicaPage() {
                 <button
                   type="button"
                   className="rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800 shadow-sm transition hover:bg-zinc-50 disabled:opacity-50"
-                  disabled={bulkVerifying || selectedIds.size === 0}
+                  disabled={bulkVerifying || selectedIds.size === 0 || !canWriteClinicEvents}
                   onClick={() => void verifyMany(Array.from(selectedIds))}
                 >
                   {bulkVerifying ? "Validazione…" : "Valida selezionati"}
@@ -1523,7 +1557,7 @@ export default function ClinicaPage() {
                 <button
                   type="button"
                   className="rounded-xl bg-black px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-900 disabled:opacity-50"
-                  disabled={bulkVerifying}
+                  disabled={bulkVerifying || !canWriteClinicEvents}
                   onClick={() => void verifyMany(pendingIds)}
                   title="Valida tutti gli eventi in attesa"
                 >
@@ -1546,6 +1580,13 @@ export default function ClinicaPage() {
             <p className="mt-2 text-xs leading-5 text-zinc-600">
               Puoi selezionare i singoli eventi “⏳ da validare” direttamente dalla timeline.
             </p>
+          </div>
+        ) : null}
+
+        {!canWriteClinicEvents ? (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">
+            Grant revocato: la clinica può leggere solo gli eventi consentiti dall’audit attuale,
+            ma non può creare, modificare, validare, eliminare o allegare nuovi file.
           </div>
         ) : null}
 
@@ -1605,7 +1646,8 @@ export default function ClinicaPage() {
                       <div className="shrink-0">
                         <button
                           type="button"
-                          className="rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800 shadow-sm transition hover:bg-zinc-50"
+                          className="rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800 shadow-sm transition hover:bg-zinc-50 disabled:opacity-50"
+                          disabled={!canWriteClinicEvents}
                           onClick={() => {
                             setNewType("imaging");
                             setNewImagingModality(draft.modality || "RX");
@@ -1633,6 +1675,7 @@ export default function ClinicaPage() {
                 className={FIELD_CLASS}
                 value={newType}
                 onChange={(e) => setNewType(e.target.value as ClinicEventType)}
+                disabled={!canWriteClinicEvents}
               >
                 <option value="visit">🩺 Visita</option>
                 <option value="vaccine">💉 Vaccinazione</option>
@@ -1653,6 +1696,7 @@ export default function ClinicaPage() {
                 className={FIELD_CLASS}
                 value={newDate}
                 onChange={(e) => setNewDate(e.target.value)}
+                disabled={!canWriteClinicEvents}
               />
             </label>
 
@@ -1667,6 +1711,7 @@ export default function ClinicaPage() {
                 value={newWeightKg}
                 onChange={(e) => setNewWeightKg(e.target.value)}
                 placeholder="Es. 12.5"
+                disabled={!canWriteClinicEvents}
               />
             </label>
 
@@ -1683,6 +1728,7 @@ export default function ClinicaPage() {
                     : ".pdf,image/jpeg,image/png,image/webp"
                 }
                 className={FILE_INPUT_CLASS}
+                disabled={!canWriteClinicEvents}
                 onChange={(e) => {
                   const list = Array.from(e.target.files || []);
 
@@ -1739,6 +1785,7 @@ export default function ClinicaPage() {
                             className="h-4 w-4"
                             checked={checked}
                             onChange={() => toggleSelectedVaccine(v.value)}
+                            disabled={!canWriteClinicEvents}
                           />
                           <span>{v.label}</span>
                         </label>
@@ -1758,6 +1805,7 @@ export default function ClinicaPage() {
                     value={vaccineBatch}
                     onChange={(e) => setVaccineBatch(e.target.value)}
                     placeholder="Lotto"
+                    disabled={!canWriteClinicEvents}
                   />
                 </label>
 
@@ -1768,6 +1816,7 @@ export default function ClinicaPage() {
                     className={FIELD_CLASS}
                     value={vaccineNextDue}
                     onChange={(e) => setVaccineNextDue(e.target.value)}
+                    disabled={!canWriteClinicEvents}
                   />
                 </label>
               </div>
@@ -1782,6 +1831,7 @@ export default function ClinicaPage() {
                     className={FIELD_CLASS}
                     value={therapyStartDate}
                     onChange={(e) => setTherapyStartDate(e.target.value)}
+                    disabled={!canWriteClinicEvents}
                   />
                 </label>
 
@@ -1792,6 +1842,7 @@ export default function ClinicaPage() {
                     className={FIELD_CLASS}
                     value={therapyEndDate}
                     onChange={(e) => setTherapyEndDate(e.target.value)}
+                    disabled={!canWriteClinicEvents}
                   />
                   <p className="mt-1.5 text-xs leading-5 text-zinc-500">
                     Se lasci vuoto, la terapia è considerata in corso.
@@ -1808,6 +1859,7 @@ export default function ClinicaPage() {
                     className={FIELD_CLASS}
                     value={newImagingModality}
                     onChange={(e) => setNewImagingModality(e.target.value)}
+                    disabled={!canWriteClinicEvents}
                   >
                     <option value="RX">RX</option>
                     <option value="TAC">TAC</option>
@@ -1824,6 +1876,7 @@ export default function ClinicaPage() {
                     value={newImagingBodyPart}
                     onChange={(e) => setNewImagingBodyPart(e.target.value)}
                     placeholder="Es. Torace, Addome, Arto anteriore destro"
+                    disabled={!canWriteClinicEvents}
                   />
                 </label>
 
@@ -1842,6 +1895,7 @@ export default function ClinicaPage() {
                 value={newNotes}
                 onChange={(e) => setNewNotes(e.target.value)}
                 placeholder="Dettagli clinici, note, dosaggi, esito, osservazioni..."
+                disabled={!canWriteClinicEvents}
               />
             </label>
           </div>
@@ -1855,6 +1909,7 @@ export default function ClinicaPage() {
                 placeholder="Temporaneo: sarà sostituito da tendina ricercabile veterinari"
                 value={newVetSignature || ""}
                 onChange={(e) => setNewVetSignature(e.target.value)}
+                disabled={!canWriteClinicEvents}
               />
               {vetOptions.length === 0 && !selectedVetId ? (
                 <div className="mt-1.5 text-[11px] leading-5 text-zinc-500">
@@ -1903,6 +1958,7 @@ export default function ClinicaPage() {
                   type="checkbox"
                   className="h-4 w-4"
                   checked={reminderEnabled}
+                  disabled={!canWriteClinicEvents}
                   onChange={(e) => {
                     const v = e.target.checked;
                     setReminderEnabled(v);
@@ -1933,6 +1989,7 @@ export default function ClinicaPage() {
                       setRemindAt(e.target.value);
                       setReminderPresetDays(null);
                     }}
+                    disabled={!canWriteClinicEvents}
                   />
                 </label>
 
@@ -1945,6 +2002,7 @@ export default function ClinicaPage() {
                         className="h-4 w-4"
                         checked={remindEmail}
                         onChange={(e) => setRemindEmail(e.target.checked)}
+                        disabled={!canWriteClinicEvents}
                       />
                       Email
                     </label>
@@ -1965,10 +2023,11 @@ export default function ClinicaPage() {
                         <button
                           key={days}
                           type="button"
+                          disabled={!canWriteClinicEvents}
                           className={
                             reminderPresetDays === days
-                              ? "rounded-2xl border border-black bg-black px-3 py-2 text-sm font-semibold text-white"
-                              : "rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+                              ? "rounded-2xl border border-black bg-black px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                              : "rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50 disabled:opacity-50"
                           }
                           onClick={() => onSuggestRecall(days)}
                         >
@@ -1991,7 +2050,8 @@ export default function ClinicaPage() {
                 ) : null}
 
                 <p className="text-xs leading-5 text-zinc-600 md:col-span-2">
-                  Il promemoria verrà inviato <span className="font-semibold">solo al proprietario</span>.
+                  Il promemoria verrà inviato{" "}
+                  <span className="font-semibold">solo al proprietario</span>.
                 </p>
               </div>
             ) : null}
@@ -2116,6 +2176,7 @@ export default function ClinicaPage() {
                                   className="mt-1 h-4 w-4"
                                   checked={isSelected}
                                   onChange={() => toggleSelect(ev.id)}
+                                  disabled={!canWriteClinicEvents}
                                   title="Seleziona per validazione"
                                 />
                               ) : null}
@@ -2192,7 +2253,7 @@ export default function ClinicaPage() {
                               <button
                                 type="button"
                                 className="rounded-xl bg-black px-3 py-2 text-[11px] font-semibold text-white shadow-sm transition hover:bg-zinc-900 disabled:opacity-50"
-                                disabled={verifyingId === ev.id}
+                                disabled={verifyingId === ev.id || !canWriteClinicEvents}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   void verifyEvent(ev.id);
@@ -2563,6 +2624,7 @@ export default function ClinicaPage() {
                                 type="file"
                                 multiple
                                 className={FILE_INPUT_CLASS}
+                                disabled={!canWriteClinicEvents || !allowed}
                                 onChange={async (e) => {
                                   const files = Array.from(e.target.files || []);
                                   if (!files.length) return;
@@ -2629,9 +2691,7 @@ export default function ClinicaPage() {
                             <div className="text-xs font-semibold text-zinc-700">
                               Stato validazione
                             </div>
-                            {detailEvent.source === "professional" ||
-                            detailEvent.source === "veterinarian" ||
-                            detailEvent.verified_at ? (
+                            {isEventVerified(detailEvent) ? (
                               <div className="mt-2 font-semibold text-emerald-700">
                                 ✓ Validato{" "}
                                 {detailEvent.verified_by_label
@@ -2656,6 +2716,33 @@ export default function ClinicaPage() {
                               <div>Visibilità: {visibilityLabel(detailEvent.visibility)}</div>
                               <div>Fonte: {detailEvent.source}</div>
                               <div>Registrato da: {getEventAuthorLabel(detailEvent)}</div>
+                              <div>
+                                Creato da user:{" "}
+                                <span className="font-mono">
+                                  {detailEvent.created_by_user_id || "—"}
+                                </span>
+                              </div>
+                              <div>
+                                Verificato da user:{" "}
+                                <span className="font-mono">
+                                  {detailEvent.verified_by_user_id || "—"}
+                                </span>
+                              </div>
+                              <div>
+                                Verificato da org:{" "}
+                                <span className="font-mono">
+                                  {detailEvent.verified_by_org_id || "—"}
+                                </span>
+                              </div>
+                              <div>
+                                Verificato da member:{" "}
+                                <span className="font-mono">
+                                  {detailEvent.verified_by_member_id || "—"}
+                                </span>
+                              </div>
+                              {detailEvent.verified_by_label ? (
+                                <div>Label verifica: {detailEvent.verified_by_label}</div>
+                              ) : null}
                               {detailEvent.verified_at ? (
                                 <div>Validato il: {formatDateIT(detailEvent.verified_at)}</div>
                               ) : null}
