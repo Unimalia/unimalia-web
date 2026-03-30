@@ -1,4 +1,3 @@
-// app/profilo/profilo-client.tsx
 "use client";
 
 import Link from "next/link";
@@ -36,6 +35,7 @@ export function ProfiloClient() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const [user, setUser] = useState<{ id: string; email: string | null } | null>(
     null
@@ -49,6 +49,8 @@ export function ProfiloClient() {
 
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+  const [deleteErrorMsg, setDeleteErrorMsg] = useState("");
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -165,6 +167,39 @@ export function ProfiloClient() {
 
     if (returnTo) {
       startTransition(() => router.replace(returnTo));
+    }
+  }
+
+  async function onDeactivateAccount() {
+    setDeleting(true);
+    setDeleteErrorMsg("");
+    setErrorMsg("");
+    setSuccessMsg("");
+
+    try {
+      const res = await fetch("/api/profile/deactivate", {
+        method: "POST",
+        cache: "no-store",
+      });
+
+      const json = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        error?: string;
+      };
+
+      if (!res.ok || !json?.ok) {
+        setDeleteErrorMsg(json?.error || "Errore durante la disattivazione account.");
+        setDeleting(false);
+        return;
+      }
+
+      await supabase.auth.signOut();
+
+      router.replace("/login?account=disattivato");
+      router.refresh();
+    } catch {
+      setDeleteErrorMsg("Errore di rete durante la disattivazione account.");
+      setDeleting(false);
     }
   }
 
@@ -294,6 +329,66 @@ export function ProfiloClient() {
             Torna indietro
           </Link>
         ) : null}
+      </div>
+
+      <div className="mt-8 rounded-2xl border border-red-200 bg-red-50 p-4">
+        <div className="flex flex-col gap-1">
+          <h2 className="text-sm font-semibold text-red-900">Disattiva account</h2>
+          <p className="text-sm text-red-800">
+            Il tuo accesso verrà disattivato. I dati storici resteranno conservati sul sito secondo
+            obblighi legali e per continuità amministrativa.
+          </p>
+        </div>
+
+        {deleteErrorMsg ? (
+          <div className="mt-3 rounded-xl border border-red-300 bg-white p-3 text-sm text-red-700">
+            {deleteErrorMsg}
+          </div>
+        ) : null}
+
+        {!showDeleteConfirm ? (
+          <div className="mt-4">
+            <button
+              type="button"
+              onClick={() => setShowDeleteConfirm(true)}
+              className="inline-flex items-center justify-center rounded-xl border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 shadow-sm hover:bg-red-100"
+            >
+              Disattiva il mio account
+            </button>
+          </div>
+        ) : (
+          <div className="mt-4 rounded-xl border border-red-300 bg-white p-4">
+            <p className="text-sm font-medium text-red-900">
+              Confermi di voler disattivare il tuo account?
+            </p>
+            <p className="mt-1 text-sm text-red-800">
+              Dopo la conferma verrai disconnesso e non potrai più accedere con questo account.
+            </p>
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={onDeactivateAccount}
+                disabled={deleting}
+                className="inline-flex items-center justify-center rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-red-700 disabled:opacity-60"
+              >
+                {deleting ? "Disattivazione…" : "Conferma disattivazione"}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  setDeleteErrorMsg("");
+                }}
+                disabled={deleting}
+                className="inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-900 shadow-sm hover:bg-zinc-50 disabled:opacity-60"
+              >
+                Annulla
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
