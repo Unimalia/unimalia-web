@@ -18,7 +18,7 @@ type SendOwnerAnimalUpdateEmailInput = {
   therapyStartDate?: string | null;
   therapyEndDate?: string | null;
   vetSignature?: string | null;
-  meta?: Record<string, any> | null;
+  meta?: Record<string, unknown> | null;
 
   attachments?: Array<{
     name: string;
@@ -33,6 +33,12 @@ type AnimalEmailRow = {
   owner_claim_status: "none" | "pending" | "claimed" | null;
   pending_owner_email: string | null;
   invite_email_count: number | null;
+};
+
+type ResendEmailResult = {
+  error?: {
+    message?: string;
+  } | null;
 };
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://unimalia.it").replace(/\/$/, "");
@@ -149,7 +155,7 @@ function renderDetailRow(label: string, value: unknown) {
   `;
 }
 
-function renderMetaRows(meta: Record<string, any> | null | undefined) {
+function renderMetaRows(meta: Record<string, unknown> | null | undefined) {
   if (!meta || typeof meta !== "object") return "";
 
   const excludedKeys = new Set([
@@ -255,13 +261,13 @@ export async function sendOwnerAnimalUpdateEmail(input: SendOwnerAnimalUpdateEma
     `
     )
     .eq("id", animalId)
-    .single();
+    .single<AnimalEmailRow>();
 
   if (animalResult.error || !animalResult.data) {
     throw new Error("Animale non trovato per invio email aggiornamento");
   }
 
-  const animal = animalResult.data as AnimalEmailRow;
+  const animal = animalResult.data;
 
   let destinationEmail: string | null = null;
 
@@ -350,17 +356,16 @@ export async function sendOwnerAnimalUpdateEmail(input: SendOwnerAnimalUpdateEma
     </div>
   `;
 
-  const emailResult = await resend.emails.send({
+  const emailResult = (await resend.emails.send({
     from: process.env.RESEND_FROM_EMAIL || "UNIMALIA <no-reply@unimalia.it>",
     to: destinationEmail,
     subject: subjectForAction(action, animal.name),
     html,
-  });
+  })) as ResendEmailResult;
 
-  if ((emailResult as { error?: { message?: string } })?.error) {
+  if (emailResult?.error) {
     throw new Error(
-      (emailResult as { error?: { message?: string } }).error?.message ||
-        "Errore invio email aggiornamento"
+      emailResult.error?.message || "Errore invio email aggiornamento"
     );
   }
 

@@ -9,6 +9,12 @@ type Params = {
   isVet?: boolean;
 };
 
+type ResendResult = {
+  error?: {
+    message?: string;
+  } | null;
+};
+
 function escapeHtml(value: string) {
   return value
     .replaceAll("&", "&amp;")
@@ -31,7 +37,7 @@ function categoryLabel(category?: string | null, isVet?: boolean) {
     case "addestramento":
       return "Addestramento";
     case "pet_detective":
-      return "Pet Detective";  
+      return "Pet Detective";
     case "ponte_arcobaleno":
       return "Ponte dell’Arcobaleno";
     case "veterinari":
@@ -178,16 +184,16 @@ export async function sendProfessionalApprovedEmail({
     .filter(Boolean)
     .join("\n");
 
-  const result = await resend.emails.send({
+  const result = (await resend.emails.send({
     from: EMAIL_FROM_NO_REPLY,
     to,
     subject,
     html,
     text,
-  });
+  })) as ResendResult;
 
-  if ((result as any)?.error) {
-    throw new Error((result as any).error.message || "Invio email approvazione fallito");
+  if (result?.error) {
+    throw new Error(result.error.message || "Invio email approvazione fallito");
   }
 
   return result;

@@ -7,6 +7,34 @@ type GrantCheckResult =
   | { ok: true; actor_org_id: string | null; mode: "owner" | "grant_user" | "grant_org" }
   | { ok: false; reason: string };
 
+type ProfessionalProfileRow = {
+  user_id: string;
+  org_id: string | null;
+};
+
+type ProfessionalRow = {
+  id: string;
+  owner_id: string;
+};
+
+type AnimalOwnerRow = {
+  id: string;
+  owner_id: string | null;
+};
+
+type AnimalGrantRow = {
+  id: string;
+  grantee_type: string;
+  grantee_id: string;
+  scope_read: boolean | null;
+  scope_write: boolean | null;
+  scope_upload: boolean | null;
+  valid_from: string | null;
+  valid_to: string | null;
+  status: string | null;
+  revoked_at: string | null;
+};
+
 async function resolveProfessionalRefs(userId: string) {
   const admin = supabaseAdmin();
   const refs = new Set<string>();
@@ -16,7 +44,7 @@ async function resolveProfessionalRefs(userId: string) {
     .from("professional_profiles")
     .select("user_id, org_id")
     .eq("user_id", userId)
-    .maybeSingle();
+    .maybeSingle<ProfessionalProfileRow>();
 
   if (profileResult.error) {
     throw profileResult.error;
@@ -32,7 +60,7 @@ async function resolveProfessionalRefs(userId: string) {
     .eq("owner_id", userId)
     .order("created_at", { ascending: false })
     .limit(1)
-    .maybeSingle();
+    .maybeSingle<ProfessionalRow>();
 
   if (professionalResult.error) {
     throw professionalResult.error;
@@ -45,7 +73,7 @@ async function resolveProfessionalRefs(userId: string) {
   return Array.from(refs).filter(Boolean);
 }
 
-function hasRequiredScope(grant: any, scope: Scope) {
+function hasRequiredScope(grant: AnimalGrantRow, scope: Scope) {
   if (scope === "read") {
     return grant.scope_read === true || grant.scope_write === true || grant.scope_upload === true;
   }
@@ -57,7 +85,7 @@ function hasRequiredScope(grant: any, scope: Scope) {
   return grant.scope_upload === true || grant.scope_write === true;
 }
 
-function isGrantActiveNow(grant: any) {
+function isGrantActiveNow(grant: AnimalGrantRow) {
   if (!grant) return false;
   if (grant.revoked_at) return false;
   if (grant.status !== "active") return false;
@@ -84,13 +112,13 @@ export async function requireOwnerOrGrant(
     .from("animals")
     .select("id, owner_id")
     .eq("id", animalId)
-    .single();
+    .single<AnimalOwnerRow>();
 
   if (aErr || !animal) {
     return { ok: false, reason: "Animale non trovato." };
   }
 
-  if ((animal as any).owner_id === userId) {
+  if (animal.owner_id === userId) {
     return { ok: true, actor_org_id: null, mode: "owner" };
   }
 
@@ -99,16 +127,17 @@ export async function requireOwnerOrGrant(
     .select(
       "id, grantee_type, grantee_id, scope_read, scope_write, scope_upload, valid_from, valid_to, status, revoked_at"
     )
-    .eq("animal_id", animalId);
+    .eq("animal_id", animalId)
+    .returns<AnimalGrantRow[]>();
 
   if (gErr) {
     return { ok: false, reason: "Errore permessi (grants)." };
   }
 
-  const activeGrants = (grants || []).filter((g: any) => isGrantActiveNow(g));
+  const activeGrants = (grants || []).filter((g) => isGrantActiveNow(g));
 
   const userGrant = activeGrants.find(
-    (g: any) =>
+    (g) =>
       g.grantee_type === "user" &&
       String(g.grantee_id) === String(userId) &&
       hasRequiredScope(g, scope)
@@ -121,7 +150,7 @@ export async function requireOwnerOrGrant(
   const refs = await resolveProfessionalRefs(userId);
 
   const orgGrant = activeGrants.find(
-    (g: any) =>
+    (g) =>
       g.grantee_type === "organization" &&
       refs.includes(String(g.grantee_id)) &&
       hasRequiredScope(g, scope)
