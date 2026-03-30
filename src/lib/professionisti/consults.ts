@@ -758,22 +758,33 @@ export async function listProfessionalConsults(params: {
     eventsByConsultId[row.consult_id].push(event);
   }
 
-  return filtered.map(
-    ({
-      isSender,
-      isReceiver,
-      isArchived,
-      isActionRequired,
-      isSentActive,
-      effective_last_message_at,
-      ...item
-    }) => ({
-      ...item,
-      last_message_at: effective_last_message_at,
-      animal: animalById.get(item.animal_id) ?? null,
-      events: eventsByConsultId[item.id] ?? [],
-    })
-  );
+  return filtered.map((item) => ({
+    id: item.id,
+    animal_id: item.animal_id,
+    animal_name: item.animal_name,
+    sender_user_id: item.sender_user_id,
+    sender_org_id: item.sender_org_id,
+    sender_professional_id: item.sender_professional_id,
+    sender_display_name: item.sender_display_name,
+    receiver_professional_id: item.receiver_professional_id,
+    receiver_display_name: item.receiver_display_name,
+    subject: item.subject,
+    initial_message: item.initial_message,
+    share_mode: item.share_mode,
+    priority: item.priority,
+    status: item.status,
+    expires_at: item.expires_at,
+    last_message_at: item.effective_last_message_at,
+    accepted_at: item.accepted_at,
+    rejected_at: item.rejected_at,
+    replied_at: item.replied_at,
+    closed_at: item.closed_at,
+    created_at: item.created_at,
+    latest_sender_professional_id: item.latest_sender_professional_id,
+    latest_message_type: item.latest_message_type,
+    animal: animalById.get(item.animal_id) ?? null,
+    events: eventsByConsultId[item.id] ?? [],
+  }));
 }
 
 export async function getProfessionalConsultDetail(id: string) {
