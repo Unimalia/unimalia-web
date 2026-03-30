@@ -4,6 +4,18 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { authHeaders } from "@/lib/client/authHeaders";
 
+type ComposeEvent = {
+  id: string;
+  event_date: string | null;
+  type: string | null;
+  title: string | null;
+  description: string | null;
+  visibility: string | null;
+  status: string | null;
+  priority: string | null;
+  created_at: string;
+};
+
 type ComposeData = {
   animal: {
     id: string;
@@ -13,17 +25,7 @@ type ComposeData = {
     sex: string | null;
     microchip: string | null;
   };
-  events: Array<{
-    id: string;
-    event_date: string | null;
-    type: string | null;
-    title: string | null;
-    description: string | null;
-    visibility: string | null;
-    status: string | null;
-    priority: string | null;
-    created_at: string;
-  }>;
+  events: ComposeEvent[];
 };
 
 type Recipient = {
@@ -96,12 +98,12 @@ export default function NewProfessionalConsultPage() {
           sex: rawAnimal?.sex ?? null,
           microchip: rawAnimal?.microchip ?? rawAnimal?.chip_number ?? null,
         },
-        events: rawEvents,
+        events: rawEvents as ComposeEvent[],
       };
 
       setCompose(safeCompose);
       setSubject(`Consulto clinico ${safeCompose.animal.name || ""}`.trim());
-      setSelectedEventIds(rawEvents.map((event: any) => event.id));
+      setSelectedEventIds(rawEvents.map((event: ComposeEvent) => event.id));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore imprevisto");
     } finally {
@@ -132,13 +134,13 @@ export default function NewProfessionalConsultPage() {
         throw new Error(json?.error || "Errore ricerca professionisti");
       }
 
-      setRecipients(Array.isArray(json?.professionals) ? json.professionals : []);
+      setRecipients(Array.isArray(json?.professionals) ? (json.professionals as Recipient[]) : []);
       setTagsByProfessional(
         json?.tagsByProfessional && typeof json.tagsByProfessional === "object"
-          ? json.tagsByProfessional
+          ? (json.tagsByProfessional as Record<string, Tag[]>)
           : {}
       );
-      setTags(Array.isArray(json?.tags) ? json.tags : []);
+      setTags(Array.isArray(json?.tags) ? (json.tags as Tag[]) : []);
     } catch (err) {
       alert(err instanceof Error ? err.message : "Errore imprevisto");
     }
@@ -151,7 +153,7 @@ export default function NewProfessionalConsultPage() {
 
   const effectiveSelectedIds = useMemo(() => {
     if (!compose) return [];
-    if (shareMode === "full_record") return (compose.events ?? []).map((e) => e.id);
+    if (shareMode === "full_record") return (compose.events ?? []).map((event: ComposeEvent) => event.id);
     return selectedEventIds;
   }, [compose, shareMode, selectedEventIds]);
 
@@ -270,7 +272,7 @@ export default function NewProfessionalConsultPage() {
               className="h-11 rounded-2xl border border-zinc-200 bg-white px-4 text-sm outline-none focus:border-zinc-400"
             >
               <option value="">Tutte le skill</option>
-              {tags.map((tag) => (
+              {tags.map((tag: Tag) => (
                 <option key={tag.id} value={tag.id}>
                   {tag.label}
                 </option>
@@ -292,7 +294,7 @@ export default function NewProfessionalConsultPage() {
                 Nessun professionista trovato.
               </div>
             ) : (
-              recipients.map((pro) => {
+              recipients.map((pro: Recipient) => {
                 const selected = receiverProfessionalId === pro.id;
                 return (
                   <button
@@ -314,7 +316,7 @@ export default function NewProfessionalConsultPage() {
 
                     {tagsByProfessional[pro.id]?.length ? (
                       <div className="mt-3 flex flex-wrap gap-2">
-                        {tagsByProfessional[pro.id].map((tag) => (
+                        {tagsByProfessional[pro.id].map((tag: Tag) => (
                           <span
                             key={tag.id}
                             className="rounded-full border border-zinc-200 bg-zinc-50 px-2 py-1 text-xs text-zinc-700"
@@ -413,7 +415,7 @@ export default function NewProfessionalConsultPage() {
                   Nessun evento clinico disponibile da condividere.
                 </div>
               ) : (
-                (compose?.events ?? []).map((event) => {
+                (compose?.events ?? []).map((event: ComposeEvent) => {
                   const checked = effectiveSelectedIds.includes(event.id);
 
                   return (
