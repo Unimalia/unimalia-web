@@ -2,9 +2,20 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { resend, EMAIL_FROM_NO_REPLY } from "@/lib/email/resend";
 
+type ContactBody = {
+  report_id?: string;
+  message?: string;
+  sender_email?: string;
+};
+
+type ReportContactRow = {
+  contact_email: string | null;
+  title: string | null;
+};
+
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
+    const body = (await req.json()) as ContactBody;
 
     const { report_id, message, sender_email } = body;
 
@@ -18,7 +29,7 @@ export async function POST(req: Request) {
       .from("reports")
       .select("contact_email, title")
       .eq("id", report_id)
-      .single();
+      .single<ReportContactRow>();
 
     if (error || !report?.contact_email) {
       return NextResponse.json({ error: "Annuncio non valido" }, { status: 404 });
@@ -28,7 +39,7 @@ export async function POST(req: Request) {
       from: EMAIL_FROM_NO_REPLY,
       to: report.contact_email,
       subject: `Nuovo messaggio per: ${report.title}`,
-      replyTo: sender_email, // 🔥 fondamentale
+      replyTo: sender_email,
       html: `
         <p>Hai ricevuto un nuovo messaggio su UNIMALIA:</p>
 
@@ -48,10 +59,9 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ ok: true });
-
-  } catch (e: any) {
+  } catch (e: unknown) {
     return NextResponse.json(
-      { error: e?.message || "Errore server" },
+      { error: e instanceof Error ? e.message : "Errore server" },
       { status: 500 }
     );
   }

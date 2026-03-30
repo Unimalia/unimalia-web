@@ -5,9 +5,23 @@ import { inviteToRegisterAfterFoundEmail } from "@/lib/email/templates";
 
 const FOUND_STATUS = "closed_found";
 
+type MarkFoundBody = {
+  token?: string;
+};
+
+type ReportRow = {
+  id: string;
+  status: string | null;
+  type: string | null;
+  contact_email: string | null;
+  claim_token: string | null;
+  created_by_user_id: string | null;
+  animal_id: string | null;
+};
+
 export async function POST(req: Request) {
   try {
-    const body = await req.json().catch(() => ({}));
+    const body = (await req.json().catch(() => ({}))) as MarkFoundBody;
     const token = typeof body?.token === "string" ? body.token.trim() : "";
 
     if (!token) {
@@ -20,7 +34,7 @@ export async function POST(req: Request) {
       .from("reports")
       .select("id, status, type, contact_email, claim_token, created_by_user_id, animal_id")
       .eq("claim_token", token)
-      .single();
+      .single<ReportRow>();
 
     if (error || !report) {
       return NextResponse.json({ error: "Annuncio non valido." }, { status: 404 });
@@ -93,9 +107,9 @@ export async function POST(req: Request) {
       reportId: report.id,
       status: FOUND_STATUS,
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     return NextResponse.json(
-      { error: e?.message || "Errore server" },
+      { error: e instanceof Error ? e.message : "Errore server" },
       { status: 500 }
     );
   }

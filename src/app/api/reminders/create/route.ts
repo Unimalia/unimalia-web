@@ -4,9 +4,28 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
+type CreateReminderBody = {
+  animalId?: string;
+  animal_id?: string;
+  type?: string;
+  title?: string | null;
+  due_date?: string | null;
+  status?: string;
+};
+
+type AnimalReminderRow = {
+  id: string;
+  animal_id: string;
+  type: string | null;
+  title: string | null;
+  due_date: string | null;
+  status: string | null;
+  created_at?: string;
+};
+
 export async function POST(req: Request) {
   try {
-    const body = await req.json().catch(() => ({}));
+    const body = (await req.json().catch(() => ({}))) as CreateReminderBody;
     const animalId = String(body?.animalId || body?.animal_id || "").trim();
 
     if (!animalId) {
@@ -27,14 +46,17 @@ export async function POST(req: Request) {
       .from("animal_reminders")
       .insert(payload)
       .select("*")
-      .single();
+      .single<AnimalReminderRow>();
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
     return NextResponse.json({ ok: true, reminder: data }, { status: 200 });
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message || "Errore server" }, { status: 500 });
+  } catch (e: unknown) {
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : "Errore server" },
+      { status: 500 }
+    );
   }
 }

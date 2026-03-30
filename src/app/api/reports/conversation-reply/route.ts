@@ -3,9 +3,31 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { resend, EMAIL_FROM_MESSAGES, getBaseUrl } from "@/lib/email/resend";
 import { protectedConversationEmail } from "@/lib/email/templates";
 
+type ConversationReplyBody = {
+  token?: string;
+  message?: string;
+  website?: string;
+};
+
+type ReportSummaryRow = {
+  id: string;
+  title: string | null;
+  status: string | null;
+};
+
+type ConversationRow = {
+  id: string;
+  report_id: string;
+  owner_email: string;
+  requester_email: string;
+  owner_token: string;
+  requester_token: string;
+  reports: ReportSummaryRow | ReportSummaryRow[] | null;
+};
+
 export async function POST(req: Request) {
   try {
-    const body = await req.json().catch(() => ({}));
+    const body = (await req.json().catch(() => ({}))) as ConversationReplyBody;
 
     const token = typeof body?.token === "string" ? body.token.trim() : "";
     const message = typeof body?.message === "string" ? body.message.trim() : "";
@@ -37,7 +59,7 @@ export async function POST(req: Request) {
         reports:report_id ( id, title, status )
       `)
       .or(`owner_token.eq.${token},requester_token.eq.${token}`)
-      .single();
+      .single<ConversationRow>();
 
     if (error || !conversation) {
       return NextResponse.json({ error: "Conversazione non valida." }, { status: 404 });
@@ -99,9 +121,9 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ ok: true });
-  } catch (e: any) {
+  } catch (e: unknown) {
     return NextResponse.json(
-      { error: e?.message || "Errore server." },
+      { error: e instanceof Error ? e.message : "Errore server." },
       { status: 500 }
     );
   }

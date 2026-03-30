@@ -3,9 +3,20 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 
 const CLOSED_OTHER_STATUS = "closed_other";
 
+type CloseOtherBody = {
+  token?: string;
+};
+
+type ReportRow = {
+  id: string;
+  status: string | null;
+  type: string | null;
+  animal_id: string | null;
+};
+
 export async function POST(req: Request) {
   try {
-    const body = await req.json().catch(() => ({}));
+    const body = (await req.json().catch(() => ({}))) as CloseOtherBody;
     const token = typeof body?.token === "string" ? body.token.trim() : "";
 
     if (!token) {
@@ -18,7 +29,7 @@ export async function POST(req: Request) {
       .from("reports")
       .select("id, status, type, animal_id")
       .eq("claim_token", token)
-      .single();
+      .single<ReportRow>();
 
     if (error || !report) {
       return NextResponse.json({ error: "Annuncio non valido." }, { status: 404 });
@@ -64,9 +75,9 @@ export async function POST(req: Request) {
       reportId: report.id,
       status: CLOSED_OTHER_STATUS,
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     return NextResponse.json(
-      { error: e?.message || "Errore server" },
+      { error: e instanceof Error ? e.message : "Errore server" },
       { status: 500 }
     );
   }
