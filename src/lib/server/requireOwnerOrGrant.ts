@@ -58,16 +58,16 @@ async function resolveProfessionalRefs(userId: string) {
     .from("professionals")
     .select("id, owner_id")
     .eq("owner_id", userId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle<ProfessionalRow>();
+    .returns<ProfessionalRow[]>();
 
   if (professionalResult.error) {
     throw professionalResult.error;
   }
 
-  if (professionalResult.data?.id) {
-    refs.add(professionalResult.data.id);
+  for (const row of professionalResult.data ?? []) {
+    if (row?.id) {
+      refs.add(row.id);
+    }
   }
 
   return Array.from(refs).filter(Boolean);
@@ -75,7 +75,7 @@ async function resolveProfessionalRefs(userId: string) {
 
 function hasRequiredScope(grant: AnimalGrantRow, scope: Scope) {
   if (scope === "read") {
-    return grant.scope_read === true || grant.scope_write === true || grant.scope_upload === true;
+    return grant.scope_read === true || grant.scope_write === true;
   }
 
   if (scope === "write") {

@@ -8,12 +8,14 @@ import {
 } from "@/lib/storage";
 import { randomUUID } from "crypto";
 import { getBearerToken } from "@/lib/server/bearer";
+import { requireOwnerOrGrant } from "@/lib/server/requireOwnerOrGrant";
 
 type OrthancUploadResponse = {
   ID?: string;
   ParentStudy?: string;
   ParentSeries?: string;
   ParentPatient?: string;
+  StudyInstanceUID?: string | null;
 };
 
 type UploadedPartRow = {
@@ -55,6 +57,7 @@ async function uploadToOrthanc(buffer: Buffer): Promise<OrthancUploadResponse> {
       "Content-Type": "application/dicom",
     },
     body: new Uint8Array(buffer),
+    cache: "no-store",
   });
 
   const json = (await resp.json().catch(() => null)) as OrthancUploadResponse | null;
@@ -63,7 +66,23 @@ async function uploadToOrthanc(buffer: Buffer): Promise<OrthancUploadResponse> {
     throw new Error("Upload Orthanc fallito");
   }
 
-  return json;
+  const tagsResp = await fetch(`${baseUrl}/instances/${json.ID}/simplified-tags`, {
+    method: "GET",
+    headers: {
+      Authorization: `Basic ${auth}`,
+      Accept: "application/json",
+    },
+    cache: "no-store",
+  });
+
+  const tags = (await tagsResp.json().catch(() => null)) as
+    | { StudyInstanceUID?: string | null }
+    | null;
+
+  return {
+    ...json,
+    StudyInstanceUID: tags?.StudyInstanceUID ?? null,
+  };
 }
 
 export async function POST(req: Request) {
@@ -101,6 +120,12 @@ export async function POST(req: Request) {
 
     if (!sessionId || !animalId) {
       return NextResponse.json({ error: "Missing params" }, { status: 400 });
+    }
+
+    const grant = await requireOwnerOrGrant(supabase, user.id, animalId, "upload");
+
+    if (!grant.ok) {
+      return NextResponse.json({ error: grant.reason }, { status: 403 });
     }
 
     const { data: session } = await admin
@@ -177,6 +202,7 @@ export async function POST(req: Request) {
               seriesId: orthanc.ParentSeries,
               instanceId: orthanc.ID,
               patientId: orthanc.ParentPatient,
+              studyInstanceUid: orthanc.StudyInstanceUID ?? null,
             },
           },
         ],
