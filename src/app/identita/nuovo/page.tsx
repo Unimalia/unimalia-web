@@ -38,7 +38,15 @@ function isLikelyFullName(s: string) {
 
 const REQUIRE_PHONE_VERIFIED = false;
 
-function isProfileComplete(p: any) {
+type OwnerProfile = {
+  full_name: string | null;
+  fiscal_code: string | null;
+  phone: string | null;
+  phone_verified?: boolean | null;
+  city: string | null;
+};
+
+function isProfileComplete(p: OwnerProfile | null) {
   if (!p) return false;
 
   const fullNameOk = isLikelyFullName(p.full_name ?? "");
@@ -55,7 +63,7 @@ function isProfileComplete(p: any) {
 }
 
 function withTimeout<T>(p: Promise<T>, ms: number, msg: string) {
-  let t: any;
+  let t: ReturnType<typeof setTimeout>;
   const timeout = new Promise<T>((_resolve, reject) => {
     t = setTimeout(() => reject(new Error(msg)), ms);
   });
@@ -105,16 +113,32 @@ async function compressImageToJpeg(file: File, maxSide = 2200, quality = 0.92): 
 
 const DRAFT_KEY = "unimalia:identita:nuovo:draft:v1";
 
-function saveDraft(d: any) {
+type DraftData = {
+  name?: string;
+  species?: string;
+  breed?: string;
+  color?: string;
+  size?: string;
+  hasChip?: "yes" | "no";
+  microchip?: string;
+  chipNumber?: string;
+  photoUrl?: string;
+  selectedFileName?: string;
+  birthDate?: string;
+  birthDateEstimated?: boolean;
+  ts?: number;
+};
+
+function saveDraft(d: DraftData) {
   try {
     sessionStorage.setItem(DRAFT_KEY, JSON.stringify(d));
   } catch {}
 }
 
-function loadDraft(): any | null {
+function loadDraft(): DraftData | null {
   try {
     const raw = sessionStorage.getItem(DRAFT_KEY);
-    return raw ? JSON.parse(raw) : null;
+    return raw ? (JSON.parse(raw) as DraftData) : null;
   } catch {
     return null;
   }
@@ -124,6 +148,27 @@ function clearDraft() {
   try {
     sessionStorage.removeItem(DRAFT_KEY);
   } catch {}
+}
+
+type ClaimAnimalResponse = {
+  animal?: {
+    name?: string | null;
+    species?: string | null;
+    breed?: string | null;
+    color?: string | null;
+    size?: string | null;
+    birth_date?: string | null;
+    birth_date_is_estimated?: boolean | null;
+    microchip?: string | null;
+    chip_number?: string | null;
+    photo_url?: string | null;
+  };
+  error?: string;
+};
+
+function getErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message) return error.message;
+  return fallback;
 }
 
 function NuovoProfiloAnimalePageInner() {
@@ -235,7 +280,7 @@ function NuovoProfiloAnimalePageInner() {
           }
         );
 
-        const json = await res.json().catch(() => ({}));
+        const json: ClaimAnimalResponse = await res.json().catch(() => ({}));
 
         if (!alive) return;
 
@@ -297,7 +342,7 @@ function NuovoProfiloAnimalePageInner() {
 
       if (!alive) return;
 
-      if (!isProfileComplete(data)) {
+      if (!isProfileComplete((data as OwnerProfile | null) ?? null)) {
         const returnTo = animalId
           ? `/identita/nuovo?animalId=${encodeURIComponent(animalId)}`
           : "/identita/nuovo";
@@ -392,8 +437,8 @@ function NuovoProfiloAnimalePageInner() {
       setNotice(
         wasAlreadySet ? "Foto aggiornata correttamente ✅" : "Foto caricata correttamente ✅"
       );
-    } catch (e: any) {
-      setError(e?.message || "Errore durante l’upload foto.");
+    } catch (error: unknown) {
+      setError(getErrorMessage(error, "Errore durante l’upload foto."));
       setNotice(null);
     } finally {
       setUploading(false);
@@ -486,8 +531,8 @@ function NuovoProfiloAnimalePageInner() {
 
       clearDraft();
       router.push("/identita");
-    } catch (e: any) {
-      console.error(e);
+    } catch (error: unknown) {
+      console.error(error);
       setError("Errore imprevisto");
     } finally {
       setSaving(false);

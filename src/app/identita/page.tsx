@@ -69,7 +69,7 @@ function isProfileComplete(p: OwnerProfile | null) {
 
   if (!REQUIRE_PHONE_VERIFIED) return true;
 
-  return (p as any).phone_verified === true;
+  return p.phone_verified === true;
 }
 
 function statusBadge(status: string) {
@@ -85,6 +85,11 @@ function statusBadge(status: string) {
     default:
       return { label: "A casa", cls: "bg-emerald-50 text-emerald-700 border-emerald-200" };
   }
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message) return error.message;
+  return fallback;
 }
 
 export default function IdentitaPage() {
@@ -134,7 +139,7 @@ export default function IdentitaPage() {
 
       if (!alive) return;
 
-      const profile = (pData as OwnerProfile) || null;
+      const profile = (pData as OwnerProfile | null) ?? null;
       setProfileOk(isProfileComplete(profile));
 
       const { data, error } = await supabase
@@ -162,7 +167,7 @@ export default function IdentitaPage() {
       setLoading(false);
     }
 
-    load();
+    void load();
     return () => {
       alive = false;
     };
@@ -202,9 +207,9 @@ export default function IdentitaPage() {
       }
 
       setAnimals((prev) => prev.filter((x) => x.id !== a.id));
-    } catch (e: any) {
-      console.error("DELETE ANIMAL EXCEPTION:", e);
-      setDeleteErr(e?.message || "Errore durante l’eliminazione. Riprova.");
+    } catch (error: unknown) {
+      console.error("DELETE ANIMAL EXCEPTION:", error);
+      setDeleteErr(getErrorMessage(error, "Errore durante l’eliminazione. Riprova."));
     } finally {
       setDeletingId(null);
     }
@@ -333,7 +338,7 @@ export default function IdentitaPage() {
                       alt={a.name}
                       className="h-44 w-full object-contain"
                       onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).src = "/placeholder-animal.jpg";
+                        e.currentTarget.src = "/placeholder-animal.jpg";
                       }}
                     />
                     <div className="absolute left-3 top-3">
