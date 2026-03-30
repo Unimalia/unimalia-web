@@ -32,6 +32,7 @@ type Animal = {
   photo_url?: string | null;
   unimalia_code?: string | null;
   sterilized?: boolean | null;
+  birth_date?: string | null;
 
   age_text?: string | null;
   weight?: string | number | null;
@@ -62,6 +63,8 @@ type ClinicEventType =
   | "follow_up"
   | "blood_type";
 
+type ClinicEventMeta = Record<string, unknown>;
+
 type ClinicEventRow = {
   id: string;
   animal_id: string;
@@ -80,9 +83,9 @@ type ClinicEventRow = {
   expires_at?: string | null;
   weight_kg?: number | null;
   weightKg?: number | null;
-  data?: any;
-  payload?: any;
-  meta?: any;
+  data?: ClinicEventMeta | null;
+  payload?: ClinicEventMeta | null;
+  meta?: ClinicEventMeta | null;
   status?: string | null;
 };
 
@@ -177,7 +180,7 @@ export default function AnimalProfilePage() {
     let alive = true;
 
     async function loadClinicEvents() {
-      if (!animal?.id || !premiumOk) {
+      if (!animal?.id) {
         setEvents([]);
         setEventsError(null);
         return;
@@ -198,7 +201,7 @@ export default function AnimalProfilePage() {
 
         if (!res.ok) {
           setEvents([]);
-          setEventsError("Impossibile caricare la cartella clinica.");
+          setEventsError("Impossibile caricare la scheda clinica rapida.");
           setEventsLoading(false);
           return;
         }
@@ -208,7 +211,7 @@ export default function AnimalProfilePage() {
       } catch {
         if (!alive) return;
         setEvents([]);
-        setEventsError("Errore di rete durante il caricamento della cartella clinica.");
+        setEventsError("Errore di rete durante il caricamento della scheda clinica rapida.");
       } finally {
         if (!alive) return;
         setEventsLoading(false);
@@ -220,12 +223,12 @@ export default function AnimalProfilePage() {
     return () => {
       alive = false;
     };
-  }, [animal?.id, premiumOk]);
+  }, [animal?.id]);
 
   const rapidClinicalState = useMemo(() => {
     return buildClinicalQuickSummary({
       animal: {
-        birth_date: (animal as any)?.birth_date ?? null,
+        birth_date: animal?.birth_date ?? null,
         sterilized: animal?.sterilized ?? null,
       },
       events: events ?? [],
@@ -301,8 +304,8 @@ export default function AnimalProfilePage() {
           <ButtonSecondary href={`/identita/${animal.id}/modifica`}>Modifica</ButtonSecondary>
           <ButtonSecondary href={`/identita/${animal.id}/stampa`}>Stampa</ButtonSecondary>
 
-          <ButtonSecondary href={premiumOk ? `/identita/${animal.id}/clinica` : "/prezzi"}>
-            Cartella clinica
+          <ButtonSecondary href={`/identita/${animal.id}/clinica`}>
+            Scheda clinica rapida
           </ButtonSecondary>
 
           <ButtonSecondary href={premiumOk ? `/identita/${animal.id}/storia` : "/prezzi"}>
@@ -428,17 +431,15 @@ export default function AnimalProfilePage() {
             <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <h2 className="text-base font-semibold text-zinc-900">Cartella clinica rapida</h2>
+                  <h2 className="text-base font-semibold text-zinc-900">Scheda clinica rapida</h2>
                   <p className="mt-1 text-sm text-zinc-600">
-                    Sintesi rapida della cartella clinica per valutazione immediata.
+                    Sintesi rapida gratuita con i dati essenziali del tuo animale.
                   </p>
                 </div>
 
-                {!premiumOk ? (
-                  <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">
-                    Premium
-                  </span>
-                ) : null}
+                <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
+                  Free
+                </span>
               </div>
 
               <div className="mt-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
@@ -446,14 +447,15 @@ export default function AnimalProfilePage() {
                   Età: {rapidClinicalState.age} | Peso: {rapidClinicalState.weight}
                 </div>
                 <div className="mt-2 text-sm text-zinc-600">
-                  Cartella clinica: accesso riservato ai veterinari autorizzati per la modifica.
+                  Sintesi immediata dei dati clinici essenziali. Le modifiche professionali restano
+                  gestite dai veterinari autorizzati.
                 </div>
 
-                {premiumOk && eventsLoading ? (
+                {eventsLoading ? (
                   <p className="mt-3 text-xs text-zinc-500">Caricamento dati clinici…</p>
                 ) : null}
 
-                {premiumOk && eventsError ? (
+                {eventsError ? (
                   <p className="mt-3 text-xs text-amber-700">{eventsError}</p>
                 ) : null}
               </div>
@@ -537,14 +539,28 @@ export default function AnimalProfilePage() {
                   </div>
                 </div>
               </div>
+
+              <div className="mt-4">
+                <Link
+                  href={`/identita/${animal.id}/clinica`}
+                  className="inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+                >
+                  Apri scheda clinica rapida
+                </Link>
+              </div>
+
+              <p className="mt-3 text-xs text-zinc-500">
+                Questa sezione è gratuita. La cartella clinica completa e la timeline avanzata
+                restano funzioni Premium.
+              </p>
             </section>
 
             <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <h2 className="text-base font-semibold text-zinc-900">Cartella clinica</h2>
+                  <h2 className="text-base font-semibold text-zinc-900">Cartella clinica completa</h2>
                   <p className="mt-1 text-sm text-zinc-600">
-                    Consultazione completa della cartella clinica dell’animale.
+                    Archivio completo, timeline organizzata e consultazione estesa.
                   </p>
                 </div>
 
@@ -557,21 +573,16 @@ export default function AnimalProfilePage() {
 
               <div className="mt-4">
                 <Link
-                  href={premiumOk ? `/identita/${animal.id}/clinica` : "/prezzi"}
-                  className={`inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold ${
-                    premiumOk
-                      ? "border border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-50"
-                      : "border border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100"
-                  }`}
+                  href="/prezzi"
+                  className="inline-flex items-center justify-center rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-800 hover:bg-amber-100"
                 >
-                  {premiumOk ? "Apri cartella clinica" : "Sblocca con Premium"}
+                  Sblocca con Premium
                 </Link>
               </div>
 
               <p className="mt-3 text-xs text-zinc-500">
-                La cartella clinica completa è consultabile con Premium. Le modifiche da parte del
-                proprietario saranno possibili solo quando il professionista autorizzato sblocca la
-                compilazione dello storico.
+                La cartella clinica completa includerà una vista più estesa e organizzata dello
+                storico sanitario dell’animale.
               </p>
             </section>
 
