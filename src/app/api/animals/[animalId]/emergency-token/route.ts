@@ -30,6 +30,17 @@ type EmergencyTokenRow = {
   created_at?: string | null;
 };
 
+type OwnedAnimalResult =
+  | {
+      ok: true;
+      animal: {
+        id: string;
+        owner_id: string | null;
+        name: string | null;
+      };
+    }
+  | { ok: false };
+
 function buildPublicUrl(token: string) {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://unimalia.it";
   return `${baseUrl}/emergency/${token}`;
@@ -45,7 +56,10 @@ function notFoundResponse() {
   );
 }
 
-async function requireOwnedAnimal(animalId: string, userId: string) {
+async function requireOwnedAnimal(
+  animalId: string,
+  userId: string
+): Promise<OwnedAnimalResult> {
   const admin = supabaseAdmin();
 
   const { data: animal, error } = await admin
@@ -59,14 +73,40 @@ async function requireOwnedAnimal(animalId: string, userId: string) {
   }
 
   if (!animal) {
-    return { ok: false as const };
+    return { ok: false };
   }
 
   if (animal.owner_id !== userId) {
-    return { ok: false as const };
+    return { ok: false };
   }
 
-  return { ok: true as const, animal };
+  return { ok: true, animal };
+}
+
+async function getActivePublicEmergencyToken(animalId: string) {
+  const admin = supabaseAdmin();
+
+  const query = admin
+    .from("emergency_qr_tokens" as never)
+    .select(
+      "id, animal_id, public_token, token_hash, token_prefix, status, expires_at, created_at"
+    )
+    .eq("animal_id", animalId)
+    .eq("status", "active")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const { data, error } = (await query) as unknown as {
+    data: EmergencyTokenRow | null;
+    error: Error | null;
+  };
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
 }
 
 export async function GET(_req: Request, context: RouteContext) {
@@ -92,32 +132,17 @@ export async function GET(_req: Request, context: RouteContext) {
       return notFoundResponse();
     }
 
-    const admin = supabaseAdmin();
+    const activeToken = await getActivePublicEmergencyToken(animalId);
 
-    const query = admin
-      .from("emergency_qr_tokens" as never)
-      .select("id, animal_id, public_token, token_hash, token_prefix, status, expires_at, created_at")
-      .eq("animal_id", animalId)
-      .eq("status", "active")
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    const { data, error } = (await query) as unknown as {
-      data: EmergencyTokenRow | null;
-      error: Error | null;
-    };
-
-    if (error) {
+    if (!activeToken || !activeToken.public_token) {
       return NextResponse.json(
-        { error: "Server error" },
-        { status: 500, headers: { "Cache-Control": "no-store" } }
-      );
-    }
-
-    if (!data || !data.public_token) {
-      return NextResponse.json(
-        { ok: true, hasActiveToken: false, token: null, url: null },
+        {
+          ok: true,
+          kind: "public_emergency_qr",
+          hasActiveToken: false,
+          token: null,
+          url: null,
+        },
         {
           status: 200,
           headers: { "Cache-Control": "no-store" },
@@ -128,9 +153,10 @@ export async function GET(_req: Request, context: RouteContext) {
     return NextResponse.json(
       {
         ok: true,
+        kind: "public_emergency_qr",
         hasActiveToken: true,
-        token: data.public_token,
-        url: buildPublicUrl(data.public_token),
+        token: activeToken.public_token,
+        url: buildPublicUrl(activeToken.public_token),
       },
       {
         status: 200,
@@ -209,6 +235,7 @@ export async function POST(_req: Request, context: RouteContext) {
     return NextResponse.json(
       {
         ok: true,
+        kind: "public_emergency_qr",
         status: "created",
         token,
         url: buildPublicUrl(token),
