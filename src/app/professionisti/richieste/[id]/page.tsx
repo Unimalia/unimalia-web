@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type ChangeEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { authHeaders } from "@/lib/client/authHeaders";
 
@@ -223,6 +223,8 @@ type AnimalSummary = {
   birth_date?: string | null;
 };
 
+type SharedEvent = ConsultDetail["events"][number];
+
 function statusLabel(status: string) {
   switch (status) {
     case "pending":
@@ -313,6 +315,10 @@ function getRapidItemDisplay(item: unknown): { eventDate: string | null; text: s
   return { eventDate: null, text: "" };
 }
 
+function getEventRelevantDate(event: SharedEvent): string | null {
+  return event?.event_date || event?.performed_at || event?.scheduled_for || event?.created_at || null;
+}
+
 export default function ProfessionistiRichiestaDettaglioPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -330,7 +336,7 @@ export default function ProfessionistiRichiestaDettaglioPage() {
   const [replyFiles, setReplyFiles] = useState<File[]>([]);
   const [sendingReplyFiles, setSendingReplyFiles] = useState(false);
   const [filter, setFilter] = useState<string>("all");
-  const [selectedEvent, setSelectedEvent] = useState<ConsultDetail["events"][number] | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<SharedEvent | null>(null);
 
   const [uploadingFiles, setUploadingFiles] = useState(false);
 
@@ -338,117 +344,120 @@ export default function ProfessionistiRichiestaDettaglioPage() {
     return Array.isArray(data?.events) ? data.events : [];
   }, [data]);
 
-  async function loadConsultDetail(keepSelectedEventId?: string | null) {
-    try {
-      setLoading(true);
-      setError("");
+  const loadConsultDetail = useCallback(
+    async (keepSelectedEventId?: string | null) => {
+      try {
+        setLoading(true);
+        setError("");
 
-      const res = await fetch(`/api/professionisti/consults/${consultId}`, {
-        cache: "no-store",
-      });
-      const json = await safeJson(res);
+        const res = await fetch(`/api/professionisti/consults/${consultId}`, {
+          cache: "no-store",
+        });
+        const json = await safeJson(res);
 
-      if (!res.ok) {
-        throw new Error(
-          (json as { error?: string; raw?: string })?.error ||
-            (json as { error?: string; raw?: string })?.raw ||
-            "Errore caricamento consulto"
-        );
-      }
-
-      const detail = json as ConsultDetail;
-      setData(detail);
-
-      const fallbackAnimal = detail?.animal ?? null;
-      const animalId = detail?.consult?.animal_id;
-
-      if (animalId) {
-        try {
-          const animalRes = await fetch(
-            `/api/professionisti/animal?animalId=${encodeURIComponent(animalId)}`,
-            {
-              cache: "no-store",
-              headers: {
-                ...(await authHeaders()),
-              },
-            }
+        if (!res.ok) {
+          throw new Error(
+            (json as { error?: string; raw?: string })?.error ||
+              (json as { error?: string; raw?: string })?.raw ||
+              "Errore caricamento consulto"
           );
-
-          if (animalRes.ok) {
-            const animalJson = await safeJson(animalRes);
-            const a =
-              (animalJson as { animal?: ConsultDetail["animal"] | null })?.animal || fallbackAnimal;
-
-            setAnimal(
-              a
-                ? {
-                    id: a.id ?? animalId,
-                    name: a.name ?? null,
-                    species: a.species ?? null,
-                    breed: a.breed ?? null,
-                    chip_number: a.chip_number ?? null,
-                    owner_name: a.owner_name ?? null,
-                    owner_email: a.owner_email ?? null,
-                    weight: a.weight ?? a.peso ?? null,
-                    age: a.age ?? a.eta ?? null,
-                    birth_date: a.birth_date ?? null,
-                  }
-                : null
-            );
-          } else if (fallbackAnimal) {
-            setAnimal({
-              id: fallbackAnimal.id ?? animalId,
-              name: fallbackAnimal.name ?? null,
-              species: fallbackAnimal.species ?? null,
-              breed: fallbackAnimal.breed ?? null,
-              chip_number: fallbackAnimal.chip_number ?? null,
-              owner_name: fallbackAnimal.owner_name ?? null,
-              owner_email: fallbackAnimal.owner_email ?? null,
-              weight: fallbackAnimal.weight ?? fallbackAnimal.peso ?? null,
-              age: fallbackAnimal.age ?? fallbackAnimal.eta ?? null,
-              birth_date: fallbackAnimal.birth_date ?? null,
-            });
-          } else {
-            setAnimal(null);
-          }
-        } catch {
-          if (fallbackAnimal) {
-            setAnimal({
-              id: fallbackAnimal.id ?? animalId,
-              name: fallbackAnimal.name ?? null,
-              species: fallbackAnimal.species ?? null,
-              breed: fallbackAnimal.breed ?? null,
-              chip_number: fallbackAnimal.chip_number ?? null,
-              owner_name: fallbackAnimal.owner_name ?? null,
-              owner_email: fallbackAnimal.owner_email ?? null,
-              weight: fallbackAnimal.weight ?? fallbackAnimal.peso ?? null,
-              age: fallbackAnimal.age ?? fallbackAnimal.eta ?? null,
-              birth_date: fallbackAnimal.birth_date ?? null,
-            });
-          } else {
-            setAnimal(null);
-          }
         }
-      } else {
-        setAnimal(null);
-      }
 
-      if (keepSelectedEventId) {
-        const refreshedEvent = detail.events.find((e) => e.id === keepSelectedEventId) ?? null;
-        setSelectedEvent(refreshedEvent);
-      } else {
-        setSelectedEvent(null);
+        const detail = json as ConsultDetail;
+        setData(detail);
+
+        const fallbackAnimal = detail?.animal ?? null;
+        const animalId = detail?.consult?.animal_id;
+
+        if (animalId) {
+          try {
+            const animalRes = await fetch(
+              `/api/professionisti/animal?animalId=${encodeURIComponent(animalId)}`,
+              {
+                cache: "no-store",
+                headers: {
+                  ...(await authHeaders()),
+                },
+              }
+            );
+
+            if (animalRes.ok) {
+              const animalJson = await safeJson(animalRes);
+              const a =
+                (animalJson as { animal?: ConsultDetail["animal"] | null })?.animal || fallbackAnimal;
+
+              setAnimal(
+                a
+                  ? {
+                      id: a.id ?? animalId,
+                      name: a.name ?? null,
+                      species: a.species ?? null,
+                      breed: a.breed ?? null,
+                      chip_number: a.chip_number ?? null,
+                      owner_name: a.owner_name ?? null,
+                      owner_email: a.owner_email ?? null,
+                      weight: a.weight ?? a.peso ?? null,
+                      age: a.age ?? a.eta ?? null,
+                      birth_date: a.birth_date ?? null,
+                    }
+                  : null
+              );
+            } else if (fallbackAnimal) {
+              setAnimal({
+                id: fallbackAnimal.id ?? animalId,
+                name: fallbackAnimal.name ?? null,
+                species: fallbackAnimal.species ?? null,
+                breed: fallbackAnimal.breed ?? null,
+                chip_number: fallbackAnimal.chip_number ?? null,
+                owner_name: fallbackAnimal.owner_name ?? null,
+                owner_email: fallbackAnimal.owner_email ?? null,
+                weight: fallbackAnimal.weight ?? fallbackAnimal.peso ?? null,
+                age: fallbackAnimal.age ?? fallbackAnimal.eta ?? null,
+                birth_date: fallbackAnimal.birth_date ?? null,
+              });
+            } else {
+              setAnimal(null);
+            }
+          } catch {
+            if (fallbackAnimal) {
+              setAnimal({
+                id: fallbackAnimal.id ?? animalId,
+                name: fallbackAnimal.name ?? null,
+                species: fallbackAnimal.species ?? null,
+                breed: fallbackAnimal.breed ?? null,
+                chip_number: fallbackAnimal.chip_number ?? null,
+                owner_name: fallbackAnimal.owner_name ?? null,
+                owner_email: fallbackAnimal.owner_email ?? null,
+                weight: fallbackAnimal.weight ?? fallbackAnimal.peso ?? null,
+                age: fallbackAnimal.age ?? fallbackAnimal.eta ?? null,
+                birth_date: fallbackAnimal.birth_date ?? null,
+              });
+            } else {
+              setAnimal(null);
+            }
+          }
+        } else {
+          setAnimal(null);
+        }
+
+        if (keepSelectedEventId) {
+          const refreshedEvent = detail.events.find((e) => e.id === keepSelectedEventId) ?? null;
+          setSelectedEvent(refreshedEvent);
+        } else {
+          setSelectedEvent(null);
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Errore imprevisto");
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Errore imprevisto");
-    } finally {
-      setLoading(false);
-    }
-  }
+    },
+    [consultId]
+  );
 
   useEffect(() => {
     void loadConsultDetail();
-  }, [consultId]);
+  }, [loadConsultDetail]);
 
   useEffect(() => {
     if (!selectedEvent) return;
@@ -520,8 +529,7 @@ export default function ProfessionistiRichiestaDettaglioPage() {
       const title = extractText(event?.title);
       const description = extractText(event?.description);
       const type = extractText(event?.type).toLowerCase();
-      const date =
-        event?.event_date || event?.performed_at || event?.scheduled_for || event?.created_at || null;
+      const date = getEventRelevantDate(event);
 
       const payload = event?.payload || event?.data || {};
 
@@ -586,13 +594,9 @@ export default function ProfessionistiRichiestaDettaglioPage() {
       .sort((a, b) => normalizeDate(b.date)!.getTime() - normalizeDate(a.date)!.getTime())
       .slice(0, 3);
 
-    const eventsByDateDesc = [...events].sort((a: any, b: any) => {
-      const da = normalizeDate(
-        a?.event_date || a?.performed_at || a?.scheduled_for || a?.created_at
-      );
-      const db = normalizeDate(
-        b?.event_date || b?.performed_at || b?.scheduled_for || b?.created_at
-      );
+    const eventsByDateDesc = [...events].sort((a, b) => {
+      const da = normalizeDate(getEventRelevantDate(a));
+      const db = normalizeDate(getEventRelevantDate(b));
 
       if (!da && !db) return 0;
       if (!da) return 1;
@@ -603,7 +607,7 @@ export default function ProfessionistiRichiestaDettaglioPage() {
 
     const latestDetectedWeight =
       eventsByDateDesc
-        .map((event: any) => {
+        .map((event) => {
           const meta = (event?.meta as Record<string, unknown> | undefined) ?? {};
           const payload = (event?.payload as Record<string, unknown> | undefined) ?? {};
           const dataObj = (event?.data as Record<string, unknown> | undefined) ?? {};
@@ -1188,11 +1192,20 @@ export default function ProfessionistiRichiestaDettaglioPage() {
               {filteredSharedEvents.map((event) => {
                 const files = Array.isArray(event?.files) ? event.files : [];
                 const preview = extractText(event?.description);
+                const eventPayload =
+                  event?.payload && typeof event.payload === "object"
+                    ? (event.payload as { weight?: unknown })
+                    : undefined;
+                const eventData =
+                  event?.data && typeof event.data === "object"
+                    ? (event.data as { weight?: unknown })
+                    : undefined;
+
                 const weightLabel =
                   extractText(event?.weight_kg) ||
                   extractText(event?.weight) ||
-                  extractText((event?.payload as { weight?: unknown } | undefined)?.weight) ||
-                  extractText((event?.data as { weight?: unknown } | undefined)?.weight);
+                  extractText(eventPayload?.weight) ||
+                  extractText(eventData?.weight);
 
                 return (
                   <button
@@ -1226,9 +1239,7 @@ export default function ProfessionistiRichiestaDettaglioPage() {
                         </h3>
 
                         <div className="mt-1 text-sm text-slate-500">
-                          {formatDateTime(
-                            event?.event_date || event?.performed_at || event?.created_at
-                          )}
+                          {formatDateTime(getEventRelevantDate(event))}
                         </div>
 
                         {preview ? (
@@ -1411,12 +1422,7 @@ export default function ProfessionistiRichiestaDettaglioPage() {
                   {selectedEvent?.title || "Dettaglio evento"}
                 </h2>
                 <div className="mt-2 text-sm text-slate-500">
-                  {formatDateTime(
-                    selectedEvent?.event_date ||
-                      selectedEvent?.performed_at ||
-                      selectedEvent?.scheduled_for ||
-                      selectedEvent?.created_at
-                  )}
+                  {formatDateTime(getEventRelevantDate(selectedEvent))}
                 </div>
               </div>
 
@@ -1438,23 +1444,32 @@ export default function ProfessionistiRichiestaDettaglioPage() {
                   </div>
                   <div>
                     <span className="font-medium">Data:</span>{" "}
-                    {formatDateTime(
-                      selectedEvent?.event_date ||
-                        selectedEvent?.performed_at ||
-                        selectedEvent?.created_at
-                    )}
+                    {formatDateTime(getEventRelevantDate(selectedEvent))}
                   </div>
                   <div>
                     <span className="font-medium">Tipo:</span> {typeLabel(selectedEvent?.type)}
                   </div>
                   <div>
                     <span className="font-medium">Peso:</span>{" "}
-                    {extractText(
-                      selectedEvent?.weight_kg ||
-                        selectedEvent?.weight ||
-                        (selectedEvent?.payload as { weight?: unknown } | undefined)?.weight ||
-                        (selectedEvent?.data as { weight?: unknown } | undefined)?.weight
-                    ) || "—"}
+                    {(() => {
+                      const selectedPayload =
+                        selectedEvent?.payload && typeof selectedEvent.payload === "object"
+                          ? (selectedEvent.payload as { weight?: unknown })
+                          : undefined;
+                      const selectedData =
+                        selectedEvent?.data && typeof selectedEvent.data === "object"
+                          ? (selectedEvent.data as { weight?: unknown })
+                          : undefined;
+
+                      return (
+                        extractText(
+                          selectedEvent?.weight_kg ||
+                            selectedEvent?.weight ||
+                            selectedPayload?.weight ||
+                            selectedData?.weight
+                        ) || "—"
+                      );
+                    })()}
                   </div>
                 </div>
               </div>

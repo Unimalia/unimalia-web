@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabaseClient";
@@ -10,7 +11,7 @@ import {
   useLoadScript,
 } from "@react-google-maps/api";
 
-const libraries: ("places")[] = ["places"];
+const libraries: "places"[] = ["places"];
 
 function extractCityProvinceFromFormatted(text: string) {
   const provinceMatch = text.match(/\b([A-Z]{2})\b/);
@@ -72,22 +73,18 @@ export default function SmarrimentoPage() {
   const [description, setDescription] = useState("");
   const [lostDate, setLostDate] = useState("");
 
-  // contatti opzionali
   const [contactPhone, setContactPhone] = useState("");
   const [contactEmail, setContactEmail] = useState("");
 
-  // luogo + coordinate
   const [placeText, setPlaceText] = useState("");
   const [lat, setLat] = useState<number | null>(null);
   const [lng, setLng] = useState<number | null>(null);
   const [city, setCity] = useState("");
   const [province, setProvince] = useState("");
 
-  // maps autocomplete
   const [autocomplete, setAutocomplete] =
     useState<google.maps.places.Autocomplete | null>(null);
 
-  // foto UX
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -102,7 +99,7 @@ export default function SmarrimentoPage() {
 
   const mapCenter = useMemo(() => {
     if (lat != null && lng != null) return { lat, lng };
-    return { lat: 43.7696, lng: 11.2558 }; // Firenze
+    return { lat: 43.7696, lng: 11.2558 };
   }, [lat, lng]);
 
   function onPlaceChanged() {
@@ -156,7 +153,6 @@ export default function SmarrimentoPage() {
         return;
       }
 
-      // profilo (se FK)
       const { error: profileErr } = await supabase
         .from("profiles")
         .upsert({ id: user.id }, { onConflict: "id" });
@@ -190,7 +186,10 @@ export default function SmarrimentoPage() {
         body: formData,
       });
 
-      const uploadData = await uploadRes.json();
+      const uploadData = (await uploadRes.json().catch(() => ({}))) as {
+        error?: string;
+        publicUrl?: string;
+      };
 
       if (!uploadRes.ok) {
         throw new Error(uploadData.error || "Errore upload foto");
@@ -206,11 +205,11 @@ export default function SmarrimentoPage() {
         lost_date: lostDate,
         status: "active",
         primary_photo_url: photoUrl,
-        city: (city || "").trim(),
-        province: (province || "").trim(),
+        city: city.trim(),
+        province: province.trim(),
         country: "IT",
-        lat: lat,
-        lng: lng,
+        lat,
+        lng,
         contact_phone: contactPhone.trim() || null,
         contact_email: contactEmail.trim() || null,
       });
@@ -233,8 +232,9 @@ export default function SmarrimentoPage() {
       setProvince("");
 
       onPhotoSelected(null);
-    } catch (err: any) {
-      setMsg(err?.message ?? "Errore durante la pubblicazione");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Errore durante la pubblicazione";
+      setMsg(message);
     } finally {
       setLoading(false);
     }
@@ -263,9 +263,7 @@ export default function SmarrimentoPage() {
         onSubmit={handleSubmit}
         className="mt-8 grid max-w-5xl gap-6 lg:grid-cols-2"
       >
-        {/* SINISTRA */}
         <div className="space-y-4 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-          {/* Foto UX */}
           <div>
             <label className="block text-sm font-medium">Foto animale</label>
 
@@ -294,11 +292,15 @@ export default function SmarrimentoPage() {
 
             {photoPreview && (
               <div className="mt-3 overflow-hidden rounded-xl border border-zinc-200">
-                <img
-                  src={photoPreview}
-                  alt="Anteprima foto"
-                  className="h-48 w-full object-cover"
-                />
+                <div className="relative h-48 w-full">
+                  <Image
+                    src={photoPreview}
+                    alt="Anteprima foto"
+                    fill
+                    className="object-cover"
+                    unoptimized
+                  />
+                </div>
               </div>
             )}
           </div>
@@ -347,7 +349,6 @@ export default function SmarrimentoPage() {
             />
           </div>
 
-          {/* Contatti */}
           <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4">
             <p className="text-sm font-semibold text-zinc-900">Contatti (opzionali)</p>
             <p className="mt-1 text-xs text-zinc-600">
@@ -389,7 +390,6 @@ export default function SmarrimentoPage() {
           {msg && <p className="text-sm text-zinc-700">{msg}</p>}
         </div>
 
-        {/* DESTRA: MAPS */}
         <div className="space-y-3">
           <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
             <label className="block text-sm font-medium">Luogo (cerca e seleziona)</label>
@@ -434,7 +434,7 @@ export default function SmarrimentoPage() {
                 <Marker
                   position={mapCenter}
                   draggable
-                  onDragEnd={(e) => {
+                  onDragEnd={(e: google.maps.MapMouseEvent) => {
                     const newLat = e.latLng?.lat();
                     const newLng = e.latLng?.lng();
                     if (newLat != null && newLng != null) {

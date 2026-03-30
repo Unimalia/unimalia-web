@@ -8,6 +8,17 @@ import LocationPicker from "../../_components/LocationPicker";
 type ReportType = "found" | "sighted";
 type ContactMode = "protected" | "phone_public";
 
+type LocationAddress = {
+  formattedAddress?: string | null;
+  province?: string | null;
+  region?: string | null;
+};
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) return error.message;
+  return "Errore di rete o server.";
+}
+
 export default function NuovoTrovatoPage() {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
   const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "";
@@ -174,8 +185,8 @@ export default function NuovoTrovatoPage() {
       setPhoto(null);
       setPhotoPreview(null);
       setTurnstileToken(null);
-    } catch (error: any) {
-      setResultMsg(error?.message || "Errore di rete o server.");
+    } catch (error: unknown) {
+      setResultMsg(getErrorMessage(error));
     } finally {
       setLoading(false);
     }
@@ -313,7 +324,7 @@ export default function NuovoTrovatoPage() {
               apiKey={apiKey}
               value={coords}
               onChange={setCoords}
-              onAddress={(a: any) => {
+              onAddress={(a: LocationAddress) => {
                 if (a.formattedAddress) setLocationText(a.formattedAddress);
                 if (a.province) setProvince(a.province);
                 if (a.region) setRegion(a.region);
