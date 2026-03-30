@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import { headers } from "next/headers";
 import { getPublicEmergencyCardByToken } from "@/lib/emergency/public-card";
@@ -99,11 +100,15 @@ export default async function EmergencyPublicPage({ params }: PageProps) {
             <div className="flex flex-col gap-4 sm:flex-row">
               {data.settings.showPhoto && data.animal.photoUrl ? (
                 <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-50 sm:w-56">
-                  <img
-                    src={data.animal.photoUrl}
-                    alt={data.animal.name}
-                    className="h-56 w-full object-contain"
-                  />
+                  <div className="relative h-56 w-full sm:w-56">
+                    <Image
+                      src={data.animal.photoUrl}
+                      alt={data.animal.name}
+                      fill
+                      className="object-contain"
+                      unoptimized
+                    />
+                  </div>
                 </div>
               ) : null}
 

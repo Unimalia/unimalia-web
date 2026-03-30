@@ -49,6 +49,17 @@ type UploadedFileRow = {
   created_at: string;
 };
 
+type UploadedFileResponseRow = {
+  id: string;
+  event_id: string;
+  animal_id: string;
+  filename: string | null;
+  mime: string | null;
+  size: number | null;
+  created_by_user_id: string | null;
+  created_at: string;
+};
+
 type RequireOwnerOrGrantClient = Parameters<typeof requireOwnerOrGrant>[0];
 
 function isDicomFile(fileName?: string | null, mimeType?: string | null) {
@@ -91,6 +102,19 @@ function parseMetaNumber(value: unknown): number | null {
 
 function parseMetaString(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value : null;
+}
+
+function toUploadedFileResponse(row: UploadedFileRow): UploadedFileResponseRow {
+  return {
+    id: row.id,
+    event_id: row.event_id,
+    animal_id: row.animal_id,
+    filename: row.filename,
+    mime: row.mime,
+    size: row.size,
+    created_by_user_id: row.created_by_user_id,
+    created_at: row.created_at,
+  };
 }
 
 export async function POST(req: Request) {
@@ -192,29 +216,30 @@ export async function POST(req: Request) {
   }
 
   const source = String(ev.source || "");
-  const createdByUserId = String(ev.created_by_user_id || "");
+  const createdByUserId = String(ev.created_by_user_id || "").trim();
 
-  if (source !== "owner" && createdByUserId && createdByUserId !== user.id) {
+  if (source !== "owner") {
     const reason = "Non autorizzato: puoi caricare file solo su eventi owner o sui tuoi eventi.";
 
-    await safeWriteAudit(supabase, {
-      req,
-      actor_user_id: user.id,
-      actor_org_id: grant.actor_org_id,
-      action: "file.upload",
-      target_type: "event",
-      target_id: eventId,
-      animal_id: animalId,
-      result: "denied",
-      reason,
-    });
+    if (!createdByUserId || createdByUserId !== user.id) {
+      await safeWriteAudit(supabase, {
+        req,
+        actor_user_id: user.id,
+        actor_org_id: grant.actor_org_id,
+        action: "file.upload",
+        target_type: "event",
+        target_id: eventId,
+        animal_id: animalId,
+        result: "denied",
+        reason,
+      });
 
-    return NextResponse.json({ error: reason }, { status: 403 });
+      return NextResponse.json({ error: reason }, { status: 403 });
+    }
   }
 
   const bucket = "clinic-event-files";
   const uploaded: UploadedFileRow[] = [];
-
   const uploadedPaths: string[] = [];
 
   try {
@@ -366,7 +391,10 @@ export async function POST(req: Request) {
       console.error("[CLINIC_EVENT_OWNER_EMAIL_UPLOAD]", emailError);
     }
 
-    return NextResponse.json({ ok: true, files: uploaded }, { status: 200 });
+    return NextResponse.json(
+      { ok: true, files: uploaded.map(toUploadedFileResponse) },
+      { status: 200 }
+    );
   } catch (error: unknown) {
     if (uploadedPaths.length > 0) {
       try {
