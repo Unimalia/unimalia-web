@@ -2,7 +2,7 @@
 
 export const dynamic = "force-dynamic";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { PageShell } from "@/_components/ui/page-shell";
@@ -22,6 +22,19 @@ type ClinicEventType =
   | "feeding"
   | "surgery";
 
+type EventMetaLike = {
+  therapy_start_date?: string | null;
+  therapy_end_date?: string | null;
+  weight_kg?: number | string | null;
+  weightKg?: number | string | null;
+  created_by_member_label?: string | null;
+};
+
+type EventExtraDataLike = {
+  weight_kg?: number | string | null;
+  weightKg?: number | string | null;
+};
+
 type ClinicEventRow = {
   id: string;
   animal_id: string;
@@ -38,7 +51,11 @@ type ClinicEventRow = {
   verified_by_label?: string | null;
   verified_by_org_id?: string | null;
   verified_by_member_id?: string | null;
-  meta?: any;
+  weight_kg?: number | string | null;
+  weightKg?: number | string | null;
+  meta?: EventMetaLike | null;
+  data?: EventExtraDataLike | null;
+  payload?: EventExtraDataLike | null;
 };
 
 type EventFileRow = {
@@ -152,18 +169,18 @@ function formatInsertedAtIT(iso?: string | null) {
   });
 }
 
-function extractWeightKg(e: any): number | null {
+function extractWeightKg(e: ClinicEventRow | null | undefined): number | null {
   if (!e) return null;
 
   const direct =
     e.weight_kg ??
     e.weightKg ??
-    e?.meta?.weight_kg ??
-    e?.meta?.weightKg ??
-    e?.data?.weightKg ??
-    e?.data?.weight_kg ??
-    e?.payload?.weightKg ??
-    e?.payload?.weight_kg;
+    e.meta?.weight_kg ??
+    e.meta?.weightKg ??
+    e.data?.weightKg ??
+    e.data?.weight_kg ??
+    e.payload?.weightKg ??
+    e.payload?.weight_kg;
 
   if (direct === null || direct === undefined) return null;
 
@@ -173,11 +190,11 @@ function extractWeightKg(e: any): number | null {
   return Math.round(n * 10) / 10;
 }
 
-function extractTherapyStartDate(e: any): string | null {
+function extractTherapyStartDate(e: ClinicEventRow | null | undefined): string | null {
   return e?.meta?.therapy_start_date || null;
 }
 
-function extractTherapyEndDate(e: any): string | null {
+function extractTherapyEndDate(e: ClinicEventRow | null | undefined): string | null {
   return e?.meta?.therapy_end_date || null;
 }
 
@@ -194,12 +211,6 @@ function toDateTimeLocalValue(date: Date) {
 function fromDateTimeLocalValue(v: string) {
   const d = new Date(v);
   return isNaN(d.getTime()) ? new Date() : d;
-}
-
-function toDateOnly(v: string) {
-  const d = fromDateTimeLocalValue(v);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
 export default function AnimalClinicalPage() {
@@ -238,13 +249,13 @@ export default function AnimalClinicalPage() {
 
   const backHref = useMemo(() => (animalId ? `/identita/${animalId}` : "/identita"), [animalId]);
 
-  async function loadEvents() {
+  const loadEvents = useCallback(async () => {
     if (!animalId) return;
 
     setLoading(true);
     setError(null);
 
-    const { data, error } = await supabase
+    const { data, error: queryError } = await supabase
       .from("animal_clinic_events")
       .select(
         "id, animal_id, event_date, type, title, description, visibility, source, verified_at, verified_by_user_id, created_at, created_by_user_id, verified_by_label, verified_by_org_id, verified_by_member_id, meta, status"
@@ -253,24 +264,27 @@ export default function AnimalClinicalPage() {
       .neq("status", "void")
       .order("event_date", { ascending: false });
 
-    if (error) {
-      setError(error.message);
+    if (queryError) {
+      setError(queryError.message);
       setEvents([]);
     } else {
       setEvents((data as ClinicEventRow[]) ?? []);
     }
 
     setLoading(false);
-  }
+  }, [animalId]);
 
-  async function loadFilesCount() {
+  const loadFilesCount = useCallback(async () => {
     if (!animalId) return;
 
     try {
-      const res = await fetch(`/api/clinic-events/files/count?animalId=${encodeURIComponent(animalId)}`, {
-        cache: "no-store",
-        headers: { ...(await authHeaders()) },
-      });
+      const res = await fetch(
+        `/api/clinic-events/files/count?animalId=${encodeURIComponent(animalId)}`,
+        {
+          cache: "no-store",
+          headers: { ...(await authHeaders()) },
+        }
+      );
 
       if (!res.ok) return;
 
@@ -280,17 +294,20 @@ export default function AnimalClinicalPage() {
     } catch {
       // no-op
     }
-  }
+  }, [animalId]);
 
-  async function loadDetailFiles(eventId: string) {
+  const loadDetailFiles = useCallback(async (eventId: string) => {
     setDetailFilesLoading(true);
     try {
-      const res = await fetch(`/api/clinic-events/files/list?eventId=${encodeURIComponent(eventId)}`, {
-        cache: "no-store",
-        headers: {
-          ...(await authHeaders()),
-        },
-      });
+      const res = await fetch(
+        `/api/clinic-events/files/list?eventId=${encodeURIComponent(eventId)}`,
+        {
+          cache: "no-store",
+          headers: {
+            ...(await authHeaders()),
+          },
+        }
+      );
 
       const j = await res.json().catch(() => ({}));
       setDetailFiles((j?.files as EventFileRow[]) ?? []);
@@ -299,14 +316,14 @@ export default function AnimalClinicalPage() {
     } finally {
       setDetailFilesLoading(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
     void (async () => {
       await loadEvents();
       await loadFilesCount();
     })();
-  }, [animalId]);
+  }, [loadEvents, loadFilesCount]);
 
   useEffect(() => {
     if (!detailEvent?.id) {
@@ -314,7 +331,7 @@ export default function AnimalClinicalPage() {
       return;
     }
     void loadDetailFiles(detailEvent.id);
-  }, [detailEvent?.id]);
+  }, [detailEvent?.id, loadDetailFiles]);
 
   async function uploadFilesForEvent(eventId: string) {
     if (!animalId) return;
@@ -373,7 +390,7 @@ export default function AnimalClinicalPage() {
     const eventDate = fromDateTimeLocalValue(dateLocal).toISOString();
     const title = typeLabel(type);
 
-    const meta: Record<string, any> = {};
+    const meta: EventMetaLike = {};
 
     if (type === "therapy") {
       if (therapyStartDate) meta.therapy_start_date = therapyStartDate;
@@ -513,13 +530,13 @@ export default function AnimalClinicalPage() {
   const initialEditTherapyStartDate = detailEvent ? extractTherapyStartDate(detailEvent) || "" : "";
   const initialEditTherapyEndDate = detailEvent ? extractTherapyEndDate(detailEvent) || "" : "";
 
-  const isEditDirty = !!detailEvent && (
-    editType !== detailEvent.type ||
-    editDateLocal !== initialEditDateLocal ||
-    editDescription !== initialEditDescription ||
-    editTherapyStartDate !== initialEditTherapyStartDate ||
-    editTherapyEndDate !== initialEditTherapyEndDate
-  );
+  const isEditDirty =
+    !!detailEvent &&
+    (editType !== detailEvent.type ||
+      editDateLocal !== initialEditDateLocal ||
+      editDescription !== initialEditDescription ||
+      editTherapyStartDate !== initialEditTherapyStartDate ||
+      editTherapyEndDate !== initialEditTherapyEndDate);
 
   return (
     <PageShell
@@ -673,7 +690,8 @@ export default function AnimalClinicalPage() {
                 <p className="mt-2 text-sm text-gray-600">{files.length} file selezionati</p>
               ) : (
                 <p className="mt-1.5 text-xs leading-5 text-zinc-500">
-                  Puoi allegare uno o più documenti: referti, esami, PDF, immagini o etichette ingredienti.
+                  Puoi allegare uno o più documenti: referti, esami, PDF, immagini o etichette
+                  ingredienti.
                 </p>
               )}
             </div>
@@ -717,7 +735,8 @@ export default function AnimalClinicalPage() {
         <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
           <h2 className="text-base font-semibold text-zinc-900">Timeline clinica</h2>
           <p className="mt-1 text-sm leading-6 text-zinc-600">
-            Eventi clinici in ordine cronologico, con stato validazione e dettagli principali subito visibili.
+            Eventi clinici in ordine cronologico, con stato validazione e dettagli principali subito
+            visibili.
           </p>
 
           {loading ? (
@@ -747,7 +766,7 @@ export default function AnimalClinicalPage() {
                     statusTextBadge = "⏳ Da validare";
                   }
                 } else {
-                  statusTextTop = `Registrato da ${ev?.meta?.created_by_member_label || "professionista"}`;
+                  statusTextTop = `Registrato da ${ev.meta?.created_by_member_label || "professionista"}`;
                   statusTextBadge = isVerified ? "✓ Validato" : "⏳ Da rivalidare";
                 }
 
@@ -831,7 +850,9 @@ export default function AnimalClinicalPage() {
           <div className="max-h-[85vh] w-full max-w-xl overflow-y-auto rounded-3xl bg-white p-5 shadow-xl md:p-6">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h2 className="text-lg font-semibold leading-6 text-zinc-900">{detailEvent.title}</h2>
+                <h2 className="text-lg font-semibold leading-6 text-zinc-900">
+                  {detailEvent.title}
+                </h2>
 
                 <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-zinc-600">
                   <span className="rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-xs font-semibold text-zinc-700">
@@ -881,7 +902,7 @@ export default function AnimalClinicalPage() {
               <span className="font-semibold">Creatore evento:</span>{" "}
               {detailEvent.source === "owner"
                 ? "Proprietario"
-                : detailEvent?.meta?.created_by_member_label || "Professionista"}
+                : detailEvent.meta?.created_by_member_label || "Professionista"}
             </div>
 
             <div className="mt-2 text-sm leading-6 text-zinc-700">
@@ -931,14 +952,14 @@ export default function AnimalClinicalPage() {
                 onChange={async (e) => {
                   if (!detailEvent) return;
 
-                  const files = Array.from(e.target.files || []);
-                  if (!files.length) return;
+                  const selectedFiles = Array.from(e.target.files || []);
+                  if (!selectedFiles.length) return;
 
                   const fd = new FormData();
                   fd.append("eventId", detailEvent.id);
                   fd.append("animalId", detailEvent.animal_id);
 
-                  for (const f of files) fd.append("files", f);
+                  for (const f of selectedFiles) fd.append("files", f);
 
                   await fetch("/api/clinic-events/files/upload", {
                     method: "POST",
@@ -1107,7 +1128,8 @@ export default function AnimalClinicalPage() {
                 </div>
 
                 <p className="mt-3 text-xs text-zinc-500">
-                  Se modifichi un evento già validato o creato dal professionista, il backend deve riportarlo a “⏳ Da rivalidare”.
+                  Se modifichi un evento già validato o creato dal professionista, il backend deve
+                  riportarlo a “⏳ Da rivalidare”.
                 </p>
               </div>
             ) : null}
