@@ -52,8 +52,8 @@ export async function GET(
   const orthancPublicBaseUrl = getOrthancPublicBaseUrl();
   if (!orthancPublicBaseUrl) {
     return NextResponse.json(
-      { error: "ORTHANC public URL non configurato" },
-      { status: 500 }
+      { error: "Viewer DICOM temporaneamente non disponibile" },
+      { status: 503 }
     );
   }
 

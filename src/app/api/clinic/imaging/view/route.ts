@@ -17,8 +17,8 @@ export async function GET(req: NextRequest) {
 
     if (!orthancPublicUrl) {
       return NextResponse.json(
-        { error: "NEXT_PUBLIC_ORTHANC_PUBLIC_URL non configurato" },
-        { status: 500 }
+        { error: "Viewer DICOM temporaneamente non disponibile" },
+        { status: 503 }
       );
     }
 

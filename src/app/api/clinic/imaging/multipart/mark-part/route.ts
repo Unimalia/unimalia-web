@@ -9,6 +9,7 @@ type MarkPartBody = {
 };
 
 type UploadSessionRow = {
+  created_by_user_id: string | null;
   uploaded_parts: number[] | null;
 };
 
@@ -45,12 +46,16 @@ export async function POST(req: Request) {
 
     const { data: session } = await admin
       .from("clinic_imaging_upload_sessions")
-      .select("uploaded_parts")
+      .select("created_by_user_id, uploaded_parts")
       .eq("upload_id", uploadId)
       .single<UploadSessionRow>();
 
     if (!session) {
       return NextResponse.json({ error: "Session not found" }, { status: 404 });
+    }
+
+    if (String(session.created_by_user_id || "") !== user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const existing = Array.isArray(session.uploaded_parts)
