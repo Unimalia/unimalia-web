@@ -69,13 +69,18 @@ export default function NuovoAnimaleProfessionistaPage() {
         }),
       });
 
-      const json = await res.json().catch(() => ({}));
+      const json: {
+        error?: string;
+        details?: string;
+        hint?: string;
+        animal?: { id?: string };
+      } = await res.json().catch(() => ({}));
 
       if (!res.ok) {
         const message =
-          json?.error ||
-          json?.details ||
-          json?.hint ||
+          json.error ||
+          json.details ||
+          json.hint ||
           `Errore creazione animale (HTTP ${res.status})`;
 
         setError(message);
@@ -83,7 +88,7 @@ export default function NuovoAnimaleProfessionistaPage() {
         return;
       }
 
-      const animalId = json?.animal?.id;
+      const animalId = json.animal?.id;
       if (!animalId) {
         setError("Animale creato ma ID non ricevuto.");
         setSaving(false);
@@ -91,8 +96,8 @@ export default function NuovoAnimaleProfessionistaPage() {
       }
 
       router.replace(`/professionisti/animali/${animalId}`);
-    } catch (e: any) {
-      setError(e?.message || "Errore inatteso.");
+    } catch (error: unknown) {
+      setError(error instanceof Error ? error.message : "Errore inatteso.");
     } finally {
       setSaving(false);
     }
@@ -112,7 +117,8 @@ export default function NuovoAnimaleProfessionistaPage() {
       </div>
 
       <p className="mt-3 text-sm text-zinc-700">
-        Crea un animale anche senza proprietario collegato. Il proprietario si aggancerà in un secondo momento.
+        Crea un animale anche senza proprietario collegato. Il proprietario si aggancerà in un
+        secondo momento.
       </p>
 
       <form onSubmit={handleSubmit} className="mt-6 rounded-2xl border bg-white p-5 space-y-4">
@@ -243,19 +249,17 @@ export default function NuovoAnimaleProfessionistaPage() {
             </div>
 
             <p className="mt-2 text-xs text-zinc-500">
-              Il microchip è facoltativo, ma se presente puoi inserirlo manualmente oppure scansionarlo.
+              Il microchip è facoltativo, ma se presente puoi inserirlo manualmente oppure
+              scansionarlo.
             </p>
           </div>
         </div>
 
         <div className="rounded-xl border bg-zinc-50 p-4 text-sm text-zinc-700">
           Alla creazione:
-          <br />
-          - l’animale nasce in modalità professionista
-          <br />
-          - il proprietario non è ancora collegato
-          <br />
-          - la cartella può iniziare subito
+          <br />- l’animale nasce in modalità professionista
+          <br />- il proprietario non è ancora collegato
+          <br />- la cartella può iniziare subito
         </div>
 
         {error ? (

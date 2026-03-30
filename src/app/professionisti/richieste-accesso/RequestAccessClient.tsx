@@ -13,9 +13,35 @@ type FoundAnimal = {
 type WaitStatus = "idle" | "sending" | "waiting" | "approved" | "error";
 type ScopeKey = "read" | "write";
 
+type FindAnimalResponse = {
+  error?: string;
+  animalId?: string;
+  animal?: {
+    id?: string;
+    name?: string;
+    species?: string | null;
+    chip_number?: string | null;
+  } | null;
+};
+
+type CheckGrantResponse = {
+  error?: string;
+  hasGrant?: boolean;
+};
+
+type AccessRequestResponse = {
+  error?: string;
+};
+
 function scopeLabel(scope: ScopeKey) {
   if (scope === "read") return "Lettura";
   return "Modifica";
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message) return error.message;
+  if (typeof error === "string" && error.trim()) return error;
+  return fallback;
 }
 
 export default function RequestAccessClient() {
@@ -58,17 +84,17 @@ export default function RequestAccessClient() {
           : `chip=${encodeURIComponent(chip)}`;
 
         const res = await fetch(`/api/animals/find?${qs}`, { cache: "no-store" });
-        const j = await res.json().catch(() => ({}));
+        const j: FindAnimalResponse = await res.json().catch(() => ({}));
 
         if (!alive) return;
 
         if (!res.ok) {
-          setErr(j?.error || "Errore ricerca animale");
+          setErr(j.error || "Errore ricerca animale");
           return;
         }
 
-        const a = j?.animal ?? null;
-        const id = a?.id || j?.animalId || null;
+        const a = j.animal ?? null;
+        const id = a?.id || j.animalId || null;
 
         if (!id) {
           setErr("Animale non trovato.");
@@ -78,8 +104,8 @@ export default function RequestAccessClient() {
         setAnimal({
           id: String(id),
           name: String(a?.name ?? ""),
-          species: (a?.species ?? null) as string | null,
-          chip_number: (a?.chip_number ?? null) as string | null,
+          species: a?.species ?? null,
+          chip_number: a?.chip_number ?? null,
         });
       } finally {
         if (alive) setLoading(false);
@@ -107,13 +133,13 @@ export default function RequestAccessClient() {
       `/api/professionisti/grants/check?animal_id=${encodeURIComponent(targetAnimalId)}`,
       { cache: "no-store" }
     );
-    const j = await res.json().catch(() => ({}));
+    const j: CheckGrantResponse = await res.json().catch(() => ({}));
 
     if (!res.ok) {
-      throw new Error(j?.error || "Errore controllo accesso");
+      throw new Error(j.error || "Errore controllo accesso");
     }
 
-    return Boolean(j?.hasGrant);
+    return Boolean(j.hasGrant);
   }
 
   async function sendRequest() {
@@ -150,10 +176,10 @@ export default function RequestAccessClient() {
         body: JSON.stringify(body),
       });
 
-      const j = await res.json().catch(() => ({}));
+      const j: AccessRequestResponse = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        setErr(j?.error || "Errore invio richiesta");
+        setErr(j.error || "Errore invio richiesta");
         setStatus("error");
         return;
       }
@@ -196,9 +222,9 @@ export default function RequestAccessClient() {
             router.replace(`/professionisti/animali/${encodeURIComponent(resolvedAnimalId)}`);
           }, 900);
         }
-      } catch (e: any) {
+      } catch (error: unknown) {
         if (!alive) return;
-        setErr(e?.message || "Errore controllo accesso");
+        setErr(getErrorMessage(error, "Errore controllo accesso"));
       }
     }, 2500);
 
@@ -309,9 +335,7 @@ export default function RequestAccessClient() {
             <div className="mt-5 space-y-4">
               <div className="rounded-2xl bg-zinc-50 p-4 text-sm text-zinc-700">
                 Permessi richiesti:{" "}
-                <span className="font-semibold">
-                  {selectedScopes.map(scopeLabel).join(", ")}
-                </span>
+                <span className="font-semibold">{selectedScopes.map(scopeLabel).join(", ")}</span>
               </div>
 
               {status === "waiting" && (

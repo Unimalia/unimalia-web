@@ -314,7 +314,7 @@ export default function ModificaProfessionistaPage() {
       setLoading(false);
     }
 
-    load();
+    void load();
     return () => {
       alive = false;
     };
@@ -508,9 +508,7 @@ export default function ModificaProfessionistaPage() {
           tag_id,
         }));
 
-        const { error: insErr } = await supabase
-          .from("professional_tag_links")
-          .insert(payload);
+        const { error: insErr } = await supabase.from("professional_tag_links").insert(payload);
 
         if (insErr) throw insErr;
       }
@@ -564,7 +562,7 @@ export default function ModificaProfessionistaPage() {
       );
 
       router.replace("/professionisti/dashboard?pending=1");
-    } catch (e: any) {
+    } catch {
       setError("Errore nel salvataggio. Riprova.");
     } finally {
       setSaving(false);
@@ -589,9 +587,9 @@ export default function ModificaProfessionistaPage() {
       <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5">
         <p className="text-sm font-semibold text-amber-900">Profilo in verifica</p>
         <p className="mt-2 text-sm leading-relaxed text-amber-800">
-          La scheda professionista è stata salvata correttamente ed è ora in revisione.
-          La verifica richiede in genere 24/48 ore. Nel frattempo puoi aggiornare i dati,
-          ma le funzioni riservate resteranno abilitate solo dopo approvazione.
+          La scheda professionista è stata salvata correttamente ed è ora in revisione. La verifica
+          richiede in genere 24/48 ore. Nel frattempo puoi aggiornare i dati, ma le funzioni
+          riservate resteranno abilitate solo dopo approvazione.
         </p>
       </div>
 
@@ -672,7 +670,9 @@ export default function ModificaProfessionistaPage() {
             {isBusiness && (
               <>
                 <div>
-                  <label className="block text-sm font-medium">Nome attività / ragione sociale *</label>
+                  <label className="block text-sm font-medium">
+                    Nome attività / ragione sociale *
+                  </label>
                   <input
                     className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
                     value={businessName}
@@ -785,7 +785,9 @@ export default function ModificaProfessionistaPage() {
             {isVeterinary && (
               <>
                 <div>
-                  <label className="block text-sm font-medium">Tipologia struttura veterinaria *</label>
+                  <label className="block text-sm font-medium">
+                    Tipologia struttura veterinaria *
+                  </label>
                   <select
                     className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 outline-none focus:border-zinc-900"
                     value={vetStructureType}
@@ -831,7 +833,9 @@ export default function ModificaProfessionistaPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium">Estremi autorizzazione sanitaria *</label>
+                  <label className="block text-sm font-medium">
+                    Estremi autorizzazione sanitaria *
+                  </label>
                   <input
                     className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
                     value={authorizationCode}
@@ -875,7 +879,8 @@ export default function ModificaProfessionistaPage() {
           </button>
 
           <p className="mt-4 text-xs text-zinc-500">
-            Ogni modifica riporta la scheda in verifica. La scheda pubblica mostrerà solo dati verificati.
+            Ogni modifica riporta la scheda in verifica. La scheda pubblica mostrerà solo dati
+            verificati.
           </p>
         </div>
 
@@ -888,9 +893,7 @@ export default function ModificaProfessionistaPage() {
 
           <div className="mt-4 space-y-2">
             {tagsForMacro.length === 0 ? (
-              <p className="text-sm text-zinc-500">
-                Nessuna skill disponibile per questa macro (per ora).
-              </p>
+              <p className="text-sm text-zinc-500">Nessuna skill disponibile per questa macro (per ora).</p>
             ) : (
               tagsForMacro.map((t) => (
                 <label

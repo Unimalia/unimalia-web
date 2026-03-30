@@ -107,7 +107,6 @@ export default function CameraScanner({ onScan, disabled = false }: Props) {
 
         // debug: capire se legge davvero
         setLastText(text);
-        // eslint-disable-next-line no-console
         console.log("SCAN:", text);
 
         // se ZXing sta “agganciando” rumore (es: "-"), NON avviare flussi
@@ -127,9 +126,11 @@ export default function CameraScanner({ onScan, disabled = false }: Props) {
 
       controlsRef.current = controls;
       setStatus("running");
-    } catch (e: any) {
+    } catch (error: unknown) {
       setStatus("error");
-      setErrorMsg(e?.message ?? "Impossibile avviare la fotocamera");
+      setErrorMsg(
+        error instanceof Error ? error.message : "Impossibile avviare la fotocamera"
+      );
     }
   }
 
@@ -202,7 +203,6 @@ export default function CameraScanner({ onScan, disabled = false }: Props) {
         </ul>
       </div>
 
-      {/* Debug visivo: così capisci se ZXing sta leggendo o no */}
       <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-700">
         <div className="font-semibold">Debug</div>
         <div className="mt-1 break-all opacity-80">Ultimo scan: {lastText ? lastText : "—"}</div>

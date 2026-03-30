@@ -11,16 +11,22 @@ type ContactMode = "protected" | "phone_public";
 
 type SubmitStage = "idle" | "uploading-photo" | "creating-report";
 
-type AnimalRow = {
-  id: string;
-  owner_id: string;
-  name: string;
-  species: string | null;
-  breed: string | null;
-  color: string | null;
-  size: string | null;
-  photo_url: string | null;
-  status: string;
+type AddressPayload = {
+  formattedAddress?: string | null;
+  province?: string | null;
+  region?: string | null;
+};
+
+type UploadPhotoResponse = {
+  error?: string;
+  publicUrl?: string;
+};
+
+type CreateReportResponse = {
+  error?: string;
+  report?: {
+    claim_token?: string;
+  };
 };
 
 function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
@@ -44,6 +50,12 @@ function normalizeSpecies(value: string | null | undefined) {
   if (v === "cane") return "cane";
   if (v === "gatto") return "gatto";
   return "altro";
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message) return error.message;
+  if (typeof error === "string" && error.trim()) return error;
+  return fallback;
 }
 
 export default function NuovoSmarrimentoClient() {
@@ -123,11 +135,7 @@ export default function NuovoSmarrimentoClient() {
 
       setAnimalName(animal.name || "");
       setSpecies(normalizeSpecies(animal.species));
-      setDescription(
-        [animal.breed, animal.color, animal.size]
-          .filter(Boolean)
-          .join(" • ")
-      );
+      setDescription([animal.breed, animal.color, animal.size].filter(Boolean).join(" • "));
       setExistingPhotoUrl(animal.photo_url || null);
       setPhotoPreview(animal.photo_url || null);
       setContactEmail(user.email || "");
@@ -198,17 +206,17 @@ export default function NuovoSmarrimentoClient() {
       "Upload foto troppo lento o non completato. Riprova."
     );
 
-    const uploadData = await uploadRes.json().catch(() => ({}));
+    const uploadData: UploadPhotoResponse = await uploadRes.json().catch(() => ({}));
 
     if (!uploadRes.ok) {
-      throw new Error(uploadData?.error || "Errore upload foto.");
+      throw new Error(uploadData.error || "Errore upload foto.");
     }
 
-    if (!uploadData?.publicUrl) {
+    if (!uploadData.publicUrl) {
       throw new Error("Foto caricata ma URL non disponibile.");
     }
 
-    return uploadData.publicUrl as string;
+    return uploadData.publicUrl;
   }
 
   async function onSubmit(e: React.FormEvent) {
@@ -297,14 +305,14 @@ export default function NuovoSmarrimentoClient() {
         "Creazione annuncio troppo lenta o non completata. Riprova."
       );
 
-      const data = await res.json().catch(() => ({}));
+      const data: CreateReportResponse = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        setResultMsg(data?.error || "Errore pubblicazione.");
+        setResultMsg(data.error || "Errore pubblicazione.");
         return;
       }
 
-      if (ownerPrefillMode && data?.report?.claim_token) {
+      if (ownerPrefillMode && data.report?.claim_token) {
         router.push(`/gestisci-annuncio/${data.report.claim_token}`);
         return;
       }
@@ -330,8 +338,8 @@ export default function NuovoSmarrimentoClient() {
       setExistingPhotoUrl(null);
       setTurnstileToken(null);
       setStage("idle");
-    } catch (error: any) {
-      setResultMsg(error?.message || "Errore di rete o server.");
+    } catch (error: unknown) {
+      setResultMsg(getErrorMessage(error, "Errore di rete o server."));
       setStage("idle");
     } finally {
       setLoading(false);
@@ -435,7 +443,7 @@ export default function NuovoSmarrimentoClient() {
               apiKey={apiKey}
               value={coords}
               onChange={setCoords}
-              onAddress={(a: any) => {
+              onAddress={(a: AddressPayload) => {
                 if (a.formattedAddress) setLocationText(a.formattedAddress);
                 if (a.province) setProvince(a.province);
                 if (a.region) setRegion(a.region);
@@ -445,14 +453,11 @@ export default function NuovoSmarrimentoClient() {
 
           <div className="mt-3 rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-700">
             <div>
-              <span className="font-semibold">Luogo:</span>{" "}
-              {locationText || "non selezionato"}
+              <span className="font-semibold">Luogo:</span> {locationText || "non selezionato"}
             </div>
             <div className="mt-1">
-              <span className="font-semibold">Provincia:</span>{" "}
-              {province || "—"}{" "}
-              <span className="ml-3 font-semibold">Regione:</span>{" "}
-              {region || "—"}
+              <span className="font-semibold">Provincia:</span> {province || "—"}{" "}
+              <span className="ml-3 font-semibold">Regione:</span> {region || "—"}
             </div>
             <div className="mt-1">
               <span className="font-semibold">Coordinate:</span>{" "}
@@ -515,7 +520,8 @@ export default function NuovoSmarrimentoClient() {
             className="mt-1"
           />
           <span>
-            Accetto informativa privacy e autorizzo la pubblicazione dell’annuncio secondo le opzioni selezionate.
+            Accetto informativa privacy e autorizzo la pubblicazione dell’annuncio secondo le
+            opzioni selezionate.
           </span>
         </label>
 
