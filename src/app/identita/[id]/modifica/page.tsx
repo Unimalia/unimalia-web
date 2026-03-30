@@ -39,9 +39,9 @@ async function compressImageToMaxBytes(
   let blob: Blob | null = null;
 
   while (quality > 0.6) {
-    blob = await new Promise((resolve) =>
-      canvas.toBlob(resolve as any, "image/jpeg", quality)
-    );
+    blob = await new Promise<Blob | null>((resolve) => {
+      canvas.toBlob((result) => resolve(result), "image/jpeg", quality);
+    });
 
     if (blob && blob.size <= maxBytes) break;
 
@@ -122,7 +122,7 @@ export default function ModificaAnimalePage() {
       setLoading(false);
     }
 
-    load();
+    void load();
     return () => {
       alive = false;
     };
@@ -167,8 +167,8 @@ export default function ModificaAnimalePage() {
 
       setPhotoUrl(data.publicUrl + "?t=" + Date.now());
       setNotice("Foto aggiornata correttamente ✅");
-    } catch (e: any) {
-      console.error(e);
+    } catch (error: unknown) {
+      console.error(error);
       setError("Errore durante upload foto.");
     } finally {
       setSaving(false);
@@ -303,7 +303,7 @@ export default function ModificaAnimalePage() {
               type="file"
               className="hidden"
               accept="image/*"
-              onChange={(e) => uploadPhoto(e.target.files?.[0] ?? null)}
+              onChange={(e) => void uploadPhoto(e.target.files?.[0] ?? null)}
             />
           </label>
 

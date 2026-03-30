@@ -23,6 +23,10 @@ type Animal = {
   sterilized?: boolean | null;
 };
 
+type JsonPrimitive = string | number | boolean | null;
+type JsonValue = JsonPrimitive | JsonObject | JsonValue[];
+type JsonObject = { [key: string]: JsonValue };
+
 type ClinicEventType =
   | "visit"
   | "vaccine"
@@ -56,9 +60,9 @@ type ClinicEventRow = {
   expires_at?: string | null;
   weight_kg?: number | null;
   weightKg?: number | null;
-  data?: any;
-  payload?: any;
-  meta?: any;
+  data?: JsonObject | null;
+  payload?: JsonObject | null;
+  meta?: JsonObject | null;
   status?: string | null;
 };
 
@@ -685,10 +689,10 @@ export default function AnimalEmergencyPage() {
                 {loadingExistingQr
                   ? "Caricamento QR…"
                   : generating
-                  ? "Creazione in corso…"
-                  : hasQr
-                  ? "Crea nuovo QR code"
-                  : "Crea QR emergenza"}
+                    ? "Creazione in corso…"
+                    : hasQr
+                      ? "Crea nuovo QR code"
+                      : "Crea QR emergenza"}
               </button>
             </div>
           </div>
