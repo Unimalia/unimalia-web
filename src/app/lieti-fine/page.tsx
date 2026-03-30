@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
@@ -43,6 +44,7 @@ export default function LietiFinePage() {
 
   const [locationFilter, setLocationFilter] = useState("");
   const [provinceFilter, setProvinceFilter] = useState("");
+  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     async function load() {
@@ -63,7 +65,7 @@ export default function LietiFinePage() {
       setLoading(false);
     }
 
-    load();
+    void load();
   }, []);
 
   const provinces = useMemo(() => {
@@ -163,7 +165,9 @@ export default function LietiFinePage() {
         <div className="mt-8 grid gap-6 sm:grid-cols-2">
           {filtered.map((item) => {
             const imgSrc =
-              Array.isArray(item.photo_urls) && item.photo_urls.length > 0
+              !imageErrors[item.id] &&
+              Array.isArray(item.photo_urls) &&
+              item.photo_urls.length > 0
                 ? item.photo_urls[0]
                 : "/placeholder-animal.jpg";
 
@@ -174,14 +178,18 @@ export default function LietiFinePage() {
               >
                 <div className="bg-zinc-100 p-3">
                   <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white">
-                    <img
-                      src={imgSrc}
-                      alt={safeCardTitle(item)}
-                      className="h-48 w-full object-contain"
-                      onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).src = "/placeholder-animal.jpg";
-                      }}
-                    />
+                    <div className="relative h-48 w-full">
+                      <Image
+                        src={imgSrc}
+                        alt={safeCardTitle(item)}
+                        fill
+                        className="object-contain"
+                        unoptimized
+                        onError={() =>
+                          setImageErrors((prev) => ({ ...prev, [item.id]: true }))
+                        }
+                      />
+                    </div>
                   </div>
                 </div>
 

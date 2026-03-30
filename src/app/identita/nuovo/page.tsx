@@ -2,6 +2,7 @@
 
 export const dynamic = "force-dynamic";
 
+import Image from "next/image";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -74,7 +75,7 @@ async function compressImageToJpeg(file: File, maxSide = 2200, quality = 0.92): 
   const blobUrl = URL.createObjectURL(file);
   try {
     const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const el = new Image();
+      const el = new window.Image();
       el.onload = () => resolve(el);
       el.onerror = () => reject(new Error("Impossibile leggere l’immagine selezionata."));
       el.src = blobUrl;
@@ -201,6 +202,7 @@ function NuovoProfiloAnimalePageInner() {
 
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [previewError, setPreviewError] = useState(false);
 
   const cleanedChip = useMemo(() => normalizeChip(microchip), [microchip]);
 
@@ -305,6 +307,7 @@ function NuovoProfiloAnimalePageInner() {
         setMicrochip(animal.microchip || animal.chip_number || "");
         setHasChip(animal.microchip || animal.chip_number ? "yes" : "no");
         setPhotoUrl(animal.photo_url || "");
+        setPreviewError(false);
       } catch {
         if (!alive) return;
         setError("Impossibile caricare animale");
@@ -434,6 +437,7 @@ function NuovoProfiloAnimalePageInner() {
       }
 
       setPhotoUrl(publicUrl);
+      setPreviewError(false);
       setNotice(
         wasAlreadySet ? "Foto aggiornata correttamente ✅" : "Foto caricata correttamente ✅"
       );
@@ -542,6 +546,9 @@ function NuovoProfiloAnimalePageInner() {
   function openFilePicker() {
     fileRef.current?.click();
   }
+
+  const previewSrc =
+    photoUrl && !previewError ? photoUrl : "/placeholder-animal.jpg";
 
   return (
     <main className="max-w-2xl">
@@ -697,11 +704,16 @@ function NuovoProfiloAnimalePageInner() {
           {photoUrl ? (
             <div className="mt-2 overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-100 p-3">
               <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white">
-                <img
-                  src={photoUrl}
-                  alt="Anteprima foto animale"
-                  className="h-64 w-full object-contain"
-                />
+                <div className="relative h-64 w-full">
+                  <Image
+                    src={previewSrc}
+                    alt="Anteprima foto animale"
+                    fill
+                    className="object-contain"
+                    unoptimized
+                    onError={() => setPreviewError(true)}
+                  />
+                </div>
               </div>
             </div>
           ) : null}

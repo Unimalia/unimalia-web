@@ -2,6 +2,7 @@
 
 export const dynamic = "force-dynamic";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -372,11 +373,15 @@ export default function AnimalProfilePage() {
 
               <div className="mt-4 overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-100 p-3">
                 <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white">
-                  <img
-                    src={animal.photo_url || "/placeholder-animal.jpg"}
-                    alt={animal.name}
-                    className="h-72 w-full object-contain"
-                  />
+                  <div className="relative h-72 w-full">
+                    <Image
+                      src={animal.photo_url || "/placeholder-animal.jpg"}
+                      alt={animal.name}
+                      fill
+                      className="object-contain"
+                      unoptimized
+                    />
+                  </div>
                 </div>
               </div>
             </section>

@@ -28,7 +28,7 @@ function isAllowedTargetStatus(value: string): value is "accepted" | "rejected" 
   return value === "accepted" || value === "rejected" || value === "expired";
 }
 
-function canTransition(currentStatus: string | null, nextStatus: "accepted" | "rejected" | "expired") {
+function canTransition(currentStatus: string | null) {
   return currentStatus === "pending";
 }
 
@@ -77,7 +77,7 @@ export async function PATCH(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  if (!canTransition(currentRow.status, nextStatus)) {
+  if (!canTransition(currentRow.status)) {
     return NextResponse.json({ error: "Invalid state transition" }, { status: 409 });
   }
 

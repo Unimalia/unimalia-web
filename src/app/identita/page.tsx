@@ -2,6 +2,7 @@
 
 export const dynamic = "force-dynamic";
 
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
@@ -106,6 +107,7 @@ export default function IdentitaPage() {
 
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteErr, setDeleteErr] = useState<string | null>(null);
+  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
 
   const qrValue = useMemo(() => {
     if (!selected) return "";
@@ -325,6 +327,7 @@ export default function IdentitaPage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {animals.map((a) => {
             const st = statusBadge(a.status);
+            const imgSrc = imageErrors[a.id] ? "/placeholder-animal.jpg" : a.photo_url || "/placeholder-animal.jpg";
 
             return (
               <div
@@ -333,14 +336,18 @@ export default function IdentitaPage() {
               >
                 <div className="bg-zinc-100 p-3">
                   <div className="relative overflow-hidden rounded-xl border border-zinc-200 bg-white">
-                    <img
-                      src={a.photo_url || "/placeholder-animal.jpg"}
-                      alt={a.name}
-                      className="h-44 w-full object-contain"
-                      onError={(e) => {
-                        e.currentTarget.src = "/placeholder-animal.jpg";
-                      }}
-                    />
+                    <div className="relative h-44 w-full">
+                      <Image
+                        src={imgSrc}
+                        alt={a.name}
+                        fill
+                        className="object-contain"
+                        unoptimized
+                        onError={() => {
+                          setImageErrors((prev) => ({ ...prev, [a.id]: true }));
+                        }}
+                      />
+                    </div>
                     <div className="absolute left-3 top-3">
                       <span
                         className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${st.cls}`}
