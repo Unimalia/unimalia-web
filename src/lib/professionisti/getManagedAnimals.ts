@@ -18,6 +18,59 @@ export type ManagedAnimalRow = {
   has_own_history: boolean;
 };
 
+type ProfessionalProfileRow = {
+  user_id: string;
+  org_id: string | null;
+};
+
+type ProfessionalRow = {
+  id: string;
+  owner_id: string;
+};
+
+type GrantRow = {
+  animal_id: string | null;
+  grantee_id: string | null;
+  status: string | null;
+  valid_to: string | null;
+  revoked_at: string | null;
+  scope_read: boolean | null;
+  scope_write: boolean | null;
+};
+
+type AnimalOriginRow = {
+  id: string;
+  created_by_org_id: string | null;
+  origin_org_id: string | null;
+};
+
+type AuditRow = {
+  animal_id: string | null;
+  actor_user_id: string | null;
+  actor_org_id: string | null;
+  action: string;
+};
+
+type AnimalRow = {
+  id: string;
+  name: string | null;
+  species: string | null;
+  breed: string | null;
+  chip_number: string | null;
+  unimalia_code: string | null;
+  owner_id: string | null;
+  owner_claim_status: "none" | "pending" | "claimed" | null;
+  created_by_org_id: string | null;
+  origin_org_id: string | null;
+};
+
+type OwnerProfileRow = {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  full_name: string | null;
+};
+
 async function getProfessionalRefs(userId: string) {
   const admin = supabaseAdmin();
   const refs = new Set<string>();
@@ -27,7 +80,7 @@ async function getProfessionalRefs(userId: string) {
     .from("professional_profiles")
     .select("user_id, org_id")
     .eq("user_id", userId)
-    .maybeSingle();
+    .maybeSingle<ProfessionalProfileRow>();
 
   if (profileResult.error) {
     throw profileResult.error;
@@ -43,7 +96,7 @@ async function getProfessionalRefs(userId: string) {
     .eq("owner_id", userId)
     .order("created_at", { ascending: false })
     .limit(1)
-    .maybeSingle();
+    .maybeSingle<ProfessionalRow>();
 
   if (professionalResult.error) {
     throw professionalResult.error;
@@ -56,7 +109,7 @@ async function getProfessionalRefs(userId: string) {
   return Array.from(refs).filter(Boolean);
 }
 
-function buildOwnerName(profile: any): string | null {
+function buildOwnerName(profile: OwnerProfileRow | null | undefined): string | null {
   if (!profile) return null;
 
   const fullName =
@@ -94,17 +147,19 @@ export async function getManagedAnimals(userId: string): Promise<ManagedAnimalRo
     throw grantsError;
   }
 
+  const grantRows = (grants ?? []) as GrantRow[];
+
   const grantedAnimalIds = Array.from(
     new Set(
-      (grants ?? [])
-        .filter((g: any) => {
+      grantRows
+        .filter((g) => {
           if (g.status !== "active" && g.status !== "approved") return false;
           if (!g.scope_read && !g.scope_write) return false;
           if (!g.valid_to) return true;
           return String(g.valid_to) > nowIso;
         })
-        .map((g: any) => g.animal_id)
-        .filter(Boolean)
+        .map((g) => g.animal_id)
+        .filter((animalId): animalId is string => typeof animalId === "string" && animalId.length > 0)
     )
   );
 
@@ -126,7 +181,7 @@ export async function getManagedAnimals(userId: string): Promise<ManagedAnimalRo
     throw createdError;
   }
 
-  for (const row of createdOrOriginated ?? []) {
+  for (const row of (createdOrOriginated ?? []) as AnimalOriginRow[]) {
     if (row.id) createdOrOriginatedIds.add(row.id);
   }
 
@@ -139,16 +194,18 @@ export async function getManagedAnimals(userId: string): Promise<ManagedAnimalRo
     throw ownAuditResult.error;
   }
 
+  const auditRows = (ownAuditResult.data ?? []) as AuditRow[];
+
   const ownHistoryAnimalIds = Array.from(
     new Set(
-      (ownAuditResult.data ?? [])
-        .filter((row: any) => {
+      auditRows
+        .filter((row) => {
           const actorUserId = String(row.actor_user_id || "").trim();
           const actorOrgId = String(row.actor_org_id || "").trim();
 
           return actorUserId === userId || refs.includes(actorOrgId);
         })
-        .map((row: any) => String(row.animal_id || "").trim())
+        .map((row) => String(row.animal_id || "").trim())
         .filter(Boolean)
     )
   );
@@ -179,11 +236,13 @@ export async function getManagedAnimals(userId: string): Promise<ManagedAnimalRo
     throw animalsError;
   }
 
+  const animalRows = (animals ?? []) as AnimalRow[];
+
   const ownerIds = Array.from(
     new Set(
-      (animals ?? [])
-        .map((row: any) => row.owner_id)
-        .filter((v: unknown): v is string => typeof v === "string" && v.length > 0)
+      animalRows
+        .map((row) => row.owner_id)
+        .filter((v): v is string => typeof v === "string" && v.length > 0)
     )
   );
 
@@ -199,12 +258,12 @@ export async function getManagedAnimals(userId: string): Promise<ManagedAnimalRo
       throw profilesError;
     }
 
-    for (const profile of profilesById ?? []) {
+    for (const profile of (profilesById ?? []) as OwnerProfileRow[]) {
       ownerNameById.set(profile.id, buildOwnerName(profile));
     }
   }
 
-  return (animals ?? []).map((row: any) => {
+  return animalRows.map((row) => {
     const hasActiveGrant = grantedAnimalIdSet.has(row.id);
     const hasOwnHistory = ownHistoryAnimalIdSet.has(row.id);
     const isClinicOrigin =

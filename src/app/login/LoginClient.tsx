@@ -5,6 +5,13 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
+type ProfileRow = {
+  full_name: string | null;
+  fiscal_code: string | null;
+  city: string | null;
+  phone: string | null;
+};
+
 function normalizeCF(s: string) {
   return (s || "").replace(/\s+/g, "").trim().toUpperCase();
 }
@@ -20,7 +27,7 @@ function isLikelyFullName(s: string) {
   return parts.length >= 2;
 }
 
-function isProfileComplete(p: any) {
+function isProfileComplete(p: ProfileRow | null) {
   if (!p) return false;
 
   const fullNameOk = isLikelyFullName(p.full_name ?? "");
@@ -85,7 +92,7 @@ async function decideRedirect(router: ReturnType<typeof useRouter>, fallback: st
     .eq("id", user.id)
     .single();
 
-  if (!isProfileComplete(profile)) {
+  if (!isProfileComplete(profile as ProfileRow | null)) {
     router.replace(`/profilo?returnTo=${encodeURIComponent(fallback)}`);
   } else {
     router.replace(fallback);
@@ -293,14 +300,16 @@ export default function LoginClient() {
       }
 
       await decideRedirect(router, next);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("LOGIN ERROR:", err);
       const message =
-        err?.message ||
-        (typeof err === "string" ? err : "") ||
-        (navigator.onLine
-          ? "Errore di rete (fetch). Controlla URL Supabase / AdBlock."
-          : "Sei offline. Controlla internet.");
+        err instanceof Error
+          ? err.message
+          : typeof err === "string"
+            ? err
+            : navigator.onLine
+              ? "Errore di rete (fetch). Controlla URL Supabase / AdBlock."
+              : "Sei offline. Controlla internet.";
       setMsg(message);
     } finally {
       setSubmitting(false);
@@ -329,12 +338,16 @@ export default function LoginClient() {
       }
 
       setMsg("Ok ✅ Se l’email è corretta, riceverai un link per reimpostare la password.");
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("RESET ERROR:", err);
       const message =
-        err?.message ||
-        (typeof err === "string" ? err : "") ||
-        (navigator.onLine ? "Errore di rete (fetch)." : "Sei offline. Controlla internet.");
+        err instanceof Error
+          ? err.message
+          : typeof err === "string"
+            ? err
+            : navigator.onLine
+              ? "Errore di rete (fetch)."
+              : "Sei offline. Controlla internet.";
       setMsg(message);
     } finally {
       setSubmitting(false);
