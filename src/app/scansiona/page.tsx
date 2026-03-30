@@ -21,6 +21,18 @@ function publicTokenFromValue(raw: string) {
   return value.trim();
 }
 
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  if (typeof error === "string" && error.trim()) {
+    return error;
+  }
+
+  return "Impossibile avviare la fotocamera. Controlla permessi o prova con un altro browser.";
+}
+
 export default function ScansionaPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -123,11 +135,8 @@ export default function ScansionaPage() {
           controls.stop();
         } catch {}
       };
-    } catch (e: any) {
-      setError(
-        e?.message ||
-          "Impossibile avviare la fotocamera. Controlla permessi o prova con un altro browser."
-      );
+    } catch (error: unknown) {
+      setError(getErrorMessage(error));
       setRunning(false);
     } finally {
       startingRef.current = false;

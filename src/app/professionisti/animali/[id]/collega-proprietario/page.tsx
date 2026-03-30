@@ -20,6 +20,11 @@ function normalizeChip(raw: string | null) {
   return (raw || "").replace(/\s+/g, "").trim();
 }
 
+function getErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message) return error.message;
+  return fallback;
+}
+
 export default function CollegaProprietarioPage() {
   const params = useParams<{ id: string }>();
   const animalId = params?.id;
@@ -128,8 +133,8 @@ export default function CollegaProprietarioPage() {
 
       setInviteOk(true);
       setEmail("");
-    } catch (error: any) {
-      setErr(error?.message || "Errore invio invito proprietario.");
+    } catch (error: unknown) {
+      setErr(getErrorMessage(error, "Errore invio invito proprietario."));
     } finally {
       setSending(false);
     }

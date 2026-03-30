@@ -1,13 +1,18 @@
-// src/lib/professionisti/org.ts
 import "server-only";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
+type ProfessionalProfileOrgRow = {
+  org_id: string | null;
+};
+
 export async function getProfessionalOrgId(): Promise<string | null> {
   const supabase = await createServerSupabaseClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   if (!user) return null;
 
-  // TODO_RENAME: se la tua tabella non è professional_profiles
   const { data, error } = await supabase
     .from("professional_profiles")
     .select("org_id")
@@ -15,5 +20,7 @@ export async function getProfessionalOrgId(): Promise<string | null> {
     .maybeSingle();
 
   if (error) throw error;
-  return (data as any)?.org_id ?? null;
+
+  const row = (data as ProfessionalProfileOrgRow | null) ?? null;
+  return row?.org_id ?? null;
 }

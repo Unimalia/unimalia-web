@@ -47,6 +47,11 @@ type ClinicEventRow = {
   created_at: string;
 };
 
+type VerifyApiResponse = {
+  ok?: boolean;
+  error?: string;
+};
+
 function normalizeChip(raw: string | null) {
   return (raw || "").replace(/\s+/g, "").trim();
 }
@@ -319,7 +324,7 @@ export default function ProVerifyPage() {
         }),
       });
 
-      const json = await res.json().catch(() => ({} as any));
+      const json = (await res.json().catch(() => ({}))) as VerifyApiResponse;
 
       if (!res.ok) {
         const msg = json?.error || `Errore validazione (${res.status})`;
@@ -331,8 +336,8 @@ export default function ProVerifyPage() {
       // ✅ refresh lista eventi e pulisci selezione
       await loadEvents();
       setSelected({});
-    } catch (e: any) {
-      const msg = e?.message || "Errore di rete";
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Errore di rete";
       setErr(msg);
       alert(msg);
     } finally {
@@ -470,8 +475,8 @@ export default function ProVerifyPage() {
                 {savingChip
                   ? "Salvataggio…"
                   : animal.microchip_verified
-                  ? "Già verificato"
-                  : "Segna come verificato"}
+                    ? "Già verificato"
+                    : "Segna come verificato"}
               </button>
 
               <Link
@@ -483,7 +488,8 @@ export default function ProVerifyPage() {
             </div>
 
             <p className="text-xs text-zinc-500">
-              Nota: alcuni animali possono non avere microchip. In quel caso UNIMALIA usa un codice interno.
+              Nota: alcuni animali possono non avere microchip. In quel caso UNIMALIA usa un codice
+              interno.
             </p>
           </div>
         )}
@@ -586,7 +592,9 @@ export default function ProVerifyPage() {
                     </div>
 
                     {ev.description ? (
-                      <p className="mt-2 text-sm text-zinc-700 whitespace-pre-wrap">{ev.description}</p>
+                      <p className="mt-2 text-sm text-zinc-700 whitespace-pre-wrap">
+                        {ev.description}
+                      </p>
                     ) : null}
                   </div>
                 </label>
