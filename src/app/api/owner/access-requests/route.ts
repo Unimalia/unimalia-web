@@ -26,6 +26,11 @@ type AnimalRow = {
   name: string | null;
 };
 
+type AnimalOwnershipRow = {
+  id: string;
+  owner_id: string | null;
+};
+
 type AccessRequestRow = {
   id: string;
   created_at: string;
@@ -57,6 +62,16 @@ function notFoundResponse() {
   );
 }
 
+function conflictResponse() {
+  return NextResponse.json(
+    { error: "Invalid state" },
+    {
+      status: 409,
+      headers: { "Cache-Control": "no-store" },
+    }
+  );
+}
+
 function isValidAction(value: string): value is Action {
   return value === "approve" || value === "reject" || value === "block" || value === "revoke";
 }
@@ -74,6 +89,14 @@ function computeValidTo(duration: Duration) {
   if (duration === "6m") now.setMonth(now.getMonth() + 6);
 
   return now.toISOString();
+}
+
+function canTransition(status: string, action: Action) {
+  if (action === "approve") return status === "pending";
+  if (action === "reject") return status === "pending";
+  if (action === "block") return status === "pending";
+  if (action === "revoke") return status === "approved";
+  return false;
 }
 
 async function tryResolveOrgNames(admin: ReturnType<typeof supabaseAdmin>, orgIds: string[]) {
@@ -291,6 +314,29 @@ export async function POST(req: Request) {
       return notFoundResponse();
     }
 
+    const { data: animalRow, error: animalErr } = await admin
+      .from("animals")
+      .select("id, owner_id")
+      .eq("id", requestRow.animal_id)
+      .maybeSingle();
+
+    if (animalErr) {
+      return NextResponse.json(
+        { error: "Server error" },
+        { status: 500, headers: { "Cache-Control": "no-store" } }
+      );
+    }
+
+    const ownedAnimal = animalRow as AnimalOwnershipRow | null;
+
+    if (!ownedAnimal || ownedAnimal.owner_id !== user.id) {
+      return notFoundResponse();
+    }
+
+    if (!canTransition(requestRow.status, action)) {
+      return conflictResponse();
+    }
+
     if (action === "approve") {
       const validTo = computeValidTo(duration);
       const requestedScope = normalizeRequestedScope(requestRow.requested_scope);
@@ -364,7 +410,8 @@ export async function POST(req: Request) {
           status: "approved",
         })
         .eq("id", id)
-        .eq("owner_id", user.id);
+        .eq("owner_id", user.id)
+        .eq("status", "pending");
 
       if (updErr) {
         return NextResponse.json(
@@ -390,7 +437,8 @@ export async function POST(req: Request) {
           status: "rejected",
         })
         .eq("id", id)
-        .eq("owner_id", user.id);
+        .eq("owner_id", user.id)
+        .eq("status", "pending");
 
       if (updErr) {
         return NextResponse.json(
@@ -412,7 +460,8 @@ export async function POST(req: Request) {
           status: "blocked",
         })
         .eq("id", id)
-        .eq("owner_id", user.id);
+        .eq("owner_id", user.id)
+        .eq("status", "pending");
 
       if (updErr) {
         return NextResponse.json(
@@ -428,6 +477,28 @@ export async function POST(req: Request) {
     }
 
     if (action === "revoke") {
+      const { data: activeGrant, error: activeGrantErr } = await admin
+        .from("animal_access_grants")
+        .select("id")
+        .eq("animal_id", requestRow.animal_id)
+        .eq("grantee_type", "organization")
+        .eq("grantee_id", requestRow.org_id)
+        .is("revoked_at", null)
+        .maybeSingle();
+
+      if (activeGrantErr) {
+        return NextResponse.json(
+          { error: "Server error" },
+          { status: 500, headers: { "Cache-Control": "no-store" } }
+        );
+      }
+
+      const activeGrantRow = activeGrant as AccessGrantLookupRow | null;
+
+      if (!activeGrantRow?.id) {
+        return conflictResponse();
+      }
+
       const { error: revErr } = await admin
         .from("animal_access_grants")
         .update({
@@ -435,10 +506,7 @@ export async function POST(req: Request) {
           revoked_by_user_id: user.id,
           status: "revoked",
         })
-        .eq("animal_id", requestRow.animal_id)
-        .eq("grantee_type", "organization")
-        .eq("grantee_id", requestRow.org_id)
-        .is("revoked_at", null);
+        .eq("id", activeGrantRow.id);
 
       if (revErr) {
         return NextResponse.json(
@@ -453,7 +521,8 @@ export async function POST(req: Request) {
           status: "revoked",
         })
         .eq("id", id)
-        .eq("owner_id", user.id);
+        .eq("owner_id", user.id)
+        .eq("status", "approved");
 
       if (updErr) {
         return NextResponse.json(
