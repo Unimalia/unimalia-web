@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { createClient } from "@supabase/supabase-js";
 import Link from "next/link";
 import ContactProtectedForm from "./ContactProtectedForm";
@@ -255,7 +256,6 @@ export default async function AnnuncioPage({ params }: PageProps) {
   const showMap = hasMeaningfulLocation(report);
   const showEmbeddedMap = hasCoordinates(report);
   const isActive = reportStatus === "active";
-  const isClosed = !isActive;
 
   return (
     <main className="mx-auto w-full max-w-4xl px-4 py-8">
@@ -271,11 +271,15 @@ export default async function AnnuncioPage({ params }: PageProps) {
       <div className="overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm">
         <div className="bg-zinc-100 p-4 sm:p-6">
           <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white">
-            <img
-              src={mainPhoto}
-              alt={title}
-              className="h-72 w-full object-contain sm:h-96"
-            />
+            <div className="relative h-72 w-full sm:h-96">
+              <Image
+                src={mainPhoto}
+                alt={title}
+                fill
+                className="object-contain"
+                unoptimized
+              />
+            </div>
           </div>
         </div>
 

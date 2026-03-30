@@ -146,6 +146,8 @@ export async function GET(_req: Request, context: RouteContext) {
 }
 
 export async function POST(_req: Request, context: RouteContext) {
+  void _req;
+
   try {
     const { animalId } = await context.params;
 

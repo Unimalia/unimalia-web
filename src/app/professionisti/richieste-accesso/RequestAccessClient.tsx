@@ -128,7 +128,7 @@ export default function RequestAccessClient() {
     });
   }
 
-  async function checkAccessNow(targetAnimalId: string) {
+  const checkAccessNow = React.useCallback(async (targetAnimalId: string) => {
     const res = await fetch(
       `/api/professionisti/grants/check?animal_id=${encodeURIComponent(targetAnimalId)}`,
       { cache: "no-store" }
@@ -140,9 +140,9 @@ export default function RequestAccessClient() {
     }
 
     return Boolean(j.hasGrant);
-  }
+  }, []);
 
-  async function sendRequest() {
+  const sendRequest = React.useCallback(async () => {
     if (!resolvedAnimalId && !resolvedChip) {
       setErr("Dati insufficienti per inviare la richiesta.");
       setStatus("error");
@@ -190,13 +190,13 @@ export default function RequestAccessClient() {
     } finally {
       setBusy(false);
     }
-  }
+  }, [resolvedAnimalId, resolvedChip, selectedScopes]);
 
   React.useEffect(() => {
     if (!auto || !animal || done || busy || autoStarted) return;
     setAutoStarted(true);
     void sendRequest();
-  }, [auto, animal, done, busy, autoStarted]);
+  }, [auto, animal, done, busy, autoStarted, sendRequest]);
 
   React.useEffect(() => {
     if (!done || !resolvedAnimalId || status !== "waiting") return;
@@ -233,7 +233,7 @@ export default function RequestAccessClient() {
       window.clearInterval(timer);
       window.clearInterval(poller);
     };
-  }, [done, resolvedAnimalId, status, router]);
+  }, [done, resolvedAnimalId, status, router, checkAccessNow]);
 
   return (
     <div className="mx-auto max-w-2xl space-y-5">

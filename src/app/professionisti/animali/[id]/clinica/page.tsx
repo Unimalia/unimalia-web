@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
@@ -176,7 +176,7 @@ function typeIcon(t: ClinicEventType | string) {
       return "📌";
     case "follow_up":
       return "🔁";
-    case "imaging":
+      case "imaging":
       return "🖼️";
     default:
       return "📄";
@@ -458,7 +458,7 @@ export default function ClinicaPage() {
   }
 
   useEffect(() => {
-    (async () => {
+    void (async () => {
       const { data: authData } = await supabase.auth.getUser();
       const user = authData.user;
       if (!user) {
@@ -473,7 +473,7 @@ export default function ClinicaPage() {
     })();
   }, [id, router]);
 
-  async function loadClinicEvents() {
+  const loadClinicEvents = useCallback(async () => {
     if (!id) return;
     setEventsLoading(true);
     setEventsErr(null);
@@ -514,9 +514,9 @@ export default function ClinicaPage() {
     } finally {
       setEventsLoading(false);
     }
-  }
+  }, [id]);
 
-  async function loadAnimal() {
+  const loadAnimal = useCallback(async () => {
     if (!id) return;
     try {
       const res = await fetch(`/api/professionisti/animal?animalId=${encodeURIComponent(id)}`, {
@@ -548,9 +548,9 @@ export default function ClinicaPage() {
     } catch {
       // ignore
     }
-  }
+  }, [id]);
 
-  async function loadFilesCount() {
+  const loadFilesCount = useCallback(async () => {
     if (!id) return;
     try {
       const res = await fetch(`/api/clinic-events/files/count?animalId=${encodeURIComponent(id)}`, {
@@ -564,9 +564,9 @@ export default function ClinicaPage() {
     } catch {
       // no-op
     }
-  }
+  }, [id]);
 
-  async function loadUploadDrafts() {
+  const loadUploadDrafts = useCallback(async () => {
     if (!id) return;
     try {
       const res = await fetch(
@@ -584,7 +584,7 @@ export default function ClinicaPage() {
     } catch {
       // no-op
     }
-  }
+  }, [id]);
 
   async function openImagingFile(eventId: string, filePath: string) {
     try {
@@ -729,7 +729,7 @@ export default function ClinicaPage() {
       await loadFilesCount();
       await loadUploadDrafts();
     })();
-  }, [id]);
+  }, [id, loadAnimal, loadClinicEvents, loadFilesCount, loadUploadDrafts]);
 
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);

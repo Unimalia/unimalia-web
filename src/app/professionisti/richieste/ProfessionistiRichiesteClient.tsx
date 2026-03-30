@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { authHeaders } from "@/lib/client/authHeaders";
 
 type BoxType = "received" | "sent" | "archive";
@@ -162,7 +162,7 @@ export default function ProfessionistiRichiesteClient() {
   const pageTitle = useMemo(() => boxTitle(box), [box]);
   const pageDescription = useMemo(() => boxDescription(box), [box]);
 
-  async function refreshCounters() {
+  const refreshCounters = useCallback(async () => {
     try {
       const [receivedItems, sentItems] = await Promise.all([
         fetchConsultItems("received"),
@@ -175,9 +175,9 @@ export default function ProfessionistiRichiesteClient() {
       setReceivedCount(0);
       setSentCount(0);
     }
-  }
+  }, []);
 
-  async function load() {
+  const load = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
@@ -208,15 +208,15 @@ export default function ProfessionistiRichiesteClient() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [box, status, priority, q]);
 
   useEffect(() => {
     void load();
-  }, [box, status, priority]);
+  }, [load]);
 
   useEffect(() => {
     void refreshCounters();
-  }, []);
+  }, [refreshCounters]);
 
   const filteredItems = useMemo(() => {
     if (!q.trim()) return items;
@@ -388,10 +388,10 @@ export default function ProfessionistiRichiesteClient() {
                   ? "border-red-300 bg-red-50 hover:bg-red-50/80"
                   : "border-emerald-300 bg-emerald-50 hover:bg-emerald-50/80"
                 : box === "sent"
-                ? item.priority === "emergency"
-                  ? "border-red-300 bg-red-50 hover:bg-red-50/80"
-                  : "border-blue-200 bg-blue-50 hover:bg-blue-50/80"
-                : "border-zinc-200 bg-white hover:bg-zinc-50";
+                  ? item.priority === "emergency"
+                    ? "border-red-300 bg-red-50 hover:bg-red-50/80"
+                    : "border-blue-200 bg-blue-50 hover:bg-blue-50/80"
+                  : "border-zinc-200 bg-white hover:bg-zinc-50";
 
             return (
               <Link
@@ -419,8 +419,8 @@ export default function ProfessionistiRichiesteClient() {
                       box === "received"
                         ? "border border-emerald-200 bg-emerald-100 text-emerald-800"
                         : box === "sent"
-                        ? "border border-blue-200 bg-blue-100 text-blue-800"
-                        : "border border-zinc-200 bg-zinc-100 text-zinc-700"
+                          ? "border border-blue-200 bg-blue-100 text-blue-800"
+                          : "border border-zinc-200 bg-zinc-100 text-zinc-700"
                     }`}
                   >
                     {activityLabel(box, item.status)}
@@ -438,7 +438,8 @@ export default function ProfessionistiRichiesteClient() {
                     </div>
 
                     <div className="mt-2 text-sm text-zinc-500">
-                      {[item.animal?.species, item.animal?.breed].filter(Boolean).join(" · ") || "Dati animale non disponibili"}
+                      {[item.animal?.species, item.animal?.breed].filter(Boolean).join(" · ") ||
+                        "Dati animale non disponibili"}
                     </div>
 
                     {item.initial_message ? (

@@ -55,42 +55,26 @@ export async function GET(req: Request) {
 
   const url = new URL(req.url);
   const fileId = String(url.searchParams.get("fileId") || "").trim();
-  const pathParam = String(url.searchParams.get("path") || "").trim();
 
-  let fileRow: ClinicEventFileRow | null = null;
-
-  if (fileId) {
-    if (!isUuid(fileId)) {
-      return NextResponse.json({ error: "fileId invalid" }, { status: 400 });
-    }
-
-    const { data, error } = await admin
-      .from("animal_clinic_event_files")
-      .select("id, animal_id, event_id, path, filename")
-      .eq("id", fileId)
-      .single<ClinicEventFileRow>();
-
-    if (error || !data) {
-      return NextResponse.json({ error: "File not found" }, { status: 404 });
-    }
-
-    fileRow = data;
-  } else if (pathParam) {
-    const { data, error } = await admin
-      .from("animal_clinic_event_files")
-      .select("id, animal_id, event_id, path, filename")
-      .eq("path", pathParam)
-      .maybeSingle<ClinicEventFileRow>();
-
-    if (error || !data) {
-      return NextResponse.json({ error: "File not found" }, { status: 404 });
-    }
-
-    fileRow = data;
-  } else {
-    return NextResponse.json({ error: "fileId or path required" }, { status: 400 });
+  if (!fileId) {
+    return NextResponse.json({ error: "fileId required" }, { status: 400 });
   }
 
+  if (!isUuid(fileId)) {
+    return NextResponse.json({ error: "fileId invalid" }, { status: 400 });
+  }
+
+  const { data: fileRowData, error: fileError } = await admin
+    .from("animal_clinic_event_files")
+    .select("id, animal_id, event_id, path, filename")
+    .eq("id", fileId)
+    .single<ClinicEventFileRow>();
+
+  if (fileError || !fileRowData) {
+    return NextResponse.json({ error: "File not found" }, { status: 404 });
+  }
+
+  const fileRow = fileRowData;
   const animalId = String(fileRow.animal_id || "");
   const eventId = String(fileRow.event_id || "");
 

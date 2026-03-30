@@ -137,33 +137,6 @@ function normalizePhone(raw?: string | null) {
   return String(raw || "").trim();
 }
 
-function formatAgeFromBirthDate(birthDateISO?: string | null) {
-  if (!birthDateISO) return "—";
-
-  const safe = /^\d{4}-\d{2}-\d{2}$/.test(birthDateISO)
-    ? new Date(`${birthDateISO}T12:00:00`)
-    : new Date(birthDateISO);
-
-  if (Number.isNaN(safe.getTime())) return "—";
-
-  const now = new Date();
-
-  let years = now.getFullYear() - safe.getFullYear();
-  let months = now.getMonth() - safe.getMonth();
-  const days = now.getDate() - safe.getDate();
-
-  if (days < 0) months -= 1;
-  if (months < 0) {
-    years -= 1;
-    months += 12;
-  }
-  if (years < 0) return "—";
-
-  if (years === 0) return `${months} mesi`;
-  if (months === 0) return `${years} anni`;
-  return `${years} anni ${months} mesi`;
-}
-
 function ownerConnectionLabel(animal: Animal) {
   if (animal.owner_id) return "Proprietario collegato";
   if (animal.owner_claim_status === "pending") return "Proprietario non collegato";
@@ -186,7 +159,6 @@ export default function ProAnimalPage() {
 
   const [isVet, setIsVet] = useState(false);
 
-  const [eventsLoading, setEventsLoading] = useState(false);
   const [events, setEvents] = useState<ClinicEventRow[]>([]);
   const [eventsErr, setEventsErr] = useState<string | null>(null);
 
@@ -252,7 +224,6 @@ export default function ProAnimalPage() {
   async function loadClinicEvents() {
     if (!id) return;
 
-    setEventsLoading(true);
     setEventsErr(null);
 
     try {
@@ -268,12 +239,10 @@ export default function ProAnimalPage() {
         if (res.status === 401 || res.status === 403) {
           setEvents([]);
           setEventsErr("Cartella clinica: accesso riservato ai veterinari autorizzati.");
-          setEventsLoading(false);
           return;
         }
         setEvents([]);
         setEventsErr("Impossibile caricare la cartella clinica (errore server).");
-        setEventsLoading(false);
         return;
       }
 
@@ -282,8 +251,6 @@ export default function ProAnimalPage() {
     } catch {
       setEvents([]);
       setEventsErr("Errore di rete durante il caricamento eventi.");
-    } finally {
-      setEventsLoading(false);
     }
   }
 

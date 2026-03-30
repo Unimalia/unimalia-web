@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { authHeaders } from "@/lib/client/authHeaders";
 
@@ -64,13 +64,15 @@ export default function NewProfessionalConsultPage() {
   const [priority, setPriority] = useState<"normal" | "emergency">("normal");
   const [selectedEventIds, setSelectedEventIds] = useState<string[]>([]);
 
-  async function loadCompose() {
+  const animalId = String(params.id ?? "");
+
+  const loadCompose = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
 
       const res = await fetch(
-        `/api/professionisti/consults?mode=compose&animalId=${params.id}`,
+        `/api/professionisti/consults?mode=compose&animalId=${animalId}`,
         {
           cache: "no-store",
           headers: {
@@ -109,9 +111,9 @@ export default function NewProfessionalConsultPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [animalId]);
 
-  async function searchRecipients() {
+  const searchRecipients = useCallback(async () => {
     try {
       const paramsSearch = new URLSearchParams();
       if (q.trim()) paramsSearch.set("q", q.trim());
@@ -144,16 +146,21 @@ export default function NewProfessionalConsultPage() {
     } catch (err) {
       alert(err instanceof Error ? err.message : "Errore imprevisto");
     }
-  }
+  }, [q, tagId]);
 
   useEffect(() => {
     void loadCompose();
+  }, [loadCompose]);
+
+  useEffect(() => {
     void searchRecipients();
-  }, [params.id]);
+  }, [searchRecipients]);
 
   const effectiveSelectedIds = useMemo(() => {
     if (!compose) return [];
-    if (shareMode === "full_record") return (compose.events ?? []).map((event: ComposeEvent) => event.id);
+    if (shareMode === "full_record") {
+      return (compose.events ?? []).map((event: ComposeEvent) => event.id);
+    }
     return selectedEventIds;
   }, [compose, shareMode, selectedEventIds]);
 
@@ -175,7 +182,7 @@ export default function NewProfessionalConsultPage() {
           "x-unimalia-app": "professionisti",
         },
         body: JSON.stringify({
-          animalId: params.id,
+          animalId,
           receiverProfessionalId,
           subject,
           message,
@@ -281,7 +288,7 @@ export default function NewProfessionalConsultPage() {
 
             <button
               type="button"
-              onClick={searchRecipients}
+              onClick={() => void searchRecipients()}
               className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800"
             >
               Cerca professionisti
