@@ -2,6 +2,7 @@
 
 export const dynamic = "force-dynamic";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -16,7 +17,7 @@ async function compressImageToMaxBytes(
   if (file.size <= maxBytes) return file;
 
   const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-    const i = new Image();
+    const i = new window.Image();
     i.onload = () => resolve(i);
     i.onerror = reject;
     i.src = URL.createObjectURL(file);
@@ -289,11 +290,15 @@ export default function ModificaAnimalePage() {
           <span className="text-sm font-medium">Foto</span>
           <div className="mt-2 overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-100 p-3">
             <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white">
-              <img
-                src={photoUrl || "/placeholder-animal.jpg"}
-                className="h-64 w-full object-contain"
-                alt="Foto animale"
-              />
+              <div className="relative h-64 w-full">
+                <Image
+                  src={photoUrl || "/placeholder-animal.jpg"}
+                  alt="Foto animale"
+                  fill
+                  className="object-contain"
+                  unoptimized
+                />
+              </div>
             </div>
           </div>
 

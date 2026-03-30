@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import ManageReportActions from "./ManageReportActions";
@@ -142,11 +143,15 @@ export default async function GestisciAnnuncioPage({ params }: PageProps) {
   return (
     <main className="mx-auto w-full max-w-4xl px-4 py-8">
       <div className="rounded-3xl border border-zinc-200 bg-white shadow-sm">
-        <img
-          src={mainPhoto}
-          alt={safeCardTitle(report)}
-          className="h-72 w-full rounded-t-3xl object-cover sm:h-96"
-        />
+        <div className="relative h-72 w-full sm:h-96">
+          <Image
+            src={mainPhoto}
+            alt={safeCardTitle(report)}
+            fill
+            className="rounded-t-3xl object-cover"
+            unoptimized
+          />
+        </div>
 
         <div className="p-6 sm:p-8">
           <div className="mb-6">

@@ -2,6 +2,7 @@
 
 export const dynamic = "force-dynamic";
 
+import Image from "next/image";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import QRCode from "react-qr-code";
@@ -468,11 +469,15 @@ export default function AnimalEmergencyPage() {
             <div className="flex flex-col gap-4 sm:flex-row">
               {fields.show_photo && animal.photo_url ? (
                 <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white sm:w-44">
-                  <img
-                    src={animal.photo_url}
-                    alt={animal.name}
-                    className="h-44 w-full object-contain"
-                  />
+                  <div className="relative h-44 w-full sm:w-44">
+                    <Image
+                      src={animal.photo_url}
+                      alt={animal.name}
+                      fill
+                      className="object-contain"
+                      unoptimized
+                    />
+                  </div>
                 </div>
               ) : null}
 
