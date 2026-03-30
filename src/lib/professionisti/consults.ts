@@ -46,6 +46,110 @@ export type ProfessionalConsultMessageFileRow = {
   uploaded_by_professional_id: string | null;
 };
 
+type ConsultRequestRow = {
+  id: string;
+  animal_id: string;
+  animal_name: string | null;
+  sender_user_id?: string | null;
+  sender_org_id?: string | null;
+  sender_professional_id: string | null;
+  sender_display_name: string | null;
+  receiver_professional_id: string | null;
+  receiver_display_name: string | null;
+  subject: string | null;
+  initial_message: string | null;
+  share_mode: ConsultShareMode | null;
+  priority: ConsultPriority | null;
+  status: ConsultStatus | string;
+  expires_at: string | null;
+  last_message_at: string | null;
+  accepted_at?: string | null;
+  rejected_at?: string | null;
+  replied_at?: string | null;
+  closed_at?: string | null;
+  created_at: string;
+};
+
+type ProfessionalTagOption = {
+  id: string;
+  label: string;
+  key: string;
+  macro: string | null;
+  sort_order: number | null;
+};
+
+type ProfessionalTagLinkRow = {
+  professional_id: string;
+  tag_id: string;
+};
+
+type ProfessionalRecipientRow = {
+  id: string;
+  owner_id: string | null;
+  display_name: string | null;
+  category: string | null;
+  city: string | null;
+  province: string | null;
+  approved: boolean | null;
+  is_vet: boolean | null;
+  public_visible: boolean | null;
+  business_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+};
+
+type AnimalComposeRow = {
+  id: string;
+  name: string | null;
+  species: string | null;
+  breed: string | null;
+  sex: string | null;
+  birth_date: string | null;
+  owner_id: string | null;
+  chip_number: string | null;
+  sterilized: boolean | null;
+};
+
+type ClinicEventRow = {
+  id: string;
+  animal_id: string;
+  event_date: string;
+  type: string;
+  title: string | null;
+  description: string | null;
+  visibility: string | null;
+  status: string | null;
+  priority: string | null;
+  created_at: string;
+  meta: Record<string, unknown> | null;
+};
+
+type ClinicEventFileRow = {
+  id: string;
+  event_id: string;
+  filename: string | null;
+  path: string;
+  mime: string | null;
+  size: number | null;
+  created_at: string;
+};
+
+type ConsultSharedEventRow = {
+  consult_id: string;
+  event_id: string;
+};
+
+type ConsultMessageRow = {
+  id: string;
+  consult_id: string;
+  sender_user_id: string | null;
+  sender_professional_id: string | null;
+  sender_display_name: string | null;
+  message_type: string | null;
+  message: string | null;
+  created_at: string;
+};
+
 function hoursFromNow(hours: number) {
   return new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
 }
@@ -148,7 +252,7 @@ export async function listConsultTagOptions() {
     .order("sort_order", { ascending: true });
 
   if (error) throw new Error(error.message);
-  return data ?? [];
+  return (data ?? []) as ProfessionalTagOption[];
 }
 
 export async function searchRecipientProfessionals(params: { q?: string; tagId?: string }) {
@@ -202,7 +306,9 @@ export async function searchRecipientProfessionals(params: { q?: string; tagId?:
   const { data: professionals, error } = await query;
   if (error) throw new Error(error.message);
 
-  const proIds = (professionals ?? []).map((x) => x.id);
+  const typedProfessionals = (professionals ?? []) as ProfessionalRecipientRow[];
+  const proIds = typedProfessionals.map((x) => x.id);
+
   if (proIds.length === 0) {
     return {
       professionals: [],
@@ -220,10 +326,12 @@ export async function searchRecipientProfessionals(params: { q?: string; tagId?:
 
   if (linkError) throw new Error(linkError.message);
 
-  const tagIds = Array.from(new Set((links ?? []).map((x) => x.tag_id)));
+  const typedLinks = (links ?? []) as ProfessionalTagLinkRow[];
+  const tagIds = Array.from(new Set(typedLinks.map((x) => x.tag_id)));
+
   if (tagIds.length === 0) {
     return {
-      professionals: professionals ?? [],
+      professionals: typedProfessionals,
       tagsByProfessional: {},
     };
   }
@@ -236,10 +344,11 @@ export async function searchRecipientProfessionals(params: { q?: string; tagId?:
 
   if (tagError) throw new Error(tagError.message);
 
-  const tagMap = new Map((tags ?? []).map((t) => [t.id, t]));
+  const typedTags = (tags ?? []) as Array<{ id: string; label: string; key: string }>;
+  const tagMap = new Map(typedTags.map((t) => [t.id, t]));
   const tagsByProfessional: Record<string, { id: string; label: string; key: string }[]> = {};
 
-  for (const link of links ?? []) {
+  for (const link of typedLinks) {
     const tag = tagMap.get(link.tag_id);
     if (!tag) continue;
     if (!tagsByProfessional[link.professional_id]) tagsByProfessional[link.professional_id] = [];
@@ -247,7 +356,7 @@ export async function searchRecipientProfessionals(params: { q?: string; tagId?:
   }
 
   return {
-    professionals: professionals ?? [],
+    professionals: typedProfessionals,
     tagsByProfessional,
   };
 }
@@ -273,9 +382,11 @@ export async function getComposeData(animalId: string) {
   if (animalError) throw new Error(animalError.message);
   if (!animalRow) throw new Error("Animale non trovato");
 
+  const typedAnimalRow = animalRow as AnimalComposeRow;
+
   const animal = {
-    ...animalRow,
-    microchip: animalRow.chip_number ?? null,
+    ...typedAnimalRow,
+    microchip: typedAnimalRow.chip_number ?? null,
     owner_name: null,
     owner_email: null,
   };
@@ -290,7 +401,8 @@ export async function getComposeData(animalId: string) {
 
   if (eventsError) throw new Error(eventsError.message);
 
-  const eventIds = (events ?? []).map((event) => event.id);
+  const typedEvents = (events ?? []) as ClinicEventRow[];
+  const eventIds = typedEvents.map((event) => event.id);
 
   const { data: files, error: filesError } = await admin
     .from("animal_clinic_event_files")
@@ -299,8 +411,9 @@ export async function getComposeData(animalId: string) {
 
   if (filesError) throw new Error(filesError.message);
 
+  const typedFiles = (files ?? []) as ClinicEventFileRow[];
   const filesByEventId: Record<string, number> = {};
-  for (const file of files ?? []) {
+  for (const file of typedFiles) {
     filesByEventId[file.event_id] = (filesByEventId[file.event_id] ?? 0) + 1;
   }
 
@@ -311,13 +424,13 @@ export async function getComposeData(animalId: string) {
 
   const quickSummary = buildClinicalQuickSummary({
     animal: normalizedAnimal,
-    events: events ?? [],
+    events: typedEvents,
   });
 
   return {
     animal,
     quickSummary,
-    events: (events ?? []).map((event) => ({
+    events: typedEvents.map((event) => ({
       ...event,
       has_attachments: (filesByEventId[event.id] ?? 0) > 0,
       attachments_count: filesByEventId[event.id] ?? 0,
@@ -501,7 +614,7 @@ export async function listProfessionalConsults(params: {
   const { data, error } = await query;
   if (error) throw new Error(error.message);
 
-  const normalized = (data ?? []).map((x) => normalizeStatus(x));
+  const normalized = ((data ?? []) as ConsultRequestRow[]).map((x) => normalizeStatus(x));
   const consultIds = normalized.map((item) => item.id);
 
   const latestMessageByConsultId = new Map<
@@ -596,8 +709,9 @@ export async function listProfessionalConsults(params: {
 
   if (animalsError) throw new Error(animalsError.message);
 
+  const typedAnimals = (animals ?? []) as AnimalComposeRow[];
   const animalById = new Map(
-    (animals ?? []).map((a) => [
+    typedAnimals.map((a) => [
       a.id,
       {
         ...a,
@@ -615,7 +729,8 @@ export async function listProfessionalConsults(params: {
 
   if (sharedError) throw new Error(sharedError.message);
 
-  const eventIds = Array.from(new Set((sharedRows ?? []).map((r) => r.event_id)));
+  const typedSharedRows = (sharedRows ?? []) as ConsultSharedEventRow[];
+  const eventIds = Array.from(new Set(typedSharedRows.map((r) => r.event_id)));
 
   const { data: events, error: eventsError } = await admin
     .from("animal_clinic_events")
@@ -628,10 +743,11 @@ export async function listProfessionalConsults(params: {
 
   if (eventsError) throw new Error(eventsError.message);
 
-  const eventById = new Map((events ?? []).map((e) => [e.id, e]));
-  const eventsByConsultId: Record<string, any[]> = {};
+  const typedEvents = (events ?? []) as ClinicEventRow[];
+  const eventById = new Map(typedEvents.map((e) => [e.id, e]));
+  const eventsByConsultId: Record<string, ClinicEventRow[]> = {};
 
-  for (const row of sharedRows ?? []) {
+  for (const row of typedSharedRows) {
     const event = eventById.get(row.event_id);
     if (!event) continue;
 
@@ -686,9 +802,11 @@ export async function getProfessionalConsultDetail(id: string) {
   if (consultError) throw new Error(consultError.message);
   if (!consult) throw new Error("Consulto non trovato");
 
+  const typedConsult = consult as ConsultRequestRow;
+
   const isParticipant =
-    consult.sender_professional_id === ctx.professional.id ||
-    consult.receiver_professional_id === ctx.professional.id;
+    typedConsult.sender_professional_id === ctx.professional.id ||
+    typedConsult.receiver_professional_id === ctx.professional.id;
 
   if (!isParticipant) {
     throw new Error("Non autorizzato");
@@ -697,10 +815,12 @@ export async function getProfessionalConsultDetail(id: string) {
   const { data: animal, error: animalError } = await admin
     .from("animals")
     .select("id,name,species,breed,sex,birth_date,owner_id,chip_number,sterilized")
-    .eq("id", consult.animal_id)
+    .eq("id", typedConsult.animal_id)
     .maybeSingle();
 
   if (animalError) throw new Error(animalError.message);
+
+  const typedAnimal = animal as AnimalComposeRow | null;
 
   const { data: sharedRows, error: sharedError } = await admin
     .from("professional_consult_shared_events")
@@ -720,15 +840,19 @@ export async function getProfessionalConsultDetail(id: string) {
 
   if (eventsError) throw new Error(eventsError.message);
 
+  const typedEvents = (events ?? []) as ClinicEventRow[];
+
   const { data: quickSummaryEvents, error: quickSummaryEventsError } = await admin
     .from("animal_clinic_events")
     .select("id,event_date,type,title,description,visibility,status,priority,created_at,meta")
-    .eq("animal_id", consult.animal_id)
+    .eq("animal_id", typedConsult.animal_id)
     .neq("status", "void")
     .order("event_date", { ascending: false })
     .order("created_at", { ascending: false });
 
   if (quickSummaryEventsError) throw new Error(quickSummaryEventsError.message);
+
+  const typedQuickSummaryEvents = (quickSummaryEvents ?? []) as ClinicEventRow[];
 
   const { data: files, error: filesError } = await admin
     .from("animal_clinic_event_files")
@@ -738,8 +862,9 @@ export async function getProfessionalConsultDetail(id: string) {
 
   if (filesError) throw new Error(filesError.message);
 
-  const filesByEvent: Record<string, any[]> = {};
-  for (const file of files ?? []) {
+  const typedFiles = (files ?? []) as ClinicEventFileRow[];
+  const filesByEvent: Record<string, ClinicEventFileRow[]> = {};
+  for (const file of typedFiles) {
     if (!filesByEvent[file.event_id]) filesByEvent[file.event_id] = [];
     filesByEvent[file.event_id].push(file);
   }
@@ -754,7 +879,8 @@ export async function getProfessionalConsultDetail(id: string) {
 
   if (messagesError) throw new Error(messagesError.message);
 
-  const messageIds = (messages ?? []).map((m) => m.id);
+  const typedMessages = (messages ?? []) as ConsultMessageRow[];
+  const messageIds = typedMessages.map((m) => m.id);
 
   const { data: messageFiles, error: messageFilesError } = await admin
     .from("professional_consult_message_files")
@@ -769,16 +895,17 @@ export async function getProfessionalConsultDetail(id: string) {
 
   if (messageFilesError) throw new Error(messageFilesError.message);
 
+  const typedMessageFiles = (messageFiles ?? []) as ProfessionalConsultMessageFileRow[];
   const filesByMessage: Record<string, ProfessionalConsultMessageFileRow[]> = {};
-  for (const file of messageFiles ?? []) {
+  for (const file of typedMessageFiles) {
     if (!filesByMessage[file.message_id]) filesByMessage[file.message_id] = [];
     filesByMessage[file.message_id].push(file);
   }
 
-  const normalizedAnimal = animal
+  const normalizedAnimal = typedAnimal
     ? {
-        ...animal,
-        microchip: animal.chip_number ?? null,
+        ...typedAnimal,
+        microchip: typedAnimal.chip_number ?? null,
         owner_name: null,
         owner_email: null,
       }
@@ -786,19 +913,19 @@ export async function getProfessionalConsultDetail(id: string) {
 
   const quickSummary = buildClinicalQuickSummary({
     animal: normalizedAnimal,
-    events: quickSummaryEvents ?? [],
+    events: typedQuickSummaryEvents,
   });
 
   return {
-    consult: normalizeStatus(consult),
+    consult: normalizeStatus(typedConsult),
     currentProfessionalId: ctx.professional.id,
     animal: normalizedAnimal,
     quickSummary,
-    events: (events ?? []).map((event) => ({
+    events: typedEvents.map((event) => ({
       ...event,
       files: filesByEvent[event.id] ?? [],
     })),
-    messages: (messages ?? []).map((message) => ({
+    messages: typedMessages.map((message) => ({
       ...message,
       files: filesByMessage[message.id] ?? [],
     })),
@@ -826,7 +953,7 @@ export async function updateProfessionalConsult(input: {
   if (error) throw new Error(error.message);
   if (!consult) throw new Error("Consulto non trovato");
 
-  const current = normalizeStatus(consult);
+  const current = normalizeStatus(consult as ConsultRequestRow);
 
   const isSender = current.sender_professional_id === ctx.professional.id;
   const isReceiver = current.receiver_professional_id === ctx.professional.id;
@@ -1013,5 +1140,5 @@ export async function createProfessionalConsultMessageFiles(input: {
 
   if (error) throw new Error(error.message);
 
-  return data ?? [];
+  return (data ?? []) as ProfessionalConsultMessageFileRow[];
 }

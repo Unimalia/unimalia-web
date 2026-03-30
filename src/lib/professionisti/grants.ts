@@ -14,6 +14,19 @@ async function getAuthenticatedUserId() {
   return user.id;
 }
 
+type AnimalAccessGrantRow = {
+  id: string;
+  grantee_type: string | null;
+  grantee_id: string | null;
+  status: string | null;
+  valid_from: string | null;
+  valid_to: string | null;
+  revoked_at: string | null;
+  scope_read: boolean | null;
+  scope_write: boolean | null;
+  scope_upload: boolean | null;
+};
+
 async function resolveProfessionalRefs(userId: string) {
   const admin = supabaseAdmin();
   const refs = new Set<string>();
@@ -91,7 +104,7 @@ export async function hasActiveGrantForAnimal(animalId: string) {
 
   const now = Date.now();
 
-  const activeGrant = (grants ?? []).find((g: any) => {
+  const activeGrant = ((grants ?? []) as AnimalAccessGrantRow[]).find((g) => {
     if (g.revoked_at) return false;
     if (g.status !== "active") return false;
 

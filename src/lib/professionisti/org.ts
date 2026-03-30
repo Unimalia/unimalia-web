@@ -27,7 +27,7 @@ export async function getProfessionalOrgId(): Promise<string | null> {
     throw profileResult.error;
   }
 
-  const profileOrgId = (profileResult.data as any)?.org_id ?? null;
+  const profileOrgId = profileResult.data?.org_id ?? null;
   if (profileOrgId) return profileOrgId;
 
   // Fallback operativo: professionista collegato all'utente.
@@ -44,7 +44,7 @@ export async function getProfessionalOrgId(): Promise<string | null> {
     throw professionalResult.error;
   }
 
-  const professionalId = (professionalResult.data as any)?.id ?? null;
+  const professionalId = professionalResult.data?.id ?? null;
   if (professionalId) return professionalId;
 
   return null;
