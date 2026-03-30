@@ -6,10 +6,15 @@ type UserMetadata = {
   full_name?: string;
   city?: string;
   fiscal_code?: string;
+  phone?: string;
 };
 
 function normalizeCF(s: string) {
   return (s || "").replace(/\s+/g, "").trim().toUpperCase();
+}
+
+function normalizePhone(s: string) {
+  return (s || "").replace(/\s+/g, "").trim();
 }
 
 function sanitizeNextPath(value: string | null) {
@@ -57,6 +62,7 @@ export async function GET(request: NextRequest) {
         full_name: (meta.full_name ?? "").trim() || null,
         city: (meta.city ?? "").trim() || null,
         fiscal_code: normalizeCF(meta.fiscal_code ?? "") || null,
+        phone: normalizePhone(meta.phone ?? "") || null,
       },
       { onConflict: "id" }
     );
