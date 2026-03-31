@@ -1,6 +1,11 @@
 import "server-only";
 import { createServerSupabaseClient, supabaseAdmin } from "@/lib/supabase/server";
 
+type ProfessionalProfileRow = {
+  user_id: string;
+  org_id: string | null;
+};
+
 export async function getProfessionalOrgId(): Promise<string | null> {
   const supabase = await createServerSupabaseClient();
   const admin = supabaseAdmin();
@@ -16,36 +21,35 @@ export async function getProfessionalOrgId(): Promise<string | null> {
 
   if (!user) return null;
 
-  // Fonte primaria: professional_profiles.org_id
   const profileResult = await admin
     .from("professional_profiles")
     .select("user_id, org_id")
     .eq("user_id", user.id)
-    .maybeSingle();
+    .maybeSingle<ProfessionalProfileRow>();
 
   if (profileResult.error) {
     throw profileResult.error;
   }
 
   const profileOrgId = profileResult.data?.org_id ?? null;
-  if (profileOrgId) return profileOrgId;
 
-  // Fallback operativo: professionista collegato all'utente.
-  // NON leggiamo org_id da professionals perché nel tuo schema potrebbe non esistere.
-  const professionalResult = await admin
-    .from("professionals")
-    .select("id, owner_id")
-    .eq("owner_id", user.id)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (professionalResult.error) {
-    throw professionalResult.error;
+  if (!profileOrgId) {
+    return null;
   }
 
-  const professionalId = professionalResult.data?.id ?? null;
-  if (professionalId) return professionalId;
+  const organizationResult = await admin
+    .from("organizations")
+    .select("id")
+    .eq("id", profileOrgId)
+    .maybeSingle<{ id: string }>();
 
-  return null;
+  if (organizationResult.error) {
+    throw organizationResult.error;
+  }
+
+  if (!organizationResult.data?.id) {
+    return null;
+  }
+
+  return organizationResult.data.id;
 }
