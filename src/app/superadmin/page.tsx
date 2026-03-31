@@ -358,6 +358,13 @@ export default async function SuperAdminPage() {
             >
               Solo approvati
             </Link>
+
+            <Link
+              href="/superadmin/recupero-account"
+              className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm font-semibold text-amber-900 shadow-sm hover:bg-amber-100"
+            >
+              Recupero account
+            </Link>
           </div>
         </SectionCard>
 
@@ -370,9 +377,9 @@ export default async function SuperAdminPage() {
               La console gestisce già la revisione dei professionisti, il ruolo veterinario, la
               visibilità pubblica e la sincronizzazione degli accessi.
             </div>
-            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3">
-              Il prossimo blocco sensato è aggiungere funzioni sistemiche come flag di sistema,
-              impostazioni globali e modalità emergenza.
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+              È presente anche un blocco dedicato al recupero degli account archiviati e dei vecchi
+              utenti finiti nel precedente archivio Auth.
             </div>
             <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3">
               La parte di hardening, registro attività, Cloudflare e protezione avanzata verrà poi

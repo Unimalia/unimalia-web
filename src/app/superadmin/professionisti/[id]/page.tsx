@@ -2,6 +2,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
+type ProfileState = {
+  id: string;
+  is_archived: boolean | null;
+  is_deleted: boolean | null;
+  archived_at: string | null;
+};
+
 type Professional = {
   id: string;
   created_at: string | null;
@@ -10,6 +17,9 @@ type Professional = {
   approved: boolean | null;
   is_vet: boolean | null;
   public_visible: boolean | null;
+  is_archived: boolean | null;
+  is_deleted: boolean | null;
+  archived_at: string | null;
 
   display_name: string | null;
   first_name: string | null;
@@ -153,6 +163,13 @@ function getDisplayName(p: Professional) {
   return p.display_name || fullName || p.business_name || p.email || "Professionista";
 }
 
+function formatDateTime(value: string | null) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString("it-IT");
+}
+
 export default async function SuperAdminProfessionalDetailPage({
   params,
 }: {
@@ -175,6 +192,18 @@ export default async function SuperAdminProfessionalDetailPage({
   const p = data as Professional;
   const redirectTo = `/superadmin/professionisti/${p.id}`;
 
+  let ownerProfileState: ProfileState | null = null;
+
+  if (p.owner_id) {
+    const { data: profileState } = await supabase
+      .from("profiles")
+      .select("id, is_archived, is_deleted, archived_at")
+      .eq("id", p.owner_id)
+      .maybeSingle();
+
+    ownerProfileState = (profileState ?? null) as ProfileState | null;
+  }
+
   return (
     <div className="space-y-6">
       <section className="rounded-[2rem] border border-zinc-200 bg-white p-7 shadow-sm">
@@ -191,6 +220,10 @@ export default async function SuperAdminProfessionalDetailPage({
               ) : null}
               {p.is_vet === true ? <Badge tone="info">Veterinario</Badge> : <Badge>Non veterinario</Badge>}
               {p.public_visible === true ? <Badge tone="success">Pubblico</Badge> : <Badge>Non pubblico</Badge>}
+              {p.is_archived === true ? <Badge tone="warning">Archiviato</Badge> : null}
+              {p.is_deleted === true ? <Badge tone="danger">Eliminato</Badge> : null}
+              {ownerProfileState?.is_archived === true ? <Badge tone="warning">Owner archiviato</Badge> : null}
+              {ownerProfileState?.is_deleted === true ? <Badge tone="danger">Owner eliminato</Badge> : null}
             </div>
 
             <h1 className="mt-4 text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl">
@@ -206,6 +239,7 @@ export default async function SuperAdminProfessionalDetailPage({
               <div>ID profilo: {p.id}</div>
               <div>Utente proprietario/Auth: {p.owner_id || "—"}</div>
               <div>Creato il: {p.created_at ? new Date(p.created_at).toLocaleString("it-IT") : "—"}</div>
+              <div>Archiviato il: {formatDateTime(p.archived_at)}</div>
             </div>
           </div>
 
@@ -216,6 +250,19 @@ export default async function SuperAdminProfessionalDetailPage({
             >
               Torna all’elenco
             </Link>
+
+            {p.owner_id && ownerProfileState?.is_archived === true && ownerProfileState?.is_deleted !== true ? (
+              <form action="/api/superadmin/accounts/restore" method="post">
+                <input type="hidden" name="userId" value={p.owner_id} />
+                <input type="hidden" name="redirectTo" value="/superadmin/recupero-account" />
+                <button
+                  type="submit"
+                  className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-100"
+                >
+                  Ripristina account owner
+                </button>
+              </form>
+            ) : null}
 
             {p.approved !== true ? (
               <ActionButton
