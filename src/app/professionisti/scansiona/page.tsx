@@ -248,10 +248,32 @@ export default function ScannerPage() {
     []
   );
 
-  const checkGrantAndRoute = React.useCallback(
+  const resolveAnimalForProfessional = React.useCallback(async (query: string) => {
+    const res = await fetch(
+      `/api/professionisti/animals/find?q=${encodeURIComponent(query)}`,
+      {
+        cache: "no-store",
+        headers: {
+          "x-unimalia-app": "professionisti",
+        },
+      }
+    );
+
+    const json = await res.json().catch(() => ({}));
+    const animalId = String(json?.animal?.id ?? "").trim();
+
+    return {
+      ok: res.ok,
+      found: Boolean(json?.found && animalId),
+      animalId,
+      json,
+    };
+  }, []);
+
+  const routeAfterProfessionalLookup = React.useCallback(
     async (resolvedAnimalId: string, extraParams?: Record<string, string>) => {
-      const grantRes = await fetch(
-        `/api/professionisti/grants/check?animal_id=${encodeURIComponent(resolvedAnimalId)}`,
+      const accessRes = await fetch(
+        `/api/professionisti/animal?animalId=${encodeURIComponent(resolvedAnimalId)}`,
         {
           cache: "no-store",
           headers: {
@@ -260,16 +282,15 @@ export default function ScannerPage() {
         }
       );
 
-      const grantJson = await grantRes.json().catch(() => ({}));
+      const accessJson = await accessRes.json().catch(() => ({}));
 
-      if (!grantRes.ok) {
-        showBanner({ kind: "error", text: grantJson?.error || "Errore verifica accesso" }, 2500);
+      if (accessRes.ok) {
+        showBanner({ kind: "success", text: "Accesso disponibile. Apro la scheda animale…" }, 900);
+        safePush(`/professionisti/animali/${encodeURIComponent(resolvedAnimalId)}`);
         return;
       }
 
-      const hasGrant = Boolean(grantJson?.hasGrant);
-
-      if (!hasGrant) {
+      if (accessRes.status === 403) {
         const params = new URLSearchParams({
           animalId: resolvedAnimalId,
           auto: "1",
@@ -284,7 +305,7 @@ export default function ScannerPage() {
         showBanner(
           {
             kind: "info",
-            text: "Animale trovato, ma accesso clinico non attivo. Apro richiesta accesso…",
+            text: "Animale esistente trovato, ma accesso clinico non attivo. Apro richiesta accesso…",
           },
           1200
         );
@@ -293,8 +314,24 @@ export default function ScannerPage() {
         return;
       }
 
-      showBanner({ kind: "success", text: "Accesso attivo. Apro la scheda animale…" }, 1000);
-      safePush(`/professionisti/animali/${encodeURIComponent(resolvedAnimalId)}`);
+      if (accessRes.status === 404) {
+        showBanner(
+          {
+            kind: "error",
+            text: "Animale non trovato.",
+          },
+          3000
+        );
+        return;
+      }
+
+      showBanner(
+        {
+          kind: "error",
+          text: accessJson?.error || "Errore verifica accesso animale.",
+        },
+        3000
+      );
     },
     [safePush, showBanner]
   );
@@ -325,17 +362,17 @@ export default function ScannerPage() {
         const ex = extractFromScan(normalized);
 
         if (ex.kind === "chip") {
-          const res = await fetch(`/api/animals/find?q=${encodeURIComponent(ex.chip)}`, {
-            cache: "no-store",
-            headers: {
-              "x-unimalia-app": "professionisti",
-            },
-          });
-          const json = await res.json().catch(() => ({}));
+          const lookup = await resolveAnimalForProfessional(ex.chip);
 
-          const resolvedAnimalId = String(json?.animal?.id ?? "").trim();
+          if (!lookup.ok) {
+            showBanner(
+              { kind: "error", text: lookup.json?.error || "Errore lookup animale" },
+              2500
+            );
+            return;
+          }
 
-          if (!res.ok || !json?.found || !resolvedAnimalId) {
+          if (!lookup.found || !lookup.animalId) {
             showBanner(
               { kind: "info", text: "Microchip non trovato. Apro gestione manuale…" },
               1500
@@ -353,9 +390,12 @@ export default function ScannerPage() {
             return;
           }
 
-          showBanner({ kind: "success", text: "Animale trovato. Controllo accesso…" }, 1200);
+          showBanner(
+            { kind: "success", text: "Animale esistente trovato. Verifico accesso…" },
+            1200
+          );
 
-          await checkGrantAndRoute(resolvedAnimalId, {
+          await routeAfterProfessionalLookup(lookup.animalId, {
             chip: String(ex.chip ?? ""),
           });
           return;
@@ -364,24 +404,17 @@ export default function ScannerPage() {
         if (ex.kind === "animalId") {
           showBanner({ kind: "success", text: "Codice riconosciuto. Risolvo animale…" }, 1200);
 
-          const findRes = await fetch(
-            `/api/animals/find?q=${encodeURIComponent(String(ex.animalId ?? normalized ?? raw ?? ""))}`,
-            {
-              cache: "no-store",
-              headers: {
-                "x-unimalia-app": "professionisti",
-              },
-            }
-          );
-          const findJson = await findRes.json().catch(() => ({}));
+          const lookup = await resolveAnimalForProfessional(String(ex.animalId ?? normalized ?? raw ?? ""));
 
-          if (!findRes.ok) {
-            showBanner({ kind: "error", text: findJson?.error || "Errore lookup animale" }, 2500);
+          if (!lookup.ok) {
+            showBanner(
+              { kind: "error", text: lookup.json?.error || "Errore lookup animale" },
+              2500
+            );
             return;
           }
 
-          const resolvedAnimalId = String(findJson?.animal?.id ?? "").trim();
-          if (!findJson?.found || !resolvedAnimalId) {
+          if (!lookup.found || !lookup.animalId) {
             showBanner(
               {
                 kind: "error",
@@ -392,9 +425,7 @@ export default function ScannerPage() {
             return;
           }
 
-          showBanner({ kind: "success", text: "Animale trovato. Controllo accesso…" }, 1200);
-
-          await checkGrantAndRoute(resolvedAnimalId);
+          await routeAfterProfessionalLookup(lookup.animalId);
           return;
         }
 
@@ -404,21 +435,17 @@ export default function ScannerPage() {
             1200
           );
 
-          const findRes = await fetch(`/api/animals/find?q=${encodeURIComponent(ex.q)}`, {
-            cache: "no-store",
-            headers: {
-              "x-unimalia-app": "professionisti",
-            },
-          });
-          const findJson = await findRes.json().catch(() => ({}));
+          const lookup = await resolveAnimalForProfessional(ex.q);
 
-          if (!findRes.ok) {
-            showBanner({ kind: "error", text: findJson?.error || "Errore lookup animale" }, 2500);
+          if (!lookup.ok) {
+            showBanner(
+              { kind: "error", text: lookup.json?.error || "Errore lookup animale" },
+              2500
+            );
             return;
           }
 
-          const resolvedAnimalId = String(findJson?.animal?.id ?? "").trim();
-          if (!findJson?.found || !resolvedAnimalId) {
+          if (!lookup.found || !lookup.animalId) {
             showBanner(
               {
                 kind: "error",
@@ -429,7 +456,7 @@ export default function ScannerPage() {
             return;
           }
 
-          await checkGrantAndRoute(resolvedAnimalId);
+          await routeAfterProfessionalLookup(lookup.animalId);
           return;
         }
 
@@ -459,7 +486,7 @@ export default function ScannerPage() {
         setBusy(false);
       }
     },
-    [busy, checkGrantAndRoute, logScan, safePush, showBanner]
+    [busy, logScan, resolveAnimalForProfessional, routeAfterProfessionalLookup, safePush, showBanner]
   );
 
   useEffect(() => {

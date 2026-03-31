@@ -57,7 +57,8 @@ export default function ManualScanHandlerPage() {
             <div className="font-medium">Cosa vuoi fare?</div>
             <div className="opacity-80">
               Il microchip non è stato trovato nel database. Puoi creare una
-              nuova identità oppure associarlo a un animale esistente.
+              nuova identità oppure verificare se appartiene a un animale
+              esistente da aprire o per cui richiedere accesso.
             </div>
           </div>
         )}
@@ -83,15 +84,22 @@ export default function ManualScanHandlerPage() {
 
         <button
           type="button"
-          className="w-full rounded-xl border px-3 py-2 text-sm disabled:opacity-50"
-          disabled
+          className="w-full rounded-xl border px-3 py-2 text-sm"
+          disabled={!chipLooksValid}
+          onClick={() =>
+            router.push(
+              `/professionisti/scansiona/manuale/associa?chip=${encodeURIComponent(
+                chip
+              )}`
+            )
+          }
         >
-          🔗 Associa a animale esistente (in arrivo)
+          🔗 Cerca animale esistente con questo microchip
         </button>
 
         <div className="text-xs opacity-70">
-          La schermata di associazione a un animale esistente va completata in un
-          blocco dedicato.
+          Se l’animale esiste già, da lì potrai aprire la scheda oppure avviare
+          la richiesta di accesso.
         </div>
       </div>
     </div>
