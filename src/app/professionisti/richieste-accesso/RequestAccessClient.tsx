@@ -13,17 +13,6 @@ type FoundAnimal = {
 type WaitStatus = "idle" | "sending" | "waiting" | "approved" | "error";
 type ScopeKey = "read" | "write";
 
-type FindAnimalResponse = {
-  error?: string;
-  animalId?: string;
-  animal?: {
-    id?: string;
-    name?: string;
-    species?: string | null;
-    chip_number?: string | null;
-  } | null;
-};
-
 type CheckGrantResponse = {
   error?: string;
   hasGrant?: boolean;
@@ -31,6 +20,9 @@ type CheckGrantResponse = {
 
 type AccessRequestResponse = {
   error?: string;
+  alreadyGranted?: boolean;
+  alreadyPending?: boolean;
+  animalId?: string | null;
 };
 
 function scopeLabel(scope: ScopeKey) {
@@ -44,12 +36,16 @@ function getErrorMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
+function normalizeChip(value: string | null | undefined) {
+  return String(value || "").replace(/\D+/g, "").trim();
+}
+
 export default function RequestAccessClient() {
   const router = useRouter();
   const sp = useSearchParams();
 
   const animalId = (sp.get("animalId") || sp.get("id") || "").trim();
-  const chip = (sp.get("chip") || sp.get("microchip") || "").trim();
+  const chip = normalizeChip(sp.get("chip") || sp.get("microchip") || "");
   const auto = sp.get("auto") === "1";
 
   const [loading, setLoading] = React.useState(true);
@@ -79,40 +75,34 @@ export default function RequestAccessClient() {
           return;
         }
 
-        const qs = animalId
-          ? `id=${encodeURIComponent(animalId)}`
-          : `chip=${encodeURIComponent(chip)}`;
-
-        const res = await fetch(`/api/animals/find?${qs}`, { cache: "no-store" });
-        const j: FindAnimalResponse = await res.json().catch(() => ({}));
-
         if (!alive) return;
 
-        if (!res.ok) {
-          setErr(j.error || "Errore ricerca animale");
+        if (animalId) {
+          setAnimal({
+            id: animalId,
+            name: "Animale",
+            species: null,
+            chip_number: chip || null,
+          });
           return;
         }
 
-        const a = j.animal ?? null;
-        const id = a?.id || j.animalId || null;
-
-        if (!id) {
-          setErr("Animale non trovato.");
+        if (chip) {
+          setAnimal({
+            id: "",
+            name: "Animale",
+            species: null,
+            chip_number: chip,
+          });
           return;
         }
-
-        setAnimal({
-          id: String(id),
-          name: String(a?.name ?? ""),
-          species: a?.species ?? null,
-          chip_number: a?.chip_number ?? null,
-        });
       } finally {
         if (alive) setLoading(false);
       }
     }
 
     void load();
+
     return () => {
       alive = false;
     };
@@ -161,10 +151,10 @@ export default function RequestAccessClient() {
 
     try {
       const body = {
-        animalId: resolvedAnimalId,
-        animal_id: resolvedAnimalId,
-        chip: resolvedChip,
-        microchip: resolvedChip,
+        animalId: resolvedAnimalId || undefined,
+        animal_id: resolvedAnimalId || undefined,
+        chip: resolvedChip || undefined,
+        microchip: resolvedChip || undefined,
         permissions: selectedScopes,
         requestedScope: selectedScopes,
         requested_scope: selectedScopes,
@@ -184,13 +174,38 @@ export default function RequestAccessClient() {
         return;
       }
 
+      const finalAnimalId =
+        (typeof j.animalId === "string" && j.animalId.trim()) ||
+        resolvedAnimalId ||
+        null;
+
+      if (finalAnimalId && finalAnimalId !== resolvedAnimalId) {
+        setAnimal((prev) => ({
+          id: finalAnimalId,
+          name: prev?.name || "Animale",
+          species: prev?.species ?? null,
+          chip_number: prev?.chip_number ?? resolvedChip ?? null,
+        }));
+      }
+
+      if (j.alreadyGranted && finalAnimalId) {
+        setStatus("approved");
+        setDone(true);
+
+        setTimeout(() => {
+          router.replace(`/professionisti/animali/${encodeURIComponent(finalAnimalId)}`);
+        }, 700);
+
+        return;
+      }
+
       setDone(true);
       setStatus("waiting");
       setSecondsWaiting(0);
     } finally {
       setBusy(false);
     }
-  }, [resolvedAnimalId, resolvedChip, selectedScopes]);
+  }, [resolvedAnimalId, resolvedChip, selectedScopes, router]);
 
   React.useEffect(() => {
     if (!auto || !animal || done || busy || autoStarted) return;
@@ -275,7 +290,17 @@ export default function RequestAccessClient() {
 
           <div className="mt-3 space-y-2">
             <div className="text-lg font-semibold text-zinc-900">
-              {animal.name || "—"} {animal.species ? `— ${animal.species}` : ""}
+              {animal.name || "Animale"} {animal.species ? `— ${animal.species}` : ""}
+            </div>
+
+            <div className="text-sm text-zinc-700">
+              {animal.id ? (
+                <>
+                  ID: <span className="font-mono">{animal.id}</span>
+                </>
+              ) : (
+                <span className="opacity-70">ID animale non disponibile</span>
+              )}
             </div>
 
             <div className="text-sm text-zinc-700">

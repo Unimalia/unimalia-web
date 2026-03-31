@@ -10,9 +10,17 @@ export const dynamic = "force-dynamic";
 type AccessRequestBody = {
   animalId?: string;
   animal_id?: string;
+  chip?: string;
+  microchip?: string;
   permissions?: unknown;
   requestedScope?: unknown;
   requested_scope?: unknown;
+};
+
+type AnimalLookupRow = {
+  id: string;
+  owner_id: string | null;
+  chip_number: string | null;
 };
 
 function notFoundResponse() {
@@ -32,6 +40,69 @@ function normalizeRequestedScope(input: unknown): Array<"read" | "write"> {
     .filter((value): value is "read" | "write" => value === "read" || value === "write");
 
   return Array.from(new Set(filtered));
+}
+
+function digitsOnly(value: unknown) {
+  return String(value ?? "").replace(/\D+/g, "").trim();
+}
+
+async function resolveAnimalId(params: {
+  admin: ReturnType<typeof supabaseAdmin>;
+  animalIdRaw: string;
+  chipRaw: string;
+}) {
+  const { admin, animalIdRaw, chipRaw } = params;
+
+  if (animalIdRaw) {
+    if (!isUuid(animalIdRaw)) {
+      return { animal: null, error: "Invalid animalId" as const };
+    }
+
+    const animalResult = await admin
+      .from("animals")
+      .select("id, owner_id, chip_number")
+      .eq("id", animalIdRaw)
+      .single<AnimalLookupRow>();
+
+    if (animalResult.error || !animalResult.data) {
+      return { animal: null, error: "Animal not found" as const };
+    }
+
+    return { animal: animalResult.data, error: null };
+  }
+
+  if (chipRaw) {
+    const chip = digitsOnly(chipRaw);
+
+    if (!chip || (chip.length !== 15 && chip.length !== 10)) {
+      return { animal: null, error: "Invalid chip" as const };
+    }
+
+    const chipResult = await admin
+      .from("animals")
+      .select("id, owner_id, chip_number")
+      .eq("chip_number", chip)
+      .limit(2)
+      .returns<AnimalLookupRow[]>();
+
+    if (chipResult.error) {
+      return { animal: null, error: "Animal lookup failed" as const };
+    }
+
+    const rows = chipResult.data ?? [];
+
+    if (rows.length === 0) {
+      return { animal: null, error: "Animal not found" as const };
+    }
+
+    if (rows.length > 1) {
+      return { animal: null, error: "Multiple animals found for this chip" as const };
+    }
+
+    return { animal: rows[0], error: null };
+  }
+
+  return { animal: null, error: "Missing animal reference" as const };
 }
 
 export async function POST(req: NextRequest) {
@@ -76,7 +147,8 @@ export async function POST(req: NextRequest) {
       return notFoundResponse();
     }
 
-    const animalId = String(body.animalId ?? body.animal_id ?? "").trim();
+    const animalIdRaw = String(body.animalId ?? body.animal_id ?? "").trim();
+    const chipRaw = String(body.chip ?? body.microchip ?? "").trim();
 
     const requestedScope = normalizeRequestedScope(
       Array.isArray(body.permissions)
@@ -88,25 +160,22 @@ export async function POST(req: NextRequest) {
             : []
     );
 
-    if (!animalId || !isUuid(animalId)) {
-      return notFoundResponse();
-    }
-
     if (requestedScope.length === 0) {
       return notFoundResponse();
     }
 
-    const animalResult = await admin
-      .from("animals")
-      .select("id, owner_id")
-      .eq("id", animalId)
-      .single<{ id: string; owner_id: string | null }>();
+    const resolved = await resolveAnimalId({
+      admin,
+      animalIdRaw,
+      chipRaw,
+    });
 
-    if (animalResult.error || !animalResult.data) {
+    if (resolved.error || !resolved.animal) {
       return notFoundResponse();
     }
 
-    const animal = animalResult.data;
+    const animal = resolved.animal;
+    const animalId = animal.id;
 
     if (!animal.owner_id) {
       return notFoundResponse();
@@ -134,6 +203,7 @@ export async function POST(req: NextRequest) {
         {
           ok: true,
           alreadyGranted: true,
+          animalId,
         },
         { headers: { "Cache-Control": "no-store" } }
       );
@@ -160,6 +230,7 @@ export async function POST(req: NextRequest) {
         {
           ok: true,
           alreadyPending: true,
+          animalId,
         },
         { headers: { "Cache-Control": "no-store" } }
       );
@@ -189,6 +260,7 @@ export async function POST(req: NextRequest) {
       {
         ok: true,
         requestId: insertResult.data.id,
+        animalId,
       },
       { headers: { "Cache-Control": "no-store" } }
     );
