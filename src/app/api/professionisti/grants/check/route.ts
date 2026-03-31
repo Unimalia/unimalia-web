@@ -3,17 +3,8 @@ import {
   createServerSupabaseClient,
   supabaseAdmin,
 } from "@/lib/supabase/server";
+import { getProfessionalOrgId } from "@/lib/professionisti/org";
 import { isUuid } from "@/lib/server/validators";
-
-type ProfessionalProfileRow = {
-  user_id: string;
-  org_id: string | null;
-};
-
-type ProfessionalRow = {
-  id: string;
-  owner_id: string;
-};
 
 type AnimalGrantRow = {
   id: string;
@@ -69,53 +60,9 @@ export async function GET(req: Request) {
       );
     }
 
-    const candidateIds = new Set<string>();
+    const organizationId = await getProfessionalOrgId();
 
-    const profileResult = await admin
-      .from("professional_profiles")
-      .select("user_id, org_id")
-      .eq("user_id", user.id)
-      .maybeSingle<ProfessionalProfileRow>();
-
-    if (profileResult.error) {
-      return NextResponse.json(
-        {
-          ok: false,
-          hasGrant: false,
-          error: profileResult.error.message,
-        },
-        { status: 500 }
-      );
-    }
-
-    const profileOrgId = profileResult.data?.org_id ?? null;
-    if (profileOrgId) candidateIds.add(String(profileOrgId));
-
-    const professionalResult = await admin
-      .from("professionals")
-      .select("id, owner_id")
-      .eq("owner_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle<ProfessionalRow>();
-
-    if (professionalResult.error) {
-      return NextResponse.json(
-        {
-          ok: false,
-          hasGrant: false,
-          error: professionalResult.error.message,
-        },
-        { status: 500 }
-      );
-    }
-
-    const professionalId = professionalResult.data?.id ?? null;
-    if (professionalId) candidateIds.add(String(professionalId));
-
-    const ids = Array.from(candidateIds);
-
-    if (ids.length === 0) {
+    if (!organizationId) {
       return NextResponse.json({
         ok: true,
         hasGrant: false,
@@ -130,7 +77,7 @@ export async function GET(req: Request) {
       )
       .eq("animal_id", animalId)
       .eq("grantee_type", "organization")
-      .in("grantee_id", ids)
+      .eq("grantee_id", organizationId)
       .is("revoked_at", null)
       .returns<AnimalGrantRow[]>();
 
@@ -146,7 +93,7 @@ export async function GET(req: Request) {
     const activeGrant =
       (grants ?? []).find((g) => {
         if (g.grantee_type !== "organization") return false;
-        if (g.status !== "active" && g.status !== "approved") return false;
+        if (g.status !== "active") return false;
         if (!g.scope_read && !g.scope_write && !g.scope_upload) return false;
 
         if (g.valid_from) {
@@ -166,7 +113,7 @@ export async function GET(req: Request) {
       ok: true,
       hasGrant: Boolean(activeGrant),
       matchedGranteeId: activeGrant?.grantee_id ?? null,
-      checkedIds: ids,
+      checkedIds: [organizationId],
     });
   } catch (error) {
     return NextResponse.json(

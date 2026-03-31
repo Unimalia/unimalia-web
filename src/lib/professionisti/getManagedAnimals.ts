@@ -1,5 +1,6 @@
 import "server-only";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { getProfessionalOrgId } from "@/lib/professionisti/org";
 
 export type ManagedAnimalRow = {
   id: string;
@@ -16,16 +17,6 @@ export type ManagedAnimalRow = {
   grant_status: "active" | "revoked_own_history" | "clinic_origin";
   has_active_grant: boolean;
   has_own_history: boolean;
-};
-
-type ProfessionalProfileRow = {
-  user_id: string;
-  org_id: string | null;
-};
-
-type ProfessionalRow = {
-  id: string;
-  owner_id: string;
 };
 
 type GrantRow = {
@@ -71,42 +62,22 @@ type OwnerProfileRow = {
   full_name: string | null;
 };
 
-async function getProfessionalRefs(userId: string) {
-  const admin = supabaseAdmin();
-  const refs = new Set<string>();
-  refs.add(userId);
+async function getProfessionalContext(userId: string) {
+  const organizationId = await getProfessionalOrgId();
 
-  const profileResult = await admin
-    .from("professional_profiles")
-    .select("user_id, org_id")
-    .eq("user_id", userId)
-    .maybeSingle<ProfessionalProfileRow>();
-
-  if (profileResult.error) {
-    throw profileResult.error;
+  if (!organizationId) {
+    return {
+      organizationId: null,
+      organizationRefs: [] as string[],
+      auditRefs: [userId].filter(Boolean),
+    };
   }
 
-  if (profileResult.data?.org_id) {
-    refs.add(profileResult.data.org_id);
-  }
-
-  const professionalResult = await admin
-    .from("professionals")
-    .select("id, owner_id")
-    .eq("owner_id", userId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle<ProfessionalRow>();
-
-  if (professionalResult.error) {
-    throw professionalResult.error;
-  }
-
-  if (professionalResult.data?.id) {
-    refs.add(professionalResult.data.id);
-  }
-
-  return Array.from(refs).filter(Boolean);
+  return {
+    organizationId,
+    organizationRefs: [organizationId],
+    auditRefs: [userId, organizationId].filter(Boolean),
+  };
 }
 
 function buildOwnerName(profile: OwnerProfileRow | null | undefined): string | null {
@@ -128,9 +99,9 @@ function buildOwnerName(profile: OwnerProfileRow | null | undefined): string | n
 
 export async function getManagedAnimals(userId: string): Promise<ManagedAnimalRow[]> {
   const admin = supabaseAdmin();
-  const refs = await getProfessionalRefs(userId);
+  const { organizationId, organizationRefs, auditRefs } = await getProfessionalContext(userId);
 
-  if (refs.length === 0) {
+  if (!organizationId || organizationRefs.length === 0) {
     return [];
   }
 
@@ -140,7 +111,7 @@ export async function getManagedAnimals(userId: string): Promise<ManagedAnimalRo
     .from("animal_access_grants")
     .select("animal_id, grantee_id, status, valid_to, revoked_at, scope_read, scope_write")
     .eq("grantee_type", "organization")
-    .in("grantee_id", refs)
+    .in("grantee_id", organizationRefs)
     .is("revoked_at", null);
 
   if (grantsError) {
@@ -153,7 +124,7 @@ export async function getManagedAnimals(userId: string): Promise<ManagedAnimalRo
     new Set(
       grantRows
         .filter((g) => {
-          if (g.status !== "active" && g.status !== "approved") return false;
+          if (g.status !== "active") return false;
           if (!g.scope_read && !g.scope_write) return false;
           if (!g.valid_to) return true;
           return String(g.valid_to) > nowIso;
@@ -167,7 +138,7 @@ export async function getManagedAnimals(userId: string): Promise<ManagedAnimalRo
 
   const createdOrOriginatedIds = new Set<string>();
 
-  const createdOrOriginatedFilter = refs
+  const createdOrOriginatedFilter = organizationRefs
     .map((ref) => `created_by_org_id.eq.${ref},origin_org_id.eq.${ref}`)
     .join(",");
 
@@ -203,7 +174,7 @@ export async function getManagedAnimals(userId: string): Promise<ManagedAnimalRo
           const actorUserId = String(row.actor_user_id || "").trim();
           const actorOrgId = String(row.actor_org_id || "").trim();
 
-          return actorUserId === userId || refs.includes(actorOrgId);
+          return actorUserId === userId || auditRefs.includes(actorOrgId);
         })
         .map((row) => String(row.animal_id || "").trim())
         .filter(Boolean)
@@ -268,8 +239,8 @@ export async function getManagedAnimals(userId: string): Promise<ManagedAnimalRo
     const hasOwnHistory = ownHistoryAnimalIdSet.has(row.id);
     const isClinicOrigin =
       createdOrOriginatedIds.has(row.id) ||
-      refs.includes(String(row.created_by_org_id ?? "")) ||
-      refs.includes(String(row.origin_org_id ?? ""));
+      organizationRefs.includes(String(row.created_by_org_id ?? "")) ||
+      organizationRefs.includes(String(row.origin_org_id ?? ""));
 
     let grantStatus: "active" | "revoked_own_history" | "clinic_origin" = "clinic_origin";
 

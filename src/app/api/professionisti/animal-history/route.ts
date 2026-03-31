@@ -7,11 +7,6 @@ import {
 } from "@/lib/professionisti/history";
 import { isUuid } from "@/lib/server/validators";
 
-type ProfessionalProfileRow = {
-  user_id: string;
-  org_id: string | null;
-};
-
 type ProfessionalRow = {
   id: string;
   owner_id: string;
@@ -35,23 +30,22 @@ type AnimalGrantRow = {
   scope_write: boolean | null;
 };
 
+type AnimalAuditRow = {
+  id: string;
+};
+
 async function getProfessionalRefs(userId: string) {
   const admin = supabaseAdmin();
   const refs = new Set<string>();
   refs.add(userId);
 
-  const profileResult = await admin
-    .from("professional_profiles")
-    .select("user_id, org_id")
-    .eq("user_id", userId)
-    .maybeSingle<ProfessionalProfileRow>();
-
-  if (profileResult.error) {
-    throw profileResult.error;
-  }
-
-  if (profileResult.data?.org_id) {
-    refs.add(profileResult.data.org_id);
+  try {
+    const organizationId = await getProfessionalOrgId();
+    if (organizationId) {
+      refs.add(organizationId);
+    }
+  } catch {
+    // fallback silenzioso: proseguiamo con gli altri riferimenti disponibili
   }
 
   const professionalResult = await admin
@@ -139,7 +133,7 @@ async function ensureProfessionalAnimalAccess(userId: string, animalId: string) 
 
   const activeGrant =
     (grantResult.data ?? []).find((g) => {
-      if (g.status !== "active" && g.status !== "approved") return false;
+      if (g.status !== "active") return false;
       if (!g.scope_read && !g.scope_write) return false;
       if (!g.valid_to) return true;
 
@@ -258,12 +252,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Accesso negato" }, { status: 403 });
     }
 
-    let professionalOrgId: string | null = null;
+    let organizationId: string | null = null;
 
     try {
-      professionalOrgId = await getProfessionalOrgId();
+      organizationId = await getProfessionalOrgId();
     } catch {
-      professionalOrgId = null;
+      organizationId = null;
+    }
+
+    if (!organizationId) {
+      return NextResponse.json(
+        { error: "Profilo professionista non collegato a una organizzazione." },
+        { status: 403 }
+      );
     }
 
     const professionalSnapshot = await getProfessionalSnapshot(user.id);
@@ -273,7 +274,7 @@ export async function POST(req: NextRequest) {
       author_type: "professional",
       author_user_id: user.id,
       author_name_snapshot: professionalSnapshot.displayName,
-      professional_org_id: professionalOrgId,
+      professional_org_id: organizationId,
       professional_category: professionalSnapshot.category,
       source_scope: input.sourceScope,
       category: input.category,

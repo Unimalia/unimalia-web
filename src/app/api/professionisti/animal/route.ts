@@ -75,10 +75,6 @@ type ProfileRow = {
   phone: string | null;
 };
 
-type OrgRow = {
-  id: string;
-};
-
 function normalizeChip(value?: string | null) {
   const digits = String(value ?? "").replace(/\D+/g, "").trim();
   return digits.length ? digits : null;
@@ -120,9 +116,9 @@ async function getProfessionalRefs(userId: string) {
   refs.add(userId);
 
   try {
-    const orgId = await getProfessionalOrgId();
-    if (orgId) {
-      refs.add(orgId);
+    const organizationId = await getProfessionalOrgId();
+    if (organizationId) {
+      refs.add(organizationId);
     }
   } catch {
     // fallback silenzioso: proseguiamo con gli altri riferimenti disponibili
@@ -422,7 +418,7 @@ export async function GET(req: NextRequest) {
 
     const activeGrant =
       (grantResult.data ?? []).find((g) => {
-        if (g.status !== "active" && g.status !== "approved") return false;
+        if (g.status !== "active") return false;
         if (!g.scope_read && !g.scope_write) return false;
 
         if (g.valid_from) {
@@ -516,56 +512,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Non autorizzato" }, { status: 401 });
     }
 
-    let orgId: string | null = null;
+    let organizationId: string | null = null;
 
     try {
-      orgId = await getProfessionalOrgId();
+      organizationId = await getProfessionalOrgId();
     } catch {
-      orgId = null;
+      organizationId = null;
     }
 
-    if (!orgId) {
-      const profileResult = await admin
-        .from("professional_profiles")
-        .select("org_id")
-        .eq("user_id", user.id)
-        .maybeSingle<ProfessionalProfileRow>();
-
-      if (profileResult.error) {
-        return NextResponse.json(
-          { error: profileResult.error.message || "Errore profilo professionista" },
-          { status: 500 }
-        );
-      }
-
-      if (profileResult.data?.org_id) {
-        orgId = profileResult.data.org_id;
-      }
-    }
-
-    if (!orgId) {
+    if (!organizationId) {
       return NextResponse.json(
         { error: "Profilo professionista non collegato a una organizzazione." },
-        { status: 403 }
-      );
-    }
-
-    const { data: orgRow, error: orgError } = await admin
-      .from("organizations")
-      .select("id")
-      .eq("id", orgId)
-      .maybeSingle<OrgRow>();
-
-    if (orgError) {
-      return NextResponse.json(
-        { error: orgError.message || "Errore verifica organizzazione" },
-        { status: 500 }
-      );
-    }
-
-    if (!orgRow) {
-      return NextResponse.json(
-        { error: "Organizzazione non valida o non esistente." },
         { status: 403 }
       );
     }
@@ -636,7 +593,7 @@ export async function POST(req: NextRequest) {
       if (!matchedAnimal.photo_url && body.photo_url) patch.photo_url = body.photo_url;
       if (!matchedAnimal.chip_number && chipNumber) patch.chip_number = chipNumber;
       if (!matchedAnimal.pending_owner_email && ownerEmail) patch.pending_owner_email = ownerEmail;
-      if (!matchedAnimal.origin_org_id) patch.origin_org_id = orgId;
+      if (!matchedAnimal.origin_org_id) patch.origin_org_id = organizationId;
       if (matchedAnimal.microchip_verified == null) patch.microchip_verified = false;
 
       if (Object.keys(patch).length > 1) {
@@ -685,8 +642,8 @@ export async function POST(req: NextRequest) {
       owner_id: null,
       pending_owner_email: ownerEmail,
       created_by_role: "professional",
-      created_by_org_id: orgId,
-      origin_org_id: orgId,
+      created_by_org_id: organizationId,
+      origin_org_id: organizationId,
       owner_claim_status: "pending",
       microchip_verified: false,
     };

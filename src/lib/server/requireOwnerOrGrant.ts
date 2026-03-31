@@ -1,21 +1,12 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { getProfessionalOrgId } from "@/lib/professionisti/org";
 
 type Scope = "read" | "write" | "upload";
 
 type GrantCheckResult =
   | { ok: true; actor_org_id: string | null; mode: "owner" | "grant_user" | "grant_org" }
   | { ok: false; reason: string };
-
-type ProfessionalProfileRow = {
-  user_id: string;
-  org_id: string | null;
-};
-
-type ProfessionalRow = {
-  id: string;
-  owner_id: string;
-};
 
 type AnimalOwnerRow = {
   id: string;
@@ -34,44 +25,6 @@ type AnimalGrantRow = {
   status: string | null;
   revoked_at: string | null;
 };
-
-async function resolveProfessionalRefs(userId: string) {
-  const admin = supabaseAdmin();
-  const refs = new Set<string>();
-  refs.add(userId);
-
-  const profileResult = await admin
-    .from("professional_profiles")
-    .select("user_id, org_id")
-    .eq("user_id", userId)
-    .maybeSingle<ProfessionalProfileRow>();
-
-  if (profileResult.error) {
-    throw profileResult.error;
-  }
-
-  if (profileResult.data?.org_id) {
-    refs.add(profileResult.data.org_id);
-  }
-
-  const professionalResult = await admin
-    .from("professionals")
-    .select("id, owner_id")
-    .eq("owner_id", userId)
-    .returns<ProfessionalRow[]>();
-
-  if (professionalResult.error) {
-    throw professionalResult.error;
-  }
-
-  for (const row of professionalResult.data ?? []) {
-    if (row?.id) {
-      refs.add(row.id);
-    }
-  }
-
-  return Array.from(refs).filter(Boolean);
-}
 
 function hasRequiredScope(grant: AnimalGrantRow, scope: Scope) {
   if (scope === "read") {
@@ -147,12 +100,13 @@ export async function requireOwnerOrGrant(
     return { ok: true, actor_org_id: null, mode: "grant_user" };
   }
 
-  const refs = await resolveProfessionalRefs(userId);
+  const organizationId = await getProfessionalOrgId();
 
   const orgGrant = activeGrants.find(
     (g) =>
       g.grantee_type === "organization" &&
-      refs.includes(String(g.grantee_id)) &&
+      organizationId &&
+      String(g.grantee_id) === String(organizationId) &&
       hasRequiredScope(g, scope)
   );
 

@@ -151,10 +151,10 @@ export async function POST(req: NextRequest) {
       return notFoundResponse();
     }
 
-    let orgId: string | null = null;
+    let organizationId: string | null = null;
 
     try {
-      orgId = await getProfessionalOrgId();
+      organizationId = await getProfessionalOrgId();
     } catch (error: unknown) {
       return NextResponse.json(
         {
@@ -167,7 +167,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!orgId) {
+    if (!organizationId) {
       return notFoundResponse();
     }
 
@@ -219,8 +219,8 @@ export async function POST(req: NextRequest) {
       .select("id, status, revoked_at")
       .eq("animal_id", animalId)
       .eq("grantee_type", "organization")
-      .eq("grantee_id", orgId)
-      .in("status", ["active", "approved"])
+      .eq("grantee_id", organizationId)
+      .eq("status", "active")
       .is("revoked_at", null)
       .limit(10)
       .returns<ExistingGrantRow[]>();
@@ -250,7 +250,7 @@ export async function POST(req: NextRequest) {
       .select("id, status")
       .eq("animal_id", animalId)
       .eq("owner_id", animal.owner_id)
-      .eq("org_id", orgId)
+      .eq("org_id", organizationId)
       .in("status", ["pending"])
       .limit(10)
       .returns<ExistingRequestRow[]>();
@@ -280,7 +280,7 @@ export async function POST(req: NextRequest) {
       .insert({
         animal_id: animalId,
         owner_id: animal.owner_id,
-        org_id: orgId,
+        org_id: organizationId,
         requested_by_user_id: user.id,
         requested_scope: requestedScope,
         status: "pending",
