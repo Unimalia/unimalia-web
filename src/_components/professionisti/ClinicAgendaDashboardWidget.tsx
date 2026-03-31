@@ -25,12 +25,38 @@ type AgendaSnapshot = {
   appointments: AgendaAppointment[];
 };
 
-function getAgendaSnapshot(): AgendaSnapshot {
+let cachedSnapshot: AgendaSnapshot = {
+  settings: null,
+  overrides: [],
+  appointments: [],
+};
+
+let cachedSerializedSnapshot = JSON.stringify(cachedSnapshot);
+
+function readClientSnapshot(): AgendaSnapshot {
   return {
     settings: loadAgendaSettings(),
     overrides: loadAgendaOverrides(),
     appointments: loadAgendaAppointments(),
   };
+}
+
+function getAgendaSnapshot(): AgendaSnapshot {
+  if (typeof window === "undefined") {
+    return cachedSnapshot;
+  }
+
+  const nextSnapshot = readClientSnapshot();
+  const nextSerializedSnapshot = JSON.stringify(nextSnapshot);
+
+  if (nextSerializedSnapshot === cachedSerializedSnapshot) {
+    return cachedSnapshot;
+  }
+
+  cachedSnapshot = nextSnapshot;
+  cachedSerializedSnapshot = nextSerializedSnapshot;
+
+  return cachedSnapshot;
 }
 
 function getAgendaServerSnapshot(): AgendaSnapshot {
@@ -41,9 +67,27 @@ function getAgendaServerSnapshot(): AgendaSnapshot {
   };
 }
 
+function subscribeAgendaStore(callback: () => void) {
+  if (typeof window === "undefined") {
+    return () => {};
+  }
+
+  const handler = () => {
+    callback();
+  };
+
+  window.addEventListener("storage", handler);
+  window.addEventListener("unimalia-agenda-storage-changed", handler);
+
+  return () => {
+    window.removeEventListener("storage", handler);
+    window.removeEventListener("unimalia-agenda-storage-changed", handler);
+  };
+}
+
 export default function ClinicAgendaDashboardWidget() {
   const { settings, overrides, appointments } = useSyncExternalStore(
-    () => () => {},
+    subscribeAgendaStore,
     getAgendaSnapshot,
     getAgendaServerSnapshot
   );
@@ -58,7 +102,10 @@ export default function ClinicAgendaDashboardWidget() {
 
   const todayVets = useMemo(() => {
     if (!settings) return [];
-    return settings.vets.filter((vet) => resolveVetShift(vet, today, overrides).enabled);
+
+    return settings.vets.filter((vet) =>
+      resolveVetShift(vet, today, overrides).enabled
+    );
   }, [settings, today, overrides]);
 
   if (!settings) {
