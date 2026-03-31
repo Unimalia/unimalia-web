@@ -79,31 +79,6 @@ export async function POST() {
           );
         }
       }
-    } else {
-      const existingAppMetadata =
-        user.app_metadata && typeof user.app_metadata === "object"
-          ? user.app_metadata
-          : {};
-
-      const { error: authUpdateError } = await admin.auth.admin.updateUserById(user.id, {
-        ban_duration: "876000h",
-        app_metadata: {
-          ...existingAppMetadata,
-          account_disabled: true,
-          account_disabled_at: now,
-          account_disabled_reason: "self_service_account_archived",
-          is_professional: false,
-          is_vet: false,
-          professional_type: null,
-        },
-      });
-
-      if (authUpdateError) {
-        return NextResponse.json(
-          { error: authUpdateError.message || "Errore disattivazione account" },
-          { status: 500 }
-        );
-      }
     }
 
     const authUser = await admin.auth.admin.getUserById(user.id);
@@ -120,6 +95,11 @@ export async function POST() {
         ? authUser.data.user.app_metadata
         : {};
 
+    const currentUserMetadata =
+      authUser.data.user.user_metadata && typeof authUser.data.user.user_metadata === "object"
+        ? authUser.data.user.user_metadata
+        : {};
+
     const { error: finalAuthUpdateError } = await admin.auth.admin.updateUserById(user.id, {
       ban_duration: "876000h",
       app_metadata: {
@@ -127,6 +107,12 @@ export async function POST() {
         account_disabled: true,
         account_disabled_at: now,
         account_disabled_reason: "self_service_account_archived",
+        account_deleted: false,
+        account_deleted_at: null,
+      },
+      user_metadata: {
+        ...currentUserMetadata,
+        deleted_at: null,
       },
     });
 

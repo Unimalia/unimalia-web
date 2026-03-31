@@ -144,6 +144,11 @@ export async function POST() {
         ? authUser.data.user.app_metadata
         : {};
 
+    const currentUserMetadata =
+      authUser.data.user.user_metadata && typeof authUser.data.user.user_metadata === "object"
+        ? authUser.data.user.user_metadata
+        : {};
+
     const { error: authUpdateError } = await admin.auth.admin.updateUserById(user.id, {
       email: deletedEmail,
       ban_duration: "876000h",
@@ -159,6 +164,8 @@ export async function POST() {
         professional_type: null,
       },
       user_metadata: {
+        ...currentUserMetadata,
+        original_email_archived_from: null,
         deleted_at: now,
       },
     });
