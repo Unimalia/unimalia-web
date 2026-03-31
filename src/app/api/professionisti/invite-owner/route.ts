@@ -1,14 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { createClient, supabaseAdmin } from "@/lib/supabase/server";
+import { getProfessionalOrgId } from "@/lib/professionisti/org";
 import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
-
-type ProfessionalProfileRow = {
-  user_id: string;
-  org_id: string | null;
-};
 
 type OrganizationRow = {
   id: string;
@@ -43,28 +39,6 @@ type ResendEmailResult = {
   error?: { message?: string } | null;
 };
 
-async function getProfessionalOrgId(userId: string) {
-  const admin = supabaseAdmin();
-
-  const profileResult = await admin
-    .from("professional_profiles")
-    .select("user_id, org_id")
-    .eq("user_id", userId)
-    .maybeSingle<ProfessionalProfileRow>();
-
-  if (profileResult.data?.org_id) {
-    return {
-      orgId: profileResult.data.org_id as string,
-      profile: profileResult.data,
-    };
-  }
-
-  return {
-    orgId: null,
-    profile: null,
-  };
-}
-
 function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
@@ -95,15 +69,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Email non valida" }, { status: 400 });
     }
 
-    const orgLookup = await getProfessionalOrgId(user.id);
+    const organizationId = await getProfessionalOrgId();
 
     let clinicName: string | null = null;
 
-    if (orgLookup.orgId) {
+    if (organizationId) {
       const { data: orgRow } = await admin
         .from("organizations")
         .select("id,name")
-        .eq("id", orgLookup.orgId)
+        .eq("id", organizationId)
         .maybeSingle<OrganizationRow>();
 
       clinicName = orgRow?.name?.trim() || null;
@@ -128,7 +102,7 @@ export async function POST(req: NextRequest) {
         null;
     }
 
-    if (!orgLookup.orgId) {
+    if (!organizationId) {
       return NextResponse.json({ error: "Profilo professionista non valido" }, { status: 403 });
     }
 
@@ -145,7 +119,7 @@ export async function POST(req: NextRequest) {
     const animal = animalResult.data;
 
     const canAccess =
-      animal.created_by_org_id === orgLookup.orgId || animal.origin_org_id === orgLookup.orgId;
+      animal.created_by_org_id === organizationId || animal.origin_org_id === organizationId;
 
     if (!canAccess) {
       return NextResponse.json({ error: "Accesso negato" }, { status: 403 });
