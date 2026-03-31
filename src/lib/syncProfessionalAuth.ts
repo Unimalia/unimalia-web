@@ -164,25 +164,7 @@ export async function syncProfessionalAuth(professionalId: string): Promise<Sync
     }
   }
 
-  if (!organizationId) {
-    const { data: ownedOrganizations, error: ownedOrganizationsError } = await admin
-      .from("organizations")
-      .select("id, name, email")
-      .eq("email", authData.user.email || professional.email || "")
-      .limit(5)
-      .returns<OrganizationRow[]>();
-
-    if (ownedOrganizationsError) {
-      return {
-        ok: false,
-        error: ownedOrganizationsError.message,
-      };
-    }
-
-    if ((ownedOrganizations ?? []).length > 0) {
-      organizationId = ownedOrganizations![0].id;
-    }
-  }
+  // ❌ RIMOSSO lookup via email → niente fallback sporco
 
   if (!organizationId) {
     const organizationName = buildOrganizationName(professional);
