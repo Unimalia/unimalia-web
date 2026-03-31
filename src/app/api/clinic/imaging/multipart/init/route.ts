@@ -24,11 +24,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Missing params" }, { status: 400 });
   }
 
-  // 🔥 cerca sessione esistente
-  const { data: existing } = await admin
+  const { data: existing, error: existingError } = await admin
     .from("clinic_imaging_upload_sessions")
     .select("*")
-    .eq("created_by_user_id", user.id)
+    .eq("created_by", user.id)
     .eq("animal_id", animalId)
     .eq("file_name", fileName)
     .eq("file_size", fileSize)
@@ -36,6 +35,10 @@ export async function POST(req: Request) {
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
+
+  if (existingError) {
+    return NextResponse.json({ error: existingError.message }, { status: 500 });
+  }
 
   if (existing) {
     return NextResponse.json({
@@ -56,7 +59,7 @@ export async function POST(req: Request) {
     .from("clinic_imaging_upload_sessions")
     .insert({
       animal_id: animalId,
-      created_by_user_id: user.id,
+      created_by: user.id,
       file_name: fileName,
       file_size: fileSize,
       file_type: fileType,
@@ -73,7 +76,7 @@ export async function POST(req: Request) {
     .single();
 
   if (error || !inserted) {
-    return NextResponse.json({ error: error?.message }, { status: 500 });
+    return NextResponse.json({ error: error?.message || "Insert failed" }, { status: 500 });
   }
 
   return NextResponse.json({

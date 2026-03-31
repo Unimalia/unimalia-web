@@ -3,19 +3,10 @@ import {
   createServerSupabaseClient,
   supabaseAdmin,
 } from "@/lib/supabase/server";
+import { getProfessionalOrgId } from "@/lib/professionisti/org";
 import { isUuid } from "@/lib/server/validators";
 
 export const dynamic = "force-dynamic";
-
-type ProfessionalProfileRow = {
-  user_id: string;
-  org_id: string | null;
-};
-
-type ProfessionalRow = {
-  id: string;
-  owner_id: string;
-};
 
 type AnimalRow = {
   id: string;
@@ -96,32 +87,9 @@ function unauthorized() {
   return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 }
 
-async function ensureProfessionalContext(userId: string) {
-  const admin = supabaseAdmin();
-
-  const profileResult = await admin
-    .from("professional_profiles")
-    .select("user_id, org_id")
-    .eq("user_id", userId)
-    .maybeSingle<ProfessionalProfileRow>();
-
-  if (profileResult.error) {
-    throw profileResult.error;
-  }
-
-  const professionalResult = await admin
-    .from("professionals")
-    .select("id, owner_id")
-    .eq("owner_id", userId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle<ProfessionalRow>();
-
-  if (professionalResult.error) {
-    throw professionalResult.error;
-  }
-
-  return Boolean(profileResult.data?.org_id || professionalResult.data?.id);
+async function ensureProfessionalContext() {
+  const organizationId = await getProfessionalOrgId();
+  return Boolean(organizationId);
 }
 
 async function findById(id: string) {
@@ -182,7 +150,7 @@ export async function GET(req: Request) {
   }
 
   try {
-    const hasProfessionalContext = await ensureProfessionalContext(user.id);
+    const hasProfessionalContext = await ensureProfessionalContext();
 
     if (!hasProfessionalContext) {
       return NextResponse.json(

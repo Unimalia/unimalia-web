@@ -1,18 +1,9 @@
 import { NextResponse } from "next/server";
 import { createClient as createServerClient, supabaseAdmin } from "@/lib/supabase/server";
+import { getProfessionalOrgId } from "@/lib/professionisti/org";
 import { requireOwnerOrGrant } from "@/lib/server/requireOwnerOrGrant";
 import { safeWriteAudit } from "@/lib/server/safeAudit";
 import { isUuid } from "@/lib/server/validators";
-
-type ProfessionalProfileRow = {
-  user_id: string;
-  org_id: string | null;
-};
-
-type ProfessionalRow = {
-  id: string;
-  owner_id: string;
-};
 
 type EventAuditRow = {
   event_id: string | null;
@@ -43,50 +34,12 @@ type AnimalClinicEventRow = {
 type RequireOwnerOrGrantClient = Parameters<typeof requireOwnerOrGrant>[0];
 type SafeWriteAuditClient = Parameters<typeof safeWriteAudit>[0];
 
-async function getProfessionalRefs(userId: string) {
-  const admin = supabaseAdmin();
-  const refs = new Set<string>();
-  refs.add(userId);
-
-  const profileResult = await admin
-    .from("professional_profiles")
-    .select("user_id, org_id")
-    .eq("user_id", userId)
-    .maybeSingle<ProfessionalProfileRow>();
-
-  if (profileResult.error) {
-    throw profileResult.error;
-  }
-
-  if (profileResult.data?.org_id) {
-    refs.add(profileResult.data.org_id);
-  }
-
-  const professionalResult = await admin
-    .from("professionals")
-    .select("id, owner_id")
-    .eq("owner_id", userId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle<ProfessionalRow>();
-
-  if (professionalResult.error) {
-    throw professionalResult.error;
-  }
-
-  if (professionalResult.data?.id) {
-    refs.add(professionalResult.data.id);
-  }
-
-  return Array.from(refs).filter(Boolean);
-}
-
 async function getFallbackReadableEventIds(params: {
   animalId: string;
   userId: string;
 }) {
   const admin = supabaseAdmin();
-  const refs = await getProfessionalRefs(params.userId);
+  const organizationId = await getProfessionalOrgId();
 
   const ownAuditResult = await admin
     .from("animal_clinic_event_audit")
@@ -99,25 +52,21 @@ async function getFallbackReadableEventIds(params: {
     throw ownAuditResult.error;
   }
 
-  const orgRefs = refs.filter(
-    (ref) => typeof ref === "string" && ref.length > 0 && ref !== params.userId
-  );
+  let organizationEventIds: string[] = [];
 
-  let orgEventIds: string[] = [];
-
-  if (orgRefs.length > 0) {
+  if (organizationId) {
     const orgAuditResult = await admin
       .from("animal_clinic_event_audit")
       .select("event_id")
       .eq("animal_id", params.animalId)
-      .in("actor_org_id", orgRefs)
+      .eq("actor_org_id", organizationId)
       .in("action", ["create", "update"]);
 
     if (orgAuditResult.error) {
       throw orgAuditResult.error;
     }
 
-    orgEventIds = (orgAuditResult.data ?? [])
+    organizationEventIds = (orgAuditResult.data ?? [])
       .map((row: EventAuditRow) => String(row.event_id || "").trim())
       .filter(Boolean);
   }
@@ -126,7 +75,7 @@ async function getFallbackReadableEventIds(params: {
     .map((row: EventAuditRow) => String(row.event_id || "").trim())
     .filter(Boolean);
 
-  return Array.from(new Set([...ownEventIds, ...orgEventIds]));
+  return Array.from(new Set([...ownEventIds, ...organizationEventIds]));
 }
 
 export async function GET(req: Request) {
