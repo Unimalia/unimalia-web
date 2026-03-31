@@ -75,19 +75,21 @@ export async function POST(req: Request) {
     );
   }
 
-  const { error } = await admin
+  const approvalTimestamp = new Date().toISOString();
+
+  const { error: approveError } = await admin
     .from("professionals")
     .update({
       approved: true,
       verification_status: "verified",
-      verified_at: new Date().toISOString(),
+      verified_at: approvalTimestamp,
       verified_by_user_id: user.id,
       rejection_reason: null,
     })
     .eq("id", professionalId);
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  if (approveError) {
+    return NextResponse.json({ error: approveError.message }, { status: 500 });
   }
 
   const syncResult = await syncProfessionalAuth(professionalId);
@@ -107,7 +109,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json(
       {
-        error: `Professionista aggiornato, ma sync Auth fallita: ${syncResult.error}`,
+        error: `Professionista approvato, ma sincronizzazione completa fallita: ${syncResult.error}`,
       },
       { status: 500 }
     );
@@ -157,6 +159,7 @@ export async function POST(req: Request) {
       emailResult = { ok: true, to: email };
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "Errore invio email approvazione";
+
       console.error("[professional_approved_email] failed", {
         professionalId,
         email,
@@ -187,15 +190,6 @@ export async function POST(req: Request) {
       approval_email: emailResult,
     },
   });
-
-  if (!emailResult.ok) {
-    return NextResponse.json(
-      {
-        error: `Professionista approvato e sincronizzato, ma email non inviata: ${emailResult.error}`,
-      },
-      { status: 500 }
-    );
-  }
 
   return NextResponse.redirect(new URL(redirectTo, req.url), 303);
 }
