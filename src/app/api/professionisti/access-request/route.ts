@@ -242,7 +242,7 @@ export async function POST(req: NextRequest) {
         animal_id: animalId,
         owner_id: animal.owner_id,
         org_id: orgId,
-        requested_by: user.id,
+        requested_by_user_id: user.id,
         requested_scope: requestedScope,
         status: "pending",
       })
