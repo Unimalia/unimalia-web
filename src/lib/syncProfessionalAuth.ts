@@ -20,7 +20,7 @@ export async function syncProfessionalAuth(professionalId: string): Promise<Sync
 
   const { data: professional, error: professionalError } = await admin
     .from("professionals")
-    .select("id, owner_id, approved, is_vet")
+    .select("id, owner_id, approved, is_vet, is_archived, is_deleted")
     .eq("id", professionalId)
     .single();
 
@@ -49,8 +49,11 @@ export async function syncProfessionalAuth(professionalId: string): Promise<Sync
     };
   }
 
-  const isProfessional = professional.approved === true;
-  const isVet = professional.approved === true && professional.is_vet === true;
+  const lifecycleBlocked =
+    professional.is_archived === true || professional.is_deleted === true;
+
+  const isProfessional = !lifecycleBlocked && professional.approved === true;
+  const isVet = !lifecycleBlocked && professional.approved === true && professional.is_vet === true;
   const professionalType: "generic" | "veterinarian" | null = !isProfessional
     ? null
     : isVet

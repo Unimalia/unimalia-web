@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
-import { supabase } from "../../lib/supabaseClient";
+import { supabase } from "@/lib/supabaseClient";
 
 type ProfileRow = {
   id: string;
@@ -35,11 +35,10 @@ export function ProfiloClient() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const [softDeleting, setSoftDeleting] = useState(false);
+  const [hardDeleting, setHardDeleting] = useState(false);
 
-  const [user, setUser] = useState<{ id: string; email: string | null } | null>(
-    null
-  );
+  const [user, setUser] = useState<{ id: string; email: string | null } | null>(null);
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -50,7 +49,8 @@ export function ProfiloClient() {
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
   const [deleteErrorMsg, setDeleteErrorMsg] = useState("");
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showSoftDeleteConfirm, setShowSoftDeleteConfirm] = useState(false);
+  const [showHardDeleteConfirm, setShowHardDeleteConfirm] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -60,8 +60,7 @@ export function ProfiloClient() {
       setErrorMsg("");
       setSuccessMsg("");
 
-      const { data: sessionData, error: sessionErr } =
-        await supabase.auth.getSession();
+      const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
       if (!mounted) return;
 
       if (sessionErr || !sessionData.session?.user) {
@@ -171,7 +170,7 @@ export function ProfiloClient() {
   }
 
   async function onDeactivateAccount() {
-    setDeleting(true);
+    setSoftDeleting(true);
     setDeleteErrorMsg("");
     setErrorMsg("");
     setSuccessMsg("");
@@ -189,7 +188,7 @@ export function ProfiloClient() {
 
       if (!res.ok || !json?.ok) {
         setDeleteErrorMsg(json?.error || "Errore durante la disattivazione account.");
-        setDeleting(false);
+        setSoftDeleting(false);
         return;
       }
 
@@ -199,7 +198,40 @@ export function ProfiloClient() {
       router.refresh();
     } catch {
       setDeleteErrorMsg("Errore di rete durante la disattivazione account.");
-      setDeleting(false);
+      setSoftDeleting(false);
+    }
+  }
+
+  async function onDeleteAccountPermanently() {
+    setHardDeleting(true);
+    setDeleteErrorMsg("");
+    setErrorMsg("");
+    setSuccessMsg("");
+
+    try {
+      const res = await fetch("/api/profile/delete", {
+        method: "POST",
+        cache: "no-store",
+      });
+
+      const json = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        error?: string;
+      };
+
+      if (!res.ok || !json?.ok) {
+        setDeleteErrorMsg(json?.error || "Errore durante l’eliminazione definitiva account.");
+        setHardDeleting(false);
+        return;
+      }
+
+      await supabase.auth.signOut();
+
+      router.replace("/login?account=eliminato");
+      router.refresh();
+    } catch {
+      setDeleteErrorMsg("Errore di rete durante l’eliminazione definitiva account.");
+      setHardDeleting(false);
     }
   }
 
@@ -335,8 +367,8 @@ export function ProfiloClient() {
         <div className="flex flex-col gap-1">
           <h2 className="text-sm font-semibold text-red-900">Disattiva account</h2>
           <p className="text-sm text-red-800">
-            Il tuo accesso verrà disattivato. I dati storici resteranno conservati sul sito secondo
-            obblighi legali e per continuità amministrativa.
+            Il tuo account verrà archiviato e l’accesso sarà bloccato. I dati resteranno
+            conservati per un eventuale recupero successivo.
           </p>
         </div>
 
@@ -346,11 +378,15 @@ export function ProfiloClient() {
           </div>
         ) : null}
 
-        {!showDeleteConfirm ? (
+        {!showSoftDeleteConfirm ? (
           <div className="mt-4">
             <button
               type="button"
-              onClick={() => setShowDeleteConfirm(true)}
+              onClick={() => {
+                setShowSoftDeleteConfirm(true);
+                setShowHardDeleteConfirm(false);
+                setDeleteErrorMsg("");
+              }}
               className="inline-flex items-center justify-center rounded-xl border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 shadow-sm hover:bg-red-100"
             >
               Disattiva il mio account
@@ -362,26 +398,85 @@ export function ProfiloClient() {
               Confermi di voler disattivare il tuo account?
             </p>
             <p className="mt-1 text-sm text-red-800">
-              Dopo la conferma verrai disconnesso e non potrai più accedere con questo account.
+              Dopo la conferma verrai disconnesso. L’account resterà archiviato e potrà essere
+              recuperato in seguito.
             </p>
 
             <div className="mt-4 flex flex-wrap gap-2">
               <button
                 type="button"
                 onClick={onDeactivateAccount}
-                disabled={deleting}
+                disabled={softDeleting || hardDeleting}
                 className="inline-flex items-center justify-center rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-red-700 disabled:opacity-60"
               >
-                {deleting ? "Disattivazione…" : "Conferma disattivazione"}
+                {softDeleting ? "Disattivazione…" : "Conferma disattivazione"}
               </button>
 
               <button
                 type="button"
                 onClick={() => {
-                  setShowDeleteConfirm(false);
+                  setShowSoftDeleteConfirm(false);
                   setDeleteErrorMsg("");
                 }}
-                disabled={deleting}
+                disabled={softDeleting || hardDeleting}
+                className="inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-900 shadow-sm hover:bg-zinc-50 disabled:opacity-60"
+              >
+                Annulla
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-6 rounded-2xl border border-rose-300 bg-rose-50 p-4">
+        <div className="flex flex-col gap-1">
+          <h2 className="text-sm font-semibold text-rose-900">Elimina definitivamente account</h2>
+          <p className="text-sm text-rose-800">
+            Questa operazione è irreversibile. I dati personali del tuo account e dell’eventuale
+            profilo professionale collegato verranno anonimizzati.
+          </p>
+        </div>
+
+        {!showHardDeleteConfirm ? (
+          <div className="mt-4">
+            <button
+              type="button"
+              onClick={() => {
+                setShowHardDeleteConfirm(true);
+                setShowSoftDeleteConfirm(false);
+                setDeleteErrorMsg("");
+              }}
+              className="inline-flex items-center justify-center rounded-xl border border-rose-400 bg-white px-4 py-2 text-sm font-medium text-rose-700 shadow-sm hover:bg-rose-100"
+            >
+              Elimina definitivamente
+            </button>
+          </div>
+        ) : (
+          <div className="mt-4 rounded-xl border border-rose-300 bg-white p-4">
+            <p className="text-sm font-medium text-rose-900">
+              Confermi di voler eliminare definitivamente il tuo account?
+            </p>
+            <p className="mt-1 text-sm text-rose-800">
+              Dopo la conferma verrai disconnesso e non potrai recuperare il tuo account.
+            </p>
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={onDeleteAccountPermanently}
+                disabled={softDeleting || hardDeleting}
+                className="inline-flex items-center justify-center rounded-xl bg-rose-700 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-rose-800 disabled:opacity-60"
+              >
+                {hardDeleting ? "Eliminazione…" : "Conferma eliminazione definitiva"}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowHardDeleteConfirm(false);
+                  setDeleteErrorMsg("");
+                }}
+                disabled={softDeleting || hardDeleting}
                 className="inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-900 shadow-sm hover:bg-zinc-50 disabled:opacity-60"
               >
                 Annulla

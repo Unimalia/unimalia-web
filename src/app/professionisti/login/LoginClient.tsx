@@ -5,6 +5,18 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
+type ProfileStateRow = {
+  is_archived: boolean | null;
+  is_deleted: boolean | null;
+};
+
+type ProfessionalStateRow = {
+  id: string;
+  approved: boolean | null;
+  is_archived: boolean | null;
+  is_deleted: boolean | null;
+};
+
 function safeNextPath(next: string | null | undefined) {
   const n = String(next || "").trim();
 
@@ -72,9 +84,34 @@ export default function LoginClient() {
   }, [email, phone, password, confirmPassword, mode]);
 
   const handleProfessionalPostLoginRedirect = useCallback(async (userId: string) => {
+    const { data: profileData, error: profileErr } = await supabase
+      .from("profiles")
+      .select("is_archived, is_deleted")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (profileErr) {
+      setErr("Errore nel recupero del profilo.");
+      return;
+    }
+
+    const profile = (profileData ?? null) as ProfileStateRow | null;
+
+    if (profile?.is_deleted) {
+      await supabase.auth.signOut();
+      setErr("Questo account è stato eliminato definitivamente.");
+      return;
+    }
+
+    if (profile?.is_archived) {
+      await supabase.auth.signOut();
+      setErr("Questo account è attualmente disattivato.");
+      return;
+    }
+
     const { data: proData, error: proErr } = await supabase
       .from("professionals")
-      .select("id, approved")
+      .select("id, approved, is_archived, is_deleted")
       .eq("owner_id", userId)
       .order("created_at", { ascending: false })
       .limit(1);
@@ -84,10 +121,22 @@ export default function LoginClient() {
       return;
     }
 
-    const professional = proData?.[0];
+    const professional = (proData?.[0] ?? null) as ProfessionalStateRow | null;
 
     if (!professional) {
       router.replace("/professionisti/nuovo");
+      return;
+    }
+
+    if (professional.is_deleted) {
+      await supabase.auth.signOut();
+      setErr("Il profilo professionista collegato a questo account è stato eliminato.");
+      return;
+    }
+
+    if (professional.is_archived) {
+      await supabase.auth.signOut();
+      setErr("Il profilo professionista collegato a questo account è disattivato.");
       return;
     }
 

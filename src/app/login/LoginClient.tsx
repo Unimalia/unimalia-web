@@ -10,6 +10,8 @@ type ProfileRow = {
   fiscal_code: string | null;
   city: string | null;
   phone: string | null;
+  is_archived: boolean | null;
+  is_deleted: boolean | null;
 };
 
 function normalizeCF(s: string) {
@@ -79,7 +81,11 @@ async function ensureProfileRow(userId: string) {
   );
 }
 
-async function decideRedirect(router: ReturnType<typeof useRouter>, fallback: string) {
+async function decideRedirect(
+  router: ReturnType<typeof useRouter>,
+  fallback: string,
+  setMsg?: (value: string | null) => void
+) {
   const { data: authData } = await supabase.auth.getUser();
   const user = authData.user;
   if (!user) return;
@@ -88,11 +94,27 @@ async function decideRedirect(router: ReturnType<typeof useRouter>, fallback: st
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("full_name,fiscal_code,city,phone")
+    .select("full_name,fiscal_code,city,phone,is_archived,is_deleted")
     .eq("id", user.id)
     .single();
 
-  if (!isProfileComplete(profile as ProfileRow | null)) {
+  const row = (profile ?? null) as ProfileRow | null;
+
+  if (row?.is_deleted) {
+    await supabase.auth.signOut();
+    setMsg?.("Questo account è stato eliminato definitivamente e non può più essere utilizzato.");
+    router.replace("/login?account=eliminato");
+    return;
+  }
+
+  if (row?.is_archived) {
+    await supabase.auth.signOut();
+    setMsg?.("Questo account è attualmente disattivato.");
+    router.replace("/login?account=disattivato");
+    return;
+  }
+
+  if (!isProfileComplete(row)) {
     router.replace(`/profilo?returnTo=${encodeURIComponent(fallback)}`);
   } else {
     router.replace(fallback);
@@ -131,6 +153,16 @@ export default function LoginClient() {
   }, [emailFromUrl]);
 
   useEffect(() => {
+    const accountState = searchParams.get("account");
+
+    if (accountState === "disattivato") {
+      setMsg("Il tuo account è stato disattivato correttamente.");
+    } else if (accountState === "eliminato") {
+      setMsg("Il tuo account è stato eliminato definitivamente.");
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
     let alive = true;
 
     async function init() {
@@ -138,7 +170,7 @@ export default function LoginClient() {
       if (!alive) return;
 
       if (data.user) {
-        await decideRedirect(router, next);
+        await decideRedirect(router, next, setMsg);
         return;
       }
 
@@ -149,7 +181,7 @@ export default function LoginClient() {
 
     const { data: sub } = supabase.auth.onAuthStateChange(async (event) => {
       if (event === "SIGNED_IN") {
-        await decideRedirect(router, next);
+        await decideRedirect(router, next, setMsg);
       }
     });
 
@@ -277,7 +309,7 @@ export default function LoginClient() {
           { onConflict: "id" }
         );
 
-        await decideRedirect(router, next);
+        await decideRedirect(router, next, setMsg);
         return;
       }
 
@@ -299,7 +331,7 @@ export default function LoginClient() {
         return;
       }
 
-      await decideRedirect(router, next);
+      await decideRedirect(router, next, setMsg);
     } catch (err: unknown) {
       console.error("LOGIN ERROR:", err);
       const message =
