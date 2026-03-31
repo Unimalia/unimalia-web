@@ -48,6 +48,9 @@ type AnimalRow = {
   origin_org_id: string | null;
   microchip_verified: boolean | null;
   unimalia_code?: string | null;
+  owner_claim_status?: "none" | "pending" | "claimed" | null;
+  created_by_role?: string | null;
+  updated_at?: string | null;
 };
 
 type AnimalGrantRow = {
@@ -115,6 +118,15 @@ async function getProfessionalRefs(userId: string) {
   const admin = supabaseAdmin();
   const refs = new Set<string>();
   refs.add(userId);
+
+  try {
+    const orgId = await getProfessionalOrgId();
+    if (orgId) {
+      refs.add(orgId);
+    }
+  } catch {
+    // fallback silenzioso: proseguiamo con gli altri riferimenti disponibili
+  }
 
   const profileResult = await admin
     .from("professional_profiles")
