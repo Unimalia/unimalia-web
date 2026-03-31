@@ -23,6 +23,17 @@ type AnimalLookupRow = {
   chip_number: string | null;
 };
 
+type ExistingGrantRow = {
+  id: string;
+  status: string | null;
+  revoked_at: string | null;
+};
+
+type ExistingRequestRow = {
+  id: string;
+  status: string | null;
+};
+
 function notFoundResponse() {
   return NextResponse.json(
     { error: "Not found" },
@@ -35,6 +46,7 @@ function notFoundResponse() {
 
 function normalizeRequestedScope(input: unknown): Array<"read" | "write"> {
   const raw = Array.isArray(input) ? input : [];
+
   const filtered = raw
     .map((value) => String(value).trim().toLowerCase())
     .filter((value): value is "read" | "write" => value === "read" || value === "write");
@@ -62,9 +74,16 @@ async function resolveAnimalId(params: {
       .from("animals")
       .select("id, owner_id, chip_number")
       .eq("id", animalIdRaw)
-      .single<AnimalLookupRow>();
+      .maybeSingle<AnimalLookupRow>();
 
-    if (animalResult.error || !animalResult.data) {
+    if (animalResult.error) {
+      return {
+        animal: null,
+        error: `Animal lookup by id failed: ${animalResult.error.message}` as const,
+      };
+    }
+
+    if (!animalResult.data) {
       return { animal: null, error: "Animal not found" as const };
     }
 
@@ -86,7 +105,10 @@ async function resolveAnimalId(params: {
       .returns<AnimalLookupRow[]>();
 
     if (chipResult.error) {
-      return { animal: null, error: "Animal lookup failed" as const };
+      return {
+        animal: null,
+        error: `Animal lookup by chip failed: ${chipResult.error.message}` as const,
+      };
     }
 
     const rows = chipResult.data ?? [];
@@ -133,8 +155,16 @@ export async function POST(req: NextRequest) {
 
     try {
       orgId = await getProfessionalOrgId();
-    } catch {
-      orgId = null;
+    } catch (error: unknown) {
+      return NextResponse.json(
+        {
+          error:
+            error instanceof Error
+              ? `getProfessionalOrgId failed: ${error.message}`
+              : "getProfessionalOrgId failed",
+        },
+        { status: 500, headers: { "Cache-Control": "no-store" } }
+      );
     }
 
     if (!orgId) {
@@ -171,7 +201,10 @@ export async function POST(req: NextRequest) {
     });
 
     if (resolved.error || !resolved.animal) {
-      return notFoundResponse();
+      return NextResponse.json(
+        { error: resolved.error || "Animal resolution failed" },
+        { status: 404, headers: { "Cache-Control": "no-store" } }
+      );
     }
 
     const animal = resolved.animal;
@@ -181,7 +214,7 @@ export async function POST(req: NextRequest) {
       return notFoundResponse();
     }
 
-    const existingGrant = await admin
+    const existingGrantResult = await admin
       .from("animal_access_grants")
       .select("id, status, revoked_at")
       .eq("animal_id", animalId)
@@ -189,16 +222,19 @@ export async function POST(req: NextRequest) {
       .eq("grantee_id", orgId)
       .in("status", ["active", "approved"])
       .is("revoked_at", null)
-      .maybeSingle();
+      .limit(10)
+      .returns<ExistingGrantRow[]>();
 
-    if (existingGrant.error) {
+    if (existingGrantResult.error) {
       return NextResponse.json(
-        { error: "Server error" },
+        { error: `Grant lookup failed: ${existingGrantResult.error.message}` },
         { status: 500, headers: { "Cache-Control": "no-store" } }
       );
     }
 
-    if (existingGrant.data) {
+    const existingGrants = existingGrantResult.data ?? [];
+
+    if (existingGrants.length > 0) {
       return NextResponse.json(
         {
           ok: true,
@@ -209,23 +245,26 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const existingRequest = await admin
+    const existingRequestResult = await admin
       .from("animal_access_requests")
       .select("id, status")
       .eq("animal_id", animalId)
       .eq("owner_id", animal.owner_id)
       .eq("org_id", orgId)
       .in("status", ["pending"])
-      .maybeSingle();
+      .limit(10)
+      .returns<ExistingRequestRow[]>();
 
-    if (existingRequest.error) {
+    if (existingRequestResult.error) {
       return NextResponse.json(
-        { error: "Server error" },
+        { error: `Existing request lookup failed: ${existingRequestResult.error.message}` },
         { status: 500, headers: { "Cache-Control": "no-store" } }
       );
     }
 
-    if (existingRequest.data) {
+    const existingRequests = existingRequestResult.data ?? [];
+
+    if (existingRequests.length > 0) {
       return NextResponse.json(
         {
           ok: true,
@@ -251,7 +290,12 @@ export async function POST(req: NextRequest) {
 
     if (insertResult.error || !insertResult.data) {
       return NextResponse.json(
-        { error: "Server error" },
+        {
+          error: insertResult.error?.message || "Insert request failed",
+          details: insertResult.error?.details || null,
+          hint: insertResult.error?.hint || null,
+          code: insertResult.error?.code || null,
+        },
         { status: 500, headers: { "Cache-Control": "no-store" } }
       );
     }
@@ -264,9 +308,11 @@ export async function POST(req: NextRequest) {
       },
       { headers: { "Cache-Control": "no-store" } }
     );
-  } catch {
+  } catch (error: unknown) {
     return NextResponse.json(
-      { error: "Server error" },
+      {
+        error: error instanceof Error ? error.message : "Server error",
+      },
       { status: 500, headers: { "Cache-Control": "no-store" } }
     );
   }
