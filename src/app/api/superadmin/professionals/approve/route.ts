@@ -75,6 +75,31 @@ export async function POST(req: Request) {
     );
   }
 
+  // ✅ STEP 1: SYNC PRIMA (rigida)
+  const syncResult = await syncProfessionalAuth(professionalId);
+
+  if (!syncResult.ok) {
+    await writeAdminAuditLog({
+      adminId: user.id,
+      action: "professional_approve_blocked_sync_failed",
+      targetType: "professional",
+      targetId: professionalId,
+      meta: {
+        redirectTo,
+        sync_ok: false,
+        sync_result: syncResult,
+      },
+    });
+
+    return NextResponse.json(
+      {
+        error: `Impossibile approvare: sincronizzazione fallita (${syncResult.error})`,
+      },
+      { status: 500 }
+    );
+  }
+
+  // ✅ STEP 2: SOLO ORA APPROVI
   const approvalTimestamp = new Date().toISOString();
 
   const { error: approveError } = await admin
@@ -90,29 +115,6 @@ export async function POST(req: Request) {
 
   if (approveError) {
     return NextResponse.json({ error: approveError.message }, { status: 500 });
-  }
-
-  const syncResult = await syncProfessionalAuth(professionalId);
-
-  if (!syncResult.ok) {
-    await writeAdminAuditLog({
-      adminId: user.id,
-      action: "professional_approved_sync_failed",
-      targetType: "professional",
-      targetId: professionalId,
-      meta: {
-        redirectTo,
-        sync_ok: false,
-        sync_result: syncResult,
-      },
-    });
-
-    return NextResponse.json(
-      {
-        error: `Professionista approvato, ma sincronizzazione completa fallita: ${syncResult.error}`,
-      },
-      { status: 500 }
-    );
   }
 
   const displayName =
