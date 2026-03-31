@@ -83,7 +83,7 @@ export async function GET(req: Request) {
     const { data, error } = await admin
       .from("clinic_imaging_upload_sessions")
       .select("*")
-      .eq("created_by_user_id", user.id)
+      .eq("created_by", user.id)
       .eq("animal_id", animalId)
       .in("status", ["initiated", "uploading"])
       .order("updated_at", { ascending: false })
