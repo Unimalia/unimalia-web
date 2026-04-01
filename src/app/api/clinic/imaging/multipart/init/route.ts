@@ -1,20 +1,76 @@
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase/server";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createClient } from "@supabase/supabase-js";
+import { supabaseAdmin, createServerSupabaseClient } from "@/lib/supabase/server";
 import { randomUUID } from "crypto";
+import { getBearerToken } from "@/lib/server/bearer";
+import { requireOwnerOrGrant } from "@/lib/server/requireOwnerOrGrant";
 
 const PART_SIZE = 5 * 1024 * 1024;
 
+type AuthenticatedUserResult = {
+  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>;
+  user: {
+    id: string;
+    email?: string | null;
+  };
+};
+
+async function resolveAuthenticatedUser(req: Request): Promise<AuthenticatedUserResult | null> {
+  const token = getBearerToken(req);
+
+  if (token) {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !supabaseAnon) {
+      throw new Error("Server misconfigured (Supabase env missing)");
+    }
+
+    const bearerSupabase = createClient(supabaseUrl, supabaseAnon, {
+      global: { headers: { Authorization: `Bearer ${token}` } },
+    });
+
+    const bearerUserResp = await bearerSupabase.auth.getUser(token);
+
+    if (!bearerUserResp.error && bearerUserResp.data?.user) {
+      return {
+        supabase: bearerSupabase as Awaited<ReturnType<typeof createServerSupabaseClient>>,
+        user: bearerUserResp.data.user,
+      };
+    }
+
+    console.error("[IMAGING MULTIPART INIT AUTH] bearer failed", {
+      hasToken: true,
+      error: bearerUserResp.error?.message ?? null,
+    });
+  }
+
+  const cookieSupabase = await createServerSupabaseClient();
+  const cookieUserResp = await cookieSupabase.auth.getUser();
+
+  if (!cookieUserResp.error && cookieUserResp.data?.user) {
+    return {
+      supabase: cookieSupabase,
+      user: cookieUserResp.data.user,
+    };
+  }
+
+  console.error("[IMAGING MULTIPART INIT AUTH] cookie failed", {
+    error: cookieUserResp.error?.message ?? null,
+  });
+
+  return null;
+}
+
 export async function POST(req: Request) {
-  const supabase = await createServerSupabaseClient();
-  const admin = supabaseAdmin();
+  const auth = await resolveAuthenticatedUser(req);
 
-  const { data: userData } = await supabase.auth.getUser();
-  const user = userData?.user;
-
-  if (!user) {
+  if (!auth) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const { supabase, user } = auth;
+  const admin = supabaseAdmin();
 
   const body = await req.json();
 
@@ -22,6 +78,12 @@ export async function POST(req: Request) {
 
   if (!fileName || !fileSize || !animalId) {
     return NextResponse.json({ error: "Missing params" }, { status: 400 });
+  }
+
+  const grant = await requireOwnerOrGrant(supabase, user.id, animalId, "upload");
+
+  if (!grant.ok) {
+    return NextResponse.json({ error: grant.reason }, { status: 403 });
   }
 
   const { data: existing, error: existingError } = await admin
@@ -60,6 +122,7 @@ export async function POST(req: Request) {
     .insert({
       animal_id: animalId,
       created_by: user.id,
+      clinic_id: grant.actor_org_id ?? null,
       file_name: fileName,
       file_size: fileSize,
       file_type: fileType,
