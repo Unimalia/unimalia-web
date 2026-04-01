@@ -89,6 +89,7 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [currentUserIsVet, setCurrentUserIsVet] = useState(false);
 
   const isPublicProfessionistiPage =
     pathname === "/professionisti" || pathname === "/professionisti/login";
@@ -137,6 +138,7 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      setCurrentUserIsVet(isVetUser(user));
       setAuthChecked(true);
     }
 
@@ -182,8 +184,8 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const items: Item[] = useMemo(
-    () => [
+  const items: Item[] = useMemo(() => {
+    const baseItems: Item[] = [
       {
         href: "/professionisti/dashboard",
         label: "Dashboard",
@@ -204,7 +206,10 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
         label: "Richieste accesso",
         description: "Invia richieste e monitora gli stati di autorizzazione.",
       },
-      {
+    ];
+
+    if (currentUserIsVet) {
+      baseItems.push({
         href: "/professionisti/richieste",
         label: (
           <span className="inline-flex items-center">
@@ -213,15 +218,17 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
           </span>
         ),
         description: "Consulti clinici ricevuti e inviati tra professionisti.",
-      },
-      {
-        href: "/professionisti/impostazioni",
-        label: "Impostazioni",
-        description: "Profilo, struttura e preferenze del portale.",
-      },
-    ],
-    []
-  );
+      });
+    }
+
+    baseItems.push({
+      href: "/professionisti/impostazioni",
+      label: "Impostazioni",
+      description: "Profilo, struttura e preferenze del portale.",
+    });
+
+    return baseItems;
+  }, [currentUserIsVet]);
 
   if (!authChecked) {
     return (
@@ -338,7 +345,7 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
               <div>
                 <div className="text-sm font-semibold">Portale Professionisti</div>
                 <div className="mt-1 text-xs text-zinc-500">
-                  Navigazione clinica dedicata
+                  Navigazione professionale dedicata
                 </div>
               </div>
 

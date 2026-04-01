@@ -41,6 +41,12 @@ type AnimalClinicEventRow = {
 
 type RequireOwnerOrGrantClient = Parameters<typeof requireOwnerOrGrant>[0];
 
+function isVetUser(user: { email?: string | null; app_metadata?: Record<string, unknown> | null; user_metadata?: Record<string, unknown> | null }) {
+  const email = String(user?.email || "").toLowerCase().trim();
+  if (email === "valentinotwister@hotmail.it") return true;
+  return Boolean(user?.app_metadata?.is_vet || user?.user_metadata?.is_vet);
+}
+
 function badRequest(message: string) {
   return NextResponse.json({ error: message }, { status: 400 });
 }
@@ -79,6 +85,10 @@ export async function POST(req: Request) {
 
   if (userErr || !user) {
     return unauthorized();
+  }
+
+  if (!isVetUser(user)) {
+    return forbidden("Cartella clinica riservata ai veterinari autorizzati.");
   }
 
   const body = (await req.json().catch(() => null)) as Body | null;

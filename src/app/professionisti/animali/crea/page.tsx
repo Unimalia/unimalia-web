@@ -3,12 +3,14 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
+const SPECIES_OPTIONS = ["Cane", "Gatto", "Coniglio", "Uccello", "Rettile", "Roditore", "Altro"];
+
 export default function CreaAnimalePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const [name, setName] = useState("");
-  const [species, setSpecies] = useState("");
+  const [species, setSpecies] = useState("Cane");
   const [microchip, setMicrochip] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -16,7 +18,6 @@ export default function CreaAnimalePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Prefill da ricerca
   useEffect(() => {
     const e = searchParams.get("email") || "";
     const p = searchParams.get("phone") || "";
@@ -96,12 +97,17 @@ export default function CreaAnimalePage() {
           onChange={(e) => setName(e.target.value)}
         />
 
-        <input
-          placeholder="Specie (es. cane, gatto) *"
-          className="w-full border rounded-lg px-3 py-2"
+        <select
+          className="w-full border rounded-lg px-3 py-2 bg-white"
           value={species}
           onChange={(e) => setSpecies(e.target.value)}
-        />
+        >
+          {SPECIES_OPTIONS.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
 
         <input
           placeholder="Microchip (opzionale)"

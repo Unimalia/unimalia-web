@@ -44,6 +44,9 @@ type Animal = {
   owner_name?: string | null;
   owner_email?: string | null;
   owner_phone?: string | null;
+
+  pending_owner_email?: string | null;
+  pending_owner_phone?: string | null;
 };
 
 type ClinicEventType =
@@ -171,6 +174,16 @@ export default function ProAnimalPage() {
   const barcodeValue = useMemo(() => {
     if (!animal) return "";
     return getBarcodeValue(animal);
+  }, [animal]);
+
+  const visibleOwnerEmail = useMemo(() => {
+    if (!animal) return null;
+    return animal.owner_email || animal.pending_owner_email || null;
+  }, [animal]);
+
+  const visibleOwnerPhone = useMemo(() => {
+    if (!animal) return null;
+    return animal.owner_phone || animal.pending_owner_phone || null;
   }, [animal]);
 
   async function loadAnimal() {
@@ -454,12 +467,12 @@ export default function ProAnimalPage() {
                 <div className="mt-3 space-y-2 text-sm">
                   <div>
                     <div className="text-xs text-zinc-500">Email</div>
-                    {animal?.owner_email ? (
+                    {visibleOwnerEmail ? (
                       <a
-                        href={`mailto:${animal.owner_email}`}
+                        href={`mailto:${visibleOwnerEmail}`}
                         className="font-medium break-all text-zinc-800 underline underline-offset-2 hover:text-zinc-950"
                       >
-                        {animal.owner_email}
+                        {visibleOwnerEmail}
                       </a>
                     ) : (
                       <div className="text-zinc-600">—</div>
@@ -468,12 +481,12 @@ export default function ProAnimalPage() {
 
                   <div>
                     <div className="text-xs text-zinc-500">Telefono</div>
-                    {animal?.owner_phone ? (
+                    {visibleOwnerPhone ? (
                       <a
-                        href={`tel:${normalizePhone(animal.owner_phone)}`}
+                        href={`tel:${normalizePhone(visibleOwnerPhone)}`}
                         className="font-medium text-zinc-800 underline underline-offset-2 hover:text-zinc-950"
                       >
-                        {animal.owner_phone}
+                        {visibleOwnerPhone}
                       </a>
                     ) : (
                       <div className="text-zinc-600">—</div>

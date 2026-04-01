@@ -41,6 +41,12 @@ type AnimalClinicEventRow = {
 
 type RequireOwnerOrGrantClient = Parameters<typeof requireOwnerOrGrant>[0];
 
+function isVetUser(user: { email?: string | null; app_metadata?: Record<string, unknown> | null; user_metadata?: Record<string, unknown> | null }) {
+  const email = String(user?.email || "").toLowerCase().trim();
+  if (email === "valentinotwister@hotmail.it") return true;
+  return Boolean(user?.app_metadata?.is_vet || user?.user_metadata?.is_vet);
+}
+
 function badRequest(message: string) {
   return NextResponse.json({ error: message }, { status: 400 });
 }
@@ -114,6 +120,10 @@ export async function POST(req: Request) {
 
   if (userErr || !user) {
     return unauthorized();
+  }
+
+  if (!isVetUser(user)) {
+    return forbidden("Cartella clinica riservata ai veterinari autorizzati.");
   }
 
   const body = (await req.json().catch(() => null)) as Body | null;
@@ -198,27 +208,24 @@ export async function POST(req: Request) {
     return forbidden(grant.reason);
   }
 
-  const source = String(current.source || "");
   const createdByUserId = current.created_by_user_id ?? null;
 
-  if (source !== "owner") {
-    if (!createdByUserId || createdByUserId !== user.id) {
-      const reason = "Non autorizzato: puoi modificare solo eventi owner o i tuoi eventi.";
+  if (!createdByUserId || createdByUserId !== user.id) {
+    const reason = "Non autorizzato: puoi modificare solo i tuoi eventi clinici.";
 
-      await safeWriteAudit(supabase, {
-        req,
-        actor_user_id: user.id,
-        actor_org_id: grant.actor_org_id,
-        action: "event.update",
-        target_type: "event",
-        target_id: id,
-        animal_id: animalId,
-        result: "denied",
-        reason,
-      });
+    await safeWriteAudit(supabase, {
+      req,
+      actor_user_id: user.id,
+      actor_org_id: grant.actor_org_id,
+      action: "event.update",
+      target_type: "event",
+      target_id: id,
+      animal_id: animalId,
+      result: "denied",
+      reason,
+    });
 
-      return forbidden(reason);
-    }
+    return forbidden(reason);
   }
 
   const therapyStartDate = parseDateOnly(body.therapyStartDate);
@@ -297,7 +304,7 @@ export async function POST(req: Request) {
     meta: nextMeta,
   };
 
-  if (current.verified_at || source === "professional" || source === "veterinarian") {
+  if (current.verified_at || current.source === "professional" || current.source === "veterinarian") {
     updateData.verified_at = null;
     updateData.verified_by_user_id = null;
     updateData.verified_by_org_id = null;

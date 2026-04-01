@@ -84,6 +84,12 @@ type AnimalReminderRow = {
 
 type RequireOwnerOrGrantClient = Parameters<typeof requireOwnerOrGrant>[0];
 
+function isVetUser(user: { email?: string | null; app_metadata?: Record<string, unknown> | null; user_metadata?: Record<string, unknown> | null }) {
+  const email = String(user?.email || "").toLowerCase().trim();
+  if (email === "valentinotwister@hotmail.it") return true;
+  return Boolean(user?.app_metadata?.is_vet || user?.user_metadata?.is_vet);
+}
+
 function badRequest(message: string) {
   return NextResponse.json({ error: message }, { status: 400 });
 }
@@ -181,6 +187,22 @@ export async function POST(req: Request) {
     return unauthorized();
   }
 
+  if (!isVetUser(user)) {
+    await safeWriteAudit(supabase, {
+      req,
+      actor_user_id: user.id,
+      actor_org_id: null,
+      action: "event.create",
+      target_type: "animal",
+      target_id: "unknown",
+      animal_id: null,
+      result: "denied",
+      reason: "Cartella clinica riservata ai veterinari.",
+    });
+
+    return forbidden("Cartella clinica riservata ai veterinari autorizzati.");
+  }
+
   const body = (await req.json().catch(() => null)) as Body | null;
 
   if (!body) {
@@ -231,10 +253,7 @@ export async function POST(req: Request) {
       ? body.visibility
       : "professionals";
 
-  let source: "owner" | "professional" | "veterinarian" =
-    body.source === "owner" || body.source === "professional" || body.source === "veterinarian"
-      ? body.source
-      : "professional";
+  const source: "veterinarian" = "veterinarian";
 
   if (!type) {
     return badRequest("type obbligatorio");
@@ -319,10 +338,6 @@ export async function POST(req: Request) {
       null;
   }
 
-  if (source === "veterinarian" && !grant.actor_org_id) {
-    source = "professional";
-  }
-
   const meta: ClinicEventMeta = {};
   const incomingMeta = sanitizeMeta(body.meta);
 
@@ -347,8 +362,7 @@ export async function POST(req: Request) {
 
   try {
     const nowIso = new Date().toISOString();
-    const verifiedByOrgId =
-      source === "veterinarian" && grant.actor_org_id ? grant.actor_org_id : null;
+    const verifiedByOrgId = grant.actor_org_id ? grant.actor_org_id : null;
 
     const { data, error } = await admin
       .from("animal_clinic_events")
@@ -361,11 +375,11 @@ export async function POST(req: Request) {
         source,
         created_by_user_id: user.id,
         event_date: dateStr,
-        verified_at: source === "veterinarian" ? nowIso : null,
-        verified_by_user_id: source === "veterinarian" ? user.id : null,
+        verified_at: nowIso,
+        verified_by_user_id: user.id,
         verified_by_org_id: verifiedByOrgId,
-        verified_by_member_id: source === "veterinarian" ? user.id : null,
-        verified_by_label: source === "veterinarian" ? (user.email || "Veterinario") : null,
+        verified_by_member_id: user.id,
+        verified_by_label: user.email || "Veterinario",
         meta,
         priority: priority || null,
         status: "active",
@@ -425,7 +439,7 @@ export async function POST(req: Request) {
     }
 
     try {
-      if (animalRow?.owner_id && source !== "owner") {
+      if (animalRow?.owner_id) {
         await createClinicalEventOwnerNotification({
           ownerId: animalRow.owner_id,
           animalId: animalRow.id,
@@ -439,7 +453,7 @@ export async function POST(req: Request) {
     }
 
     try {
-      if (source !== "owner" && !hasAttachments) {
+      if (!hasAttachments) {
         await sendOwnerAnimalUpdateEmail({
           animalId,
           eventTitle: title || "Nuovo evento clinico",
