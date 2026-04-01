@@ -18,6 +18,26 @@ type ImagingFileRow = {
   path: string;
 };
 
+type ProfessionalProfileRoleRow = {
+  role: string | null;
+};
+
+async function getProfessionalRole(userId: string) {
+  const admin = supabaseAdmin();
+
+  const result = await admin
+    .from("professional_profiles")
+    .select("role")
+    .eq("user_id", userId)
+    .maybeSingle<ProfessionalProfileRoleRow>();
+
+  if (result.error) {
+    throw result.error;
+  }
+
+  return String(result.data?.role || "").trim() || null;
+}
+
 export async function POST(req: Request) {
   const token = getBearerToken(req);
   if (!token) {
@@ -38,6 +58,15 @@ export async function POST(req: Request) {
 
   if (userErr || !user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const professionalRole = await getProfessionalRole(user.id);
+
+  if (professionalRole && professionalRole !== "veterinarian") {
+    return NextResponse.json(
+      { error: "Accesso clinico riservato ai veterinari." },
+      { status: 403 }
+    );
   }
 
   try {

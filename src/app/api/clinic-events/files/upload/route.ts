@@ -62,6 +62,26 @@ type UploadedFileResponseRow = {
 
 type RequireOwnerOrGrantClient = Parameters<typeof requireOwnerOrGrant>[0];
 
+type ProfessionalProfileRoleRow = {
+  role: string | null;
+};
+
+async function getProfessionalRole(userId: string) {
+  const admin = supabaseAdmin();
+
+  const result = await admin
+    .from("professional_profiles")
+    .select("role")
+    .eq("user_id", userId)
+    .maybeSingle<ProfessionalProfileRoleRow>();
+
+  if (result.error) {
+    throw result.error;
+  }
+
+  return String(result.data?.role || "").trim() || null;
+}
+
 function isDicomFile(fileName?: string | null, mimeType?: string | null) {
   const lowerName = String(fileName || "").toLowerCase().trim();
   const lowerMime = String(mimeType || "").toLowerCase().trim();
@@ -145,6 +165,15 @@ export async function POST(req: Request) {
 
   if (userErr || !user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const professionalRole = await getProfessionalRole(user.id);
+
+  if (professionalRole && professionalRole !== "veterinarian") {
+    return NextResponse.json(
+      { error: "Accesso clinico riservato ai veterinari." },
+      { status: 403 }
+    );
   }
 
   const form = await req.formData();

@@ -43,6 +43,26 @@ type ShareBody = {
   fileId?: string;
 };
 
+type ProfessionalProfileRoleRow = {
+  role: string | null;
+};
+
+async function getProfessionalRole(userId: string) {
+  const admin = supabaseAdmin();
+
+  const result = await admin
+    .from("professional_profiles")
+    .select("role")
+    .eq("user_id", userId)
+    .maybeSingle<ProfessionalProfileRoleRow>();
+
+  if (result.error) {
+    throw result.error;
+  }
+
+  return String(result.data?.role || "").trim() || null;
+}
+
 async function resolveAuthenticatedUser(req: Request): Promise<AuthenticatedUserResult | null> {
   const token = getBearerToken(req);
 
@@ -109,6 +129,15 @@ export async function POST(req: Request) {
 
   const { supabase, user } = auth;
   const admin = supabaseAdmin();
+
+  const professionalRole = await getProfessionalRole(user.id);
+
+  if (professionalRole && professionalRole !== "veterinarian") {
+    return NextResponse.json(
+      { error: "Accesso clinico riservato ai veterinari." },
+      { status: 403 }
+    );
+  }
 
   try {
     const body = (await req.json().catch(() => ({}))) as ShareBody;

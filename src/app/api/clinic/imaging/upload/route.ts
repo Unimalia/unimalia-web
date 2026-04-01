@@ -43,6 +43,26 @@ type OrthancSeriesResource = {
   MainDicomTags?: OrthancMainDicomTags | null;
 };
 
+type ProfessionalProfileRoleRow = {
+  role: string | null;
+};
+
+async function getProfessionalRole(userId: string) {
+  const admin = supabaseAdmin();
+
+  const result = await admin
+    .from("professional_profiles")
+    .select("role")
+    .eq("user_id", userId)
+    .maybeSingle<ProfessionalProfileRoleRow>();
+
+  if (result.error) {
+    throw result.error;
+  }
+
+  return String(result.data?.role || "").trim() || null;
+}
+
 async function resolveAuthenticatedUser(req: Request): Promise<AuthenticatedUserResult | null> {
   const token = getBearerToken(req);
 
@@ -301,6 +321,15 @@ export async function POST(req: Request) {
   const { supabase, user } = auth;
   const admin = supabaseAdmin();
 
+  const professionalRole = await getProfessionalRole(user.id);
+
+  if (professionalRole && professionalRole !== "veterinarian") {
+    return NextResponse.json(
+      { error: "Accesso clinico riservato ai veterinari." },
+      { status: 403 }
+    );
+  }
+
   try {
     const formData = await req.formData();
 
@@ -500,7 +529,7 @@ export async function POST(req: Request) {
           visibility,
           meta: eventMeta,
           created_by_user_id: user.id,
-          source: "professional",
+          source: "veterinarian",
           status: "active",
         });
 
