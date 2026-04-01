@@ -64,6 +64,7 @@ export default function CreaAnimalePage() {
           species,
           microchip,
           owner_email: email,
+          owner_phone: phone,
         }),
       });
 

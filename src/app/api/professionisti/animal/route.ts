@@ -18,6 +18,9 @@ type AnimalPayload = {
   owner_email?: string | null;
   ownerEmail?: string | null;
   pending_owner_email?: string | null;
+  owner_phone?: string | null;
+  ownerPhone?: string | null;
+  pending_owner_phone?: string | null;
 };
 
 type ProfessionalProfileRow = {
@@ -44,6 +47,7 @@ type AnimalRow = {
   photo_url: string | null;
   owner_id: string | null;
   pending_owner_email: string | null;
+  pending_owner_phone?: string | null;
   created_by_org_id: string | null;
   origin_org_id: string | null;
   microchip_verified: boolean | null;
@@ -104,6 +108,17 @@ function normalizeEmail(value?: string | null) {
   if (!email) return null;
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return null;
   return email;
+}
+
+function normalizePhone(value?: string | null) {
+  let digits = String(value ?? "").replace(/\D+/g, "").trim();
+  if (!digits) return null;
+
+  if (digits.startsWith("39") && digits.length > 10) {
+    digits = digits.slice(2);
+  }
+
+  return digits || null;
 }
 
 function normalizeComparableText(value?: string | null) {
@@ -218,7 +233,7 @@ async function getProfessionalRefs(userId: string) {
       refs.add(organizationId);
     }
   } catch {
-    // fallback silenzioso: proseguiamo con gli altri riferimenti disponibili
+    // fallback silenzioso
   }
 
   const profileResult = await admin
@@ -636,6 +651,9 @@ export async function POST(req: NextRequest) {
     const ownerEmail = normalizeEmail(
       body.owner_email ?? body.ownerEmail ?? body.pending_owner_email ?? null
     );
+    const ownerPhone = normalizePhone(
+      body.owner_phone ?? body.ownerPhone ?? body.pending_owner_phone ?? null
+    );
 
     if (!name) {
       return NextResponse.json({ error: "Nome obbligatorio" }, { status: 400 });
@@ -690,6 +708,7 @@ export async function POST(req: NextRequest) {
       if (!matchedAnimal.photo_url && body.photo_url) patch.photo_url = body.photo_url;
       if (!matchedAnimal.chip_number && chipNumber) patch.chip_number = chipNumber;
       if (!matchedAnimal.pending_owner_email && ownerEmail) patch.pending_owner_email = ownerEmail;
+      if (!matchedAnimal.pending_owner_phone && ownerPhone) patch.pending_owner_phone = ownerPhone;
       if (!matchedAnimal.origin_org_id) patch.origin_org_id = organizationId;
       if (matchedAnimal.microchip_verified == null) patch.microchip_verified = false;
 
@@ -711,6 +730,24 @@ export async function POST(req: NextRequest) {
         matchedAnimal = upd.data;
       }
 
+      try {
+        await ensureOrganizationGrant({
+          animalId: matchedAnimal.id,
+          organizationId,
+          grantedByUserId: user.id,
+        });
+      } catch (grantError: unknown) {
+        return NextResponse.json(
+          {
+            error:
+              grantError instanceof Error
+                ? `Animale trovato ma errore grant automatico: ${grantError.message}`
+                : "Animale trovato ma errore grant automatico",
+          },
+          { status: 500 }
+        );
+      }
+
       return NextResponse.json(
         {
           ok: true,
@@ -719,6 +756,7 @@ export async function POST(req: NextRequest) {
           animal: {
             ...matchedAnimal,
             microchip: matchedAnimal.chip_number ?? null,
+            has_active_grant: true,
           },
         },
         { status: 200 }
@@ -738,10 +776,11 @@ export async function POST(req: NextRequest) {
       photo_url: body.photo_url || null,
       owner_id: null,
       pending_owner_email: ownerEmail,
+      pending_owner_phone: ownerPhone,
       created_by_role: "professional",
       created_by_org_id: organizationId,
       origin_org_id: organizationId,
-      owner_claim_status: ownerEmail ? "pending" : "none",
+      owner_claim_status: ownerEmail || ownerPhone ? "pending" : "none",
       microchip_verified: false,
     };
 
