@@ -110,6 +110,103 @@ function normalizeComparableText(value?: string | null) {
   return String(value ?? "").trim().toLowerCase();
 }
 
+async function ensureProfileRow(userId: string) {
+  const admin = supabaseAdmin();
+
+  const existing = await admin
+    .from("profiles")
+    .select("id")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (existing.error) {
+    throw existing.error;
+  }
+
+  if (existing.data?.id) {
+    return;
+  }
+
+  const upsertResult = await admin
+    .from("profiles")
+    .upsert({ id: userId }, { onConflict: "id" });
+
+  if (upsertResult.error) {
+    throw upsertResult.error;
+  }
+}
+
+async function ensureOrganizationGrant(params: {
+  animalId: string;
+  organizationId: string;
+  grantedByUserId: string;
+}) {
+  const admin = supabaseAdmin();
+
+  await ensureProfileRow(params.grantedByUserId);
+
+  const existingGrant = await admin
+    .from("animal_access_grants")
+    .select("id, status, revoked_at")
+    .eq("animal_id", params.animalId)
+    .eq("grantee_type", "organization")
+    .eq("grantee_id", params.organizationId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (existingGrant.error) {
+    throw existingGrant.error;
+  }
+
+  if (existingGrant.data?.id) {
+    const needsReactivate =
+      existingGrant.data.status !== "active" || !!existingGrant.data.revoked_at;
+
+    if (!needsReactivate) {
+      return;
+    }
+
+    const reactivateResult = await admin
+      .from("animal_access_grants")
+      .update({
+        granted_by_user_id: params.grantedByUserId,
+        status: "active",
+        revoked_at: null,
+        valid_to: null,
+        scope_read: true,
+        scope_write: true,
+        scope_upload: true,
+      })
+      .eq("id", existingGrant.data.id);
+
+    if (reactivateResult.error) {
+      throw reactivateResult.error;
+    }
+
+    return;
+  }
+
+  const insertResult = await admin
+    .from("animal_access_grants")
+    .insert({
+      animal_id: params.animalId,
+      granted_by_user_id: params.grantedByUserId,
+      grantee_type: "organization",
+      grantee_id: params.organizationId,
+      status: "active",
+      valid_to: null,
+      revoked_at: null,
+      scope_read: true,
+      scope_write: true,
+      scope_upload: true,
+    });
+
+  if (insertResult.error) {
+    throw insertResult.error;
+  }
+}
+
 async function getProfessionalRefs(userId: string) {
   const admin = supabaseAdmin();
   const refs = new Set<string>();
@@ -644,15 +741,37 @@ export async function POST(req: NextRequest) {
       created_by_role: "professional",
       created_by_org_id: organizationId,
       origin_org_id: organizationId,
-      owner_claim_status: "pending",
+      owner_claim_status: ownerEmail ? "pending" : "none",
       microchip_verified: false,
     };
 
-    const created = await admin.from("animals").insert(insertPayload).select("*").single<AnimalRow>();
+    const created = await admin
+      .from("animals")
+      .insert(insertPayload)
+      .select("*")
+      .single<AnimalRow>();
 
     if (created.error || !created.data) {
       return NextResponse.json(
         { error: created.error?.message || "Errore creazione animale" },
+        { status: 500 }
+      );
+    }
+
+    try {
+      await ensureOrganizationGrant({
+        animalId: created.data.id,
+        organizationId,
+        grantedByUserId: user.id,
+      });
+    } catch (grantError: unknown) {
+      return NextResponse.json(
+        {
+          error:
+            grantError instanceof Error
+              ? `Animale creato ma errore grant automatico: ${grantError.message}`
+              : "Animale creato ma errore grant automatico",
+        },
         { status: 500 }
       );
     }
@@ -664,6 +783,7 @@ export async function POST(req: NextRequest) {
         animal: {
           ...created.data,
           microchip: created.data.chip_number ?? null,
+          has_active_grant: true,
         },
       },
       { status: 201 }
