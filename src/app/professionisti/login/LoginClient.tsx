@@ -15,6 +15,10 @@ type ProfessionalStateRow = {
   approved: boolean | null;
   is_archived: boolean | null;
   is_deleted: boolean | null;
+  is_vet: boolean | null;
+  verification_status?: string | null;
+  verification_level?: string | null;
+  public_visible?: boolean | null;
 };
 
 function safeNextPath(next: string | null | undefined) {
@@ -46,6 +50,47 @@ function getPasswordIssues(password: string) {
 function getErrorMessage(error: unknown) {
   if (error instanceof Error) return error.message;
   return "Errore inatteso.";
+}
+
+function isProfessionalEnabled(
+  user:
+    | {
+        app_metadata?: Record<string, unknown> | null;
+        user_metadata?: Record<string, unknown> | null;
+      }
+    | null
+    | undefined
+) {
+  if (!user) return false;
+
+  return Boolean(
+    user.app_metadata?.is_professional === true ||
+      user.user_metadata?.is_professional === true
+  );
+}
+
+function isVetUser(
+  user:
+    | {
+        email?: string | null;
+        app_metadata?: Record<string, unknown> | null;
+        user_metadata?: Record<string, unknown> | null;
+      }
+    | null
+    | undefined
+) {
+  if (!user) return false;
+
+  const email = String(user.email || "").toLowerCase().trim();
+  if (email === "valentinotwister@hotmail.it") return true;
+
+  return Boolean(
+    user.app_metadata?.is_vet === true ||
+      user.user_metadata?.is_vet === true ||
+      user.app_metadata?.professional_type === "veterinarian" ||
+      user.user_metadata?.professional_type === "veterinarian" ||
+      user.user_metadata?.is_veterinarian === true
+  );
 }
 
 export default function LoginClient() {
@@ -83,83 +128,88 @@ export default function LoginClient() {
     );
   }, [email, phone, password, confirmPassword, mode]);
 
-  const handleProfessionalPostLoginRedirect = useCallback(async (userId: string) => {
-    const { data: profileData, error: profileErr } = await supabase
-      .from("profiles")
-      .select("is_archived, is_deleted")
-      .eq("id", userId)
-      .maybeSingle();
+  const handleProfessionalPostLoginRedirect = useCallback(
+    async (userId: string) => {
+      const { data: profileData, error: profileErr } = await supabase
+        .from("profiles")
+        .select("is_archived, is_deleted")
+        .eq("id", userId)
+        .maybeSingle();
 
-    if (profileErr) {
-      setErr("Errore nel recupero del profilo.");
-      return;
-    }
+      if (profileErr) {
+        setErr("Errore nel recupero del profilo.");
+        return;
+      }
 
-    const profile = (profileData ?? null) as ProfileStateRow | null;
+      const profile = (profileData ?? null) as ProfileStateRow | null;
 
-    if (profile?.is_deleted) {
-      await supabase.auth.signOut();
-      setErr("Questo account è stato eliminato definitivamente.");
-      return;
-    }
+      if (profile?.is_deleted) {
+        await supabase.auth.signOut();
+        setErr("Questo account è stato eliminato definitivamente.");
+        return;
+      }
 
-    if (profile?.is_archived) {
-      await supabase.auth.signOut();
-      setErr("Questo account è attualmente disattivato.");
-      return;
-    }
+      if (profile?.is_archived) {
+        await supabase.auth.signOut();
+        setErr("Questo account è attualmente disattivato.");
+        return;
+      }
 
-    const { data: proData, error: proErr } = await supabase
-      .from("professionals")
-      .select("id, approved, is_archived, is_deleted")
-      .eq("owner_id", userId)
-      .order("created_at", { ascending: false })
-      .limit(1);
+      const { data: proData, error: proErr } = await supabase
+        .from("professionals")
+        .select(
+          "id, approved, is_archived, is_deleted, is_vet, verification_status, verification_level, public_visible"
+        )
+        .eq("owner_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(1);
 
-    if (proErr) {
-      setErr("Errore nel recupero del profilo professionista.");
-      return;
-    }
+      if (proErr) {
+        setErr("Errore nel recupero del profilo professionista.");
+        return;
+      }
 
-    const professional = (proData?.[0] ?? null) as ProfessionalStateRow | null;
+      const professional = (proData?.[0] ?? null) as ProfessionalStateRow | null;
 
-    if (!professional) {
-      router.replace("/professionisti/nuovo");
-      return;
-    }
+      if (!professional) {
+        router.replace("/professionisti/nuovo");
+        return;
+      }
 
-    if (professional.is_deleted) {
-      await supabase.auth.signOut();
-      setErr("Il profilo professionista collegato a questo account è stato eliminato.");
-      return;
-    }
+      if (professional.is_deleted) {
+        await supabase.auth.signOut();
+        setErr("Il profilo professionista collegato a questo account è stato eliminato.");
+        return;
+      }
 
-    if (professional.is_archived) {
-      await supabase.auth.signOut();
-      setErr("Il profilo professionista collegato a questo account è disattivato.");
-      return;
-    }
+      if (professional.is_archived) {
+        await supabase.auth.signOut();
+        setErr("Il profilo professionista collegato a questo account è disattivato.");
+        return;
+      }
 
-    if (professional.approved !== true) {
-      router.replace("/professionisti/nuovo/modifica?pending=1");
-      return;
-    }
+      const { data } = await supabase.auth.getUser();
+      const user = data.user;
 
-    const { data } = await supabase.auth.getUser();
-    const user = data.user;
+      if (!isProfessionalEnabled(user)) {
+        await supabase.auth.signOut();
+        setErr("Questo account non è abilitato al Portale Professionisti.");
+        return;
+      }
 
-    const isProfessional = !!user && user.app_metadata?.is_professional === true;
+      const userIsVet = isVetUser(user);
+      const professionalIsVet = professional.is_vet === true;
+      const mustWaitSuperadminApproval = userIsVet || professionalIsVet;
 
-    if (!isProfessional) {
-      await supabase.auth.signOut();
-      setErr(
-        "Il profilo professionista risulta presente ma non ancora abilitato al Portale Professionisti. Contatta il supporto se il problema persiste."
-      );
-      return;
-    }
+      if (mustWaitSuperadminApproval && professional.approved !== true) {
+        router.replace("/professionisti/nuovo/modifica?pending=1");
+        return;
+      }
 
-    router.replace(next);
-  }, [next, router]);
+      router.replace(next);
+    },
+    [next, router]
+  );
 
   useEffect(() => {
     let alive = true;
@@ -248,7 +298,9 @@ export default function LoginClient() {
             m.includes("already exists") ||
             m.includes("user already registered")
           ) {
-            setErr("Questa email risulta già registrata. Usa “Accedi” oppure “Password dimenticata”.");
+            setErr(
+              "Questa email risulta già registrata. Usa “Accedi” oppure “Password dimenticata”."
+            );
             setMode("login");
             setLoading(false);
             return;
@@ -262,8 +314,8 @@ export default function LoginClient() {
         setLoading(false);
         setMsg(
           professionalType === "veterinarian"
-            ? "Registrazione veterinario completata ✅ Controlla l’email per confermare l’account. Dopo la conferma potrai creare la scheda professionista e il profilo resterà in attesa di verifica."
-            : "Registrazione professionista completata ✅ Controlla l’email per confermare l’account. Dopo la conferma potrai creare la scheda professionista e il profilo resterà in attesa di verifica."
+            ? "Registrazione veterinario completata ✅ Controlla l’email per confermare l’account. Dopo la conferma potrai creare la scheda professionista, che resterà in attesa di revisione superadmin."
+            : "Registrazione professionista completata ✅ Controlla l’email per confermare l’account. Dopo la conferma potrai creare la scheda professionista."
         );
         setMode("login");
         return;
@@ -278,7 +330,9 @@ export default function LoginClient() {
         const m = (error.message || "").toLowerCase();
 
         if (m.includes("confirm") || m.includes("confirmed") || m.includes("not confirmed")) {
-          setErr("Email non confermata. Controlla la tua casella di posta e clicca il link di conferma.");
+          setErr(
+            "Email non confermata. Controlla la tua casella di posta e clicca il link di conferma."
+          );
           setLoading(false);
           return;
         }
@@ -368,7 +422,8 @@ export default function LoginClient() {
             </h1>
 
             <p className="mt-5 max-w-3xl text-lg leading-relaxed text-zinc-600">
-              Piattaforma in cloud per professionisti del settore animale, progettata per gestire animali, dati e collaborazioni in modo semplice e sicuro.
+              Piattaforma in cloud per professionisti del settore animale, progettata per gestire
+              animali, dati e collaborazioni in modo semplice e sicuro.
             </p>
 
             <div className="mt-8 rounded-3xl border border-zinc-200 bg-zinc-50 p-6">
@@ -400,21 +455,24 @@ export default function LoginClient() {
               <div className="rounded-2xl border border-zinc-200 bg-white p-5">
                 <p className="text-sm font-semibold text-zinc-900">Veterinari</p>
                 <p className="mt-2 text-sm leading-relaxed text-zinc-600">
-                  Cartella sanitaria digitale, referti, consulti tra colleghi e gestione più ordinata dei pazienti.
+                  Cartella sanitaria digitale, referti, consulti tra colleghi e gestione più
+                  ordinata dei pazienti.
                 </p>
               </div>
 
               <div className="rounded-2xl border border-zinc-200 bg-white p-5">
                 <p className="text-sm font-semibold text-zinc-900">Altri professionisti</p>
                 <p className="mt-2 text-sm leading-relaxed text-zinc-600">
-                  Uno spazio in evoluzione per servizi e attività del settore animale, con strumenti dedicati in crescita.
+                  Uno spazio in evoluzione per servizi e attività del settore animale, con
+                  strumenti dedicati in crescita.
                 </p>
               </div>
 
               <div className="rounded-2xl border border-zinc-200 bg-white p-5 sm:col-span-2 xl:col-span-1">
                 <p className="text-sm font-semibold text-zinc-900">In evoluzione</p>
                 <p className="mt-2 text-sm leading-relaxed text-zinc-600">
-                  La piattaforma è progettata per integrare nel tempo funzioni sempre più complete, incluse future prenotazioni online.
+                  La piattaforma è progettata per integrare nel tempo funzioni sempre più
+                  complete, incluse future prenotazioni online.
                 </p>
               </div>
             </div>
@@ -458,7 +516,9 @@ export default function LoginClient() {
             <form onSubmit={onSubmit} className="mt-6 space-y-4" autoComplete="on">
               {mode === "signup" && (
                 <div>
-                  <label className="text-xs font-semibold text-zinc-700">Tipo di registrazione</label>
+                  <label className="text-xs font-semibold text-zinc-700">
+                    Tipo di registrazione
+                  </label>
                   <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
                     <button
                       type="button"
@@ -553,7 +613,10 @@ export default function LoginClient() {
               {mode === "signup" && (
                 <>
                   <div>
-                    <label htmlFor="pro-confirm-password" className="text-xs font-semibold text-zinc-700">
+                    <label
+                      htmlFor="pro-confirm-password"
+                      className="text-xs font-semibold text-zinc-700"
+                    >
                       Conferma password
                     </label>
                     <input
