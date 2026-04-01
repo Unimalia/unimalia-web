@@ -46,7 +46,6 @@ type OrganizationRow = {
   name: string | null;
   display_name: string | null;
   legal_name: string | null;
-  ragione_sociale: string | null;
 };
 
 type ProfessionalRow = {
@@ -159,7 +158,7 @@ export async function GET(_req: Request, ctx: RouteContext) {
     if (orgIds.length > 0) {
       const { data: orgs, error: orgErr } = await admin
         .from("organizations")
-        .select("id, name, display_name, legal_name, ragione_sociale")
+        .select("id, name, display_name, legal_name")
         .in("id", orgIds);
 
       if (orgErr) {
@@ -175,7 +174,6 @@ export async function GET(_req: Request, ctx: RouteContext) {
           o.display_name ??
             o.name ??
             o.legal_name ??
-            o.ragione_sociale ??
             o.id
         );
       }
