@@ -84,7 +84,11 @@ type AnimalReminderRow = {
 
 type RequireOwnerOrGrantClient = Parameters<typeof requireOwnerOrGrant>[0];
 
-function isVetUser(user: { email?: string | null; app_metadata?: Record<string, unknown> | null; user_metadata?: Record<string, unknown> | null }) {
+function isVetUser(user: {
+  email?: string | null;
+  app_metadata?: Record<string, unknown> | null;
+  user_metadata?: Record<string, unknown> | null;
+}) {
   const email = String(user?.email || "").toLowerCase().trim();
   if (email === "valentinotwister@hotmail.it") return true;
   return Boolean(user?.app_metadata?.is_vet || user?.user_metadata?.is_vet);
@@ -187,22 +191,6 @@ export async function POST(req: Request) {
     return unauthorized();
   }
 
-  if (!isVetUser(user)) {
-    await safeWriteAudit(supabase, {
-      req,
-      actor_user_id: user.id,
-      actor_org_id: null,
-      action: "event.create",
-      target_type: "animal",
-      target_id: "unknown",
-      animal_id: null,
-      result: "denied",
-      reason: "Cartella clinica riservata ai veterinari.",
-    });
-
-    return forbidden("Cartella clinica riservata ai veterinari autorizzati.");
-  }
-
   const body = (await req.json().catch(() => null)) as Body | null;
 
   if (!body) {
@@ -217,6 +205,22 @@ export async function POST(req: Request) {
 
   if (!isUuid(animalId)) {
     return badRequest("animalId non valido");
+  }
+
+  if (!isVetUser(user)) {
+    await safeWriteAudit(supabase, {
+      req,
+      actor_user_id: user.id,
+      actor_org_id: null,
+      action: "event.create",
+      target_type: "animal",
+      target_id: animalId,
+      animal_id: animalId,
+      result: "denied",
+      reason: "Cartella clinica riservata ai veterinari.",
+    });
+
+    return forbidden("Cartella clinica riservata ai veterinari autorizzati.");
   }
 
   const grant = await requireOwnerOrGrant(

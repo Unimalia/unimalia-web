@@ -6,7 +6,9 @@ import { getBearerToken } from "@/lib/server/bearer";
 import { isUuid } from "@/lib/server/validators";
 
 type Body = {
-  id: string;
+  id?: string;
+  ids?: string[];
+  eventIds?: string[];
 };
 
 type AnimalClinicEventVerifyRow = {
@@ -41,7 +43,11 @@ type AnimalClinicEventRow = {
 
 type RequireOwnerOrGrantClient = Parameters<typeof requireOwnerOrGrant>[0];
 
-function isVetUser(user: { email?: string | null; app_metadata?: Record<string, unknown> | null; user_metadata?: Record<string, unknown> | null }) {
+function isVetUser(user: {
+  email?: string | null;
+  app_metadata?: Record<string, unknown> | null;
+  user_metadata?: Record<string, unknown> | null;
+}) {
   const email = String(user?.email || "").toLowerCase().trim();
   if (email === "valentinotwister@hotmail.it") return true;
   return Boolean(user?.app_metadata?.is_vet || user?.user_metadata?.is_vet);
@@ -57,6 +63,22 @@ function unauthorized(message = "Non autorizzato") {
 
 function forbidden(message: string) {
   return NextResponse.json({ error: message }, { status: 403 });
+}
+
+function normalizeIds(body: Body | null): string[] {
+  if (!body) return [];
+
+  const single = String(body.id || "").trim();
+  const fromIds = Array.isArray(body.ids) ? body.ids : [];
+  const fromEventIds = Array.isArray(body.eventIds) ? body.eventIds : [];
+
+  return Array.from(
+    new Set(
+      [single, ...fromIds, ...fromEventIds]
+        .map((value) => String(value || "").trim())
+        .filter(Boolean)
+    )
+  );
 }
 
 export async function POST(req: Request) {
@@ -92,82 +114,110 @@ export async function POST(req: Request) {
   }
 
   const body = (await req.json().catch(() => null)) as Body | null;
+  const ids = normalizeIds(body);
 
-  if (!body) {
-    return badRequest("Body JSON non valido");
-  }
-
-  const id = String(body.id || "").trim();
-
-  if (!id) {
+  if (ids.length === 0) {
     return badRequest("id obbligatorio");
   }
 
-  if (!isUuid(id)) {
+  if (ids.some((id) => !isUuid(id))) {
     return badRequest("id non valido");
   }
 
-  const { data: current, error: readErr } = await supabase
-    .from("animal_clinic_events")
-    .select("id, animal_id, status, verified_at, source")
-    .eq("id", id)
-    .single<AnimalClinicEventVerifyRow>();
+  const results: AnimalClinicEventRow[] = [];
 
-  if (readErr || !current) {
-    return NextResponse.json({ error: "Evento non trovato" }, { status: 404 });
-  }
+  for (const id of ids) {
+    const { data: current, error: readErr } = await supabase
+      .from("animal_clinic_events")
+      .select("id, animal_id, status, verified_at, source")
+      .eq("id", id)
+      .single<AnimalClinicEventVerifyRow>();
 
-  const animalId = String(current.animal_id || "");
+    if (readErr || !current) {
+      return NextResponse.json({ error: "Evento non trovato" }, { status: 404 });
+    }
 
-  if (!animalId || !isUuid(animalId)) {
-    return badRequest("animal_id evento non valido");
-  }
+    const animalId = String(current.animal_id || "");
 
-  const grant = await requireOwnerOrGrant(
-    supabase as RequireOwnerOrGrantClient,
-    user.id,
-    animalId,
-    "write"
-  );
+    if (!animalId || !isUuid(animalId)) {
+      return badRequest("animal_id evento non valido");
+    }
 
-  if (!grant.ok) {
-    await safeWriteAudit(supabase, {
-      req,
-      actor_user_id: user.id,
-      action: "event.verify",
-      target_type: "event",
-      target_id: id,
-      animal_id: animalId,
-      result: "denied",
-      reason: grant.reason,
-    });
+    const grant = await requireOwnerOrGrant(
+      supabase as RequireOwnerOrGrantClient,
+      user.id,
+      animalId,
+      "write"
+    );
 
-    return forbidden(grant.reason);
-  }
+    if (!grant.ok) {
+      await safeWriteAudit(supabase, {
+        req,
+        actor_user_id: user.id,
+        action: "event.verify",
+        target_type: "event",
+        target_id: id,
+        animal_id: animalId,
+        result: "denied",
+        reason: grant.reason,
+      });
 
-  if (current.status === "void") {
-    return badRequest("Evento annullato non verificabile");
-  }
+      return forbidden(grant.reason);
+    }
 
-  const nowIso = new Date().toISOString();
-  const verifierLabel = "Veterinario";
+    if (current.status === "void") {
+      return badRequest("Evento annullato non verificabile");
+    }
 
-  const { data: updated, error } = await supabase
-    .from("animal_clinic_events")
-    .update({
-      verified_at: nowIso,
-      verified_by_user_id: user.id,
-      verified_by_org_id: grant.actor_org_id ?? null,
-      verified_by_member_id: user.id,
-      verified_by_label: verifierLabel,
-    })
-    .eq("id", id)
-    .select(
-      "id, animal_id, event_date, type, title, description, visibility, source, verified_at, verified_by_user_id, verified_by_org_id, verified_by_member_id, verified_by_label, created_by_user_id, created_at, updated_at, status, meta, priority"
-    )
-    .single<AnimalClinicEventRow>();
+    const nowIso = new Date().toISOString();
+    const verifierLabel = "Veterinario";
 
-  if (error || !updated) {
+    const { data: updated, error } = await supabase
+      .from("animal_clinic_events")
+      .update({
+        verified_at: nowIso,
+        verified_by_user_id: user.id,
+        verified_by_org_id: grant.actor_org_id ?? null,
+        verified_by_member_id: user.id,
+        verified_by_label: verifierLabel,
+      })
+      .eq("id", id)
+      .select(
+        "id, animal_id, event_date, type, title, description, visibility, source, verified_at, verified_by_user_id, verified_by_org_id, verified_by_member_id, verified_by_label, created_by_user_id, created_at, updated_at, status, meta, priority"
+      )
+      .single<AnimalClinicEventRow>();
+
+    if (error || !updated) {
+      await safeWriteAudit(supabase, {
+        req,
+        actor_user_id: user.id,
+        actor_org_id: grant.actor_org_id,
+        action: "event.verify",
+        target_type: "event",
+        target_id: id,
+        animal_id: animalId,
+        result: "error",
+        reason: error?.message || "verify failed",
+      });
+
+      return badRequest(error?.message || "Verifica evento non riuscita");
+    }
+
+    try {
+      await supabase.from("animal_clinic_event_audit").insert({
+        event_id: id,
+        animal_id: animalId,
+        actor_user_id: user.id,
+        actor_org_id: grant.actor_org_id,
+        actor_member_id: user.id,
+        action: "verify",
+        previous_data: current,
+        next_data: updated,
+      });
+    } catch (auditInsertError) {
+      console.error("[CLINIC_EVENT_AUDIT_INSERT_ERROR]", auditInsertError);
+    }
+
     await safeWriteAudit(supabase, {
       req,
       actor_user_id: user.id,
@@ -176,38 +226,15 @@ export async function POST(req: Request) {
       target_type: "event",
       target_id: id,
       animal_id: animalId,
-      result: "error",
-      reason: error?.message || "verify failed",
+      result: "success",
     });
 
-    return badRequest(error?.message || "Verifica evento non riuscita");
+    results.push(updated);
   }
 
-  try {
-    await supabase.from("animal_clinic_event_audit").insert({
-      event_id: id,
-      animal_id: animalId,
-      actor_user_id: user.id,
-      actor_org_id: grant.actor_org_id,
-      actor_member_id: user.id,
-      action: "verify",
-      previous_data: current,
-      next_data: updated,
-    });
-  } catch (auditInsertError) {
-    console.error("[CLINIC_EVENT_AUDIT_INSERT_ERROR]", auditInsertError);
+  if (results.length === 1) {
+    return NextResponse.json({ ok: true, event: results[0] }, { status: 200 });
   }
 
-  await safeWriteAudit(supabase, {
-    req,
-    actor_user_id: user.id,
-    actor_org_id: grant.actor_org_id,
-    action: "event.verify",
-    target_type: "event",
-    target_id: id,
-    animal_id: animalId,
-    result: "success",
-  });
-
-  return NextResponse.json({ ok: true, event: updated }, { status: 200 });
+  return NextResponse.json({ ok: true, events: results }, { status: 200 });
 }

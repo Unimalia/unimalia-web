@@ -41,7 +41,11 @@ type AnimalClinicEventRow = {
 
 type RequireOwnerOrGrantClient = Parameters<typeof requireOwnerOrGrant>[0];
 
-function isVetUser(user: { email?: string | null; app_metadata?: Record<string, unknown> | null; user_metadata?: Record<string, unknown> | null }) {
+function isVetUser(user: {
+  email?: string | null;
+  app_metadata?: Record<string, unknown> | null;
+  user_metadata?: Record<string, unknown> | null;
+}) {
   const email = String(user?.email || "").toLowerCase().trim();
   if (email === "valentinotwister@hotmail.it") return true;
   return Boolean(user?.app_metadata?.is_vet || user?.user_metadata?.is_vet);
