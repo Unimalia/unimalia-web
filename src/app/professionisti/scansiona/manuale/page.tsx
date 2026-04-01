@@ -54,11 +54,11 @@ export default function ManualScanHandlerPage() {
           </div>
         ) : (
           <div className="mt-3 rounded-xl border bg-zinc-50 p-3 text-sm">
-            <div className="font-medium">Cosa vuoi fare?</div>
+            <div className="font-medium">Nuovo flusso</div>
             <div className="opacity-80">
-              Il microchip non è stato trovato nel database. Puoi creare una
-              nuova identità oppure verificare se appartiene a un animale
-              esistente da aprire o per cui richiedere accesso.
+              Prima verifichiamo se esiste già una scheda coerente. Se il microchip non basta
+              o non troviamo nulla, potrai continuare con email e telefono del proprietario
+              prima di creare una nuova scheda.
             </div>
           </div>
         )}
@@ -73,13 +73,11 @@ export default function ManualScanHandlerPage() {
           disabled={!chipLooksValid}
           onClick={() =>
             router.push(
-              `/professionisti/scansiona/manuale/nuovo?chip=${encodeURIComponent(
-                chip
-              )}`
+              `/professionisti/scansiona/manuale/nuovo?chip=${encodeURIComponent(chip)}`
             )
           }
         >
-          ➕ Crea nuova identità con questo microchip
+          ➕ Continua con ricerca o nuova scheda
         </button>
 
         <button
@@ -88,9 +86,7 @@ export default function ManualScanHandlerPage() {
           disabled={!chipLooksValid}
           onClick={() =>
             router.push(
-              `/professionisti/scansiona/manuale/associa?chip=${encodeURIComponent(
-                chip
-              )}`
+              `/professionisti/scansiona/manuale/associa?chip=${encodeURIComponent(chip)}`
             )
           }
         >
@@ -98,8 +94,8 @@ export default function ManualScanHandlerPage() {
         </button>
 
         <div className="text-xs opacity-70">
-          Se l’animale esiste già, da lì potrai aprire la scheda oppure avviare
-          la richiesta di accesso.
+          Se l’animale esiste già, da lì potrai aprire la scheda oppure proseguire nel flusso
+          corretto in base allo stato owner e agli accessi disponibili.
         </div>
       </div>
     </div>

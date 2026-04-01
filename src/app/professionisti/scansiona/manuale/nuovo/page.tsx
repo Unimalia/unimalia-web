@@ -13,98 +13,96 @@ export default function NuovoAnimaleProfessionistaPage() {
 
   const chipFromQuery = digitsOnly(params.get("chip") ?? "");
 
-  const [name, setName] = React.useState("");
-  const [species, setSpecies] = React.useState("Cane");
-  const [breed, setBreed] = React.useState("");
-  const [color, setColor] = React.useState("");
-  const [size, setSize] = React.useState("");
-  const [sex, setSex] = React.useState("");
-  const [sterilized, setSterilized] = React.useState<"" | "yes" | "no">("");
-  const [birthDate, setBirthDate] = React.useState("");
-  const [chipNumber, setChipNumber] = React.useState(chipFromQuery);
+  const [email, setEmail] = React.useState("");
+  const [phone, setPhone] = React.useState("");
+  const [microchip, setMicrochip] = React.useState(chipFromQuery);
 
-  const [saving, setSaving] = React.useState(false);
+  const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [result, setResult] = React.useState<any>(null);
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSearch(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setResult(null);
 
-    if (name.trim().length < 2) {
-      setError("Inserisci un nome animale valido.");
+    if (!email.trim() && !phone.trim() && !microchip.trim()) {
+      setError("Inserisci almeno email, telefono o microchip.");
       return;
     }
 
-    if (species.trim().length < 2) {
-      setError("Seleziona una specie.");
-      return;
-    }
-
-    const normalizedChip = digitsOnly(chipNumber);
+    const normalizedChip = digitsOnly(microchip);
 
     if (normalizedChip && normalizedChip.length !== 15) {
       setError("Microchip non valido: servono 15 cifre.");
       return;
     }
 
-    setSaving(true);
+    setLoading(true);
 
     try {
-      const res = await fetch("/api/professionisti/animal", {
+      const res = await fetch("/api/professionisti/animal/search", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          name: name.trim(),
-          species: species.trim(),
-          breed: breed.trim() || null,
-          color: color.trim() || null,
-          size: size.trim() || null,
-          sex: sex || null,
-          sterilized:
-            sterilized === "yes" ? true : sterilized === "no" ? false : null,
-          birth_date: birthDate || null,
+          email: email.trim(),
+          phone: phone.trim(),
           microchip: normalizedChip || null,
         }),
       });
 
       const json: {
         error?: string;
-        details?: string;
-        hint?: string;
-        animal?: { id?: string };
+        found?: boolean;
+        strong_match?: boolean;
+        animal?: {
+          id: string;
+          name: string | null;
+          species: string | null;
+          microchip: string | null;
+          owner_claim_status?: string | null;
+        };
+        candidates?: Array<{
+          id: string;
+          name: string | null;
+          species: string | null;
+          microchip: string | null;
+          owner_claim_status?: string | null;
+        }>;
       } = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        const message =
-          json.error ||
-          json.details ||
-          json.hint ||
-          `Errore creazione animale (HTTP ${res.status})`;
-
-        setError(message);
-        setSaving(false);
+        setError(json.error || `Errore ricerca animale (HTTP ${res.status})`);
+        setLoading(false);
         return;
       }
 
-      const animalId = json.animal?.id;
-      if (!animalId) {
-        setError("Animale creato ma ID non ricevuto.");
-        setSaving(false);
-        return;
-      }
-
-      router.replace(`/professionisti/animali/${animalId}`);
-    } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : "Errore inatteso.");
+      setResult(json);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Errore inatteso.");
     } finally {
-      setSaving(false);
+      setLoading(false);
     }
   }
 
+  function goToAnimal(id: string) {
+    router.push(`/professionisti/animali/${id}`);
+  }
+
+  function goToCreateNew() {
+    const query = new URLSearchParams();
+
+    if (email.trim()) query.set("email", email.trim());
+    if (phone.trim()) query.set("phone", phone.trim());
+    if (microchip.trim()) query.set("microchip", digitsOnly(microchip));
+
+    router.push(`/professionisti/animali/crea?${query.toString()}`);
+  }
+
   return (
-    <main className="max-w-3xl mx-auto p-4">
+    <main className="max-w-3xl mx-auto p-4 space-y-6">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">Nuovo animale da professionista</h1>
         <button
@@ -116,109 +114,39 @@ export default function NuovoAnimaleProfessionistaPage() {
         </button>
       </div>
 
-      <p className="mt-3 text-sm text-zinc-700">
-        Crea un animale anche senza proprietario collegato. Il proprietario si aggancerà in un
-        secondo momento.
+      <p className="text-sm text-zinc-700">
+        Prima verifichiamo se esiste già una scheda coerente. Se non troviamo nulla,
+        potrai creare una nuova scheda animale.
       </p>
 
-      <form onSubmit={handleSubmit} className="mt-6 rounded-2xl border bg-white p-5 space-y-4">
+      <form onSubmit={handleSearch} className="rounded-2xl border bg-white p-5 space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
-          <div className="sm:col-span-2">
-            <label className="block text-sm font-medium">Nome animale *</label>
+          <div>
+            <label className="block text-sm font-medium">Email proprietario</label>
             <input
               className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Es. Zara"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="es. proprietario@email.it"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium">Specie *</label>
-            <select
-              className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 outline-none focus:border-zinc-900"
-              value={species}
-              onChange={(e) => setSpecies(e.target.value)}
-            >
-              <option value="Cane">Cane</option>
-              <option value="Gatto">Gatto</option>
-              <option value="Coniglio">Coniglio</option>
-              <option value="Altro">Altro</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium">Razza</label>
+            <label className="block text-sm font-medium">Telefono proprietario</label>
             <input
               className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
-              value={breed}
-              onChange={(e) => setBreed(e.target.value)}
-              placeholder="Es. Labrador"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium">Colore</label>
-            <input
-              className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
-              value={color}
-              onChange={(e) => setColor(e.target.value)}
-              placeholder="Es. Nero"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium">Taglia</label>
-            <input
-              className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
-              value={size}
-              onChange={(e) => setSize(e.target.value)}
-              placeholder="Es. Media"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium">Sesso</label>
-            <select
-              className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 outline-none focus:border-zinc-900"
-              value={sex}
-              onChange={(e) => setSex(e.target.value)}
-            >
-              <option value="">Seleziona</option>
-              <option value="M">Maschio</option>
-              <option value="F">Femmina</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium">Sterilizzato</label>
-            <select
-              className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 outline-none focus:border-zinc-900"
-              value={sterilized}
-              onChange={(e) => setSterilized(e.target.value as "" | "yes" | "no")}
-            >
-              <option value="">Non specificato</option>
-              <option value="yes">Sì</option>
-              <option value="no">No</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium">Data di nascita</label>
-            <input
-              type="date"
-              className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
-              value={birthDate}
-              onChange={(e) => setBirthDate(e.target.value)}
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="es. +39 333 1234567"
             />
           </div>
 
           <div className="sm:col-span-2">
-            <label className="block text-sm font-medium">Microchip</label>
+            <label className="block text-sm font-medium">Microchip (opzionale)</label>
             <input
               className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
-              value={chipNumber}
-              onChange={(e) => setChipNumber(digitsOnly(e.target.value))}
+              value={microchip}
+              onChange={(e) => setMicrochip(digitsOnly(e.target.value))}
               placeholder="15 cifre"
               inputMode="numeric"
             />
@@ -237,10 +165,10 @@ export default function NuovoAnimaleProfessionistaPage() {
                 Scansiona microchip
               </button>
 
-              {chipNumber ? (
+              {microchip ? (
                 <button
                   type="button"
-                  onClick={() => setChipNumber("")}
+                  onClick={() => setMicrochip("")}
                   className="rounded-xl border px-3 py-2 text-sm"
                 >
                   Pulisci microchip
@@ -249,17 +177,15 @@ export default function NuovoAnimaleProfessionistaPage() {
             </div>
 
             <p className="mt-2 text-xs text-zinc-500">
-              Il microchip è facoltativo, ma se presente puoi inserirlo manualmente oppure
-              scansionarlo.
+              Il microchip è facoltativo in questa fase. Se presente, viene usato come match forte.
             </p>
           </div>
         </div>
 
         <div className="rounded-xl border bg-zinc-50 p-4 text-sm text-zinc-700">
-          Alla creazione:
-          <br />- l’animale nasce in modalità professionista
-          <br />- il proprietario non è ancora collegato
-          <br />- la cartella può iniziare subito
+          Il sistema controlla prima se esiste già una scheda compatibile.
+          <br />- se trova una scheda coerente, puoi usarla subito
+          <br />- se non trova nulla, puoi creare una nuova scheda
         </div>
 
         {error ? (
@@ -270,12 +196,107 @@ export default function NuovoAnimaleProfessionistaPage() {
 
         <button
           type="submit"
-          disabled={saving}
+          disabled={loading}
           className="inline-flex rounded-lg bg-black px-5 py-3 text-sm font-semibold text-white hover:bg-zinc-800 disabled:opacity-60"
         >
-          {saving ? "Creazione..." : "Crea animale"}
+          {loading ? "Ricerca..." : "Cerca schede esistenti"}
         </button>
       </form>
+
+      {result ? (
+        <section className="rounded-2xl border bg-white p-5 space-y-4">
+          {result.found === false ? (
+            <div className="space-y-3">
+              <div className="rounded-xl border bg-zinc-50 p-4 text-sm text-zinc-700">
+                Nessuna scheda trovata. Puoi creare una nuova scheda animale.
+              </div>
+
+              <button
+                type="button"
+                onClick={goToCreateNew}
+                className="rounded-lg bg-black px-5 py-3 text-sm font-semibold text-white hover:bg-zinc-800"
+              >
+                Crea nuova scheda
+              </button>
+            </div>
+          ) : null}
+
+          {result.strong_match && result.animal ? (
+            <div className="space-y-3">
+              <div className="rounded-xl border bg-zinc-50 p-4 text-sm text-zinc-700">
+                <div className="font-medium text-zinc-900">Animale trovato tramite microchip</div>
+                <div className="mt-2">
+                  {result.animal.name ?? "Animale"} · {result.animal.species ?? "Specie non indicata"}
+                </div>
+                <div className="mt-1 text-xs text-zinc-500">
+                  Microchip: {result.animal.microchip ?? "—"}
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => goToAnimal(result.animal.id)}
+                  className="rounded-lg bg-black px-5 py-3 text-sm font-semibold text-white hover:bg-zinc-800"
+                >
+                  Apri scheda
+                </button>
+
+                <button
+                  type="button"
+                  onClick={goToCreateNew}
+                  className="rounded-lg border px-5 py-3 text-sm font-semibold"
+                >
+                  Crea nuova comunque
+                </button>
+              </div>
+            </div>
+          ) : null}
+
+          {Array.isArray(result.candidates) && result.candidates.length > 0 ? (
+            <div className="space-y-3">
+              <div className="rounded-xl border bg-zinc-50 p-4 text-sm text-zinc-700">
+                Abbiamo trovato una o più schede compatibili. Scegli quella corretta oppure crea
+                una nuova scheda.
+              </div>
+
+              <div className="space-y-3">
+                {result.candidates.map((animal: any) => (
+                  <div key={animal.id} className="rounded-xl border p-4">
+                    <div className="font-medium text-zinc-900">
+                      {animal.name ?? "Animale"} · {animal.species ?? "Specie non indicata"}
+                    </div>
+
+                    <div className="mt-1 text-sm text-zinc-600">
+                      Microchip: {animal.microchip ?? "—"}
+                    </div>
+
+                    <div className="mt-1 text-xs text-zinc-500">
+                      Stato owner: {animal.owner_claim_status ?? "none"}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => goToAnimal(animal.id)}
+                      className="mt-3 rounded-lg border px-4 py-2 text-sm font-semibold"
+                    >
+                      Usa questa scheda
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                type="button"
+                onClick={goToCreateNew}
+                className="rounded-lg bg-black px-5 py-3 text-sm font-semibold text-white hover:bg-zinc-800"
+              >
+                Crea nuova scheda
+              </button>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
     </main>
   );
 }
