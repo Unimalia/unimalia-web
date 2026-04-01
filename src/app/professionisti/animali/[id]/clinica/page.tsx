@@ -176,7 +176,7 @@ function typeIcon(t: ClinicEventType | string) {
       return "📌";
     case "follow_up":
       return "🔁";
-      case "imaging":
+    case "imaging":
       return "🖼️";
     default:
       return "📄";
@@ -372,6 +372,7 @@ export default function ClinicaPage() {
   const router = useRouter();
   const id = params?.id;
 
+  const [accessChecked, setAccessChecked] = useState(false);
   const [isVet, setIsVet] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [animal, setAnimal] = useState<AnimalSummary | null>(null);
@@ -461,6 +462,7 @@ export default function ClinicaPage() {
     void (async () => {
       const { data: authData } = await supabase.auth.getUser();
       const user = authData.user;
+
       if (!user) {
         router.replace(
           "/professionisti/login?next=" +
@@ -468,8 +470,17 @@ export default function ClinicaPage() {
         );
         return;
       }
-      setIsVet(isVetUser(user));
+
+      const userIsVet = isVetUser(user);
+
+      if (!userIsVet) {
+        router.replace(`/professionisti/animali/${id}/storia`);
+        return;
+      }
+
+      setIsVet(true);
       setCurrentUserId(user.id);
+      setAccessChecked(true);
     })();
   }, [id, router]);
 
@@ -722,14 +733,14 @@ export default function ClinicaPage() {
   }
 
   useEffect(() => {
-    if (!id) return;
+    if (!accessChecked || !id) return;
     void (async () => {
       await loadAnimal();
       await loadClinicEvents();
       await loadFilesCount();
       await loadUploadDrafts();
     })();
-  }, [id, loadAnimal, loadClinicEvents, loadFilesCount, loadUploadDrafts]);
+  }, [accessChecked, id, loadAnimal, loadClinicEvents, loadFilesCount, loadUploadDrafts]);
 
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
@@ -1433,6 +1444,39 @@ export default function ClinicaPage() {
     setShareExpiresAtByFileId({});
     setShareCopiedByFileId({});
     setShareErrorByFileId({});
+  }
+
+  if (!accessChecked) {
+    return (
+      <div className="space-y-6">
+        <div className="text-sm">
+          <span className="font-semibold text-zinc-500">Verifica accesso clinica…</span>
+        </div>
+
+        <section className="overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm">
+          <div className="border-b border-zinc-200 bg-gradient-to-r from-zinc-50 to-white px-5 py-5 md:px-6">
+            <div className="h-5 w-44 rounded bg-zinc-200/70" />
+            <div className="mt-3 h-8 w-72 rounded bg-zinc-200/60" />
+            <div className="mt-2 h-4 w-full max-w-3xl rounded bg-zinc-200/50" />
+          </div>
+
+          <div className="grid gap-4 px-5 py-5 md:grid-cols-3 md:px-6">
+            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+              <div className="h-3 w-20 rounded bg-zinc-200/70" />
+              <div className="mt-2 h-4 w-28 rounded bg-zinc-200/60" />
+            </div>
+            <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+              <div className="h-3 w-28 rounded bg-zinc-200/70" />
+              <div className="mt-2 h-4 w-36 rounded bg-zinc-200/60" />
+            </div>
+            <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+              <div className="h-3 w-24 rounded bg-zinc-200/70" />
+              <div className="mt-2 h-4 w-40 rounded bg-zinc-200/60" />
+            </div>
+          </div>
+        </section>
+      </div>
+    );
   }
 
   return (
