@@ -28,6 +28,55 @@ type ExistingGrantRow = {
   revoked_at: string | null;
 };
 
+type AuthUserMetadata = {
+  full_name?: unknown;
+  city?: unknown;
+  fiscal_code?: unknown;
+  phone?: unknown;
+};
+
+function normalizeString(value: unknown) {
+  return typeof value === "string" ? value.trim() || null : null;
+}
+
+function normalizeFiscalCode(value: unknown) {
+  const raw = typeof value === "string" ? value.replace(/\s+/g, "").trim().toUpperCase() : "";
+  return raw || null;
+}
+
+function normalizePhone(value: unknown) {
+  const raw = typeof value === "string" ? value.replace(/\s+/g, "").trim() : "";
+  return raw || null;
+}
+
+async function ensureProfileRow(userId: string) {
+  const admin = supabaseAdmin();
+
+  const authUserResult = await admin.auth.admin.getUserById(userId);
+  const authUser = authUserResult.data.user;
+
+  if (!authUser) {
+    throw new Error("Utente auth non trovato");
+  }
+
+  const metadata = (authUser.user_metadata ?? {}) as AuthUserMetadata;
+
+  const { error } = await admin.from("profiles").upsert(
+    {
+      id: userId,
+      full_name: normalizeString(metadata.full_name),
+      city: normalizeString(metadata.city),
+      fiscal_code: normalizeFiscalCode(metadata.fiscal_code),
+      phone: normalizePhone(metadata.phone),
+    },
+    { onConflict: "id" }
+  );
+
+  if (error) {
+    throw new Error(error.message || "Errore creazione profilo");
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const supabase = await createClient();
@@ -120,6 +169,8 @@ export async function POST(req: NextRequest) {
         { status: 403 }
       );
     }
+
+    await ensureProfileRow(user.id);
 
     const nowIso = new Date().toISOString();
 
