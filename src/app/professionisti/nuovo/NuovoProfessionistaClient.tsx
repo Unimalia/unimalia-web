@@ -17,6 +17,7 @@ const MACRO = [
 ] as const;
 
 type ActivityMode = "business" | "hobby";
+type ProfessionalType = "generic" | "veterinarian";
 
 function isEmailValid(email: string) {
   const e = email.trim();
@@ -51,6 +52,28 @@ function normalizeSdi(value: string) {
   return value.trim().toUpperCase();
 }
 
+function getProfessionalTypeFromUser(user: {
+  app_metadata?: Record<string, unknown> | null;
+  user_metadata?: Record<string, unknown> | null;
+}) {
+  const raw =
+    user?.app_metadata?.professional_type ?? user?.user_metadata?.professional_type ?? "generic";
+
+  return raw === "veterinarian" ? "veterinarian" : "generic";
+}
+
+function getAllowedMacroByProfessionalType(professionalType: ProfessionalType) {
+  if (professionalType === "veterinarian") {
+    return MACRO;
+  }
+
+  return MACRO.filter((item) => item.key !== "veterinari");
+}
+
+function getDefaultCategoryByProfessionalType(professionalType: ProfessionalType) {
+  return professionalType === "veterinarian" ? "veterinari" : "altro";
+}
+
 export default function NuovoProfessionistaClient() {
   const router = useRouter();
 
@@ -59,7 +82,7 @@ export default function NuovoProfessionistaClient() {
   const [error, setError] = useState<string | null>(null);
 
   const [displayName, setDisplayName] = useState("");
-  const [category, setCategory] = useState("veterinari");
+  const [category, setCategory] = useState("altro");
   const [activityMode, setActivityMode] = useState<ActivityMode>("business");
 
   const [firstName, setFirstName] = useState("");
@@ -87,6 +110,12 @@ export default function NuovoProfessionistaClient() {
   const [authorizationIssuer, setAuthorizationIssuer] = useState("");
 
   const [userId, setUserId] = useState<string | null>(null);
+  const [professionalType, setProfessionalType] = useState<ProfessionalType>("generic");
+
+  const allowedMacro = useMemo(
+    () => getAllowedMacroByProfessionalType(professionalType),
+    [professionalType]
+  );
 
   const isVeterinary = useMemo(() => category === "veterinari", [category]);
   const canBeHobby = useMemo(() => category === "pet_sitter" || category === "altro", [category]);
@@ -121,7 +150,11 @@ export default function NuovoProfessionistaClient() {
 
       if (!alive) return;
 
+      const resolvedProfessionalType = getProfessionalTypeFromUser(user);
+
       setUserId(user.id);
+      setProfessionalType(resolvedProfessionalType);
+      setCategory(getDefaultCategoryByProfessionalType(resolvedProfessionalType));
 
       const { data: existing } = await supabase
         .from("professionals")
@@ -138,16 +171,33 @@ export default function NuovoProfessionistaClient() {
     }
 
     init();
+
     return () => {
       alive = false;
     };
   }, [router]);
+
+  useEffect(() => {
+    if (!allowedMacro.some((item) => item.key === category)) {
+      setCategory(getDefaultCategoryByProfessionalType(professionalType));
+    }
+  }, [allowedMacro, category, professionalType]);
 
   async function save() {
     setError(null);
 
     if (!userId) {
       setError("Devi essere loggato per creare una scheda.");
+      return;
+    }
+
+    if (professionalType === "generic" && category === "veterinari") {
+      setError("Un professionista non veterinario non può creare una scheda veterinaria.");
+      return;
+    }
+
+    if (professionalType === "veterinarian" && category !== "veterinari") {
+      setError("Un account veterinario deve usare la categoria Veterinari.");
       return;
     }
 
@@ -299,7 +349,9 @@ export default function NuovoProfessionistaClient() {
         authorization_issuer: isVeterinary ? authorizationIssuer.trim() : null,
       });
 
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
 
       router.replace("/professionisti/skill");
     } catch {
@@ -341,7 +393,8 @@ export default function NuovoProfessionistaClient() {
       <div className="mt-6">
         <h1 className="text-3xl font-bold tracking-tight">Crea scheda professionista</h1>
         <p className="mt-3 text-sm text-zinc-700">
-          Compila la scheda. Dopo salverai le skill. La pubblicazione pubblica avverrà solo dopo verifica.
+          Compila la scheda. Dopo salverai le skill. La pubblicazione pubblica avverrà solo dopo
+          verifica.
         </p>
       </div>
 
@@ -364,7 +417,7 @@ export default function NuovoProfessionistaClient() {
               value={category}
               onChange={(e) => setCategory(e.target.value)}
             >
-              {MACRO.map((m) => (
+              {allowedMacro.map((m) => (
                 <option key={m.key} value={m.key}>
                   {m.label}
                 </option>
@@ -372,7 +425,7 @@ export default function NuovoProfessionistaClient() {
             </select>
           </div>
 
-          {canBeHobby && (
+          {canBeHobby ? (
             <div>
               <label className="block text-sm font-medium">Tipo profilo *</label>
               <select
@@ -384,7 +437,7 @@ export default function NuovoProfessionistaClient() {
                 <option value="hobby">Privato / hobbistico</option>
               </select>
             </div>
-          )}
+          ) : null}
 
           <div>
             <label className="block text-sm font-medium">Nome *</label>
@@ -417,10 +470,12 @@ export default function NuovoProfessionistaClient() {
             />
           </div>
 
-          {isBusiness && (
+          {isBusiness ? (
             <>
               <div>
-                <label className="block text-sm font-medium">Nome attività / ragione sociale *</label>
+                <label className="block text-sm font-medium">
+                  Nome attività / ragione sociale *
+                </label>
                 <input
                   className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
                   value={businessName}
@@ -471,7 +526,7 @@ export default function NuovoProfessionistaClient() {
                 />
               </div>
             </>
-          )}
+          ) : null}
 
           <div>
             <label className="block text-sm font-medium">Città *</label>
@@ -534,10 +589,12 @@ export default function NuovoProfessionistaClient() {
             />
           </div>
 
-          {isVeterinary && (
+          {isVeterinary ? (
             <>
               <div>
-                <label className="block text-sm font-medium">Tipologia struttura veterinaria *</label>
+                <label className="block text-sm font-medium">
+                  Tipologia struttura veterinaria *
+                </label>
                 <select
                   className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 outline-none focus:border-zinc-900"
                   value={vetStructureType}
@@ -583,7 +640,9 @@ export default function NuovoProfessionistaClient() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium">Estremi autorizzazione sanitaria *</label>
+                <label className="block text-sm font-medium">
+                  Estremi autorizzazione sanitaria *
+                </label>
                 <input
                   className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
                   value={authorizationCode}
@@ -602,7 +661,7 @@ export default function NuovoProfessionistaClient() {
                 />
               </div>
             </>
-          )}
+          ) : null}
 
           <div className="sm:col-span-2">
             <label className="block text-sm font-medium">Descrizione (opzionale)</label>
@@ -616,7 +675,7 @@ export default function NuovoProfessionistaClient() {
           </div>
         </div>
 
-        {error && <p className="mt-4 text-sm text-red-700">{error}</p>}
+        {error ? <p className="mt-4 text-sm text-red-700">{error}</p> : null}
 
         <button
           type="button"

@@ -19,6 +19,8 @@ type Professional = {
   description: string | null;
 };
 
+type ProfessionalType = "generic" | "veterinarian";
+
 const MACRO = [
   { key: "veterinari", label: "Veterinari" },
   { key: "toelettatura", label: "Toelettatura" },
@@ -61,6 +63,24 @@ function prefsStorageKey(userId: string) {
   return `unimalia:pro-settings:${userId}`;
 }
 
+function getProfessionalTypeFromUser(user: {
+  app_metadata?: Record<string, unknown> | null;
+  user_metadata?: Record<string, unknown> | null;
+}) {
+  const raw =
+    user?.app_metadata?.professional_type ?? user?.user_metadata?.professional_type ?? "generic";
+
+  return raw === "veterinarian" ? "veterinarian" : "generic";
+}
+
+function getAllowedMacroByProfessionalType(professionalType: ProfessionalType) {
+  if (professionalType === "veterinarian") {
+    return MACRO;
+  }
+
+  return MACRO.filter((item) => item.key !== "veterinari");
+}
+
 export default function ProfessionistiImpostazioniPage() {
   const router = useRouter();
 
@@ -74,11 +94,12 @@ export default function ProfessionistiImpostazioniPage() {
 
   const [userId, setUserId] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string>("");
+  const [professionalType, setProfessionalType] = useState<ProfessionalType>("generic");
 
   const [pro, setPro] = useState<Professional | null>(null);
 
   const [displayName, setDisplayName] = useState("");
-  const [category, setCategory] = useState("veterinari");
+  const [category, setCategory] = useState("altro");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [website, setWebsite] = useState("");
@@ -88,6 +109,11 @@ export default function ProfessionistiImpostazioniPage() {
   const [description, setDescription] = useState("");
 
   const [prefs, setPrefs] = useState<LocalPrefs>(DEFAULT_PREFS);
+
+  const allowedMacro = useMemo(
+    () => getAllowedMacroByProfessionalType(professionalType),
+    [professionalType]
+  );
 
   useEffect(() => {
     let alive = true;
@@ -107,12 +133,17 @@ export default function ProfessionistiImpostazioniPage() {
 
       if (!alive) return;
 
+      const resolvedProfessionalType = getProfessionalTypeFromUser(user);
+
       setUserId(user.id);
       setUserEmail(user.email ?? "");
+      setProfessionalType(resolvedProfessionalType);
 
       const { data: proData, error: proErr } = await supabase
         .from("professionals")
-        .select("id,owner_id,display_name,category,city,province,address,phone,email,website,description")
+        .select(
+          "id,owner_id,display_name,category,city,province,address,phone,email,website,description"
+        )
         .eq("owner_id", user.id)
         .order("created_at", { ascending: false })
         .limit(1);
@@ -126,10 +157,14 @@ export default function ProfessionistiImpostazioniPage() {
       }
 
       const p = proData[0] as Professional;
-      setPro(p);
 
+      setPro(p);
       setDisplayName(p.display_name ?? "");
-      setCategory(p.category ?? "");
+      setCategory(
+        resolvedProfessionalType === "generic" && p.category === "veterinari"
+          ? "altro"
+          : (p.category ?? "")
+      );
       setPhone(p.phone ?? "");
       setEmail(p.email ?? "");
       setWebsite(p.website ?? "");
@@ -155,10 +190,17 @@ export default function ProfessionistiImpostazioniPage() {
     }
 
     load();
+
     return () => {
       alive = false;
     };
   }, [router]);
+
+  useEffect(() => {
+    if (!allowedMacro.some((item) => item.key === category)) {
+      setCategory(professionalType === "veterinarian" ? "veterinari" : "altro");
+    }
+  }, [allowedMacro, category, professionalType]);
 
   const currentDefaultViewLabel = useMemo(() => {
     switch (prefs.defaultView) {
@@ -177,6 +219,16 @@ export default function ProfessionistiImpostazioniPage() {
 
     if (!pro) {
       setError("Scheda professionista non trovata.");
+      return;
+    }
+
+    if (professionalType === "generic" && category === "veterinari") {
+      setError("Un professionista non veterinario non può usare la categoria Veterinari.");
+      return;
+    }
+
+    if (professionalType === "veterinarian" && category !== "veterinari") {
+      setError("Un account veterinario deve mantenere la categoria Veterinari.");
       return;
     }
 
@@ -227,7 +279,9 @@ export default function ProfessionistiImpostazioniPage() {
 
       const { error: upErr } = await supabase.from("professionals").update(payload).eq("id", pro.id);
 
-      if (upErr) throw upErr;
+      if (upErr) {
+        throw upErr;
+      }
 
       setPro((prev) =>
         prev
@@ -306,7 +360,7 @@ export default function ProfessionistiImpostazioniPage() {
         </p>
       </div>
 
-      {(error || info) && (
+      {error || info ? (
         <div
           className={[
             "rounded-2xl border p-4 text-sm shadow-sm",
@@ -317,11 +371,13 @@ export default function ProfessionistiImpostazioniPage() {
         >
           {error || info}
         </div>
-      )}
+      ) : null}
 
       <div className="grid gap-4 md:grid-cols-2">
         <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <p className="text-xs font-semibold tracking-wide text-zinc-500">PROFILO PROFESSIONISTA</p>
+          <p className="text-xs font-semibold tracking-wide text-zinc-500">
+            PROFILO PROFESSIONISTA
+          </p>
           <h2 className="mt-2 text-lg font-semibold text-zinc-900">Profilo</h2>
           <p className="mt-2 text-sm text-zinc-600">
             Nome struttura, contatti, indirizzo, categoria e dati pubblici della scheda.
@@ -346,7 +402,7 @@ export default function ProfessionistiImpostazioniPage() {
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
               >
-                {MACRO.map((m) => (
+                {allowedMacro.map((m) => (
                   <option key={m.key} value={m.key}>
                     {m.label}
                   </option>
@@ -447,12 +503,15 @@ export default function ProfessionistiImpostazioniPage() {
           <p className="text-xs font-semibold tracking-wide text-zinc-500">PREFERENZE</p>
           <h2 className="mt-2 text-lg font-semibold text-zinc-900">Preferenze</h2>
           <p className="mt-2 text-sm text-zinc-600">
-            Configurazioni del portale e personalizzazioni operative. Salvataggio locale su questo dispositivo.
+            Configurazioni del portale e personalizzazioni operative. Salvataggio locale su questo
+            dispositivo.
           </p>
 
           <div className="mt-4 space-y-4">
             <div>
-              <label className="block text-sm font-medium text-zinc-900">Vista iniziale dashboard</label>
+              <label className="block text-sm font-medium text-zinc-900">
+                Vista iniziale dashboard
+              </label>
               <select
                 className="mt-1 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 outline-none focus:border-zinc-900"
                 value={prefs.defaultView}
@@ -483,7 +542,9 @@ export default function ProfessionistiImpostazioniPage() {
               />
               <div>
                 <p className="text-sm font-medium text-zinc-900">Modalità compatta</p>
-                <p className="text-xs text-zinc-500">Riduce spazi e densità dei contenuti nel portale.</p>
+                <p className="text-xs text-zinc-500">
+                  Riduce spazi e densità dei contenuti nel portale.
+                </p>
               </div>
             </label>
 
@@ -500,8 +561,12 @@ export default function ProfessionistiImpostazioniPage() {
                 }
               />
               <div>
-                <p className="text-sm font-medium text-zinc-900">Preferenze operative struttura</p>
-                <p className="text-xs text-zinc-500">Mantiene attive le opzioni operative locali del portale.</p>
+                <p className="text-sm font-medium text-zinc-900">
+                  Preferenze operative struttura
+                </p>
+                <p className="text-xs text-zinc-500">
+                  Mantiene attive le opzioni operative locali del portale.
+                </p>
               </div>
             </label>
           </div>
@@ -511,7 +576,8 @@ export default function ProfessionistiImpostazioniPage() {
           <p className="text-xs font-semibold tracking-wide text-zinc-500">NOTIFICHE</p>
           <h2 className="mt-2 text-lg font-semibold text-zinc-900">Notifiche</h2>
           <p className="mt-2 text-sm text-zinc-600">
-            Gestione avvisi per richieste accesso, consulti e aggiornamenti clinici. Salvataggio locale su questo dispositivo.
+            Gestione avvisi per richieste accesso, consulti e aggiornamenti clinici. Salvataggio
+            locale su questo dispositivo.
           </p>
 
           <div className="mt-4 space-y-3">
@@ -529,7 +595,9 @@ export default function ProfessionistiImpostazioniPage() {
               />
               <div>
                 <p className="text-sm font-medium text-zinc-900">Richieste accesso</p>
-                <p className="text-xs text-zinc-500">Avvisi per nuove richieste o cambi di stato.</p>
+                <p className="text-xs text-zinc-500">
+                  Avvisi per nuove richieste o cambi di stato.
+                </p>
               </div>
             </label>
 
@@ -547,7 +615,9 @@ export default function ProfessionistiImpostazioniPage() {
               />
               <div>
                 <p className="text-sm font-medium text-zinc-900">Consulti e messaggi</p>
-                <p className="text-xs text-zinc-500">Avvisi per consulti in arrivo e messaggi dal portale.</p>
+                <p className="text-xs text-zinc-500">
+                  Avvisi per consulti in arrivo e messaggi dal portale.
+                </p>
               </div>
             </label>
 
@@ -564,8 +634,12 @@ export default function ProfessionistiImpostazioniPage() {
                 }
               />
               <div>
-                <p className="text-sm font-medium text-zinc-900">Aggiornamenti clinici e alert</p>
-                <p className="text-xs text-zinc-500">Avvisi per attività cliniche rilevanti e aggiornamenti rapidi.</p>
+                <p className="text-sm font-medium text-zinc-900">
+                  Aggiornamenti clinici e alert
+                </p>
+                <p className="text-xs text-zinc-500">
+                  Avvisi per attività cliniche rilevanti e aggiornamenti rapidi.
+                </p>
               </div>
             </label>
 
@@ -591,7 +665,10 @@ export default function ProfessionistiImpostazioniPage() {
             <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
               <p className="text-sm font-medium text-zinc-900">Sessione attiva</p>
               <p className="mt-1 text-sm text-zinc-600">
-                Account: <span className="font-medium text-zinc-800">{userEmail || "Non disponibile"}</span>
+                Account:{" "}
+                <span className="font-medium text-zinc-800">
+                  {userEmail || "Non disponibile"}
+                </span>
               </p>
               <p className="mt-1 text-xs text-zinc-500">
                 Vista iniziale preferita: {currentDefaultViewLabel}

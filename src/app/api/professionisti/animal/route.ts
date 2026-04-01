@@ -106,6 +106,29 @@ type ResendEmailResult = {
   error?: { message?: string } | null;
 };
 
+type AuthUserLookupResult = {
+  id: string;
+  email: string | null;
+} | null;
+
+type InviteResult =
+  | {
+      sent: true;
+      mode: "claim";
+      claimLink: string;
+      resendId: string | null;
+    }
+  | {
+      sent: true;
+      mode: "notice";
+      animalLink: string;
+      resendId: string | null;
+    }
+  | {
+      sent: false;
+      error?: string;
+    };
+
 function normalizeChip(value?: string | null) {
   const digits = String(value ?? "").replace(/\D+/g, "").trim();
   return digits.length ? digits : null;
@@ -327,16 +350,53 @@ async function getClinicName(userId: string, organizationId: string | null) {
   );
 }
 
-async function ensureOwnerClaimAndInvite(params: {
+async function findExistingAuthUserByEmail(email: string): Promise<AuthUserLookupResult> {
+  const admin = supabaseAdmin();
+  const pageSize = 200;
+  let page = 1;
+
+  while (page <= 20) {
+    const result = await admin.auth.admin.listUsers({
+      page,
+      perPage: pageSize,
+    });
+
+    if (result.error) {
+      throw new Error(result.error.message || "Errore ricerca utente auth");
+    }
+
+    const users = result.data?.users ?? [];
+    if (users.length === 0) {
+      return null;
+    }
+
+    const match = users.find((u) => (u.email ?? "").trim().toLowerCase() === email);
+    if (match) {
+      return {
+        id: match.id,
+        email: match.email ?? null,
+      };
+    }
+
+    if (users.length < pageSize) {
+      return null;
+    }
+
+    page += 1;
+  }
+
+  return null;
+}
+
+async function sendOwnerClaimEmail(params: {
   animalId: string;
   animalName: string | null;
   email: string;
   actorUserId: string;
   organizationId: string | null;
   reqOrigin: string;
-}) {
+}): Promise<InviteResult> {
   const admin = supabaseAdmin();
-
   const nowIso = new Date().toISOString();
 
   const existingClaimResult = await admin
@@ -422,8 +482,112 @@ async function ensureOwnerClaimAndInvite(params: {
 
   return {
     sent: true,
+    mode: "claim",
     claimLink,
     resendId: emailResult?.data?.id ?? null,
+  };
+}
+
+async function sendOwnerNoticeEmail(params: {
+  animalId: string;
+  animalName: string | null;
+  email: string;
+  actorUserId: string;
+  organizationId: string | null;
+  reqOrigin: string;
+}): Promise<InviteResult> {
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || params.reqOrigin;
+  const animalLink = `${baseUrl}/animali/${params.animalId}`;
+
+  const clinicName = await getClinicName(params.actorUserId, params.organizationId);
+  const fromEmail = process.env.RESEND_FROM_EMAIL || "UNIMALIA <no-reply@unimalia.it>";
+
+  const emailResult = (await resend.emails.send({
+    from: fromEmail,
+    to: params.email,
+    subject: "Nuovo animale collegato al tuo profilo UNIMALIA",
+    html: `
+      <div style="font-family: Arial, sans-serif; color: #222; line-height: 1.5; max-width: 640px; margin: 0 auto;">
+        <p>
+          ${clinicName ? `La clinica veterinaria <strong>${clinicName}</strong>` : "Una clinica veterinaria"}
+          ha collegato un animale al tuo profilo UNIMALIA.
+        </p>
+        <p><strong>${params.animalName ?? "Il tuo animale"}</strong></p>
+        <p>Puoi aprire direttamente la scheda da qui:</p>
+        <p><a href="${animalLink}">${animalLink}</a></p>
+        <hr style="margin: 24px 0; border: 0; border-top: 1px solid #ddd;" />
+        <p style="font-size: 12px; color: #666;">
+          Se ritieni che questo collegamento non sia corretto, contatta l’assistenza o la struttura che ha effettuato l’inserimento.
+        </p>
+      </div>
+    `,
+  })) as ResendEmailResult;
+
+  if (emailResult?.error) {
+    throw new Error(emailResult.error?.message || "Errore invio email avviso");
+  }
+
+  return {
+    sent: true,
+    mode: "notice",
+    animalLink,
+    resendId: emailResult?.data?.id ?? null,
+  };
+}
+
+async function autoLinkOwnerIfRegistered(params: {
+  animalId: string;
+  ownerEmail: string | null;
+  reqOrigin: string;
+  actorUserId: string;
+  organizationId: string | null;
+  animalName: string | null;
+}) {
+  if (!params.ownerEmail) {
+    return { linked: false as const };
+  }
+
+  const admin = supabaseAdmin();
+  const existingOwner = await findExistingAuthUserByEmail(params.ownerEmail);
+
+  if (!existingOwner?.id) {
+    return { linked: false as const };
+  }
+
+  await ensureProfileRow(existingOwner.id);
+
+  const updateResult = await admin
+    .from("animals")
+    .update({
+      owner_id: existingOwner.id,
+      owner_claim_status: "claimed",
+      owner_claimed_at: new Date().toISOString(),
+      pending_owner_email: null,
+      pending_owner_phone: null,
+      pending_owner_invited_at: null,
+    })
+    .eq("id", params.animalId)
+    .select("*")
+    .single<AnimalRow>();
+
+  if (updateResult.error || !updateResult.data) {
+    throw new Error(updateResult.error?.message || "Errore collegamento automatico owner");
+  }
+
+  const notice = await sendOwnerNoticeEmail({
+    animalId: params.animalId,
+    animalName: params.animalName,
+    email: params.ownerEmail,
+    actorUserId: params.actorUserId,
+    organizationId: params.organizationId,
+    reqOrigin: params.reqOrigin,
+  });
+
+  return {
+    linked: true as const,
+    animal: updateResult.data,
+    notice,
+    ownerUserId: existingOwner.id,
   };
 }
 
@@ -613,7 +777,7 @@ async function hasProfessionalAuditHistory(params: {
     .returns<AnimalAuditRow[]>();
 
   if (orgAuditResult.error) {
-    throw orgAuditResult.error;
+    throw ownAuditResult.error;
   }
 
   return (orgAuditResult.count ?? 0) > 0;
@@ -909,24 +1073,36 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      let invite: { sent: boolean; claimLink?: string; resendId?: string | null; error?: string } = {
-        sent: false,
-      };
+      let invite: InviteResult = { sent: false };
 
       if (!matchedAnimal.owner_id && ownerEmail) {
         try {
-          invite = await ensureOwnerClaimAndInvite({
+          const linked = await autoLinkOwnerIfRegistered({
             animalId: matchedAnimal.id,
-            animalName: matchedAnimal.name ?? null,
-            email: ownerEmail,
+            ownerEmail,
+            reqOrigin: req.nextUrl.origin,
             actorUserId: user.id,
             organizationId,
-            reqOrigin: req.nextUrl.origin,
+            animalName: matchedAnimal.name ?? null,
           });
+
+          if (linked.linked) {
+            matchedAnimal = linked.animal;
+            invite = linked.notice;
+          } else {
+            invite = await sendOwnerClaimEmail({
+              animalId: matchedAnimal.id,
+              animalName: matchedAnimal.name ?? null,
+              email: ownerEmail,
+              actorUserId: user.id,
+              organizationId,
+              reqOrigin: req.nextUrl.origin,
+            });
+          }
         } catch (inviteError: unknown) {
           invite = {
             sent: false,
-            error: inviteError instanceof Error ? inviteError.message : "Errore invio invito owner",
+            error: inviteError instanceof Error ? inviteError.message : "Errore invio owner",
           };
         }
       }
@@ -999,24 +1175,38 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    let invite: { sent: boolean; claimLink?: string; resendId?: string | null; error?: string } = {
-      sent: false,
-    };
+    let finalAnimal = created.data;
+
+    let invite: InviteResult = { sent: false };
 
     if (ownerEmail) {
       try {
-        invite = await ensureOwnerClaimAndInvite({
+        const linked = await autoLinkOwnerIfRegistered({
           animalId: created.data.id,
-          animalName: created.data.name ?? null,
-          email: ownerEmail,
+          ownerEmail,
+          reqOrigin: req.nextUrl.origin,
           actorUserId: user.id,
           organizationId,
-          reqOrigin: req.nextUrl.origin,
+          animalName: created.data.name ?? null,
         });
+
+        if (linked.linked) {
+          finalAnimal = linked.animal;
+          invite = linked.notice;
+        } else {
+          invite = await sendOwnerClaimEmail({
+            animalId: created.data.id,
+            animalName: created.data.name ?? null,
+            email: ownerEmail,
+            actorUserId: user.id,
+            organizationId,
+            reqOrigin: req.nextUrl.origin,
+          });
+        }
       } catch (inviteError: unknown) {
         invite = {
           sent: false,
-          error: inviteError instanceof Error ? inviteError.message : "Errore invio invito owner",
+          error: inviteError instanceof Error ? inviteError.message : "Errore invio owner",
         };
       }
     }
@@ -1027,8 +1217,8 @@ export async function POST(req: NextRequest) {
         matched: false,
         invite,
         animal: {
-          ...created.data,
-          microchip: created.data.chip_number ?? null,
+          ...finalAnimal,
+          microchip: finalAnimal.chip_number ?? null,
           has_active_grant: true,
         },
       },
