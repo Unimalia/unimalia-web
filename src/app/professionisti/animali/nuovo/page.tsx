@@ -1,8 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function NuovoAnimalePage() {
+  const router = useRouter();
+
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [microchip, setMicrochip] = useState("");
@@ -40,6 +43,19 @@ export default function NuovoAnimalePage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  function goToAnimal(id: string) {
+    router.push(`/professionisti/animali/${id}`);
+  }
+
+  function createNew() {
+    const params = new URLSearchParams();
+    if (email) params.set("email", email);
+    if (phone) params.set("phone", phone);
+    if (microchip) params.set("microchip", microchip);
+
+    router.push(`/professionisti/animali/crea?${params.toString()}`);
   }
 
   return (
@@ -81,25 +97,36 @@ export default function NuovoAnimalePage() {
 
       {result && (
         <div className="space-y-4">
+          {/* NESSUN RISULTATO */}
           {result.found === false && (
             <div className="p-4 border rounded-lg">
               <p>Nessuna scheda trovata</p>
-              <button className="mt-2 text-blue-600 underline">
+              <button
+                onClick={createNew}
+                className="mt-2 text-blue-600 underline"
+              >
                 Crea nuova scheda
               </button>
             </div>
           )}
 
+          {/* MICROCHIP MATCH */}
           {result.strong_match && (
             <div className="p-4 border rounded-lg">
               <p className="font-semibold">Animale trovato (microchip)</p>
-              <p>{result.animal.name} - {result.animal.species}</p>
-              <button className="mt-2 text-blue-600 underline">
+              <p>
+                {result.animal.name} - {result.animal.species}
+              </p>
+              <button
+                onClick={() => goToAnimal(result.animal.id)}
+                className="mt-2 text-blue-600 underline"
+              >
                 Apri scheda
               </button>
             </div>
           )}
 
+          {/* CANDIDATI */}
           {result.candidates && (
             <div className="space-y-2">
               {result.candidates.map((a: any) => (
@@ -111,7 +138,10 @@ export default function NuovoAnimalePage() {
                     Microchip: {a.microchip || "—"}
                   </p>
 
-                  <button className="mt-2 text-blue-600 underline">
+                  <button
+                    onClick={() => goToAnimal(a.id)}
+                    className="mt-2 text-blue-600 underline"
+                  >
                     Usa questa scheda
                   </button>
                 </div>
