@@ -179,6 +179,7 @@ export async function POST(req: NextRequest) {
           email,
           claim_token: token,
           created_by_user_id: user.id,
+          created_by: user.id,
         })
         .select("id")
         .single();
