@@ -273,10 +273,14 @@ export default function ProAnimalPage() {
   }, [id]);
 
   useEffect(() => {
-    if (!animal?.id) return;
+    if (!animal?.id || !isVet) {
+      setEvents([]);
+      setEventsErr(null);
+      return;
+    }
     void loadClinicEvents();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [animal?.id]);
+  }, [animal?.id, isVet]);
 
   const microchipVerifierLabel = useMemo(() => {
     if (!animal?.microchip_verified) return null;
@@ -297,9 +301,9 @@ export default function ProAnimalPage() {
         birth_date: animal?.birth_date ?? null,
         sterilized: animal?.sterilized ?? null,
       },
-      events: events ?? [],
+      events: isVet ? events ?? [] : [],
     });
-  }, [animal, events]);
+  }, [animal, events, isVet]);
 
   if (loading) {
     return (
@@ -368,17 +372,17 @@ export default function ProAnimalPage() {
             </Link>
 
             <Link
-              href="/professionisti/richieste"
+              href="/professionisti/richieste-accesso"
               className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
             >
-              Vai alle richieste
+              Richieste accesso
             </Link>
 
             <Link
               href={`/professionisti/richieste-accesso?animalId=${encodeURIComponent(id)}`}
               className="rounded-md border px-3 py-2 text-sm font-semibold hover:bg-neutral-50"
             >
-              Richiedi accesso (se non autorizzato)
+              Richiedi accesso
             </Link>
 
             {!animal.owner_id ? (
@@ -575,9 +579,12 @@ export default function ProAnimalPage() {
                 Cartella clinica
               </Link>
             ) : (
-              <span className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-2 text-sm font-semibold text-zinc-600">
-                Cartella clinica (solo vet)
-              </span>
+              <Link
+                href={`/professionisti/animali/${animal.id}/storia`}
+                className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+              >
+                Vai a Storia animale
+              </Link>
             )}
           </div>
 
@@ -589,20 +596,26 @@ export default function ProAnimalPage() {
             Età: {rapidClinicalState.age} | Peso: {rapidClinicalState.weight}
           </div>
           <div className="mt-2 text-sm text-zinc-600">
-            Cartella clinica: accesso riservato ai veterinari autorizzati.
+            {isVet
+              ? "Sintesi rapida della cartella clinica veterinaria."
+              : "Per i professionisti non clinici la sezione operativa principale è Storia animale."}
           </div>
         </div>
 
         <div className="mt-4 grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-3">
           <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
             <div className="text-xs text-zinc-500">Gruppo sanguigno</div>
-            <div className="mt-1 font-semibold text-zinc-900">{rapidClinicalState.bloodType}</div>
+            <div className="mt-1 font-semibold text-zinc-900">
+              {isVet ? rapidClinicalState.bloodType : "Riservato ai vet"}
+            </div>
           </div>
 
           <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
             <div className="text-xs text-zinc-500">Allergie</div>
 
-            {!Array.isArray(allergiesDisplay) ? (
+            {!isVet ? (
+              <div className="mt-1 font-semibold text-zinc-900">Riservato ai vet</div>
+            ) : !Array.isArray(allergiesDisplay) ? (
               <div className="mt-1 font-semibold text-zinc-900">{allergiesDisplay}</div>
             ) : (
               <ul className="mt-1 space-y-1 text-xs text-zinc-800">
@@ -618,7 +631,9 @@ export default function ProAnimalPage() {
           <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
             <div className="text-xs text-zinc-500">Terapie attive</div>
 
-            {!Array.isArray(activeTherapiesDisplay) ? (
+            {!isVet ? (
+              <div className="mt-1 font-semibold text-zinc-900">Riservato ai vet</div>
+            ) : !Array.isArray(activeTherapiesDisplay) ? (
               <div className="mt-1 font-semibold text-zinc-900">{activeTherapiesDisplay}</div>
             ) : (
               <ul className="mt-1 space-y-1 text-xs text-zinc-800">
@@ -634,7 +649,9 @@ export default function ProAnimalPage() {
           <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
             <div className="text-xs text-zinc-500">Ultime terapie</div>
 
-            {!Array.isArray(lastTherapiesDisplay) ? (
+            {!isVet ? (
+              <div className="mt-1 font-semibold text-zinc-900">Riservato ai vet</div>
+            ) : !Array.isArray(lastTherapiesDisplay) ? (
               <div className="mt-1 font-semibold text-zinc-900">{lastTherapiesDisplay}</div>
             ) : (
               <ul className="mt-1 space-y-1 text-xs text-zinc-800">
@@ -650,7 +667,9 @@ export default function ProAnimalPage() {
           <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
             <div className="text-xs text-zinc-500">Patologie croniche</div>
 
-            {!Array.isArray(chronicPathologiesDisplay) ? (
+            {!isVet ? (
+              <div className="mt-1 font-semibold text-zinc-900">Riservato ai vet</div>
+            ) : !Array.isArray(chronicPathologiesDisplay) ? (
               <div className="mt-1 font-semibold text-zinc-900">{chronicPathologiesDisplay}</div>
             ) : (
               <ul className="mt-1 space-y-1 text-xs text-zinc-800">
@@ -666,34 +685,36 @@ export default function ProAnimalPage() {
           <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
             <div className="text-xs text-zinc-500">Ricontrolli programmati</div>
             <div className="mt-1 font-semibold text-zinc-900">
-              {rapidClinicalState.nextRecall || "—"}
+              {isVet ? rapidClinicalState.nextRecall || "—" : "Riservato ai vet"}
             </div>
           </div>
 
           <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
             <div className="text-xs text-zinc-500">Ultima visita</div>
             <div className="mt-1 font-semibold text-zinc-900">
-              {rapidClinicalState.latestVisit || "—"}
+              {isVet ? rapidClinicalState.latestVisit || "—" : "Riservato ai vet"}
             </div>
           </div>
 
           <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
             <div className="text-xs text-zinc-500">Ultima vaccinazione</div>
             <div className="mt-1 font-semibold text-zinc-900">
-              {rapidClinicalState.latestVaccination || "—"}
+              {isVet ? rapidClinicalState.latestVaccination || "—" : "Riservato ai vet"}
             </div>
           </div>
 
           <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
             <div className="text-xs text-zinc-500">Vaccinazioni scadute / in scadenza</div>
             <div className="mt-1 font-semibold text-zinc-900">
-              {rapidClinicalState.vaccinationExpiry || "—"}
+              {isVet ? rapidClinicalState.vaccinationExpiry || "—" : "Riservato ai vet"}
             </div>
           </div>
         </div>
 
         <p className="mt-3 text-xs text-zinc-500">
-          Sintesi rapida della cartella clinica per valutazione immediata.
+          {isVet
+            ? "Sintesi rapida della cartella clinica per valutazione immediata."
+            : "I dati clinici dettagliati restano separati e riservati al ramo veterinario."}
         </p>
       </div>
 

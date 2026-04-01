@@ -20,6 +20,7 @@ type AnimalClaimRow = {
   chip_number: string | null;
   microchip_verified: boolean | null;
   pending_owner_email: string | null;
+  pending_owner_phone?: string | null;
 };
 
 type ExistingGrantRow = {
@@ -33,6 +34,10 @@ type AuthUserMetadata = {
   city?: unknown;
   fiscal_code?: unknown;
   phone?: unknown;
+};
+
+type ProfileRow = {
+  phone: string | null;
 };
 
 function normalizeString(value: unknown) {
@@ -77,6 +82,38 @@ async function ensureProfileRow(userId: string) {
   }
 }
 
+async function hydrateOwnerPhoneFromAnimal(userId: string, pendingOwnerPhone?: string | null) {
+  const phone = normalizePhone(pendingOwnerPhone);
+  if (!phone) return;
+
+  const admin = supabaseAdmin();
+
+  const profileResult = await admin
+    .from("profiles")
+    .select("phone")
+    .eq("id", userId)
+    .maybeSingle<ProfileRow>();
+
+  if (profileResult.error) {
+    throw new Error(profileResult.error.message || "Errore lettura profilo");
+  }
+
+  const currentPhone = normalizePhone(profileResult.data?.phone);
+
+  if (currentPhone) {
+    return;
+  }
+
+  const updateResult = await admin
+    .from("profiles")
+    .update({ phone })
+    .eq("id", userId);
+
+  if (updateResult.error) {
+    throw new Error(updateResult.error.message || "Errore aggiornamento telefono profilo");
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const supabase = await createClient();
@@ -117,7 +154,7 @@ export async function POST(req: NextRequest) {
     const animalResult = await admin
       .from("animals")
       .select(
-        "id, owner_id, created_by_org_id, origin_org_id, chip_number, microchip_verified, pending_owner_email"
+        "id, owner_id, created_by_org_id, origin_org_id, chip_number, microchip_verified, pending_owner_email, pending_owner_phone"
       )
       .eq("id", claim.animal_id)
       .single<AnimalClaimRow>();
@@ -171,6 +208,7 @@ export async function POST(req: NextRequest) {
     }
 
     await ensureProfileRow(user.id);
+    await hydrateOwnerPhoneFromAnimal(user.id, animal.pending_owner_phone ?? null);
 
     const nowIso = new Date().toISOString();
 
@@ -181,6 +219,7 @@ export async function POST(req: NextRequest) {
         owner_claim_status: "claimed",
         owner_claimed_at: nowIso,
         pending_owner_email: null,
+        pending_owner_phone: null,
         pending_owner_invited_at: null,
       })
       .eq("id", claim.animal_id)

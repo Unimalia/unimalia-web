@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import crypto from "crypto";
+import { Resend } from "resend";
 import { createClient, supabaseAdmin } from "@/lib/supabase/server";
 import { getProfessionalOrgId } from "@/lib/professionisti/org";
 import { isUuid } from "@/lib/server/validators";
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 type AnimalPayload = {
   name?: string;
@@ -31,6 +35,15 @@ type ProfessionalProfileRow = {
 type ProfessionalRow = {
   id: string;
   owner_id: string;
+  business_name?: string | null;
+  display_name?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+};
+
+type OrganizationRow = {
+  id: string;
+  name: string | null;
 };
 
 type AnimalRow = {
@@ -48,6 +61,8 @@ type AnimalRow = {
   owner_id: string | null;
   pending_owner_email: string | null;
   pending_owner_phone?: string | null;
+  pending_owner_invited_at?: string | null;
+  invite_email_count?: number | null;
   created_by_org_id: string | null;
   origin_org_id: string | null;
   microchip_verified: boolean | null;
@@ -77,6 +92,18 @@ type ProfileRow = {
   first_name: string | null;
   last_name: string | null;
   phone: string | null;
+};
+
+type ClaimRow = {
+  id: string;
+  claim_token: string | null;
+  used_at: string | null;
+  created_at: string;
+};
+
+type ResendEmailResult = {
+  data?: { id?: string } | null;
+  error?: { message?: string } | null;
 };
 
 function normalizeChip(value?: string | null) {
@@ -267,6 +294,137 @@ async function getProfessionalRefs(userId: string) {
   }
 
   return Array.from(refs).filter(Boolean);
+}
+
+async function getClinicName(userId: string, organizationId: string | null) {
+  const admin = supabaseAdmin();
+
+  if (organizationId) {
+    const { data: orgRow } = await admin
+      .from("organizations")
+      .select("id,name")
+      .eq("id", organizationId)
+      .maybeSingle<OrganizationRow>();
+
+    if (orgRow?.name?.trim()) {
+      return orgRow.name.trim();
+    }
+  }
+
+  const { data: professionalRow } = await admin
+    .from("professionals")
+    .select("business_name,display_name,first_name,last_name")
+    .eq("owner_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle<ProfessionalRow>();
+
+  return (
+    professionalRow?.business_name?.trim() ||
+    professionalRow?.display_name?.trim() ||
+    [professionalRow?.first_name, professionalRow?.last_name].filter(Boolean).join(" ").trim() ||
+    null
+  );
+}
+
+async function ensureOwnerClaimAndInvite(params: {
+  animalId: string;
+  animalName: string | null;
+  email: string;
+  actorUserId: string;
+  organizationId: string | null;
+  reqOrigin: string;
+}) {
+  const admin = supabaseAdmin();
+
+  const nowIso = new Date().toISOString();
+
+  const existingClaimResult = await admin
+    .from("animal_owner_claims")
+    .select("id, claim_token, used_at, created_at")
+    .eq("animal_id", params.animalId)
+    .eq("email", params.email)
+    .is("used_at", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle<ClaimRow>();
+
+  if (existingClaimResult.error) {
+    throw new Error(existingClaimResult.error.message || "Errore lettura claim");
+  }
+
+  let token = existingClaimResult.data?.claim_token ?? null;
+
+  if (!token) {
+    token = crypto.randomUUID();
+
+    const claimInsertResult = await admin
+      .from("animal_owner_claims")
+      .insert({
+        animal_id: params.animalId,
+        email: params.email,
+        claim_token: token,
+        created_by_user_id: params.actorUserId,
+        created_by: params.actorUserId,
+      })
+      .select("id")
+      .single();
+
+    if (claimInsertResult.error) {
+      throw new Error(claimInsertResult.error.message || "Errore creazione claim");
+    }
+  }
+
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || params.reqOrigin;
+  const claimLink = `${baseUrl}/claim/${token}?email=${encodeURIComponent(params.email)}`;
+
+  const clinicName = await getClinicName(params.actorUserId, params.organizationId);
+  const fromEmail = process.env.RESEND_FROM_EMAIL || "UNIMALIA <no-reply@unimalia.it>";
+
+  const emailResult = (await resend.emails.send({
+    from: fromEmail,
+    to: params.email,
+    subject: "Collega il tuo animale su UNIMALIA",
+    html: `
+      <div style="font-family: Arial, sans-serif; color: #222; line-height: 1.5; max-width: 640px; margin: 0 auto;">
+        <p>
+          ${clinicName ? `La clinica veterinaria <strong>${clinicName}</strong>` : "Una clinica veterinaria"}
+          ti ha invitato a collegare il tuo animale su UNIMALIA.
+        </p>
+        <p><strong>${params.animalName ?? "Il tuo animale"}</strong></p>
+        <p>Per collegarlo al tuo account, apri questo link:</p>
+        <p><a href="${claimLink}">${claimLink}</a></p>
+        <hr style="margin: 24px 0; border: 0; border-top: 1px solid #ddd;" />
+        <p style="font-size: 12px; color: #666;">
+          Se hai ricevuto questa email per errore, puoi ignorarla.
+        </p>
+      </div>
+    `,
+  })) as ResendEmailResult;
+
+  if (emailResult?.error) {
+    throw new Error(emailResult.error?.message || "Errore invio email");
+  }
+
+  const animalUpdate = await admin
+    .from("animals")
+    .update({
+      pending_owner_email: params.email,
+      pending_owner_invited_at: nowIso,
+      owner_claim_status: "pending",
+      invite_email_count: 1,
+    })
+    .eq("id", params.animalId);
+
+  if (animalUpdate.error) {
+    throw new Error(animalUpdate.error.message || "Errore aggiornamento stato invito");
+  }
+
+  return {
+    sent: true,
+    claimLink,
+    resendId: emailResult?.data?.id ?? null,
+  };
 }
 
 async function resolveAnimalByRef(animalRef: string) {
@@ -711,6 +869,9 @@ export async function POST(req: NextRequest) {
       if (!matchedAnimal.pending_owner_phone && ownerPhone) patch.pending_owner_phone = ownerPhone;
       if (!matchedAnimal.origin_org_id) patch.origin_org_id = organizationId;
       if (matchedAnimal.microchip_verified == null) patch.microchip_verified = false;
+      if (!matchedAnimal.owner_claim_status && (ownerEmail || ownerPhone)) {
+        patch.owner_claim_status = "pending";
+      }
 
       if (Object.keys(patch).length > 1) {
         const upd = await admin
@@ -748,11 +909,34 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      let invite: { sent: boolean; claimLink?: string; resendId?: string | null; error?: string } = {
+        sent: false,
+      };
+
+      if (!matchedAnimal.owner_id && ownerEmail) {
+        try {
+          invite = await ensureOwnerClaimAndInvite({
+            animalId: matchedAnimal.id,
+            animalName: matchedAnimal.name ?? null,
+            email: ownerEmail,
+            actorUserId: user.id,
+            organizationId,
+            reqOrigin: req.nextUrl.origin,
+          });
+        } catch (inviteError: unknown) {
+          invite = {
+            sent: false,
+            error: inviteError instanceof Error ? inviteError.message : "Errore invio invito owner",
+          };
+        }
+      }
+
       return NextResponse.json(
         {
           ok: true,
           matched: true,
           match_reason: matchReason,
+          invite,
           animal: {
             ...matchedAnimal,
             microchip: matchedAnimal.chip_number ?? null,
@@ -815,10 +999,33 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    let invite: { sent: boolean; claimLink?: string; resendId?: string | null; error?: string } = {
+      sent: false,
+    };
+
+    if (ownerEmail) {
+      try {
+        invite = await ensureOwnerClaimAndInvite({
+          animalId: created.data.id,
+          animalName: created.data.name ?? null,
+          email: ownerEmail,
+          actorUserId: user.id,
+          organizationId,
+          reqOrigin: req.nextUrl.origin,
+        });
+      } catch (inviteError: unknown) {
+        invite = {
+          sent: false,
+          error: inviteError instanceof Error ? inviteError.message : "Errore invio invito owner",
+        };
+      }
+    }
+
     return NextResponse.json(
       {
         ok: true,
         matched: false,
+        invite,
         animal: {
           ...created.data,
           microchip: created.data.chip_number ?? null,

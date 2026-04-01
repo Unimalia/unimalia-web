@@ -134,7 +134,7 @@ export default async function ProDashboardPage({
           </p>
           <p className="mt-2 text-sm text-zinc-700">
             La parte clinica resta separata e riservata ai veterinari. Per i professionisti generici,
-            il lavoro evolverà sulla sezione <strong>Storia animale</strong>.
+            il lavoro operativo passa dalla sezione <strong>Storia animale</strong>.
           </p>
         </div>
       ) : null}
@@ -149,7 +149,7 @@ export default async function ProDashboardPage({
         <CardLink
           href="/professionisti/animali"
           title="Animali in gestione"
-          desc="Vedi solo animali con grant attivo per la tua struttura."
+          desc="Vedi solo animali con accesso attivo per la tua struttura."
         />
 
         {isVet ? (
@@ -178,7 +178,12 @@ export default async function ProDashboardPage({
               href="/professionisti/animali"
               title="Storia animale"
               desc="Timeline non clinica dedicata alle attività del professionista: sessioni, trattamenti, note operative e promemoria futuri."
-              right="In arrivo"
+            />
+
+            <CardLink
+              href="/professionisti/richieste-accesso"
+              title="Richieste accesso"
+              desc="Invia richieste per essere autorizzato sugli animali e iniziare a lavorare nella storia pratica."
             />
 
             <CardLink

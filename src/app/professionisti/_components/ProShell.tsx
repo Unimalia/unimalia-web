@@ -219,6 +219,12 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
         ),
         description: "Consulti clinici ricevuti e inviati tra professionisti.",
       });
+
+      baseItems.push({
+        href: "/professionisti/agenda",
+        label: "Agenda clinica",
+        description: "Appuntamenti, stanze, turni e accesso rapido alla gestione veterinaria.",
+      });
     }
 
     baseItems.push({
