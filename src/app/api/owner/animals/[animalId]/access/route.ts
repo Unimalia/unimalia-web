@@ -44,7 +44,6 @@ type AccessGrantRow = {
 type OrganizationRow = {
   id: string;
   name: string | null;
-  display_name: string | null;
   legal_name: string | null;
 };
 
@@ -93,7 +92,7 @@ export async function GET(_req: Request, ctx: RouteContext) {
 
     if (animalErr) {
       return NextResponse.json(
-        { error: "Server error" },
+        { error: animalErr.message || "Server error" },
         { status: 500, headers: { "Cache-Control": "no-store" } }
       );
     }
@@ -112,13 +111,13 @@ export async function GET(_req: Request, ctx: RouteContext) {
       return notFoundResponse();
     }
 
-    const requestsQ = supabase
+    const admin = supabaseAdmin();
+
+    const requestsQ = admin
       .from("animal_access_requests")
       .select("id, created_at, animal_id, owner_id, org_id, status, requested_scope, expires_at")
       .eq("animal_id", animalId)
       .order("created_at", { ascending: false });
-
-    const admin = supabaseAdmin();
 
     const grantsQ = admin
       .from("animal_access_grants")
@@ -133,7 +132,7 @@ export async function GET(_req: Request, ctx: RouteContext) {
 
     if (reqErr || grantErr) {
       return NextResponse.json(
-        { error: "Server error" },
+        { error: reqErr?.message || grantErr?.message || "Server error" },
         { status: 500, headers: { "Cache-Control": "no-store" } }
       );
     }
@@ -158,12 +157,12 @@ export async function GET(_req: Request, ctx: RouteContext) {
     if (orgIds.length > 0) {
       const { data: orgs, error: orgErr } = await admin
         .from("organizations")
-        .select("id, name, display_name, legal_name")
+        .select("id, name, legal_name")
         .in("id", orgIds);
 
       if (orgErr) {
         return NextResponse.json(
-          { error: "Server error" },
+          { error: orgErr.message || "Server error" },
           { status: 500, headers: { "Cache-Control": "no-store" } }
         );
       }
@@ -171,9 +170,8 @@ export async function GET(_req: Request, ctx: RouteContext) {
       for (const o of (orgs ?? []) as OrganizationRow[]) {
         orgNameById.set(
           o.id,
-          o.display_name ??
-            o.name ??
-            o.legal_name ??
+          o.name?.trim() ||
+            o.legal_name?.trim() ||
             o.id
         );
       }
@@ -188,7 +186,7 @@ export async function GET(_req: Request, ctx: RouteContext) {
 
         if (professionalsErr) {
           return NextResponse.json(
-            { error: "Server error" },
+            { error: professionalsErr.message || "Server error" },
             { status: 500, headers: { "Cache-Control": "no-store" } }
           );
         }
@@ -196,15 +194,16 @@ export async function GET(_req: Request, ctx: RouteContext) {
         for (const p of (professionals ?? []) as ProfessionalRow[]) {
           const fullName = [p.first_name?.trim() ?? "", p.last_name?.trim() ?? ""]
             .filter(Boolean)
-            .join(" ");
+            .join(" ")
+            .trim();
 
           const label =
-            p.display_name ??
-            p.business_name ??
-            fullName ??
+            p.display_name?.trim() ||
+            p.business_name?.trim() ||
+            fullName ||
             p.id;
 
-          orgNameById.set(p.id, label || p.id);
+          orgNameById.set(p.id, label);
         }
       }
     }
@@ -231,9 +230,9 @@ export async function GET(_req: Request, ctx: RouteContext) {
         headers: { "Cache-Control": "no-store" },
       }
     );
-  } catch {
+  } catch (error: unknown) {
     return NextResponse.json(
-      { error: "Server error" },
+      { error: error instanceof Error ? error.message : "Server error" },
       { status: 500, headers: { "Cache-Control": "no-store" } }
     );
   }
