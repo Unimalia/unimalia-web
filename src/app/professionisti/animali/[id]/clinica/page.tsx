@@ -20,7 +20,13 @@ type ClinicEventType =
   | "imaging";
 
 type ImagingOrthancMeta = {
-  studyInstanceUid?: string | null;
+  instance_id?: string | null;
+  study_id?: string | null;
+  series_id?: string | null;
+  study_instance_uid?: string | null;
+  series_instance_uid?: string | null;
+  sop_instance_uid?: string | null;
+  viewer_url?: string | null;
 };
 
 type ImagingFileMeta = {
@@ -631,6 +637,13 @@ export default function ClinicaPage() {
   };
 
   async function openImagingViewerOrFile(eventId: string, file: ImagingFileMeta) {
+    const directViewerUrl = String(file?.orthanc?.viewer_url || "").trim();
+
+    if (directViewerUrl) {
+      window.open(directViewerUrl, "_blank", "noopener,noreferrer");
+      return;
+    }
+
     const fileId = String(file?.id || "").trim();
 
     if (fileId) {
@@ -2478,15 +2491,15 @@ export default function ClinicaPage() {
                                 </div>
                                 <div>
                                   <span className="font-semibold">Viewer DICOM:</span>{" "}
-                                  {detailEvent.meta?.imaging?.files?.some((f) => !!f?.id)
+                                  {detailEvent.meta?.imaging?.files?.some((f) => !!f?.orthanc?.viewer_url || !!f?.id)
                                     ? "Disponibile"
                                     : "Non disponibile"}
                                 </div>
-                                {detailEvent.meta?.imaging?.files?.[0]?.orthanc?.studyInstanceUid ? (
+                                {detailEvent.meta?.imaging?.files?.[0]?.orthanc?.study_instance_uid ? (
                                   <div>
                                     <span className="font-semibold">Study UID:</span>{" "}
                                     <span className="break-all font-mono text-xs">
-                                      {detailEvent.meta.imaging.files[0].orthanc.studyInstanceUid}
+                                      {detailEvent.meta.imaging.files[0].orthanc.study_instance_uid}
                                     </span>
                                   </div>
                                 ) : null}
@@ -2502,9 +2515,9 @@ export default function ClinicaPage() {
                                       file.name?.toLowerCase().endsWith(".png");
 
                                     const fileId = String(file?.id || file?.path || "");
-                                    const viewerUrl = file.id
-                                      ? buildOrthancViewerUrl(detailEvent.id, file.id)
-                                      : null;
+                                    const hasDirectViewerUrl = !!String(file?.orthanc?.viewer_url || "").trim();
+                                    const hasFallbackViewer = !!String(file?.id || "").trim();
+                                    const canOpenViewer = hasDirectViewerUrl || hasFallbackViewer;
                                     const shareUrl = shareLinkByFileId[fileId];
                                     const shareExpiresAt = shareExpiresAtByFileId[fileId];
                                     const isShareLoading = !!shareLoadingByFileId[fileId];
@@ -2571,18 +2584,18 @@ export default function ClinicaPage() {
                                                 void openImagingViewerOrFile(detailEvent.id, file)
                                               }
                                               title={
-                                                viewerUrl
+                                                canOpenViewer
                                                   ? "Apri direttamente lo studio DICOM"
                                                   : "Apri file imaging"
                                               }
                                             >
-                                              {viewerUrl ? "Apri viewer" : "Apri"}
+                                              {canOpenViewer ? "Apri viewer" : "Apri"}
                                             </button>
 
                                             <button
                                               type="button"
                                               className="block w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-800"
-                                              disabled={isShareLoading || !file?.orthanc?.studyInstanceUid}
+                                              disabled={isShareLoading || !file?.orthanc?.study_instance_uid}
                                               onClick={() =>
                                                 void createImagingShareLink(
                                                   detailEvent.id,
