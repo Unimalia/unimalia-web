@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createSignedDownloadUrl } from "@/lib/storage";
-import { supabaseAdmin } from "@/lib/supabase/server";
+import { supabaseAdmin, createServerSupabaseClient } from "@/lib/supabase/server";
 import { getBearerToken } from "@/lib/server/bearer";
 import { requireOwnerOrGrant } from "@/lib/server/requireOwnerOrGrant";
 
@@ -52,9 +52,18 @@ type ProfessionalProfileRoleRow = {
   role: string | null;
 };
 
+type AuthenticatedUserResult = {
+  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>;
+  user: {
+    id: string;
+    email?: string | null;
+  };
+};
+
 function isDicomFile(file: ImagingFileMeta) {
   const mime = String(file?.mime || "").toLowerCase().trim();
   const name = String(file?.name || "").toLowerCase().trim();
+
   return (
     mime === "application/dicom" ||
     name.endsWith(".dcm") ||
@@ -78,27 +87,62 @@ async function getProfessionalRole(userId: string) {
   return String(result.data?.role || "").trim() || null;
 }
 
-export async function GET(req: NextRequest) {
-  try {
-    const token = getBearerToken(req);
+async function resolveAuthenticatedUser(req: Request): Promise<AuthenticatedUserResult | null> {
+  const token = getBearerToken(req);
 
-    if (!token) {
-      return NextResponse.json({ error: "Missing Bearer token" }, { status: 401 });
+  if (token) {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !supabaseAnon) {
+      throw new Error("Server misconfigured (Supabase env missing)");
     }
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-    const supabase = createClient(supabaseUrl, supabaseAnon, {
+    const bearerSupabase = createClient(supabaseUrl, supabaseAnon, {
       global: { headers: { Authorization: `Bearer ${token}` } },
     });
 
-    const { data: userData, error: userErr } = await supabase.auth.getUser(token);
-    const user = userData?.user;
+    const bearerUserResp = await bearerSupabase.auth.getUser(token);
 
-    if (userErr || !user) {
+    if (!bearerUserResp.error && bearerUserResp.data?.user) {
+      return {
+        supabase: bearerSupabase as Awaited<ReturnType<typeof createServerSupabaseClient>>,
+        user: bearerUserResp.data.user,
+      };
+    }
+
+    console.error("[IMAGING VIEW AUTH] bearer failed", {
+      hasToken: true,
+      error: bearerUserResp.error?.message ?? null,
+    });
+  }
+
+  const cookieSupabase = await createServerSupabaseClient();
+  const cookieUserResp = await cookieSupabase.auth.getUser();
+
+  if (!cookieUserResp.error && cookieUserResp.data?.user) {
+    return {
+      supabase: cookieSupabase,
+      user: cookieUserResp.data.user,
+    };
+  }
+
+  console.error("[IMAGING VIEW AUTH] cookie failed", {
+    error: cookieUserResp.error?.message ?? null,
+  });
+
+  return null;
+}
+
+export async function GET(req: NextRequest) {
+  try {
+    const auth = await resolveAuthenticatedUser(req);
+
+    if (!auth) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const { supabase, user } = auth;
 
     const professionalRole = await getProfessionalRole(user.id);
 
