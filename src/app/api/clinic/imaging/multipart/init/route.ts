@@ -139,6 +139,7 @@ export async function POST(req: Request) {
     .insert({
       animal_id: animalId,
       created_by_user_id: user.id,
+      created_by: user.id,
       file_name: fileName,
       file_size: fileSize,
       file_type: fileType,
