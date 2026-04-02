@@ -1,20 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { createSignedDownloadUrl } from "@/lib/storage";
+import { createSignedDownloadUrl, downloadPrivateFileBuffer } from "@/lib/storage";
 import { supabaseAdmin, createServerSupabaseClient } from "@/lib/supabase/server";
 import { getBearerToken } from "@/lib/server/bearer";
 import { requireOwnerOrGrant } from "@/lib/server/requireOwnerOrGrant";
 
 type ImagingOrthancMeta = {
-  patientId?: string | null;
-  studyId?: string | null;
-  seriesId?: string | null;
-  instanceId?: string | null;
-  studyInstanceUid?: string | null;
-  seriesInstanceUid?: string | null;
-  sopInstanceUid?: string | null;
-  ohifStudyListUrl?: string | null;
-  orthancExplorerUrl?: string | null;
+  instance_id?: string | null;
+  study_id?: string | null;
+  series_id?: string | null;
+  study_instance_uid?: string | null;
+  series_instance_uid?: string | null;
+  sop_instance_uid?: string | null;
+  viewer_url?: string | null;
 };
 
 type ImagingFileMeta = {
@@ -39,13 +37,12 @@ type OrthancInstanceUploadResponse = {
   ID?: string;
   ParentStudy?: string;
   ParentSeries?: string;
-  ParentPatient?: string;
 };
 
-type OrthancStudyResponse = {
-  MainDicomTags?: {
-    StudyInstanceUID?: string | null;
-  } | null;
+type OrthancSimplifiedTagsResponse = {
+  StudyInstanceUID?: string | null;
+  SeriesInstanceUID?: string | null;
+  SOPInstanceUID?: string | null;
 };
 
 type ProfessionalProfileRoleRow = {
@@ -134,6 +131,53 @@ async function resolveAuthenticatedUser(req: Request): Promise<AuthenticatedUser
   return null;
 }
 
+function getOrthancConfig() {
+  const orthancPublicUrl = (process.env.NEXT_PUBLIC_ORTHANC_PUBLIC_URL || "")
+    .trim()
+    .replace(/\/+$/, "");
+  const orthancBaseUrl = (process.env.ORTHANC_BASE_URL || "")
+    .trim()
+    .replace(/\/+$/, "");
+  const username = (process.env.ORTHANC_USERNAME || "").trim();
+  const password = (process.env.ORTHANC_PASSWORD || "").trim();
+
+  return {
+    orthancPublicUrl,
+    orthancBaseUrl,
+    username,
+    password,
+  };
+}
+
+function createOrthancBasicAuthHeader(username: string, password: string) {
+  return `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`;
+}
+
+async function fetchOrthancSimplifiedTags(
+  orthancBaseUrl: string,
+  authHeader: string,
+  orthancInstanceId: string
+): Promise<OrthancSimplifiedTagsResponse> {
+  const response = await fetch(
+    `${orthancBaseUrl}/instances/${encodeURIComponent(orthancInstanceId)}/simplified-tags`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: authHeader,
+        Accept: "application/json",
+      },
+      cache: "no-store",
+    }
+  );
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Errore lettura simplified-tags Orthanc: ${response.status} ${text}`);
+  }
+
+  return (await response.json()) as OrthancSimplifiedTagsResponse;
+}
+
 export async function GET(req: NextRequest) {
   try {
     const auth = await resolveAuthenticatedUser(req);
@@ -162,15 +206,6 @@ export async function GET(req: NextRequest) {
         { status: 400 }
       );
     }
-
-    const orthancPublicUrl = (process.env.NEXT_PUBLIC_ORTHANC_PUBLIC_URL || "")
-      .trim()
-      .replace(/\/+$/, "");
-    const orthancBaseUrl = (process.env.ORTHANC_BASE_URL || "")
-      .trim()
-      .replace(/\/+$/, "");
-    const username = (process.env.ORTHANC_USERNAME || "").trim();
-    const password = (process.env.ORTHANC_PASSWORD || "").trim();
 
     const admin = supabaseAdmin();
 
@@ -220,95 +255,97 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const signedDownloadUrl = await createSignedDownloadUrl(filePath, 60);
-
     if (!isDicomFile(file)) {
+      const signedDownloadUrl = await createSignedDownloadUrl(filePath, 60);
       return NextResponse.redirect(signedDownloadUrl);
     }
 
-    if (!orthancPublicUrl || !orthancBaseUrl || !username || !password) {
-      return NextResponse.redirect(signedDownloadUrl);
+    const directViewerUrl = String(file?.orthanc?.viewer_url || "").trim();
+
+    if (directViewerUrl) {
+      return NextResponse.redirect(directViewerUrl);
     }
 
     const existingStudyInstanceUid = String(
-      file?.orthanc?.studyInstanceUid || ""
+      file?.orthanc?.study_instance_uid || ""
     ).trim();
 
-    if (existingStudyInstanceUid) {
-      const redirectUrl = `${orthancPublicUrl}/ohif/viewer?StudyInstanceUIDs=${encodeURIComponent(
+    const { orthancPublicUrl, orthancBaseUrl, username, password } = getOrthancConfig();
+
+    if (existingStudyInstanceUid && orthancPublicUrl) {
+      const redirectUrl = `${orthancPublicUrl}/viewer?StudyInstanceUIDs=${encodeURIComponent(
         existingStudyInstanceUid
       )}`;
       return NextResponse.redirect(redirectUrl);
     }
 
-    const r2Resp = await fetch(signedDownloadUrl, {
-      method: "GET",
-      cache: "no-store",
-    });
-
-    if (!r2Resp.ok) {
+    if (!orthancPublicUrl || !orthancBaseUrl || !username || !password) {
+      const signedDownloadUrl = await createSignedDownloadUrl(filePath, 60);
       return NextResponse.redirect(signedDownloadUrl);
     }
 
-    const dicomBuffer = Buffer.from(await r2Resp.arrayBuffer());
-    const basicAuth = Buffer.from(`${username}:${password}`).toString("base64");
+    const authHeader = createOrthancBasicAuthHeader(username, password);
+
+    const dicomBuffer = await downloadPrivateFileBuffer(filePath);
+    const dicomBytes = new Uint8Array(dicomBuffer);
 
     const uploadResp = await fetch(`${orthancBaseUrl}/instances`, {
       method: "POST",
       headers: {
-        Authorization: `Basic ${basicAuth}`,
+        Authorization: authHeader,
         "Content-Type": "application/dicom",
         Accept: "application/json",
       },
-      body: dicomBuffer,
+      body: dicomBytes,
       cache: "no-store",
     });
 
     const uploadJson = (await uploadResp.json().catch(() => null)) as OrthancInstanceUploadResponse | null;
 
-    if (!uploadResp.ok || !uploadJson?.ParentStudy || !uploadJson?.ID) {
+    if (!uploadResp.ok || !uploadJson?.ID) {
+      const signedDownloadUrl = await createSignedDownloadUrl(filePath, 60);
       return NextResponse.redirect(signedDownloadUrl);
     }
 
-    const studyId = String(uploadJson.ParentStudy);
-    const instanceId = String(uploadJson.ID);
-    const seriesId = String(uploadJson.ParentSeries || "");
-    const patientId = String(uploadJson.ParentPatient || "");
+    const orthancInstanceId = String(uploadJson.ID || "").trim() || null;
+    const orthancStudyId = String(uploadJson.ParentStudy || "").trim() || null;
+    const orthancSeriesId = String(uploadJson.ParentSeries || "").trim() || null;
 
-    const studyResp = await fetch(`${orthancBaseUrl}/studies/${studyId}`, {
-      method: "GET",
-      headers: {
-        Authorization: `Basic ${basicAuth}`,
-        Accept: "application/json",
-      },
-      cache: "no-store",
-    });
-
-    const studyJson = (await studyResp.json().catch(() => null)) as OrthancStudyResponse | null;
-
-    if (!studyResp.ok || !studyJson) {
+    if (!orthancInstanceId) {
+      const signedDownloadUrl = await createSignedDownloadUrl(filePath, 60);
       return NextResponse.redirect(signedDownloadUrl);
     }
 
-    const studyInstanceUid = String(
-      studyJson?.MainDicomTags?.StudyInstanceUID || ""
-    ).trim();
+    const tags = await fetchOrthancSimplifiedTags(
+      orthancBaseUrl,
+      authHeader,
+      orthancInstanceId
+    );
+
+    const studyInstanceUid = String(tags.StudyInstanceUID || "").trim() || null;
+    const seriesInstanceUid = String(tags.SeriesInstanceUID || "").trim() || null;
+    const sopInstanceUid = String(tags.SOPInstanceUID || "").trim() || null;
 
     if (!studyInstanceUid) {
+      const signedDownloadUrl = await createSignedDownloadUrl(filePath, 60);
       return NextResponse.redirect(signedDownloadUrl);
     }
+
+    const viewerUrl = `${orthancPublicUrl}/viewer?StudyInstanceUIDs=${encodeURIComponent(
+      studyInstanceUid
+    )}`;
 
     const updatedFile: ImagingFileMeta = {
       ...file,
       orthanc: {
         ...(file?.orthanc || {}),
-        patientId: patientId || null,
-        studyId: studyId || null,
-        seriesId: seriesId || null,
-        instanceId: instanceId || null,
-        studyInstanceUid,
-        ohifStudyListUrl: `${orthancPublicUrl}/ohif/`,
-        orthancExplorerUrl: `${orthancPublicUrl}/ui/app/#/`,
+        instance_id: orthancInstanceId,
+        study_id: orthancStudyId,
+        series_id: orthancSeriesId,
+        study_instance_uid: studyInstanceUid,
+        series_instance_uid: seriesInstanceUid,
+        sop_instance_uid: sopInstanceUid,
+        viewer_url: viewerUrl,
       },
     };
 
@@ -328,11 +365,7 @@ export async function GET(req: NextRequest) {
       .update({ meta: updatedMeta })
       .eq("id", eventId);
 
-    const redirectUrl = `${orthancPublicUrl}/ohif/viewer?StudyInstanceUIDs=${encodeURIComponent(
-      studyInstanceUid
-    )}`;
-
-    return NextResponse.redirect(redirectUrl);
+    return NextResponse.redirect(viewerUrl);
   } catch (err: unknown) {
     return NextResponse.json(
       {
