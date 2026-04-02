@@ -122,7 +122,6 @@ export async function POST(req: Request) {
     .insert({
       animal_id: animalId,
       created_by_user_id: user.id,
-      clinic_id: grant.actor_organization_id ?? null,
       file_name: fileName,
       file_size: fileSize,
       file_type: fileType,
