@@ -49,7 +49,7 @@ type ClinicEventRow = {
   created_at: string;
   created_by_user_id?: string | null;
   verified_by_label?: string | null;
-  verified_by_org_id?: string | null;
+  verified_by_organization_id?: string | null;
   verified_by_member_id?: string | null;
   weight_kg?: number | string | null;
   weightKg?: number | string | null;
@@ -258,7 +258,7 @@ export default function AnimalClinicalPage() {
     const { data, error: queryError } = await supabase
       .from("animal_clinic_events")
       .select(
-        "id, animal_id, event_date, type, title, description, visibility, source, verified_at, verified_by_user_id, created_at, created_by_user_id, verified_by_label, verified_by_org_id, verified_by_member_id, meta, status"
+        "id, animal_id, event_date, type, title, description, visibility, source, verified_at, verified_by_user_id, created_at, created_by_user_id, verified_by_label, verified_by_organization_id, verified_by_member_id, meta, status"
       )
       .eq("animal_id", animalId)
       .neq("status", "void")

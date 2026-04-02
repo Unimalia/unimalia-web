@@ -12,8 +12,8 @@ type ManagedAnimalRow = {
   unimalia_code: string | null;
   owner_id: string | null;
   owner_claim_status: "none" | "pending" | "claimed" | null;
-  created_by_org_id: string | null;
-  origin_org_id: string | null;
+  created_by_organization_id: string | null;
+  origin_organization_id: string | null;
   owner_name: string | null;
   grant_status: "active" | "revoked_own_history" | "clinic_origin";
   has_active_grant: boolean;

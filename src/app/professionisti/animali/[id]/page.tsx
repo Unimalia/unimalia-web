@@ -30,7 +30,7 @@ type Animal = {
   photo_url?: string | null;
 
   microchip_verified_at?: string | null;
-  microchip_verified_org_id?: string | null;
+  microchip_verified_by_organization_id?: string | null;
   microchip_verified_by_label?: string | null;
 
   birth_date?: string | null;
@@ -38,8 +38,8 @@ type Animal = {
 
   owner_claim_status?: "none" | "pending" | "claimed" | null;
   created_by_role?: string | null;
-  created_by_org_id?: string | null;
-  origin_org_id?: string | null;
+  created_by_organization_id?: string | null;
+  origin_organization_id?: string | null;
 
   owner_name?: string | null;
   owner_email?: string | null;
@@ -77,7 +77,7 @@ type ClinicEventRow = {
   verified_by_user_id: string | null;
 
   verified_by_label?: string | null;
-  verified_by_org_id?: string | null;
+  verified_by_organization_id?: string | null;
   verified_by_member_id?: string | null;
 
   due_date?: string | null;
@@ -438,7 +438,7 @@ export default function ProAnimalPage() {
                   {ownerConnectionLabel(animal)}
                 </span>
 
-                {(animal.created_by_org_id || animal.created_by_role === "professional") && (
+                {(animal.created_by_organization_id || animal.created_by_role === "professional") && (
                   <span className="rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-semibold text-zinc-700">
                     Creato dalla clinica
                   </span>

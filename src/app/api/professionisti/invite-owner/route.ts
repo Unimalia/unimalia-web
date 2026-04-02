@@ -21,8 +21,8 @@ type ProfessionalRow = {
 type AnimalRow = {
   id: string;
   name: string | null;
-  created_by_org_id: string | null;
-  origin_org_id: string | null;
+  created_by_organization_id: string | null;
+  origin_organization_id: string | null;
   owner_id: string | null;
   pending_owner_email: string | null;
 };
@@ -108,7 +108,7 @@ export async function POST(req: NextRequest) {
 
     const animalResult = await admin
       .from("animals")
-      .select("id, name, created_by_org_id, origin_org_id, owner_id, pending_owner_email")
+      .select("id, name, created_by_organization_id, origin_organization_id, owner_id, pending_owner_email")
       .eq("id", animalId)
       .single<AnimalRow>();
 
@@ -119,7 +119,8 @@ export async function POST(req: NextRequest) {
     const animal = animalResult.data;
 
     const canAccess =
-      animal.created_by_org_id === organizationId || animal.origin_org_id === organizationId;
+      animal.created_by_organization_id === organizationId ||
+      animal.origin_organization_id === organizationId;
 
     if (!canAccess) {
       return NextResponse.json({ error: "Accesso negato" }, { status: 403 });
@@ -179,7 +180,6 @@ export async function POST(req: NextRequest) {
           email,
           claim_token: token,
           created_by_user_id: user.id,
-          created_by: user.id,
         })
         .select("id")
         .single();

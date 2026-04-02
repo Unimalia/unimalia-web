@@ -16,8 +16,8 @@ type ProfessionalRow = {
 
 type AnimalAccessRow = {
   id: string;
-  created_by_org_id: string | null;
-  origin_org_id: string | null;
+  created_by_organization_id: string | null;
+  origin_organization_id: string | null;
 };
 
 type AnimalGrantRow = {
@@ -28,10 +28,6 @@ type AnimalGrantRow = {
   revoked_at: string | null;
   scope_read: boolean | null;
   scope_write: boolean | null;
-};
-
-type AnimalAuditRow = {
-  id: string;
 };
 
 async function getProfessionalRefs(userId: string) {
@@ -99,7 +95,7 @@ async function ensureProfessionalAnimalAccess(userId: string, animalId: string) 
 
   const animalResult = await admin
     .from("animals")
-    .select("id, created_by_org_id, origin_org_id")
+    .select("id, created_by_organization_id, origin_organization_id")
     .eq("id", animalId)
     .maybeSingle<AnimalAccessRow>();
 
@@ -145,8 +141,8 @@ async function ensureProfessionalAnimalAccess(userId: string, animalId: string) 
 
   const canAccess =
     Boolean(activeGrant) ||
-    refs.includes(String(animal.created_by_org_id ?? "")) ||
-    refs.includes(String(animal.origin_org_id ?? ""));
+    refs.includes(String(animal.created_by_organization_id ?? "")) ||
+    refs.includes(String(animal.origin_organization_id ?? ""));
 
   return {
     canAccess,
@@ -192,7 +188,7 @@ export async function GET(req: NextRequest) {
     const result = await admin
       .from("animal_history_events")
       .select(
-        "id, animal_id, author_type, author_user_id, author_name_snapshot, professional_org_id, professional_category, source_scope, category, event_type, title, description, event_date, next_action_date, status, visibility, meta, created_at, updated_at"
+        "id, animal_id, author_type, author_user_id, author_name_snapshot, professional_organization_id, professional_category, source_scope, category, event_type, title, description, event_date, next_action_date, status, visibility, meta, created_at, updated_at"
       )
       .eq("animal_id", animalId)
       .order("event_date", { ascending: false })
@@ -274,7 +270,7 @@ export async function POST(req: NextRequest) {
       author_type: "professional",
       author_user_id: user.id,
       author_name_snapshot: professionalSnapshot.displayName,
-      professional_org_id: organizationId,
+      professional_organization_id: organizationId,
       professional_category: professionalSnapshot.category,
       source_scope: input.sourceScope,
       category: input.category,
@@ -292,7 +288,7 @@ export async function POST(req: NextRequest) {
       .from("animal_history_events")
       .insert(insertPayload)
       .select(
-        "id, animal_id, author_type, author_user_id, author_name_snapshot, professional_org_id, professional_category, source_scope, category, event_type, title, description, event_date, next_action_date, status, visibility, meta, created_at, updated_at"
+        "id, animal_id, author_type, author_user_id, author_name_snapshot, professional_organization_id, professional_category, source_scope, category, event_type, title, description, event_date, next_action_date, status, visibility, meta, created_at, updated_at"
       )
       .single();
 

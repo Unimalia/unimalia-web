@@ -20,7 +20,7 @@ export type ConsultShareMode = "full_record" | "selected_events";
 
 type CurrentProfessionalContext = {
   userId: string;
-  orgId: string | null;
+  organizationId: string | null;
   professional: {
     id: string;
     owner_id: string | null;
@@ -51,7 +51,7 @@ type ConsultRequestRow = {
   animal_id: string;
   animal_name: string | null;
   sender_user_id?: string | null;
-  sender_org_id?: string | null;
+  sender_organization_id?: string | null;
   sender_professional_id: string | null;
   sender_display_name: string | null;
   receiver_professional_id: string | null;
@@ -181,7 +181,7 @@ async function getAuthenticatedUserId() {
 export async function getCurrentProfessionalContext(): Promise<CurrentProfessionalContext> {
   const admin = supabaseAdmin();
   const userId = await getAuthenticatedUserId();
-  const orgId = await getProfessionalOrgId();
+  const organizationId = await getProfessionalOrgId();
 
   const { data, error } = await admin
     .from("professionals")
@@ -201,7 +201,7 @@ export async function getCurrentProfessionalContext(): Promise<CurrentProfession
 
   return {
     userId,
-    orgId,
+    organizationId,
     professional: data,
   };
 }
@@ -217,7 +217,7 @@ async function assertConsultParticipant(consultId: string) {
   const { data: consult, error } = await admin
     .from("professional_consult_requests")
     .select(
-      "id,sender_professional_id,receiver_professional_id,status,expires_at,sender_user_id,sender_org_id"
+      "id,sender_professional_id,receiver_professional_id,status,expires_at,sender_user_id,sender_organization_id"
     )
     .eq("id", consultId)
     .maybeSingle();
@@ -533,7 +533,7 @@ export async function createProfessionalConsult(input: {
       animal_id: input.animalId,
       animal_name: animal.name ?? "Animale",
       sender_user_id: ctx.userId,
-      sender_org_id: ctx.orgId,
+      sender_organization_id: ctx.organizationId,
       sender_professional_id: ctx.professional.id,
       sender_display_name: senderName,
       receiver_professional_id: receiver.id,
@@ -763,7 +763,7 @@ export async function listProfessionalConsults(params: {
     animal_id: item.animal_id,
     animal_name: item.animal_name,
     sender_user_id: item.sender_user_id,
-    sender_org_id: item.sender_org_id,
+    sender_organization_id: item.sender_organization_id,
     sender_professional_id: item.sender_professional_id,
     sender_display_name: item.sender_display_name,
     receiver_professional_id: item.receiver_professional_id,
@@ -805,7 +805,7 @@ export async function getProfessionalConsultDetail(id: string) {
   const { data: consult, error: consultError } = await admin
     .from("professional_consult_requests")
     .select(
-      "id,animal_id,animal_name,sender_user_id,sender_org_id,sender_professional_id,sender_display_name,receiver_professional_id,receiver_display_name,subject,initial_message,share_mode,priority,status,expires_at,last_message_at,accepted_at,rejected_at,replied_at,closed_at,created_at"
+      "id,animal_id,animal_name,sender_user_id,sender_organization_id,sender_professional_id,sender_display_name,receiver_professional_id,receiver_display_name,subject,initial_message,share_mode,priority,status,expires_at,last_message_at,accepted_at,rejected_at,replied_at,closed_at,created_at"
     )
     .eq("id", id)
     .maybeSingle();

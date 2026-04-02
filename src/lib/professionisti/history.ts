@@ -44,7 +44,7 @@ export type AnimalHistoryEventRow = {
   author_type: HistoryAuthorType;
   author_user_id: string;
   author_name_snapshot: string | null;
-  professional_org_id: string | null;
+  professional_organization_id: string | null;
   professional_category: string | null;
   source_scope: HistorySourceScope;
   category: HistoryCategory;

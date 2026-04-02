@@ -343,7 +343,7 @@ export default function AnimalProfilePage() {
         </>
       }
     >
-      <OwnerGrantNotifier pathname={`/identita/${animal.id}`} />
+      <OwnerGrantNotifier animalId={animal.id} />
 
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">

@@ -7,12 +7,12 @@ type Row = {
   id: string;
   created_at: string;
   animal_id: string;
-  org_id: string;
+  organization_id: string;
   status: "pending" | "approved" | "rejected" | "blocked" | "revoked" | string;
   requested_scope?: string[] | null;
   expires_at?: string | null;
   animal_name?: string | null;
-  org_name?: string | null;
+  organization_name?: string | null;
 };
 
 type Duration = "24h" | "7d" | "6m" | "forever";
@@ -172,7 +172,7 @@ export default function OwnerRequestsClient() {
                 >
                   <div className="text-sm">
                     <div className="font-semibold text-zinc-900">
-                      {r.animal_name ?? r.animal_id} • {r.org_name ?? r.org_id}
+                      {r.animal_name ?? r.animal_id} • {r.organization_name ?? r.organization_id}
                     </div>
                     <div className="mt-1 text-zinc-600">
                       Richiesta del {formatDateTime(r.created_at)}
@@ -254,7 +254,7 @@ export default function OwnerRequestsClient() {
               >
                 <div className="text-sm">
                   <div className="font-semibold text-zinc-900">
-                    {r.animal_name ?? r.animal_id} • {r.org_name ?? r.org_id}
+                    {r.animal_name ?? r.animal_id} • {r.organization_name ?? r.organization_id}
                   </div>
                   <div className="mt-1 text-zinc-600">
                     Stato: {r.status}

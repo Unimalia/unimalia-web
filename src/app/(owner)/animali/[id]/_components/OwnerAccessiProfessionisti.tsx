@@ -7,8 +7,8 @@ type AccessRequest = {
   id: string;
   animal_id: string;
   owner_id?: string;
-  org_id: string;
-  org_name?: string | null;
+  organization_id: string;
+  organization_name?: string | null;
   animal_name?: string | null;
   status: "pending" | "approved" | "rejected" | "blocked" | "revoked" | string;
   created_at: string;
@@ -21,7 +21,7 @@ type AccessGrant = {
   animal_id: string;
   grantee_type: string;
   grantee_id: string;
-  org_name?: string | null;
+  organization_name?: string | null;
   animal_name?: string | null;
   status: "active" | "revoked" | string;
   valid_to: string | null;
@@ -70,7 +70,7 @@ function formatDate(value: string | null | undefined) {
   return new Date(value).toLocaleDateString("it-IT");
 }
 
-function formatOrgLabel(name?: string | null, fallbackId?: string | null) {
+function formatOrganizationLabel(name?: string | null, fallbackId?: string | null) {
   return name?.trim() || fallbackId || "Professionista";
 }
 
@@ -241,7 +241,7 @@ export default function OwnerAccessiProfessionisti({ animalId }: { animalId: str
               >
                 <div className="text-sm">
                   <div className="font-semibold text-zinc-900">
-                    {formatOrgLabel(g.org_name, g.grantee_id)}
+                    {formatOrganizationLabel(g.organization_name, g.grantee_id)}
                   </div>
                   <div className="mt-1 text-zinc-600">
                     Permessi: {formatScopeFromGrant(g)}
@@ -283,7 +283,7 @@ export default function OwnerAccessiProfessionisti({ animalId }: { animalId: str
                 >
                   <div className="text-sm">
                     <div className="font-semibold text-zinc-900">
-                      {formatOrgLabel(r.org_name, r.org_id)}
+                      {formatOrganizationLabel(r.organization_name, r.organization_id)}
                     </div>
                     <div className="mt-1 text-zinc-600">
                       Richiesta del {formatDateTime(r.created_at)}
@@ -347,7 +347,7 @@ export default function OwnerAccessiProfessionisti({ animalId }: { animalId: str
               {historyRequests.map((r) => (
                 <li key={r.id} className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
                   <div className="text-sm font-semibold text-zinc-900">
-                    {formatOrgLabel(r.org_name, r.org_id)}
+                    {formatOrganizationLabel(r.organization_name, r.organization_id)}
                   </div>
                   <div className="mt-1 text-sm text-zinc-600">Stato: {r.status}</div>
                   <div className="mt-1 text-sm text-zinc-500">

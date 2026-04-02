@@ -15,8 +15,8 @@ type ClaimRow = {
 type AnimalClaimRow = {
   id: string;
   owner_id: string | null;
-  created_by_org_id: string | null;
-  origin_org_id: string | null;
+  created_by_organization_id: string | null;
+  origin_organization_id: string | null;
   chip_number: string | null;
   microchip_verified: boolean | null;
   pending_owner_email: string | null;
@@ -154,7 +154,7 @@ export async function POST(req: NextRequest) {
     const animalResult = await admin
       .from("animals")
       .select(
-        "id, owner_id, created_by_org_id, origin_org_id, chip_number, microchip_verified, pending_owner_email, pending_owner_phone"
+        "id, owner_id, created_by_organization_id, origin_organization_id, chip_number, microchip_verified, pending_owner_email, pending_owner_phone"
       )
       .eq("id", claim.animal_id)
       .single<AnimalClaimRow>();
@@ -223,8 +223,8 @@ export async function POST(req: NextRequest) {
         pending_owner_invited_at: null,
       })
       .eq("id", claim.animal_id)
-      .select("id, created_by_org_id, origin_org_id")
-      .single<{ id: string; created_by_org_id: string | null; origin_org_id: string | null }>();
+      .select("id, created_by_organization_id, origin_organization_id")
+      .single<{ id: string; created_by_organization_id: string | null; origin_organization_id: string | null }>();
 
     if (animalUpdate.error || !animalUpdate.data) {
       return NextResponse.json(
@@ -249,16 +249,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const originOrgId =
-      animalUpdate.data.created_by_org_id || animalUpdate.data.origin_org_id || null;
+    const originOrganizationId =
+      animalUpdate.data.created_by_organization_id || animalUpdate.data.origin_organization_id || null;
 
-    if (originOrgId) {
+    if (originOrganizationId) {
       const existingGrantResult = await admin
         .from("animal_access_grants")
         .select("id, status, revoked_at")
         .eq("animal_id", claim.animal_id)
         .eq("grantee_type", "organization")
-        .eq("grantee_id", originOrgId)
+        .eq("grantee_id", originOrganizationId)
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle<ExistingGrantRow>();
@@ -299,7 +299,7 @@ export async function POST(req: NextRequest) {
         const insertGrant = await admin.from("animal_access_grants").insert({
           animal_id: claim.animal_id,
           grantee_type: "organization",
-          grantee_id: originOrgId,
+          grantee_id: originOrganizationId,
           granted_by_user_id: user.id,
           status: "active",
           valid_to: null,

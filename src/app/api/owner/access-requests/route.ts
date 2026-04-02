@@ -36,7 +36,7 @@ type AccessRequestRow = {
   created_at: string;
   animal_id: string;
   owner_id: string;
-  org_id: string;
+  organization_id: string;
   status: string;
   requested_scope: unknown;
 };
@@ -99,20 +99,23 @@ function canTransition(status: string, action: Action) {
   return false;
 }
 
-async function tryResolveOrgNames(admin: ReturnType<typeof supabaseAdmin>, orgIds: string[]) {
-  const orgNameById = new Map<string, string>();
+async function tryResolveOrganizationNames(
+  admin: ReturnType<typeof supabaseAdmin>,
+  organizationIds: string[]
+) {
+  const organizationNameById = new Map<string, string>();
 
-  if (!orgIds.length) return orgNameById;
+  if (!organizationIds.length) return organizationNameById;
 
   try {
     const { data, error } = await admin
       .from("organizations")
       .select("id, name, display_name, ragione_sociale, legal_name")
-      .in("id", orgIds);
+      .in("id", organizationIds);
 
     if (!error) {
       for (const row of (data ?? []) as OrganizationRow[]) {
-        orgNameById.set(
+        organizationNameById.set(
           row.id,
           row.display_name ??
             row.name ??
@@ -122,7 +125,7 @@ async function tryResolveOrgNames(admin: ReturnType<typeof supabaseAdmin>, orgId
         );
       }
 
-      if (orgNameById.size > 0) return orgNameById;
+      if (organizationNameById.size > 0) return organizationNameById;
     }
   } catch {}
 
@@ -130,7 +133,7 @@ async function tryResolveOrgNames(admin: ReturnType<typeof supabaseAdmin>, orgId
     const { data, error } = await admin
       .from("professionals")
       .select("id, display_name, business_name, first_name, last_name")
-      .in("id", orgIds);
+      .in("id", organizationIds);
 
     if (!error) {
       for (const row of (data ?? []) as ProfessionalRow[]) {
@@ -144,12 +147,12 @@ async function tryResolveOrgNames(admin: ReturnType<typeof supabaseAdmin>, orgId
           fullName ??
           row.id;
 
-        orgNameById.set(row.id, name || row.id);
+        organizationNameById.set(row.id, name || row.id);
       }
     }
   } catch {}
 
-  return orgNameById;
+  return organizationNameById;
 }
 
 function normalizeRequestedScope(input: unknown): Array<"read" | "write"> {
@@ -184,7 +187,7 @@ export async function GET(req: Request) {
 
     let q = admin
       .from("animal_access_requests")
-      .select("id, created_at, animal_id, owner_id, org_id, status, requested_scope")
+      .select("id, created_at, animal_id, owner_id, organization_id, status, requested_scope")
       .eq("owner_id", user.id)
       .order("created_at", { ascending: false })
       .limit(100);
@@ -205,7 +208,9 @@ export async function GET(req: Request) {
     const rows = (data ?? []) as AccessRequestRow[];
 
     const animalIds = Array.from(new Set(rows.map((r) => r.animal_id).filter(Boolean)));
-    const orgIds = Array.from(new Set(rows.map((r) => r.org_id).filter(Boolean)));
+    const organizationIds = Array.from(
+      new Set(rows.map((r) => r.organization_id).filter(Boolean))
+    );
 
     const animalNameById = new Map<string, string>();
 
@@ -227,13 +232,13 @@ export async function GET(req: Request) {
       }
     }
 
-    const orgNameById = await tryResolveOrgNames(admin, orgIds);
+    const organizationNameById = await tryResolveOrganizationNames(admin, organizationIds);
 
     const enriched = rows.map((r) => ({
       ...r,
       expires_at: null,
       animal_name: animalNameById.get(r.animal_id) ?? r.animal_id,
-      org_name: orgNameById.get(r.org_id) ?? r.org_id,
+      organization_name: organizationNameById.get(r.organization_id) ?? r.organization_id,
     }));
 
     return NextResponse.json(
@@ -289,7 +294,7 @@ export async function POST(req: Request) {
 
     const { data: reqRow, error: reqErr } = await admin
       .from("animal_access_requests")
-      .select("id, animal_id, owner_id, org_id, status, requested_scope")
+      .select("id, animal_id, owner_id, organization_id, status, requested_scope")
       .eq("id", id)
       .maybeSingle();
 
@@ -350,7 +355,7 @@ export async function POST(req: Request) {
         .select("id")
         .eq("animal_id", requestRow.animal_id)
         .eq("grantee_type", "organization")
-        .eq("grantee_id", requestRow.org_id)
+        .eq("grantee_id", requestRow.organization_id)
         .is("revoked_at", null)
         .maybeSingle();
 
@@ -392,7 +397,7 @@ export async function POST(req: Request) {
         const { error: grantErr } = await admin.from("animal_access_grants").insert({
           animal_id: requestRow.animal_id,
           grantee_type: "organization",
-          grantee_id: requestRow.org_id,
+          grantee_id: requestRow.organization_id,
           ...grantPayload,
         });
 
@@ -482,7 +487,7 @@ export async function POST(req: Request) {
         .select("id")
         .eq("animal_id", requestRow.animal_id)
         .eq("grantee_type", "organization")
-        .eq("grantee_id", requestRow.org_id)
+        .eq("grantee_id", requestRow.organization_id)
         .is("revoked_at", null)
         .maybeSingle();
 

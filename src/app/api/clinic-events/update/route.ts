@@ -83,7 +83,7 @@ function sanitizeMeta(input: unknown): Record<string, unknown> | null {
     "priority",
     "created_by_member_label",
     "created_by_member_id",
-    "created_by_org_name",
+    "created_by_organization_name",
     "has_attachments",
     "weight_kg",
   ]);

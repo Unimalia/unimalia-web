@@ -11,8 +11,8 @@ export type ManagedAnimalRow = {
   unimalia_code: string | null;
   owner_id: string | null;
   owner_claim_status: "none" | "pending" | "claimed" | null;
-  created_by_org_id: string | null;
-  origin_org_id: string | null;
+  created_by_organization_id: string | null;
+  origin_organization_id: string | null;
   owner_name: string | null;
   grant_status: "active" | "revoked_own_history" | "clinic_origin";
   has_active_grant: boolean;
@@ -31,14 +31,14 @@ type GrantRow = {
 
 type AnimalOriginRow = {
   id: string;
-  created_by_org_id: string | null;
-  origin_org_id: string | null;
+  created_by_organization_id: string | null;
+  origin_organization_id: string | null;
 };
 
 type AuditRow = {
   animal_id: string | null;
   actor_user_id: string | null;
-  actor_org_id: string | null;
+  actor_organization_id: string | null;
   action: string;
 };
 
@@ -51,8 +51,8 @@ type AnimalRow = {
   unimalia_code: string | null;
   owner_id: string | null;
   owner_claim_status: "none" | "pending" | "claimed" | null;
-  created_by_org_id: string | null;
-  origin_org_id: string | null;
+  created_by_organization_id: string | null;
+  origin_organization_id: string | null;
 };
 
 type OwnerProfileRow = {
@@ -139,12 +139,15 @@ export async function getManagedAnimals(userId: string): Promise<ManagedAnimalRo
   const createdOrOriginatedIds = new Set<string>();
 
   const createdOrOriginatedFilter = organizationRefs
-    .map((ref) => `created_by_org_id.eq.${ref},origin_org_id.eq.${ref}`)
+    .map(
+      (ref) =>
+        `created_by_organization_id.eq.${ref},origin_organization_id.eq.${ref}`
+    )
     .join(",");
 
   const { data: createdOrOriginated, error: createdError } = await admin
     .from("animals")
-    .select("id, created_by_org_id, origin_org_id")
+    .select("id, created_by_organization_id, origin_organization_id")
     .or(createdOrOriginatedFilter)
     .limit(5000);
 
@@ -158,7 +161,7 @@ export async function getManagedAnimals(userId: string): Promise<ManagedAnimalRo
 
   const ownAuditResult = await admin
     .from("animal_clinic_event_audit")
-    .select("animal_id, actor_user_id, actor_org_id, action")
+    .select("animal_id, actor_user_id, actor_organization_id, action")
     .in("action", ["create", "update"]);
 
   if (ownAuditResult.error) {
@@ -172,9 +175,9 @@ export async function getManagedAnimals(userId: string): Promise<ManagedAnimalRo
       auditRows
         .filter((row) => {
           const actorUserId = String(row.actor_user_id || "").trim();
-          const actorOrgId = String(row.actor_org_id || "").trim();
+          const actorOrganizationId = String(row.actor_organization_id || "").trim();
 
-          return actorUserId === userId || auditRefs.includes(actorOrgId);
+          return actorUserId === userId || auditRefs.includes(actorOrganizationId);
         })
         .map((row) => String(row.animal_id || "").trim())
         .filter(Boolean)
@@ -198,7 +201,7 @@ export async function getManagedAnimals(userId: string): Promise<ManagedAnimalRo
   const { data: animals, error: animalsError } = await admin
     .from("animals")
     .select(
-      "id, name, species, breed, chip_number, unimalia_code, owner_id, owner_claim_status, created_by_org_id, origin_org_id"
+      "id, name, species, breed, chip_number, unimalia_code, owner_id, owner_claim_status, created_by_organization_id, origin_organization_id"
     )
     .in("id", animalIds)
     .order("name", { ascending: true });
@@ -239,8 +242,8 @@ export async function getManagedAnimals(userId: string): Promise<ManagedAnimalRo
     const hasOwnHistory = ownHistoryAnimalIdSet.has(row.id);
     const isClinicOrigin =
       createdOrOriginatedIds.has(row.id) ||
-      organizationRefs.includes(String(row.created_by_org_id ?? "")) ||
-      organizationRefs.includes(String(row.origin_org_id ?? ""));
+      organizationRefs.includes(String(row.created_by_organization_id ?? "")) ||
+      organizationRefs.includes(String(row.origin_organization_id ?? ""));
 
     let grantStatus: "active" | "revoked_own_history" | "clinic_origin" = "clinic_origin";
 
@@ -261,8 +264,8 @@ export async function getManagedAnimals(userId: string): Promise<ManagedAnimalRo
       unimalia_code: row.unimalia_code ?? null,
       owner_id: row.owner_id ?? null,
       owner_claim_status: row.owner_claim_status ?? null,
-      created_by_org_id: row.created_by_org_id ?? null,
-      origin_org_id: row.origin_org_id ?? null,
+      created_by_organization_id: row.created_by_organization_id ?? null,
+      origin_organization_id: row.origin_organization_id ?? null,
       owner_name: row.owner_id ? ownerNameById.get(row.owner_id) ?? null : null,
       grant_status: grantStatus,
       has_active_grant: hasActiveGrant,

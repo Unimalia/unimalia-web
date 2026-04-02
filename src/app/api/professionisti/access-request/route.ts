@@ -250,7 +250,7 @@ export async function POST(req: NextRequest) {
       .select("id, status")
       .eq("animal_id", animalId)
       .eq("owner_id", animal.owner_id)
-      .eq("org_id", organizationId)
+      .eq("organization_id", organizationId)
       .in("status", ["pending"])
       .limit(10)
       .returns<ExistingRequestRow[]>();
@@ -280,7 +280,7 @@ export async function POST(req: NextRequest) {
       .insert({
         animal_id: animalId,
         owner_id: animal.owner_id,
-        org_id: organizationId,
+        organization_id: organizationId,
         requested_by_user_id: user.id,
         requested_scope: requestedScope,
         status: "pending",

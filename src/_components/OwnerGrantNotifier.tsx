@@ -1,27 +1,31 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import { createPortal } from "react-dom";
-import { supabase } from "@/lib/supabaseClient";
+import { useEffect, useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 
-type OwnerGrantNotifierProps = {
-  pathname: string;
-};
-
-type PendingOwnerRequest = {
+type Row = {
   id: string;
   created_at: string;
   animal_id: string;
-  org_id: string;
+  organization_id: string;
   status: "pending" | "approved" | "rejected" | "blocked" | "revoked" | string;
   requested_scope?: string[] | null;
   expires_at?: string | null;
   animal_name?: string | null;
-  org_name?: string | null;
+  organization_name?: string | null;
 };
 
 type Duration = "24h" | "7d" | "6m" | "forever";
+
+function formatDateTime(value: string | null | undefined) {
+  if (!value) return "—";
+  return new Date(value).toLocaleString("it-IT");
+}
+
+function formatDate(value: string | null | undefined) {
+  if (!value) return "Senza scadenza";
+  return new Date(value).toLocaleDateString("it-IT");
+}
 
 function labelDuration(d: Duration) {
   if (d === "24h") return "24 ore";
@@ -30,123 +34,61 @@ function labelDuration(d: Duration) {
   return "Senza scadenza";
 }
 
-export default function OwnerGrantNotifier({ pathname }: OwnerGrantNotifierProps) {
-  const [mounted, setMounted] = useState(false);
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) return error.message;
+  return "Errore";
+}
 
-  const [ownerPending, setOwnerPending] = useState<PendingOwnerRequest[]>([]);
-  const [ownerLoading, setOwnerLoading] = useState(false);
-  const [ownerBusy, setOwnerBusy] = useState(false);
-  const [ownerDuration, setOwnerDuration] = useState<Record<string, Duration>>({});
-  const [ownerDismissedIds, setOwnerDismissedIds] = useState<string[]>([]);
+export default function OwnerAccessRequestsTable({ animalId }: { animalId?: string }) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [rows, setRows] = useState<Row[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState<string | null>(null);
+  const [durationByRequestId, setDurationByRequestId] = useState<Record<string, Duration>>({});
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    let alive = true;
-    let intervalId: number | null = null;
-    let channel: ReturnType<typeof supabase.channel> | null = null;
-
-    async function loadPendingOwnerRequests() {
-      if (pathname.startsWith("/professionisti")) {
-        if (alive) setOwnerPending([]);
-        return;
-      }
-
-      setOwnerLoading(true);
-
-      try {
-        const { data } = await supabase.auth.getUser();
-        const user = data.user;
-
-        if (!alive) return;
-
-        if (!user) {
-          setOwnerPending([]);
-          return;
-        }
-
-        const res = await fetch("/api/owner/access-requests", { cache: "no-store" });
-        const json = await res.json().catch(() => ({}));
-
-        if (!alive) return;
-
-        if (!res.ok) {
-          setOwnerPending([]);
-          return;
-        }
-
-        const rows = ((json.rows ?? []) as PendingOwnerRequest[]).filter(
-          (r) => r.status === "pending" && !ownerDismissedIds.includes(r.id)
-        );
-
-        setOwnerPending(rows);
-
-        setOwnerDuration((prev) => {
-          const next = { ...prev };
-          for (const row of rows) {
-            if (!next[row.id]) next[row.id] = "7d";
-          }
-          return next;
-        });
-
-        if (!channel) {
-          try {
-            channel = supabase.channel(`owner-access-requests-${user.id}`);
-
-            channel.on(
-              "postgres_changes",
-              {
-                event: "*",
-                schema: "public",
-                table: "animal_access_requests",
-                filter: `owner_id=eq.${user.id}`,
-              },
-              () => {
-                void loadPendingOwnerRequests();
-              }
-            );
-
-            channel.subscribe((status) => {
-              if (status === "CHANNEL_ERROR") {
-                console.warn("OwnerGrantNotifier realtime non disponibile, uso polling.");
-              }
-            });
-          } catch (err) {
-            console.warn("OwnerGrantNotifier realtime non disponibile, uso polling.", err);
-            channel = null;
-          }
-        }
-      } finally {
-        if (alive) setOwnerLoading(false);
-      }
-    }
-
-    void loadPendingOwnerRequests();
-
-    intervalId = window.setInterval(() => {
-      void loadPendingOwnerRequests();
-    }, 5000);
-
-    return () => {
-      alive = false;
-
-      if (intervalId) {
-        window.clearInterval(intervalId);
-      }
-
-      if (channel) {
-        void supabase.removeChannel(channel);
-      }
-    };
-  }, [pathname, ownerDismissedIds]);
-
-  async function actOnOwnerRequest(id: string, action: "approve" | "reject") {
-    const selectedDuration = ownerDuration[id] ?? "7d";
-    setOwnerBusy(true);
+  async function load() {
+    setLoading(true);
+    setErr(null);
 
     try {
+      const url = animalId
+        ? `/api/owner/access-requests?animalId=${encodeURIComponent(animalId)}`
+        : `/api/owner/access-requests`;
+
+      const res = await fetch(url, { cache: "no-store" });
+      const json = await res.json().catch(() => ({}));
+
+      if (!res.ok) throw new Error(json?.error || "Errore caricamento");
+      const nextRows = json.rows ?? [];
+      setRows(nextRows);
+
+      setDurationByRequestId((prev) => {
+        const next = { ...prev };
+        for (const row of nextRows) {
+          if (row.status === "pending" && !next[row.id]) next[row.id] = "7d";
+        }
+        return next;
+      });
+    } catch (e: unknown) {
+      setErr(getErrorMessage(e));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [animalId]);
+
+  const pending = useMemo(() => rows.filter((r) => r.status === "pending"), [rows]);
+  const history = useMemo(() => rows.filter((r) => r.status !== "pending"), [rows]);
+
+  async function act(id: string, action: "approve" | "reject" | "revoke") {
+    const selectedDuration = durationByRequestId[id] ?? "7d";
+
+    startTransition(async () => {
       const res = await fetch("/api/owner/access-requests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -159,126 +101,157 @@ export default function OwnerGrantNotifier({ pathname }: OwnerGrantNotifierProps
 
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        alert(json?.error || "Operazione non riuscita");
+        alert(json?.error || "Operazione fallita");
         return;
       }
 
-      setOwnerPending((prev) => prev.filter((r) => r.id !== id));
-      setOwnerDismissedIds((prev) => prev.filter((x) => x !== id));
-    } finally {
-      setOwnerBusy(false);
-    }
+      await load();
+      router.refresh();
+    });
   }
 
-  function dismissOwnerPopup(id: string) {
-    setOwnerDismissedIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
-    setOwnerPending((prev) => prev.filter((r) => r.id !== id));
-  }
-
-  const currentOwnerRequest = ownerPending[0] ?? null;
-  const showOwnerPopup =
-    mounted &&
-    !!currentOwnerRequest &&
-    !pathname.startsWith("/professionisti") &&
-    !pathname.startsWith("/login");
-
-  if (!showOwnerPopup || !currentOwnerRequest) {
-    return null;
-  }
-
-  return createPortal(
-    <div className="fixed bottom-4 right-4 z-[1100] w-[calc(100%-2rem)] max-w-md">
-      <div className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-2xl">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-xs font-semibold tracking-wide text-zinc-500">
-              RICHIESTA IN ARRIVO
-            </p>
-            <h3 className="mt-1 text-lg font-semibold text-zinc-900">
-              Autorizza accesso professionista
-            </h3>
-          </div>
-
-          <button
-            type="button"
-            className="rounded-xl border border-zinc-200 bg-white px-3 py-1 text-xs font-semibold text-zinc-700 hover:bg-zinc-50"
-            onClick={() => dismissOwnerPopup(currentOwnerRequest.id)}
-            disabled={ownerBusy}
-          >
-            Chiudi
-          </button>
-        </div>
-
-        <div className="mt-4 space-y-2 text-sm">
-          <div className="text-zinc-900">
-            <span className="font-semibold">Animale:</span>{" "}
-            {currentOwnerRequest.animal_name ?? currentOwnerRequest.animal_id}
-          </div>
-          <div className="text-zinc-900">
-            <span className="font-semibold">Professionista:</span>{" "}
-            {currentOwnerRequest.org_name ?? currentOwnerRequest.org_id}
-          </div>
-          <div className="text-zinc-600">
-            Permessi richiesti:{" "}
-            {currentOwnerRequest.requested_scope?.length
-              ? currentOwnerRequest.requested_scope
-                  .filter((x) => x === "read" || x === "write")
-                  .map((x) => (x === "read" ? "lettura" : "modifica"))
-                  .join(", ")
-              : "accesso base"}
+  return (
+    <section className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm space-y-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div className="text-base font-semibold text-zinc-900">Richieste di accesso</div>
+          <div className="mt-1 text-sm text-zinc-600">
+            Gestisci le autorizzazioni dei professionisti per questo animale.
           </div>
         </div>
 
-        <div className="mt-4 rounded-2xl bg-zinc-50 p-4">
-          <label className="block text-sm font-medium text-zinc-900">
-            Durata autorizzazione
-          </label>
-          <select
-            className="mt-2 w-full rounded-2xl border border-zinc-300 bg-white px-3 py-2 text-sm outline-none focus:border-zinc-900"
-            value={ownerDuration[currentOwnerRequest.id] ?? "7d"}
-            onChange={(e) =>
-              setOwnerDuration((prev) => ({
-                ...prev,
-                [currentOwnerRequest.id]: e.target.value as Duration,
-              }))
-            }
-            disabled={ownerBusy}
-          >
-            <option value="24h">{labelDuration("24h")}</option>
-            <option value="7d">{labelDuration("7d")}</option>
-            <option value="6m">{labelDuration("6m")}</option>
-            <option value="forever">{labelDuration("forever")}</option>
-          </select>
-        </div>
-
-        <div className="mt-4 flex flex-wrap gap-3">
-          <button
-            type="button"
-            className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 disabled:opacity-60"
-            onClick={() => actOnOwnerRequest(currentOwnerRequest.id, "reject")}
-            disabled={ownerBusy || ownerLoading}
-          >
-            Rifiuta
-          </button>
-
-          <button
-            type="button"
-            className="rounded-2xl bg-black px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
-            onClick={() => actOnOwnerRequest(currentOwnerRequest.id, "approve")}
-            disabled={ownerBusy || ownerLoading}
-          >
-            {ownerBusy ? "Attendi..." : "Approva accesso"}
-          </button>
-
-          <Link
-            href="/profilo/richieste-accesso"
-            className="inline-flex items-center rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
-          >
-            Apri tutte le richieste
-          </Link>
-        </div>
+        <button
+          className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50 disabled:opacity-60"
+          onClick={() => void load()}
+          disabled={loading || isPending}
+        >
+          Aggiorna
+        </button>
       </div>
-    </div>,
-    document.body
+
+      {err ? (
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          {err}
+        </div>
+      ) : null}
+
+      {loading ? (
+        <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600">
+          Caricamento…
+        </div>
+      ) : null}
+
+      <div className="space-y-3">
+        <div className="text-sm font-semibold text-zinc-900">In attesa</div>
+
+        {pending.length === 0 ? (
+          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600">
+            Nessuna richiesta in attesa.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {pending.map((r) => {
+              const selectedDuration = durationByRequestId[r.id] ?? "7d";
+
+              return (
+                <div key={r.id} className="rounded-2xl border border-zinc-200 bg-white p-4 space-y-4">
+                  <div className="text-sm">
+                    <div className="font-semibold text-zinc-900">
+                      {r.animal_name ?? r.animal_id} • {r.organization_name ?? r.organization_id}
+                    </div>
+                    <div className="mt-1 text-zinc-600">
+                      Richiesta del {formatDateTime(r.created_at)}
+                    </div>
+                    <div className="mt-1 text-zinc-500">
+                      Permessi richiesti:{" "}
+                      {r.requested_scope?.length ? r.requested_scope.join(", ") : "accesso base"}
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl bg-zinc-50 p-4">
+                    <label className="block text-sm font-medium text-zinc-900">
+                      Durata autorizzazione
+                    </label>
+                    <select
+                      className="mt-2 w-full rounded-2xl border border-zinc-300 bg-white px-3 py-2 text-sm outline-none focus:border-zinc-900"
+                      value={selectedDuration}
+                      onChange={(e) =>
+                        setDurationByRequestId((prev) => ({
+                          ...prev,
+                          [r.id]: e.target.value as Duration,
+                        }))
+                      }
+                      disabled={isPending}
+                    >
+                      <option value="24h">{labelDuration("24h")}</option>
+                      <option value="7d">{labelDuration("7d")}</option>
+                      <option value="6m">{labelDuration("6m")}</option>
+                      <option value="forever">{labelDuration("forever")}</option>
+                    </select>
+                  </div>
+
+                  <div className="flex flex-wrap gap-3">
+                    <button
+                      className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 disabled:opacity-60"
+                      onClick={() => act(r.id, "reject")}
+                      disabled={isPending}
+                    >
+                      Rifiuta
+                    </button>
+                    <button
+                      className="rounded-2xl bg-black px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                      onClick={() => act(r.id, "approve")}
+                      disabled={isPending}
+                    >
+                      Approva accesso
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-3">
+        <div className="text-sm font-semibold text-zinc-900">Storico</div>
+
+        {history.length === 0 ? (
+          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600">
+            Nessun elemento.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {history.map((r) => (
+              <div
+                key={r.id}
+                className="rounded-2xl border border-zinc-200 bg-white p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="text-sm">
+                  <div className="font-semibold text-zinc-900">
+                    {r.animal_name ?? r.animal_id} • {r.organization_name ?? r.organization_id}
+                  </div>
+                  <div className="mt-1 text-zinc-600">Stato: {r.status}</div>
+                  <div className="mt-1 text-zinc-500">
+                    Data: {formatDateTime(r.created_at)}
+                    {r.expires_at ? ` • Scade: ${formatDate(r.expires_at)}` : ""}
+                  </div>
+                </div>
+
+                {r.status === "approved" ? (
+                  <button
+                    className="rounded-2xl bg-red-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                    onClick={() => act(r.id, "revoke")}
+                    disabled={isPending}
+                  >
+                    Revoca accesso
+                  </button>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
   );
 }

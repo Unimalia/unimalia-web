@@ -165,8 +165,8 @@ function renderMetaRows(meta: Record<string, unknown> | null | undefined) {
     "weight_kg",
     "created_by_member_label",
     "created_by_member_id",
-    "created_by_org_name",
-    "org_name",
+    "created_by_organization_name",
+    "organization_name",
   ]);
 
   return Object.entries(meta)
@@ -288,8 +288,8 @@ export async function sendOwnerAnimalUpdateEmail(input: SendOwnerAnimalUpdateEma
   const formattedTherapyEndDate = formatDateValue(therapyEndDate);
 
   const professionalLabel =
-    normalizeValue(meta?.created_by_org_name) ||
-    normalizeValue(meta?.org_name) ||
+    normalizeValue(meta?.created_by_organization_name) ||
+    normalizeValue(meta?.organization_name) ||
     normalizeValue(vetSignature) ||
     "Clinica veterinaria";
 

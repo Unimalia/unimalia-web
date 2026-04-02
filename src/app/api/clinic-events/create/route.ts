@@ -149,7 +149,7 @@ function sanitizeMeta(input: unknown): Record<string, unknown> | null {
     "therapy_end_date",
     "created_by_member_label",
     "created_by_member_id",
-    "created_by_org_name",
+    "created_by_organization_name",
     "has_attachments",
     "priority",
   ]);
@@ -356,7 +356,7 @@ export async function POST(req: Request) {
     vetSignature && vetSignature.length <= 120 ? vetSignature : user.email || "Veterinario";
 
   if (priority) meta.priority = priority;
-  if (actorOrgName) meta.created_by_org_name = actorOrgName;
+  if (actorOrgName) meta.created_by_organization_name = actorOrgName;
   if (hasAttachments) meta.has_attachments = true;
 
   if (type === "therapy") {

@@ -59,7 +59,7 @@ type ClinicEventRow = {
   verified_at: string | null;
   created_by_user_id: string | null;
   verified_by_user_id: string | null;
-  verified_by_org_id: string | null;
+  verified_by_organization_id: string | null;
   verified_by_member_id: string | null;
   verified_by_label: string | null;
   created_at?: string | null;
@@ -344,7 +344,7 @@ function hasVerificationAudit(ev: ClinicEventRow) {
   return Boolean(
     ev.verified_at ||
       ev.verified_by_user_id ||
-      ev.verified_by_org_id ||
+      ev.verified_by_organization_id ||
       ev.verified_by_member_id ||
       ev.verified_by_label
   );
@@ -2792,7 +2792,7 @@ export default function ClinicaPage() {
                               <div>
                                 Verificato da org:{" "}
                                 <span className="font-mono">
-                                  {detailEvent.verified_by_org_id || "—"}
+                                  {detailEvent.verified_by_organization_id || "—"}
                                 </span>
                               </div>
                               <div>
