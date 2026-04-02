@@ -38,6 +38,47 @@ function getBucketName() {
   return R2_BUCKET_NAME!;
 }
 
+async function bodyToBuffer(body: unknown): Promise<Buffer> {
+  if (!body) {
+    throw new Error("Storage object body is empty");
+  }
+
+  if (
+    typeof body === "object" &&
+    body !== null &&
+    "transformToByteArray" in body &&
+    typeof (body as { transformToByteArray?: unknown }).transformToByteArray === "function"
+  ) {
+    const bytes = await (
+      body as {
+        transformToByteArray: () => Promise<Uint8Array>;
+      }
+    ).transformToByteArray();
+
+    return Buffer.from(bytes);
+  }
+
+  if (
+    typeof body === "object" &&
+    body !== null &&
+    Symbol.asyncIterator in body
+  ) {
+    const chunks: Buffer[] = [];
+
+    for await (const chunk of body as AsyncIterable<Uint8Array | Buffer | string>) {
+      if (typeof chunk === "string") {
+        chunks.push(Buffer.from(chunk));
+      } else {
+        chunks.push(Buffer.from(chunk));
+      }
+    }
+
+    return Buffer.concat(chunks);
+  }
+
+  throw new Error("Unsupported storage object body type");
+}
+
 export type UploadPrivateFileInput = {
   path: string;
   body: Buffer | Uint8Array | string;
@@ -123,6 +164,20 @@ export async function createSignedDownloadUrl(
   return await getSignedUrl(client, command, {
     expiresIn: expiresInSeconds,
   });
+}
+
+export async function downloadPrivateFileBuffer(path: string): Promise<Buffer> {
+  const client = getR2Client();
+  const bucket = getBucketName();
+
+  const command = new GetObjectCommand({
+    Bucket: bucket,
+    Key: path,
+  });
+
+  const response = await client.send(command);
+
+  return bodyToBuffer(response.Body);
 }
 
 export async function deletePrivateFile(path: string): Promise<void> {
