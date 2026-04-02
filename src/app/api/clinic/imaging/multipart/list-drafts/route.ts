@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { supabaseAdmin } from "@/lib/supabase/server";
+import { supabaseAdmin, createServerSupabaseClient } from "@/lib/supabase/server";
 import { getBearerToken } from "@/lib/server/bearer";
 
 type UploadedPartValue = number | string | { PartNumber?: number | string } | null;
@@ -16,6 +16,14 @@ type ImagingUploadSessionRow = {
   status: string | null;
   updated_at: string | null;
   uploaded_parts: UploadedPartValue[] | null;
+};
+
+type AuthenticatedUserResult = {
+  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>;
+  user: {
+    id: string;
+    email?: string | null;
+  };
 };
 
 function normalizePartNumber(value: UploadedPartValue): number | null {
@@ -42,36 +50,63 @@ function normalizePartNumber(value: UploadedPartValue): number | null {
   return null;
 }
 
-export async function GET(req: Request) {
-  try {
-    const token = getBearerToken(req);
+async function resolveAuthenticatedUser(req: Request): Promise<AuthenticatedUserResult | null> {
+  const token = getBearerToken(req);
 
-    if (!token) {
-      return NextResponse.json({ error: "Missing Bearer token" }, { status: 401 });
-    }
-
+  if (token) {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
     if (!supabaseUrl || !supabaseAnon) {
-      return NextResponse.json(
-        { error: "Server misconfigured (Supabase env missing)" },
-        { status: 500 }
-      );
+      throw new Error("Server misconfigured (Supabase env missing)");
     }
 
-    const supabase = createClient(supabaseUrl, supabaseAnon, {
+    const bearerSupabase = createClient(supabaseUrl, supabaseAnon, {
       global: { headers: { Authorization: `Bearer ${token}` } },
     });
 
-    const admin = supabaseAdmin();
+    const bearerUserResp = await bearerSupabase.auth.getUser(token);
 
-    const { data: userData, error: userErr } = await supabase.auth.getUser(token);
-    const user = userData?.user;
+    if (!bearerUserResp.error && bearerUserResp.data?.user) {
+      return {
+        supabase: bearerSupabase as Awaited<ReturnType<typeof createServerSupabaseClient>>,
+        user: bearerUserResp.data.user,
+      };
+    }
 
-    if (userErr || !user) {
+    console.error("[IMAGING MULTIPART LIST-DRAFTS AUTH] bearer failed", {
+      hasToken: true,
+      error: bearerUserResp.error?.message ?? null,
+    });
+  }
+
+  const cookieSupabase = await createServerSupabaseClient();
+  const cookieUserResp = await cookieSupabase.auth.getUser();
+
+  if (!cookieUserResp.error && cookieUserResp.data?.user) {
+    return {
+      supabase: cookieSupabase,
+      user: cookieUserResp.data.user,
+    };
+  }
+
+  console.error("[IMAGING MULTIPART LIST-DRAFTS AUTH] cookie failed", {
+    error: cookieUserResp.error?.message ?? null,
+  });
+
+  return null;
+}
+
+export async function GET(req: Request) {
+  try {
+    const auth = await resolveAuthenticatedUser(req);
+
+    if (!auth) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const { user } = auth;
+    const admin = supabaseAdmin();
 
     const { searchParams } = new URL(req.url);
     const animalId = String(searchParams.get("animalId") || "").trim();
