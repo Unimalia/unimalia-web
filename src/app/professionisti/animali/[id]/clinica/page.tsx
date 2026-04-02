@@ -624,20 +624,17 @@ export default function ClinicaPage() {
     }
   }
 
-  function buildOrthancViewerUrl(file: ImagingFileMeta) {
-    const orthanc = file?.orthanc;
-    if (!orthanc) return null;
-
-    const studyInstanceUid = String(orthanc?.studyInstanceUid || "").trim();
-    if (!studyInstanceUid) return null;
-
-    return `/api/clinic/imaging/view?studyInstanceUid=${encodeURIComponent(studyInstanceUid)}`;
-  }
+  const buildOrthancViewerUrl = (eventId: string, fileId: string): string => {
+    return `/api/clinic/imaging/view?eventId=${encodeURIComponent(
+      eventId
+    )}&fileId=${encodeURIComponent(fileId)}`;
+  };
 
   async function openImagingViewerOrFile(eventId: string, file: ImagingFileMeta) {
-    const viewerUrl = buildOrthancViewerUrl(file);
+    const fileId = String(file?.id || "").trim();
 
-    if (viewerUrl) {
+    if (fileId) {
+      const viewerUrl = buildOrthancViewerUrl(eventId, fileId);
       window.open(viewerUrl, "_blank", "noopener,noreferrer");
       return;
     }
@@ -2480,7 +2477,7 @@ export default function ClinicaPage() {
                                 </div>
                                 <div>
                                   <span className="font-semibold">Viewer DICOM:</span>{" "}
-                                  {detailEvent.meta?.imaging?.files?.some((f) => !!f?.orthanc)
+                                  {detailEvent.meta?.imaging?.files?.some((f) => !!f?.id)
                                     ? "Disponibile"
                                     : "Non disponibile"}
                                 </div>
@@ -2504,7 +2501,9 @@ export default function ClinicaPage() {
                                       file.name?.toLowerCase().endsWith(".png");
 
                                     const fileId = String(file?.id || file?.path || "");
-                                    const viewerUrl = buildOrthancViewerUrl(file);
+                                    const viewerUrl = file.id
+                                      ? buildOrthancViewerUrl(detailEvent.id, file.id)
+                                      : null;
                                     const shareUrl = shareLinkByFileId[fileId];
                                     const shareExpiresAt = shareExpiresAtByFileId[fileId];
                                     const isShareLoading = !!shareLoadingByFileId[fileId];

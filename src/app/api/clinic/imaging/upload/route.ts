@@ -3,7 +3,6 @@ import { randomUUID } from "crypto";
 import { createClient } from "@supabase/supabase-js";
 import {
   createSignedUploadUrl,
-  createSignedDownloadUrl,
   deletePrivateFile,
   fileExists,
 } from "@/lib/storage";
@@ -18,29 +17,6 @@ type AuthenticatedUserResult = {
     id: string;
     email?: string | null;
   };
-};
-
-type OrthancMainDicomTags = {
-  StudyInstanceUID?: string | null;
-  SeriesInstanceUID?: string | null;
-  SOPInstanceUID?: string | null;
-};
-
-type OrthancInstanceResource = {
-  ID?: string;
-  ParentStudy?: string;
-  ParentSeries?: string;
-  ParentPatient?: string;
-  Path?: string | null;
-  MainDicomTags?: OrthancMainDicomTags | null;
-};
-
-type OrthancStudyResource = {
-  MainDicomTags?: OrthancMainDicomTags | null;
-};
-
-type OrthancSeriesResource = {
-  MainDicomTags?: OrthancMainDicomTags | null;
 };
 
 type ProfessionalProfileRoleRow = {
@@ -143,168 +119,6 @@ function isAllowedImagingFile(fileName: string, mimeType?: string | null) {
   const hasAllowedMime = !mimeType || allowedImagingMimeTypes.has(String(mimeType).toLowerCase());
 
   return hasAllowedExtension || hasAllowedMime;
-}
-
-function isDicomFile(fileName: string, mimeType?: string | null) {
-  const lowerName = String(fileName || "").toLowerCase();
-  const lowerMime = String(mimeType || "").toLowerCase();
-  return (
-    lowerName.endsWith(".dcm") ||
-    lowerName.endsWith(".dicom") ||
-    lowerMime === "application/dicom" ||
-    lowerMime === "application/dicom+json" ||
-    lowerMime === "application/octet-stream"
-  );
-}
-
-type OrthancUploadResult = {
-  instanceId: string;
-  studyId: string;
-  seriesId: string;
-  patientId: string;
-  path?: string | null;
-  studyInstanceUid?: string | null;
-  seriesInstanceUid?: string | null;
-  sopInstanceUid?: string | null;
-  ohifStudyListUrl: string;
-  orthancExplorerUrl: string;
-};
-
-async function fetchOrthancResource(
-  baseUrl: string,
-  basicAuth: string,
-  resource: "studies" | "series" | "instances",
-  id: string
-): Promise<OrthancInstanceResource | OrthancStudyResource | OrthancSeriesResource> {
-  const resp = await fetch(`${baseUrl}/${resource}/${id}`, {
-    method: "GET",
-    headers: {
-      Authorization: `Basic ${basicAuth}`,
-      Accept: "application/json",
-    },
-    cache: "no-store",
-  });
-
-  const json = (await resp.json().catch(() => null)) as
-    | OrthancInstanceResource
-    | OrthancStudyResource
-    | OrthancSeriesResource
-    | null;
-
-  if (!resp.ok || !json) {
-    throw new Error(`Recupero metadata Orthanc fallito su ${resource}/${id} (${resp.status})`);
-  }
-
-  return json;
-}
-
-async function uploadDicomToOrthancFromR2(params: {
-  path: string;
-  fileName: string;
-}): Promise<OrthancUploadResult> {
-  const baseUrl = process.env.ORTHANC_BASE_URL?.trim();
-  const username = process.env.ORTHANC_USERNAME?.trim();
-  const password = process.env.ORTHANC_PASSWORD?.trim();
-
-  if (!baseUrl || !username || !password) {
-    throw new Error("Orthanc env mancanti: ORTHANC_BASE_URL / ORTHANC_USERNAME / ORTHANC_PASSWORD");
-  }
-
-  const signedDownloadUrl = await createSignedDownloadUrl(params.path, 60);
-  const r2Resp = await fetch(signedDownloadUrl, {
-    method: "GET",
-    cache: "no-store",
-  });
-
-  if (!r2Resp.ok) {
-    throw new Error(`Download da R2 fallito per invio a Orthanc (${r2Resp.status})`);
-  }
-
-  const dicomArrayBuffer = await r2Resp.arrayBuffer();
-  const dicomBuffer = Buffer.from(dicomArrayBuffer);
-
-  const basicAuth = Buffer.from(`${username}:${password}`).toString("base64");
-
-  const uploadResp = await fetch(`${baseUrl}/instances`, {
-    method: "POST",
-    headers: {
-      Authorization: `Basic ${basicAuth}`,
-      "Content-Type": "application/dicom",
-      Accept: "application/json",
-    },
-    body: dicomBuffer,
-    cache: "no-store",
-  });
-
-  const uploadJson = (await uploadResp.json().catch(() => null)) as {
-    ID?: string;
-    ParentStudy?: string;
-    ParentSeries?: string;
-    ParentPatient?: string;
-  } | null;
-
-  if (
-    !uploadResp.ok ||
-    !uploadJson?.ID ||
-    !uploadJson?.ParentStudy ||
-    !uploadJson?.ParentSeries ||
-    !uploadJson?.ParentPatient
-  ) {
-    throw new Error(
-      `Upload Orthanc fallito (${uploadResp.status})${uploadJson ? `: ${JSON.stringify(uploadJson)}` : ""}`
-    );
-  }
-
-  const instanceId = String(uploadJson.ID);
-  const studyId = String(uploadJson.ParentStudy);
-  const seriesId = String(uploadJson.ParentSeries);
-  const patientId = String(uploadJson.ParentPatient);
-
-  const instanceJson = (await fetchOrthancResource(
-    baseUrl,
-    basicAuth,
-    "instances",
-    instanceId
-  )) as OrthancInstanceResource;
-  const studyJson = (await fetchOrthancResource(
-    baseUrl,
-    basicAuth,
-    "studies",
-    studyId
-  )) as OrthancStudyResource;
-  const seriesJson = (await fetchOrthancResource(
-    baseUrl,
-    basicAuth,
-    "series",
-    seriesId
-  )) as OrthancSeriesResource;
-
-  const instanceMainTags = instanceJson?.MainDicomTags ?? {};
-  const studyMainTags = studyJson?.MainDicomTags ?? {};
-  const seriesMainTags = seriesJson?.MainDicomTags ?? {};
-
-  const parentStudy = instanceJson?.ParentStudy ?? studyId;
-  const parentSeries = instanceJson?.ParentSeries ?? seriesId;
-  const parentPatient = instanceJson?.ParentPatient ?? patientId;
-
-  return {
-    instanceId,
-    studyId: String(parentStudy),
-    seriesId: String(parentSeries),
-    patientId: String(parentPatient),
-    path: instanceJson?.Path ?? null,
-    studyInstanceUid:
-      studyMainTags?.StudyInstanceUID ??
-      instanceMainTags?.StudyInstanceUID ??
-      null,
-    seriesInstanceUid:
-      seriesMainTags?.SeriesInstanceUID ??
-      instanceMainTags?.SeriesInstanceUID ??
-      null,
-    sopInstanceUid: instanceMainTags?.SOPInstanceUID ?? null,
-    ohifStudyListUrl: `${baseUrl}/ohif/`,
-    orthancExplorerUrl: `${baseUrl}/app/explorer.html`,
-  };
 }
 
 const MAX_IMAGING_FILE_SIZE_BYTES = 500 * 1024 * 1024;
@@ -470,15 +284,6 @@ export async function POST(req: Request) {
         );
       }
 
-      let orthancInfo: OrthancUploadResult | null = null;
-
-      if (isDicomFile(fileName, mime)) {
-        orthancInfo = await uploadDicomToOrthancFromR2({
-          path,
-          fileName,
-        });
-      }
-
       const finalEventDate = eventDateRaw
         ? new Date(eventDateRaw).toISOString()
         : new Date().toISOString();
@@ -497,19 +302,7 @@ export async function POST(req: Request) {
               name: fileName,
               size,
               mime,
-              orthanc: orthancInfo
-                ? {
-                    patientId: orthancInfo.patientId,
-                    studyId: orthancInfo.studyId,
-                    seriesId: orthancInfo.seriesId,
-                    instanceId: orthancInfo.instanceId,
-                    studyInstanceUid: orthancInfo.studyInstanceUid,
-                    seriesInstanceUid: orthancInfo.seriesInstanceUid,
-                    sopInstanceUid: orthancInfo.sopInstanceUid,
-                    ohifStudyListUrl: orthancInfo.ohifStudyListUrl,
-                    orthancExplorerUrl: orthancInfo.orthancExplorerUrl,
-                  }
-                : null,
+              orthanc: null,
             },
           ],
         },
@@ -578,17 +371,6 @@ export async function POST(req: Request) {
         target_id: eventId,
         animal_id: animalId,
         result: "success",
-        diff: orthancInfo
-          ? {
-              orthanc: {
-                studyId: orthancInfo.studyId,
-                seriesId: orthancInfo.seriesId,
-                instanceId: orthancInfo.instanceId,
-                patientId: orthancInfo.patientId,
-                studyInstanceUid: orthancInfo.studyInstanceUid,
-              },
-            }
-          : undefined,
       });
 
       return NextResponse.json({
@@ -612,19 +394,7 @@ export async function POST(req: Request) {
                 name: fileName,
                 size,
                 mime,
-                orthanc: orthancInfo
-                  ? {
-                      patientId: orthancInfo.patientId,
-                      studyId: orthancInfo.studyId,
-                      seriesId: orthancInfo.seriesId,
-                      instanceId: orthancInfo.instanceId,
-                      studyInstanceUid: orthancInfo.studyInstanceUid,
-                      seriesInstanceUid: orthancInfo.seriesInstanceUid,
-                      sopInstanceUid: orthancInfo.sopInstanceUid,
-                      ohifStudyListUrl: orthancInfo.ohifStudyListUrl,
-                      orthancExplorerUrl: orthancInfo.orthancExplorerUrl,
-                    }
-                  : null,
+                orthanc: null,
               },
             ],
           },
