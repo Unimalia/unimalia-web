@@ -898,6 +898,7 @@ export default function ClinicaPage() {
           await multipartUpload({
             file,
             animalId: String(id),
+            finalPath: path,
             modality: newImagingModality,
             bodyPart: newImagingBodyPart.trim() || null,
             onProgress: (p) => setUploadProgress(p),

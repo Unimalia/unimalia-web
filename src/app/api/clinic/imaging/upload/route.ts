@@ -123,6 +123,16 @@ function isAllowedImagingFile(fileName: string, mimeType?: string | null) {
 
 const MAX_IMAGING_FILE_SIZE_BYTES = 500 * 1024 * 1024;
 
+async function trackImagingUpload(
+  payload: Record<string, unknown>
+) {
+  try {
+    await supabaseAdmin().from("clinic_imaging_uploads").insert(payload);
+  } catch (err) {
+    console.error("IMAGING TRACKING ERROR:", err);
+  }
+}
+
 export async function POST(req: Request) {
   let uploadedPathToCleanup: string | null = null;
   let trackedAnimalId: string | null = null;
@@ -347,8 +357,8 @@ export async function POST(req: Request) {
         throw new Error(`Errore salvataggio file evento: ${fileInsertError.message}`);
       }
 
-      await admin.from("clinic_imaging_uploads").insert({
-        clinic_id: grant.actor_organization_id ?? null,
+      await trackImagingUpload({
+        organization_id: grant.actor_organization_id ?? null,
         user_id: user.id,
         animal_id: animalId,
         event_id: eventId,
@@ -406,22 +416,18 @@ export async function POST(req: Request) {
   } catch (err: unknown) {
     console.error("UPLOAD IMAGING ERROR:", err);
 
-    try {
-      await admin.from("clinic_imaging_uploads").insert({
-        clinic_id: null,
-        user_id: user.id,
-        animal_id: trackedAnimalId,
-        event_id: null,
-        file_id: null,
-        file_name: null,
-        file_size: null,
-        mime: null,
-        modality: null,
-        status: "failed",
-      });
-    } catch (trackingErr) {
-      console.error("IMAGING FAILED TRACKING ERROR:", trackingErr);
-    }
+    await trackImagingUpload({
+      organization_id: null,
+      user_id: user.id,
+      animal_id: trackedAnimalId,
+      event_id: null,
+      file_id: null,
+      file_name: null,
+      file_size: null,
+      mime: null,
+      modality: null,
+      status: "failed",
+    });
 
     if (uploadedPathToCleanup) {
       try {

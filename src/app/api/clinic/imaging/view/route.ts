@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 import { createSignedDownloadUrl } from "@/lib/storage";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { getBearerToken } from "@/lib/server/bearer";
+import { requireOwnerOrGrant } from "@/lib/server/requireOwnerOrGrant";
 
 type ImagingOrthancMeta = {
   patientId?: string | null;
@@ -45,8 +48,67 @@ type OrthancStudyResponse = {
   } | null;
 };
 
+type ProfessionalProfileRoleRow = {
+  role: string | null;
+};
+
+function isDicomFile(file: ImagingFileMeta) {
+  const mime = String(file?.mime || "").toLowerCase().trim();
+  const name = String(file?.name || "").toLowerCase().trim();
+  return (
+    mime === "application/dicom" ||
+    name.endsWith(".dcm") ||
+    name.endsWith(".dicom")
+  );
+}
+
+async function getProfessionalRole(userId: string) {
+  const admin = supabaseAdmin();
+
+  const result = await admin
+    .from("professional_profiles")
+    .select("role")
+    .eq("user_id", userId)
+    .maybeSingle<ProfessionalProfileRoleRow>();
+
+  if (result.error) {
+    throw result.error;
+  }
+
+  return String(result.data?.role || "").trim() || null;
+}
+
 export async function GET(req: NextRequest) {
   try {
+    const token = getBearerToken(req);
+
+    if (!token) {
+      return NextResponse.json({ error: "Missing Bearer token" }, { status: 401 });
+    }
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+    const supabase = createClient(supabaseUrl, supabaseAnon, {
+      global: { headers: { Authorization: `Bearer ${token}` } },
+    });
+
+    const { data: userData, error: userErr } = await supabase.auth.getUser(token);
+    const user = userData?.user;
+
+    if (userErr || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const professionalRole = await getProfessionalRole(user.id);
+
+    if (professionalRole && professionalRole !== "veterinarian") {
+      return NextResponse.json(
+        { error: "Accesso clinico riservato ai veterinari." },
+        { status: 403 }
+      );
+    }
+
     const eventId = req.nextUrl.searchParams.get("eventId")?.trim();
     const fileId = req.nextUrl.searchParams.get("fileId")?.trim();
 
@@ -66,18 +128,11 @@ export async function GET(req: NextRequest) {
     const username = (process.env.ORTHANC_USERNAME || "").trim();
     const password = (process.env.ORTHANC_PASSWORD || "").trim();
 
-    if (!orthancPublicUrl || !orthancBaseUrl || !username || !password) {
-      return NextResponse.json(
-        { error: "Configurazione Orthanc mancante" },
-        { status: 500 }
-      );
-    }
-
     const admin = supabaseAdmin();
 
     const { data: event, error: eventError } = await admin
       .from("animal_clinic_events")
-      .select("id, meta")
+      .select("id, animal_id, meta")
       .eq("id", eventId)
       .single();
 
@@ -86,6 +141,14 @@ export async function GET(req: NextRequest) {
         { error: "Evento imaging non trovato" },
         { status: 404 }
       );
+    }
+
+    const animalId = String(event.animal_id || "").trim();
+
+    const grant = await requireOwnerOrGrant(supabase, user.id, animalId, "read");
+
+    if (!grant.ok) {
+      return NextResponse.json({ error: grant.reason }, { status: 403 });
     }
 
     const eventMeta = (event.meta || {}) as ClinicEventMeta;
@@ -113,6 +176,16 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    const signedDownloadUrl = await createSignedDownloadUrl(filePath, 60);
+
+    if (!isDicomFile(file)) {
+      return NextResponse.redirect(signedDownloadUrl);
+    }
+
+    if (!orthancPublicUrl || !orthancBaseUrl || !username || !password) {
+      return NextResponse.redirect(signedDownloadUrl);
+    }
+
     const existingStudyInstanceUid = String(
       file?.orthanc?.studyInstanceUid || ""
     ).trim();
@@ -124,18 +197,13 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(redirectUrl);
     }
 
-    const signedUrl = await createSignedDownloadUrl(filePath, 60);
-
-    const r2Resp = await fetch(signedUrl, {
+    const r2Resp = await fetch(signedDownloadUrl, {
       method: "GET",
       cache: "no-store",
     });
 
     if (!r2Resp.ok) {
-      return NextResponse.json(
-        { error: `Download da storage fallito (${r2Resp.status})` },
-        { status: 502 }
-      );
+      return NextResponse.redirect(signedDownloadUrl);
     }
 
     const dicomBuffer = Buffer.from(await r2Resp.arrayBuffer());
@@ -155,13 +223,7 @@ export async function GET(req: NextRequest) {
     const uploadJson = (await uploadResp.json().catch(() => null)) as OrthancInstanceUploadResponse | null;
 
     if (!uploadResp.ok || !uploadJson?.ParentStudy || !uploadJson?.ID) {
-      return NextResponse.json(
-        {
-          error: "Import Orthanc fallito",
-          details: uploadJson,
-        },
-        { status: 502 }
-      );
+      return NextResponse.redirect(signedDownloadUrl);
     }
 
     const studyId = String(uploadJson.ParentStudy);
@@ -181,10 +243,7 @@ export async function GET(req: NextRequest) {
     const studyJson = (await studyResp.json().catch(() => null)) as OrthancStudyResponse | null;
 
     if (!studyResp.ok || !studyJson) {
-      return NextResponse.json(
-        { error: `Recupero studio Orthanc fallito (${studyResp.status})` },
-        { status: 502 }
-      );
+      return NextResponse.redirect(signedDownloadUrl);
     }
 
     const studyInstanceUid = String(
@@ -192,10 +251,7 @@ export async function GET(req: NextRequest) {
     ).trim();
 
     if (!studyInstanceUid) {
-      return NextResponse.json(
-        { error: "StudyInstanceUID non trovato" },
-        { status: 502 }
-      );
+      return NextResponse.redirect(signedDownloadUrl);
     }
 
     const updatedFile: ImagingFileMeta = {
@@ -223,20 +279,10 @@ export async function GET(req: NextRequest) {
       },
     };
 
-    const { error: updateError } = await admin
+    await admin
       .from("animal_clinic_events")
       .update({ meta: updatedMeta })
       .eq("id", eventId);
-
-    if (updateError) {
-      return NextResponse.json(
-        {
-          error: "Studio importato ma salvataggio metadata fallito",
-          details: updateError.message,
-        },
-        { status: 500 }
-      );
-    }
 
     const redirectUrl = `${orthancPublicUrl}/ohif/viewer?StudyInstanceUIDs=${encodeURIComponent(
       studyInstanceUid

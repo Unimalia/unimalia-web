@@ -15,6 +15,16 @@ type AuthenticatedUserResult = {
   };
 };
 
+type InitBody = {
+  fileName?: string;
+  fileSize?: number;
+  fileType?: string | null;
+  animalId?: string;
+  modality?: string | null;
+  bodyPart?: string | null;
+  finalPath?: string | null;
+};
+
 async function resolveAuthenticatedUser(req: Request): Promise<AuthenticatedUserResult | null> {
   const token = getBearerToken(req);
 
@@ -72,11 +82,17 @@ export async function POST(req: Request) {
   const { supabase, user } = auth;
   const admin = supabaseAdmin();
 
-  const body = await req.json();
+  const body = (await req.json()) as InitBody;
 
-  const { fileName, fileSize, fileType, animalId, modality, bodyPart } = body;
+  const fileName = String(body.fileName || "").trim();
+  const fileSize = Number(body.fileSize || 0);
+  const fileType = String(body.fileType || "application/octet-stream").trim();
+  const animalId = String(body.animalId || "").trim();
+  const modality = body.modality || null;
+  const bodyPart = body.bodyPart || null;
+  const finalPath = String(body.finalPath || "").trim();
 
-  if (!fileName || !fileSize || !animalId) {
+  if (!fileName || !fileSize || !animalId || !finalPath) {
     return NextResponse.json({ error: "Missing params" }, { status: 400 });
   }
 
@@ -93,6 +109,7 @@ export async function POST(req: Request) {
     .eq("animal_id", animalId)
     .eq("file_name", fileName)
     .eq("file_size", fileSize)
+    .eq("storage_key", finalPath)
     .in("status", ["initiated", "uploading"])
     .order("created_at", { ascending: false })
     .limit(1)
@@ -115,7 +132,7 @@ export async function POST(req: Request) {
 
   const totalParts = Math.ceil(fileSize / PART_SIZE);
   const uploadId = randomUUID();
-  const key = `${animalId}/${randomUUID()}_${fileName}`;
+  const key = finalPath;
 
   const { data: inserted, error } = await admin
     .from("clinic_imaging_upload_sessions")

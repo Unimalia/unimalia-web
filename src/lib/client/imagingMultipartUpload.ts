@@ -5,6 +5,7 @@ const PART_SIZE = 5 * 1024 * 1024;
 type Params = {
   file: File;
   animalId: string;
+  finalPath: string;
   modality?: string | null;
   bodyPart?: string | null;
   onProgress?: (p: number) => void;
@@ -17,7 +18,6 @@ function getLocalKey(file: File, animalId: string) {
 
 async function safeJson(res: Response) {
   try {
-    if (!res.ok) return null;
     const text = await res.text();
     if (!text) return null;
     return JSON.parse(text);
@@ -45,24 +45,24 @@ async function retryFetch(fn: () => Promise<Response>, retries = 3) {
 export async function multipartUpload({
   file,
   animalId,
+  finalPath,
   modality,
   bodyPart,
   onProgress,
   onStatus,
 }: Params) {
-  const headers = {
-    "Content-Type": "application/json",
-    ...(await authHeaders()),
-  };
-
   const localKey = getLocalKey(file, animalId);
 
   onStatus?.("Init upload...");
 
-  // INIT (start or resume)
+  const initHeaders = {
+    "Content-Type": "application/json",
+    ...(await authHeaders()),
+  };
+
   const initResp = await fetch("/api/clinic/imaging/multipart/init", {
     method: "POST",
-    headers,
+    headers: initHeaders,
     body: JSON.stringify({
       fileName: file.name,
       fileSize: file.size,
@@ -70,24 +70,27 @@ export async function multipartUpload({
       animalId,
       modality,
       bodyPart,
+      finalPath,
     }),
   });
 
   const init = await safeJson(initResp);
 
-  if (!initResp.ok || !init) {
-    throw new Error("Init upload failed");
+  if (!initResp.ok || !init?.uploadId || !init?.key || !init?.totalParts) {
+    throw new Error(init?.error || "Init upload failed");
   }
 
-  const { uploadId, key, totalParts, resumed } = init;
+  const uploadId = String(init.uploadId);
+  const key = String(init.key);
+  const totalParts = Number(init.totalParts);
+  const resumed = Boolean(init.resumed);
 
   localStorage.setItem(localKey, uploadId);
 
   onStatus?.(resumed ? "Resume upload..." : "New upload...");
 
-  // STATUS (per resume reale)
   const statusResp = await fetch(
-    `/api/clinic/imaging/multipart/status?uploadId=${uploadId}`,
+    `/api/clinic/imaging/multipart/status?uploadId=${encodeURIComponent(uploadId)}`,
     {
       headers: await authHeaders(),
     }
@@ -95,11 +98,12 @@ export async function multipartUpload({
 
   const status = await safeJson(statusResp);
 
-  const uploadedParts = new Set<number>(
-    status?.uploadedPartNumbers || []
-  );
+  if (!statusResp.ok) {
+    throw new Error(status?.error || "Status upload failed");
+  }
 
-  // LOOP PARTS
+  const uploadedParts = new Set<number>(Array.isArray(status?.uploadedPartNumbers) ? status.uploadedPartNumbers : []);
+
   for (let part = 1; part <= totalParts; part++) {
     if (uploadedParts.has(part)) continue;
 
@@ -107,28 +111,25 @@ export async function multipartUpload({
 
     const start = (part - 1) * PART_SIZE;
     const end = Math.min(start + PART_SIZE, file.size);
-
     const chunk = file.slice(start, end);
 
-    // GET SIGNED URL
-    const urlResp = await fetch(
-      `/api/clinic/imaging/multipart/part-url?uploadId=${uploadId}&partNumber=${part}&key=${encodeURIComponent(
-        key
-      )}`,
+    const partUrlResp = await fetch(
+      `/api/clinic/imaging/multipart/part-url?uploadId=${encodeURIComponent(
+        uploadId
+      )}&partNumber=${part}&key=${encodeURIComponent(key)}`,
       {
         headers: await authHeaders(),
       }
     );
 
-    const urlJson = await safeJson(urlResp);
+    const partUrlJson = await safeJson(partUrlResp);
 
-    if (!urlResp.ok || !urlJson?.url) {
-      throw new Error("Errore part-url");
+    if (!partUrlResp.ok || !partUrlJson?.url) {
+      throw new Error(partUrlJson?.error || "Errore part-url");
     }
 
-    const uploadUrl = urlJson.url as string;
+    const uploadUrl = String(partUrlJson.url);
 
-    // UPLOAD CHUNK (retry)
     const uploadResp = await retryFetch(() =>
       fetch(uploadUrl, {
         method: "PUT",
@@ -138,10 +139,14 @@ export async function multipartUpload({
 
     const etag = uploadResp.headers.get("etag") || "";
 
-    // MARK PART
-    await fetch("/api/clinic/imaging/multipart/mark-part", {
+    const markHeaders = {
+      "Content-Type": "application/json",
+      ...(await authHeaders()),
+    };
+
+    const markResp = await fetch("/api/clinic/imaging/multipart/mark-part", {
       method: "POST",
-      headers,
+      headers: markHeaders,
       body: JSON.stringify({
         uploadId,
         partNumber: part,
@@ -149,29 +154,37 @@ export async function multipartUpload({
       }),
     });
 
+    const markJson = await safeJson(markResp);
+
+    if (!markResp.ok) {
+      throw new Error(markJson?.error || "Errore mark-part");
+    }
+
     const percent = Math.round((part / totalParts) * 100);
     onProgress?.(percent);
   }
 
   onStatus?.("Completing...");
 
-  // COMPLETE
-  const completeResp = await fetch(
-    "/api/clinic/imaging/multipart/complete",
-    {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        uploadId,
-        key,
-      }),
-    }
-  );
+  const completeHeaders = {
+    "Content-Type": "application/json",
+    ...(await authHeaders()),
+  };
+
+  const completeResp = await fetch("/api/clinic/imaging/multipart/complete", {
+    method: "POST",
+    headers: completeHeaders,
+    body: JSON.stringify({
+      uploadId,
+      animalId,
+      key,
+    }),
+  });
 
   const complete = await safeJson(completeResp);
 
-  if (!completeResp.ok || !complete) {
-    throw new Error("Complete upload failed");
+  if (!completeResp.ok || !complete?.ok) {
+    throw new Error(complete?.error || "Complete upload failed");
   }
 
   localStorage.removeItem(localKey);

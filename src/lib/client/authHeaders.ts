@@ -16,14 +16,14 @@ export async function authHeaders(): Promise<Record<string, string>> {
 
   if (userResp.error || !userResp.data.user) {
     console.warn("[AUTH HEADERS] no authenticated user");
-    return {};
+    throw new Error("Utente non autenticato");
   }
 
   const refreshed = await supabase.auth.refreshSession();
 
   if (refreshed.error || !refreshed.data.session?.access_token) {
     console.warn("[AUTH HEADERS] unable to refresh access token", refreshed.error);
-    return {};
+    throw new Error("Token di accesso non disponibile");
   }
 
   return {
