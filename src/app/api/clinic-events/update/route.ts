@@ -34,7 +34,7 @@ type AnimalClinicEventRow = {
   meta: ClinicEventMeta | null;
   verified_at: string | null;
   verified_by_user_id: string | null;
-  verified_by_org_id: string | null;
+  verified_by_organization_id: string | null;
   verified_by_member_id: string | null;
   verified_by_label: string | null;
 };
@@ -284,7 +284,7 @@ export async function POST(req: Request) {
     meta: current.meta,
     verified_at: current.verified_at,
     verified_by_user_id: current.verified_by_user_id,
-    verified_by_org_id: current.verified_by_org_id,
+    verified_by_organization_id: current.verified_by_organization_id,
     verified_by_member_id: current.verified_by_member_id,
     verified_by_label: current.verified_by_label,
   };
@@ -297,7 +297,7 @@ export async function POST(req: Request) {
     meta: ClinicEventMeta;
     verified_at?: null;
     verified_by_user_id?: null;
-    verified_by_org_id?: null;
+    verified_by_organization_id?: null;
     verified_by_member_id?: null;
     verified_by_label?: null;
   } = {
@@ -311,7 +311,7 @@ export async function POST(req: Request) {
   if (current.verified_at || current.source === "professional" || current.source === "veterinarian") {
     updateData.verified_at = null;
     updateData.verified_by_user_id = null;
-    updateData.verified_by_org_id = null;
+    updateData.verified_by_organization_id = null;
     updateData.verified_by_member_id = null;
     updateData.verified_by_label = null;
   }
@@ -379,7 +379,7 @@ export async function POST(req: Request) {
     meta: updated.meta,
     verified_at: updated.verified_at,
     verified_by_user_id: updated.verified_by_user_id,
-    verified_by_org_id: updated.verified_by_org_id,
+    verified_by_organization_id: updated.verified_by_organization_id,
     verified_by_member_id: updated.verified_by_member_id,
     verified_by_label: updated.verified_by_label,
   };

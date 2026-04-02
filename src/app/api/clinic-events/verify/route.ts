@@ -30,7 +30,7 @@ type AnimalClinicEventRow = {
   source: string;
   verified_at: string | null;
   verified_by_user_id: string | null;
-  verified_by_org_id: string | null;
+  verified_by_organization_id: string | null;
   verified_by_member_id: string | null;
   verified_by_label: string | null;
   created_by_user_id: string | null;
@@ -177,13 +177,13 @@ export async function POST(req: Request) {
       .update({
         verified_at: nowIso,
         verified_by_user_id: user.id,
-        verified_by_org_id: grant.actor_organization_id ?? null,
+        verified_by_organization_id: grant.actor_organization_id ?? null,
         verified_by_member_id: user.id,
         verified_by_label: verifierLabel,
       })
       .eq("id", id)
       .select(
-        "id, animal_id, event_date, type, title, description, visibility, source, verified_at, verified_by_user_id, verified_by_org_id, verified_by_member_id, verified_by_label, created_by_user_id, created_at, updated_at, status, meta, priority"
+        "id, animal_id, event_date, type, title, description, visibility, source, verified_at, verified_by_user_id, verified_by_organization_id, verified_by_member_id, verified_by_label, created_by_user_id, created_at, updated_at, status, meta, priority"
       )
       .single<AnimalClinicEventRow>();
 

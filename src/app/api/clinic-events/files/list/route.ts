@@ -124,7 +124,7 @@ export async function GET(req: Request) {
     await safeWriteAudit(supabase, {
       req,
       actor_user_id: user.id,
-      actor_org_id: grant.ok ? grant.actor_org_id : null,
+      actor_organization_id: grant.ok ? grant.actor_organization_id : null,
       action: "file.list",
       target_type: "event",
       target_id: eventId,
@@ -139,7 +139,7 @@ export async function GET(req: Request) {
   await safeWriteAudit(supabase, {
     req,
     actor_user_id: user.id,
-    actor_org_id: grant.ok ? grant.actor_org_id : null,
+    actor_organization_id: grant.ok ? grant.actor_organization_id : null,
     action: "file.list",
     target_type: "event",
     target_id: eventId,

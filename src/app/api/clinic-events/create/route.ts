@@ -44,7 +44,7 @@ type AnimalClinicEventRow = {
   source: "owner" | "professional" | "veterinarian" | string;
   verified_at: string | null;
   verified_by_user_id: string | null;
-  verified_by_org_id: string | null;
+  verified_by_organization_id: string | null;
   verified_by_member_id: string | null;
   verified_by_label: string | null;
   created_by_user_id: string | null;
@@ -366,7 +366,7 @@ export async function POST(req: Request) {
 
   try {
     const nowIso = new Date().toISOString();
-    const verifiedByOrgId = grant.actor_organization_id ? grant.actor_organization_id : null;
+    const verifiedByOrganizationId = grant.actor_organization_id ?? null;
 
     const { data, error } = await admin
       .from("animal_clinic_events")
@@ -381,7 +381,7 @@ export async function POST(req: Request) {
         event_date: dateStr,
         verified_at: nowIso,
         verified_by_user_id: user.id,
-        verified_by_org_id: verifiedByOrgId,
+        verified_by_organization_id: verifiedByOrganizationId,
         verified_by_member_id: user.id,
         verified_by_label: user.email || "Veterinario",
         meta,
@@ -389,7 +389,7 @@ export async function POST(req: Request) {
         status: "active",
       })
       .select(
-        "id, animal_id, event_date, type, title, description, visibility, source, verified_at, verified_by_user_id, verified_by_org_id, verified_by_member_id, verified_by_label, created_by_user_id, created_at, updated_at, status, meta, priority"
+        "id, animal_id, event_date, type, title, description, visibility, source, verified_at, verified_by_user_id, verified_by_organization_id, verified_by_member_id, verified_by_label, created_by_user_id, created_at, updated_at, status, meta, priority"
       )
       .single<AnimalClinicEventRow>();
 
