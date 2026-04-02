@@ -7,7 +7,7 @@ type UploadedPartValue = number | string | { PartNumber?: number | string } | nu
 
 type ImagingUploadSessionRow = {
   id: string;
-  created_by: string | null;
+  created_by_user_id: string | null;
   file_size: number | string | null;
   total_parts: number | string | null;
   uploaded_parts: UploadedPartValue[] | null;
@@ -89,7 +89,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Upload session non trovata." }, { status: 404 });
     }
 
-    if (String(session.created_by) !== user.id) {
+    if (String(session.created_by_user_id) !== user.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

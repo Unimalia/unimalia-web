@@ -18,14 +18,14 @@ type OrthancUploadResponse = {
   StudyInstanceUID?: string | null;
 };
 
-type UploadedPartRow = {
-  PartNumber: number;
-};
+type UploadedPartValue = number | string | { PartNumber?: number | string } | null;
 
 type ImagingUploadSessionRow = {
   id: string;
+  animal_id: string | null;
+  created_by_user_id: string | null;
   storage_key: string;
-  uploaded_parts: UploadedPartRow[] | null;
+  uploaded_parts: UploadedPartValue[] | null;
   total_parts: number;
   file_name: string | null;
   file_size: number | null;
@@ -38,6 +38,30 @@ type CompleteBody = {
   modality?: string | null;
   bodyPart?: string | null;
 };
+
+function normalizePartNumber(value: UploadedPartValue): number | null {
+  if (typeof value === "number") {
+    return Number.isInteger(value) && value > 0 ? value : null;
+  }
+
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+  }
+
+  if (value && typeof value === "object") {
+    const partNumber = value.PartNumber;
+    if (typeof partNumber === "number") {
+      return Number.isInteger(partNumber) && partNumber > 0 ? partNumber : null;
+    }
+    if (typeof partNumber === "string") {
+      const parsed = Number(partNumber);
+      return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+    }
+  }
+
+  return null;
+}
 
 async function uploadToOrthanc(buffer: Buffer): Promise<OrthancUploadResponse> {
   const baseUrl = process.env.ORTHANC_BASE_URL;
@@ -138,7 +162,21 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Session not found" }, { status: 404 });
     }
 
-    const parts = session.uploaded_parts || [];
+    if (String(session.created_by_user_id) !== user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    if (String(session.animal_id || "") !== animalId) {
+      return NextResponse.json({ error: "Animal mismatch" }, { status: 400 });
+    }
+
+    const parts = Array.isArray(session.uploaded_parts)
+      ? session.uploaded_parts
+          .map(normalizePartNumber)
+          .filter((n): n is number => n !== null)
+          .map((PartNumber) => ({ PartNumber }))
+      : [];
+
     const totalParts = session.total_parts;
 
     if (parts.length !== totalParts) {

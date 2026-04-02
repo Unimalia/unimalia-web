@@ -5,7 +5,7 @@ import { createSignedUploadUrl } from "@/lib/storage";
 import { getBearerToken } from "@/lib/server/bearer";
 
 type ImagingUploadSessionRow = {
-  created_by: string | null;
+  created_by_user_id: string | null;
   storage_key: string | null;
   status: string | null;
   file_type: string | null;
@@ -65,7 +65,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Upload session non trovata." }, { status: 404 });
     }
 
-    if (String(session.created_by) !== user.id) {
+    if (String(session.created_by_user_id) !== user.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
