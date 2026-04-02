@@ -16,20 +16,15 @@ type AnimalPayload = {
   sex?: string | null;
   sterilized?: boolean | null;
   birth_date?: string | null;
-  microchip?: string | null;
   chip_number?: string | null;
   photo_url?: string | null;
-  owner_email?: string | null;
-  ownerEmail?: string | null;
   pending_owner_email?: string | null;
-  owner_phone?: string | null;
-  ownerPhone?: string | null;
   pending_owner_phone?: string | null;
 };
 
 type ProfessionalProfileRow = {
   user_id: string;
-  org_id: string | null;
+  organization_id: string | null;
 };
 
 type ProfessionalRow = {
@@ -63,8 +58,8 @@ type AnimalRow = {
   pending_owner_phone?: string | null;
   pending_owner_invited_at?: string | null;
   invite_email_count?: number | null;
-  created_by_org_id: string | null;
-  origin_org_id: string | null;
+  created_by_organization_id: string | null;
+  origin_organization_id: string | null;
   microchip_verified: boolean | null;
   unimalia_code?: string | null;
   owner_claim_status?: "none" | "pending" | "claimed" | null;
@@ -288,7 +283,7 @@ async function getProfessionalRefs(userId: string) {
 
   const profileResult = await admin
     .from("professional_profiles")
-    .select("user_id, org_id")
+    .select("user_id, organization_id")
     .eq("user_id", userId)
     .maybeSingle<ProfessionalProfileRow>();
 
@@ -296,8 +291,8 @@ async function getProfessionalRefs(userId: string) {
     throw profileResult.error;
   }
 
-  if (profileResult.data?.org_id) {
-    refs.add(profileResult.data.org_id);
+  if (profileResult.data?.organization_id) {
+    refs.add(profileResult.data.organization_id);
   }
 
   const professionalResult = await admin
@@ -323,14 +318,14 @@ async function getClinicName(userId: string, organizationId: string | null) {
   const admin = supabaseAdmin();
 
   if (organizationId) {
-    const { data: orgRow } = await admin
+    const { data: organizationRow } = await admin
       .from("organizations")
       .select("id,name")
       .eq("id", organizationId)
       .maybeSingle<OrganizationRow>();
 
-    if (orgRow?.name?.trim()) {
-      return orgRow.name.trim();
+    if (organizationRow?.name?.trim()) {
+      return organizationRow.name.trim();
     }
   }
 
@@ -425,7 +420,6 @@ async function sendOwnerClaimEmail(params: {
         email: params.email,
         claim_token: token,
         created_by_user_id: params.actorUserId,
-        created_by: params.actorUserId,
       })
       .select("id")
       .single();
@@ -537,18 +531,18 @@ async function sendOwnerNoticeEmail(params: {
 
 async function autoLinkOwnerIfRegistered(params: {
   animalId: string;
-  ownerEmail: string | null;
+  pendingOwnerEmail: string | null;
   reqOrigin: string;
   actorUserId: string;
   organizationId: string | null;
   animalName: string | null;
 }) {
-  if (!params.ownerEmail) {
+  if (!params.pendingOwnerEmail) {
     return { linked: false as const };
   }
 
   const admin = supabaseAdmin();
-  const existingOwner = await findExistingAuthUserByEmail(params.ownerEmail);
+  const existingOwner = await findExistingAuthUserByEmail(params.pendingOwnerEmail);
 
   if (!existingOwner?.id) {
     return { linked: false as const };
@@ -577,7 +571,7 @@ async function autoLinkOwnerIfRegistered(params: {
   const notice = await sendOwnerNoticeEmail({
     animalId: params.animalId,
     animalName: params.animalName,
-    email: params.ownerEmail,
+    email: params.pendingOwnerEmail,
     actorUserId: params.actorUserId,
     organizationId: params.organizationId,
     reqOrigin: params.reqOrigin,
@@ -609,12 +603,12 @@ async function resolveAnimalByRef(animalRef: string) {
     if (byId.data) return byId;
   }
 
-  const chip = digitsOnly(ref);
-  if (chip.length === 15 || chip.length === 10) {
+  const chipNumber = digitsOnly(ref);
+  if (chipNumber.length === 15 || chipNumber.length === 10) {
     const byChip = await admin
       .from("animals")
       .select("*")
-      .eq("chip_number", chip)
+      .eq("chip_number", chipNumber)
       .maybeSingle<AnimalRow>();
 
     if (byChip.error) return byChip;
@@ -653,13 +647,13 @@ async function getOwnerDetails(ownerId?: string | null) {
     throw profileResult.error;
   }
 
-  let ownerEmail: string | null = null;
+  let ownerEmailAddress: string | null = null;
 
   try {
     const authUserResult = await admin.auth.admin.getUserById(ownerId);
-    ownerEmail = authUserResult?.data?.user?.email ?? null;
+    ownerEmailAddress = authUserResult?.data?.user?.email ?? null;
   } catch {
-    ownerEmail = null;
+    ownerEmailAddress = null;
   }
 
   const profile = profileResult.data;
@@ -676,7 +670,7 @@ async function getOwnerDetails(ownerId?: string | null) {
     owner_first_name: firstName,
     owner_last_name: lastName,
     owner_phone: profile?.phone?.trim() || null,
-    owner_email: ownerEmail,
+    owner_email: ownerEmailAddress,
   };
 }
 
@@ -704,7 +698,7 @@ async function findAnimalByChip(chipNumber: string) {
 }
 
 async function findAnimalByPendingOwnerEmailAndCoreData(params: {
-  ownerEmail: string;
+  pendingOwnerEmail: string;
   name: string;
   species: string;
 }) {
@@ -713,7 +707,7 @@ async function findAnimalByPendingOwnerEmailAndCoreData(params: {
   const result = await admin
     .from("animals")
     .select("*")
-    .eq("pending_owner_email", params.ownerEmail)
+    .eq("pending_owner_email", params.pendingOwnerEmail)
     .limit(10)
     .returns<AnimalRow[]>();
 
@@ -760,27 +754,27 @@ async function hasProfessionalAuditHistory(params: {
   const ownCount = ownAuditResult.count ?? 0;
   if (ownCount > 0) return true;
 
-  const orgRefs = params.refs.filter(
+  const organizationRefs = params.refs.filter(
     (ref) => typeof ref === "string" && ref.length > 0 && ref !== params.userId
   );
 
-  if (orgRefs.length === 0) {
+  if (organizationRefs.length === 0) {
     return false;
   }
 
-  const orgAuditResult = await admin
+  const organizationAuditResult = await admin
     .from("animal_clinic_event_audit")
     .select("id", { count: "exact", head: true })
     .eq("animal_id", params.animalId)
-    .in("actor_org_id", orgRefs)
+    .in("actor_organization_id", organizationRefs)
     .in("action", ["create", "update"])
     .returns<AnimalAuditRow[]>();
 
-  if (orgAuditResult.error) {
+  if (organizationAuditResult.error) {
     throw ownAuditResult.error;
   }
 
-  return (orgAuditResult.count ?? 0) > 0;
+  return (organizationAuditResult.count ?? 0) > 0;
 }
 
 export async function GET(req: NextRequest) {
@@ -871,8 +865,8 @@ export async function GET(req: NextRequest) {
     const hasGrant = Boolean(activeGrant);
 
     const isClinicOrigin =
-      refs.includes(String(animal.created_by_org_id ?? "")) ||
-      refs.includes(String(animal.origin_org_id ?? ""));
+      refs.includes(String(animal.created_by_organization_id ?? "")) ||
+      refs.includes(String(animal.origin_organization_id ?? ""));
 
     let hasOwnHistory = false;
 
@@ -913,7 +907,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       animal: {
         ...animal,
-        microchip: animal.chip_number ?? null,
         owner_name: ownerDetails.owner_name,
         owner_first_name: ownerDetails.owner_first_name,
         owner_last_name: ownerDetails.owner_last_name,
@@ -969,13 +962,9 @@ export async function POST(req: NextRequest) {
 
     const name = body.name?.trim() ?? "";
     const species = body.species?.trim() ?? "";
-    const chipNumber = normalizeChip(body.microchip ?? body.chip_number ?? null);
-    const ownerEmail = normalizeEmail(
-      body.owner_email ?? body.ownerEmail ?? body.pending_owner_email ?? null
-    );
-    const ownerPhone = normalizePhone(
-      body.owner_phone ?? body.ownerPhone ?? body.pending_owner_phone ?? null
-    );
+    const normalizedChipNumber = normalizeChip(body.chip_number ?? null);
+    const normalizedPendingOwnerEmail = normalizeEmail(body.pending_owner_email ?? null);
+    const normalizedPendingOwnerPhone = normalizePhone(body.pending_owner_phone ?? null);
 
     if (!name) {
       return NextResponse.json({ error: "Nome obbligatorio" }, { status: 400 });
@@ -985,7 +974,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Specie obbligatoria" }, { status: 400 });
     }
 
-    if (chipNumber && !isValidChip(chipNumber)) {
+    if (normalizedChipNumber && !isValidChip(normalizedChipNumber)) {
       return NextResponse.json(
         { error: "Microchip non valido: servono 15 cifre" },
         { status: 400 }
@@ -993,24 +982,24 @@ export async function POST(req: NextRequest) {
     }
 
     let matchedAnimal: AnimalRow | null = null;
-    let matchReason: "chip" | "owner_email" | null = null;
+    let matchReason: "chip" | "pending_owner_email" | null = null;
 
-    if (chipNumber) {
-      matchedAnimal = await findAnimalByChip(chipNumber);
+    if (normalizedChipNumber) {
+      matchedAnimal = await findAnimalByChip(normalizedChipNumber);
       if (matchedAnimal) {
         matchReason = "chip";
       }
     }
 
-    if (!matchedAnimal && ownerEmail) {
+    if (!matchedAnimal && normalizedPendingOwnerEmail) {
       matchedAnimal = await findAnimalByPendingOwnerEmailAndCoreData({
-        ownerEmail,
+        pendingOwnerEmail: normalizedPendingOwnerEmail,
         name,
         species,
       });
 
       if (matchedAnimal) {
-        matchReason = "owner_email";
+        matchReason = "pending_owner_email";
       }
     }
 
@@ -1028,12 +1017,20 @@ export async function POST(req: NextRequest) {
       }
       if (!matchedAnimal.birth_date && body.birth_date) patch.birth_date = body.birth_date;
       if (!matchedAnimal.photo_url && body.photo_url) patch.photo_url = body.photo_url;
-      if (!matchedAnimal.chip_number && chipNumber) patch.chip_number = chipNumber;
-      if (!matchedAnimal.pending_owner_email && ownerEmail) patch.pending_owner_email = ownerEmail;
-      if (!matchedAnimal.pending_owner_phone && ownerPhone) patch.pending_owner_phone = ownerPhone;
-      if (!matchedAnimal.origin_org_id) patch.origin_org_id = organizationId;
+      if (!matchedAnimal.chip_number && normalizedChipNumber) {
+        patch.chip_number = normalizedChipNumber;
+      }
+      if (!matchedAnimal.pending_owner_email && normalizedPendingOwnerEmail) {
+        patch.pending_owner_email = normalizedPendingOwnerEmail;
+      }
+      if (!matchedAnimal.pending_owner_phone && normalizedPendingOwnerPhone) {
+        patch.pending_owner_phone = normalizedPendingOwnerPhone;
+      }
+      if (!matchedAnimal.origin_organization_id) {
+        patch.origin_organization_id = organizationId;
+      }
       if (matchedAnimal.microchip_verified == null) patch.microchip_verified = false;
-      if (!matchedAnimal.owner_claim_status && (ownerEmail || ownerPhone)) {
+      if (!matchedAnimal.owner_claim_status && (normalizedPendingOwnerEmail || normalizedPendingOwnerPhone)) {
         patch.owner_claim_status = "pending";
       }
 
@@ -1075,11 +1072,11 @@ export async function POST(req: NextRequest) {
 
       let invite: InviteResult = { sent: false };
 
-      if (!matchedAnimal.owner_id && ownerEmail) {
+      if (!matchedAnimal.owner_id && normalizedPendingOwnerEmail) {
         try {
           const linked = await autoLinkOwnerIfRegistered({
             animalId: matchedAnimal.id,
-            ownerEmail,
+            pendingOwnerEmail: normalizedPendingOwnerEmail,
             reqOrigin: req.nextUrl.origin,
             actorUserId: user.id,
             organizationId,
@@ -1093,7 +1090,7 @@ export async function POST(req: NextRequest) {
             invite = await sendOwnerClaimEmail({
               animalId: matchedAnimal.id,
               animalName: matchedAnimal.name ?? null,
-              email: ownerEmail,
+              email: normalizedPendingOwnerEmail,
               actorUserId: user.id,
               organizationId,
               reqOrigin: req.nextUrl.origin,
@@ -1115,7 +1112,6 @@ export async function POST(req: NextRequest) {
           invite,
           animal: {
             ...matchedAnimal,
-            microchip: matchedAnimal.chip_number ?? null,
             has_active_grant: true,
           },
         },
@@ -1132,15 +1128,16 @@ export async function POST(req: NextRequest) {
       sex: body.sex?.trim() || null,
       sterilized: typeof body.sterilized === "boolean" ? body.sterilized : null,
       birth_date: body.birth_date || null,
-      chip_number: chipNumber,
+      chip_number: normalizedChipNumber,
       photo_url: body.photo_url || null,
       owner_id: null,
-      pending_owner_email: ownerEmail,
-      pending_owner_phone: ownerPhone,
+      pending_owner_email: normalizedPendingOwnerEmail,
+      pending_owner_phone: normalizedPendingOwnerPhone,
       created_by_role: "professional",
-      created_by_org_id: organizationId,
-      origin_org_id: organizationId,
-      owner_claim_status: ownerEmail || ownerPhone ? "pending" : "none",
+      created_by_organization_id: organizationId,
+      origin_organization_id: organizationId,
+      owner_claim_status:
+        normalizedPendingOwnerEmail || normalizedPendingOwnerPhone ? "pending" : "none",
       microchip_verified: false,
     };
 
@@ -1179,11 +1176,11 @@ export async function POST(req: NextRequest) {
 
     let invite: InviteResult = { sent: false };
 
-    if (ownerEmail) {
+    if (normalizedPendingOwnerEmail) {
       try {
         const linked = await autoLinkOwnerIfRegistered({
           animalId: created.data.id,
-          ownerEmail,
+          pendingOwnerEmail: normalizedPendingOwnerEmail,
           reqOrigin: req.nextUrl.origin,
           actorUserId: user.id,
           organizationId,
@@ -1197,7 +1194,7 @@ export async function POST(req: NextRequest) {
           invite = await sendOwnerClaimEmail({
             animalId: created.data.id,
             animalName: created.data.name ?? null,
-            email: ownerEmail,
+            email: normalizedPendingOwnerEmail,
             actorUserId: user.id,
             organizationId,
             reqOrigin: req.nextUrl.origin,
@@ -1218,7 +1215,6 @@ export async function POST(req: NextRequest) {
         invite,
         animal: {
           ...finalAnimal,
-          microchip: finalAnimal.chip_number ?? null,
           has_active_grant: true,
         },
       },

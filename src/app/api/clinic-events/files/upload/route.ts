@@ -232,7 +232,7 @@ export async function POST(req: Request) {
     await safeWriteAudit(supabase, {
       req,
       actor_user_id: user.id,
-      actor_org_id: null,
+      actor_organization_id: null,
       action: "file.upload",
       target_type: "event",
       target_id: eventId,
@@ -254,7 +254,7 @@ export async function POST(req: Request) {
       await safeWriteAudit(supabase, {
         req,
         actor_user_id: user.id,
-        actor_org_id: grant.actor_org_id,
+        actor_organization_id: grant.actor_organization_id,
         action: "file.upload",
         target_type: "event",
         target_id: eventId,
@@ -311,7 +311,7 @@ export async function POST(req: Request) {
         await safeWriteAudit(supabase, {
           req,
           actor_user_id: user.id,
-          actor_org_id: grant.actor_org_id,
+          actor_organization_id: grant.actor_organization_id,
           action: "file.upload",
           target_type: "event",
           target_id: eventId,
@@ -345,7 +345,7 @@ export async function POST(req: Request) {
         await safeWriteAudit(supabase, {
           req,
           actor_user_id: user.id,
-          actor_org_id: grant.actor_org_id,
+          actor_organization_id: grant.actor_organization_id,
           action: "file.upload",
           target_type: "event",
           target_id: eventId,
@@ -372,7 +372,7 @@ export async function POST(req: Request) {
     await safeWriteAudit(supabase, {
       req,
       actor_user_id: user.id,
-      actor_org_id: grant.actor_org_id,
+      actor_organization_id: grant.actor_organization_id,
       action: "file.upload",
       target_type: "event",
       target_id: eventId,
@@ -436,7 +436,7 @@ export async function POST(req: Request) {
     await safeWriteAudit(supabase, {
       req,
       actor_user_id: user.id,
-      actor_org_id: grant.actor_org_id,
+      actor_organization_id: grant.actor_organization_id,
       action: "file.upload",
       target_type: "event",
       target_id: eventId,

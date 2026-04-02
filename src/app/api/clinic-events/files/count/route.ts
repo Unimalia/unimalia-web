@@ -92,7 +92,7 @@ export async function GET(req: Request) {
     await safeWriteAudit(supabase, {
       req,
       actor_user_id: user.id,
-      actor_org_id: null,
+      actor_organization_id: null,
       action: "file.count",
       target_type: eventId ? "event" : "animal",
       target_id: eventId || animalId,
@@ -119,7 +119,7 @@ export async function GET(req: Request) {
     await safeWriteAudit(supabase, {
       req,
       actor_user_id: user.id,
-      actor_org_id: grant.actor_org_id,
+      actor_organization_id: grant.actor_organization_id,
       action: "file.count",
       target_type: eventId ? "event" : "animal",
       target_id: eventId || animalId,
@@ -134,7 +134,7 @@ export async function GET(req: Request) {
   await safeWriteAudit(supabase, {
     req,
     actor_user_id: user.id,
-    actor_org_id: grant.actor_org_id,
+    actor_organization_id: grant.actor_organization_id,
     action: "file.count",
     target_type: eventId ? "event" : "animal",
     target_id: eventId || animalId,

@@ -177,7 +177,7 @@ export async function POST(req: Request) {
       .update({
         verified_at: nowIso,
         verified_by_user_id: user.id,
-        verified_by_org_id: grant.actor_org_id ?? null,
+        verified_by_org_id: grant.actor_organization_id ?? null,
         verified_by_member_id: user.id,
         verified_by_label: verifierLabel,
       })
@@ -191,7 +191,7 @@ export async function POST(req: Request) {
       await safeWriteAudit(supabase, {
         req,
         actor_user_id: user.id,
-        actor_org_id: grant.actor_org_id,
+        actor_organization_id: grant.actor_organization_id,
         action: "event.verify",
         target_type: "event",
         target_id: id,
@@ -208,7 +208,7 @@ export async function POST(req: Request) {
         event_id: id,
         animal_id: animalId,
         actor_user_id: user.id,
-        actor_org_id: grant.actor_org_id,
+        actor_organization_id: grant.actor_organization_id,
         actor_member_id: user.id,
         action: "verify",
         previous_data: current,
@@ -221,7 +221,7 @@ export async function POST(req: Request) {
     await safeWriteAudit(supabase, {
       req,
       actor_user_id: user.id,
-      actor_org_id: grant.actor_org_id,
+      actor_organization_id: grant.actor_organization_id,
       action: "event.verify",
       target_type: "event",
       target_id: id,

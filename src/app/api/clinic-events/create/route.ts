@@ -211,7 +211,7 @@ export async function POST(req: Request) {
     await safeWriteAudit(supabase, {
       req,
       actor_user_id: user.id,
-      actor_org_id: null,
+      actor_organization_id: null,
       action: "event.create",
       target_type: "animal",
       target_id: animalId,
@@ -234,7 +234,7 @@ export async function POST(req: Request) {
     await safeWriteAudit(supabase, {
       req,
       actor_user_id: user.id,
-      actor_org_id: null,
+      actor_organization_id: null,
       action: "event.create",
       target_type: "animal",
       target_id: animalId,
@@ -312,11 +312,11 @@ export async function POST(req: Request) {
 
   let actorOrgName: string | null = null;
 
-  if (grant.actor_org_id) {
+  if (grant.actor_organization_id) {
     const { data: orgRow } = await admin
       .from("organizations")
       .select("id,name,display_name,ragione_sociale")
-      .eq("id", grant.actor_org_id)
+      .eq("id", grant.actor_organization_id)
       .maybeSingle<OrganizationRow>();
 
     actorOrgName =
@@ -366,7 +366,7 @@ export async function POST(req: Request) {
 
   try {
     const nowIso = new Date().toISOString();
-    const verifiedByOrgId = grant.actor_org_id ? grant.actor_org_id : null;
+    const verifiedByOrgId = grant.actor_organization_id ? grant.actor_organization_id : null;
 
     const { data, error } = await admin
       .from("animal_clinic_events")
@@ -397,7 +397,7 @@ export async function POST(req: Request) {
       await safeWriteAudit(supabase, {
         req,
         actor_user_id: user.id,
-        actor_org_id: grant.actor_org_id,
+        actor_organization_id: grant.actor_organization_id,
         action: "event.create",
         target_type: "animal",
         target_id: animalId,
@@ -414,7 +414,7 @@ export async function POST(req: Request) {
         event_id: data.id,
         animal_id: animalId,
         actor_user_id: user.id,
-        actor_org_id: grant.actor_org_id,
+        actor_organization_id: grant.actor_organization_id,
         actor_member_id: user.id,
         action: "create",
         previous_data: null,
@@ -537,7 +537,7 @@ export async function POST(req: Request) {
     await safeWriteAudit(supabase, {
       req,
       actor_user_id: user.id,
-      actor_org_id: grant.actor_org_id,
+      actor_organization_id: grant.actor_organization_id,
       action: "event.create",
       target_type: "event",
       target_id: data.id,
@@ -550,7 +550,7 @@ export async function POST(req: Request) {
     await safeWriteAudit(supabase, {
       req,
       actor_user_id: user.id,
-      actor_org_id: grant.actor_org_id,
+      actor_organization_id: grant.actor_organization_id,
       action: "event.create",
       target_type: "animal",
       target_id: animalId,

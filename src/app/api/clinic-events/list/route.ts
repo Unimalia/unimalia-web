@@ -68,7 +68,7 @@ export async function GET(req: Request) {
       await safeWriteAudit(supabase as SafeWriteAuditClient, {
         req,
         actor_user_id: user.id,
-        actor_org_id: null,
+        actor_organization_id: null,
         action: "animal.clinic.read",
         target_type: "animal",
         target_id: animalId,
@@ -94,7 +94,7 @@ export async function GET(req: Request) {
       await safeWriteAudit(supabase as SafeWriteAuditClient, {
         req,
         actor_user_id: user.id,
-        actor_org_id: null,
+        actor_organization_id: null,
         action: "animal.clinic.read",
         target_type: "animal",
         target_id: animalId,
@@ -121,7 +121,7 @@ export async function GET(req: Request) {
       await safeWriteAudit(supabase as SafeWriteAuditClient, {
         req,
         actor_user_id: user.id,
-        actor_org_id: grant.actor_org_id,
+        actor_organization_id: grant.actor_organization_id,
         action: "animal.clinic.read",
         target_type: "animal",
         target_id: animalId,
@@ -139,7 +139,7 @@ export async function GET(req: Request) {
     await safeWriteAudit(supabase as SafeWriteAuditClient, {
       req,
       actor_user_id: user.id,
-      actor_org_id: grant.actor_org_id,
+      actor_organization_id: grant.actor_organization_id,
       action: "animal.clinic.read",
       target_type: "animal",
       target_id: animalId,

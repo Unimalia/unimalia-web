@@ -8,7 +8,7 @@ export default function NuovoAnimalePage() {
 
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [microchip, setMicrochip] = useState("");
+  const [chipNumber, setChipNumber] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
@@ -27,7 +27,7 @@ export default function NuovoAnimalePage() {
         body: JSON.stringify({
           email,
           phone,
-          microchip,
+          chip_number: chipNumber,
         }),
       });
 
@@ -51,9 +51,9 @@ export default function NuovoAnimalePage() {
 
   function createNew() {
     const params = new URLSearchParams();
-    if (email) params.set("email", email);
-    if (phone) params.set("phone", phone);
-    if (microchip) params.set("microchip", microchip);
+    if (email) params.set("pending_owner_email", email);
+    if (phone) params.set("pending_owner_phone", phone);
+    if (chipNumber) params.set("chip_number", chipNumber);
 
     router.push(`/professionisti/animali/crea?${params.toString()}`);
   }
@@ -80,8 +80,8 @@ export default function NuovoAnimalePage() {
         <input
           placeholder="Microchip (opzionale)"
           className="w-full border rounded-lg px-3 py-2"
-          value={microchip}
-          onChange={(e) => setMicrochip(e.target.value)}
+          value={chipNumber}
+          onChange={(e) => setChipNumber(e.target.value)}
         />
 
         <button
@@ -97,20 +97,15 @@ export default function NuovoAnimalePage() {
 
       {result && (
         <div className="space-y-4">
-          {/* NESSUN RISULTATO */}
           {result.found === false && (
             <div className="p-4 border rounded-lg">
               <p>Nessuna scheda trovata</p>
-              <button
-                onClick={createNew}
-                className="mt-2 text-blue-600 underline"
-              >
+              <button onClick={createNew} className="mt-2 text-blue-600 underline">
                 Crea nuova scheda
               </button>
             </div>
           )}
 
-          {/* MICROCHIP MATCH */}
           {result.strong_match && (
             <div className="p-4 border rounded-lg">
               <p className="font-semibold">Animale trovato (microchip)</p>
@@ -126,20 +121,19 @@ export default function NuovoAnimalePage() {
             </div>
           )}
 
-          {/* CANDIDATI */}
           {result.candidates && (
             <div className="space-y-2">
-              {result.candidates.map((a: any) => (
-                <div key={a.id} className="p-4 border rounded-lg">
+              {result.candidates.map((animal: any) => (
+                <div key={animal.id} className="p-4 border rounded-lg">
                   <p className="font-semibold">
-                    {a.name} - {a.species}
+                    {animal.name} - {animal.species}
                   </p>
                   <p className="text-sm text-gray-500">
-                    Microchip: {a.microchip || "—"}
+                    Microchip: {animal.chip_number || "—"}
                   </p>
 
                   <button
-                    onClick={() => goToAnimal(a.id)}
+                    onClick={() => goToAnimal(animal.id)}
                     className="mt-2 text-blue-600 underline"
                   >
                     Usa questa scheda

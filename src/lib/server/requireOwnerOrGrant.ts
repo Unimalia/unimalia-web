@@ -5,8 +5,15 @@ import { getProfessionalOrgId } from "@/lib/professionisti/org";
 type Scope = "read" | "write" | "upload";
 
 type GrantCheckResult =
-  | { ok: true; actor_org_id: string | null; mode: "owner" | "grant_user" | "grant_org" }
-  | { ok: false; reason: string };
+  | {
+      ok: true;
+      actor_organization_id: string | null;
+      mode: "owner" | "grant_user" | "grant_org";
+    }
+  | {
+      ok: false;
+      reason: string;
+    };
 
 type AnimalOwnerRow = {
   id: string;
@@ -61,21 +68,21 @@ export async function requireOwnerOrGrant(
 ): Promise<GrantCheckResult> {
   const admin = supabaseAdmin();
 
-  const { data: animal, error: aErr } = await admin
+  const { data: animal, error: animalError } = await admin
     .from("animals")
     .select("id, owner_id")
     .eq("id", animalId)
     .single<AnimalOwnerRow>();
 
-  if (aErr || !animal) {
+  if (animalError || !animal) {
     return { ok: false, reason: "Animale non trovato." };
   }
 
   if (animal.owner_id === userId) {
-    return { ok: true, actor_org_id: null, mode: "owner" };
+    return { ok: true, actor_organization_id: null, mode: "owner" };
   }
 
-  const { data: grants, error: gErr } = await admin
+  const { data: grants, error: grantsError } = await admin
     .from("animal_access_grants")
     .select(
       "id, grantee_type, grantee_id, scope_read, scope_write, scope_upload, valid_from, valid_to, status, revoked_at"
@@ -83,37 +90,37 @@ export async function requireOwnerOrGrant(
     .eq("animal_id", animalId)
     .returns<AnimalGrantRow[]>();
 
-  if (gErr) {
+  if (grantsError) {
     return { ok: false, reason: "Errore permessi (grants)." };
   }
 
-  const activeGrants = (grants || []).filter((g) => isGrantActiveNow(g));
+  const activeGrants = (grants || []).filter((grant) => isGrantActiveNow(grant));
 
   const userGrant = activeGrants.find(
-    (g) =>
-      g.grantee_type === "user" &&
-      String(g.grantee_id) === String(userId) &&
-      hasRequiredScope(g, scope)
+    (grant) =>
+      grant.grantee_type === "user" &&
+      String(grant.grantee_id) === String(userId) &&
+      hasRequiredScope(grant, scope)
   );
 
   if (userGrant) {
-    return { ok: true, actor_org_id: null, mode: "grant_user" };
+    return { ok: true, actor_organization_id: null, mode: "grant_user" };
   }
 
   const organizationId = await getProfessionalOrgId();
 
-  const orgGrant = activeGrants.find(
-    (g) =>
-      g.grantee_type === "organization" &&
+  const organizationGrant = activeGrants.find(
+    (grant) =>
+      grant.grantee_type === "organization" &&
       organizationId &&
-      String(g.grantee_id) === String(organizationId) &&
-      hasRequiredScope(g, scope)
+      String(grant.grantee_id) === String(organizationId) &&
+      hasRequiredScope(grant, scope)
   );
 
-  if (orgGrant) {
+  if (organizationGrant) {
     return {
       ok: true,
-      actor_org_id: String(orgGrant.grantee_id),
+      actor_organization_id: String(organizationGrant.grantee_id),
       mode: "grant_org",
     };
   }

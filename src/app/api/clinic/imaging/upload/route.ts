@@ -403,7 +403,7 @@ export async function POST(req: Request) {
       await writeAudit(supabase, {
         req,
         actor_user_id: user.id,
-        actor_org_id: grant.actor_org_id,
+        actor_organization_id: grant.actor_organization_id,
         action: "imaging.upload.prepare",
         target_type: "event",
         target_id: eventId,
@@ -555,7 +555,7 @@ export async function POST(req: Request) {
       }
 
       await admin.from("clinic_imaging_uploads").insert({
-        clinic_id: grant.actor_org_id ?? null,
+        clinic_id: grant.actor_organization_id ?? null,
         user_id: user.id,
         animal_id: animalId,
         event_id: eventId,
@@ -572,7 +572,7 @@ export async function POST(req: Request) {
       await writeAudit(supabase, {
         req,
         actor_user_id: user.id,
-        actor_org_id: grant.actor_org_id,
+        actor_organization_id: grant.actor_organization_id,
         action: "imaging.upload.complete",
         target_type: "event",
         target_id: eventId,

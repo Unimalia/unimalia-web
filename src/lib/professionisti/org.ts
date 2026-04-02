@@ -3,7 +3,7 @@ import { createServerSupabaseClient, supabaseAdmin } from "@/lib/supabase/server
 
 type ProfessionalProfileRow = {
   user_id: string;
-  org_id: string | null;
+  organization_id: string | null;
 };
 
 export async function getProfessionalOrgId(): Promise<string | null> {
@@ -23,7 +23,7 @@ export async function getProfessionalOrgId(): Promise<string | null> {
 
   const profileResult = await admin
     .from("professional_profiles")
-    .select("user_id, org_id")
+    .select("user_id, organization_id")
     .eq("user_id", user.id)
     .maybeSingle<ProfessionalProfileRow>();
 
@@ -31,16 +31,16 @@ export async function getProfessionalOrgId(): Promise<string | null> {
     throw profileResult.error;
   }
 
-  const profileOrgId = profileResult.data?.org_id ?? null;
+  const profileOrganizationId = profileResult.data?.organization_id ?? null;
 
-  if (!profileOrgId) {
+  if (!profileOrganizationId) {
     return null;
   }
 
   const organizationResult = await admin
     .from("organizations")
     .select("id")
-    .eq("id", profileOrgId)
+    .eq("id", profileOrganizationId)
     .maybeSingle<{ id: string }>();
 
   if (organizationResult.error) {

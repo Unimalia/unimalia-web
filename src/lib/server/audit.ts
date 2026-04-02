@@ -4,7 +4,7 @@ import { getRequestMeta } from "./requestMeta";
 type AuditInput = {
   req: Request;
   actor_user_id: string | null;
-  actor_org_id?: string | null;
+  actor_organization_id?: string | null;
   action: string;
   target_type: string;
   target_id: string;
@@ -21,7 +21,7 @@ export async function writeAudit(supabase: SupabaseClient, input: AuditInput) {
     await supabase.from("audit_logs").insert({
       occurred_at: new Date().toISOString(),
       actor_user_id: input.actor_user_id,
-      actor_org_id: input.actor_org_id ?? null,
+      actor_organization_id: input.actor_organization_id ?? null,
       action: input.action,
       target_type: input.target_type,
       target_id: input.target_id,

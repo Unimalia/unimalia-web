@@ -118,7 +118,7 @@ export async function POST(req: Request) {
     await safeWriteAudit(supabase, {
       req,
       actor_user_id: user.id,
-      actor_org_id: null,
+      actor_organization_id: null,
       action: "event.delete",
       target_type: "event",
       target_id: id,
@@ -160,7 +160,7 @@ export async function POST(req: Request) {
     await safeWriteAudit(supabase, {
       req,
       actor_user_id: user.id,
-      actor_org_id: grant.actor_org_id,
+      actor_organization_id: grant.actor_organization_id,
       action: "event.delete",
       target_type: "event",
       target_id: id,
@@ -181,7 +181,7 @@ export async function POST(req: Request) {
     await safeWriteAudit(supabase, {
       req,
       actor_user_id: user.id,
-      actor_org_id: grant.actor_org_id,
+      actor_organization_id: grant.actor_organization_id,
       action: "event.delete",
       target_type: "event",
       target_id: id,
@@ -198,7 +198,7 @@ export async function POST(req: Request) {
       event_id: current.id,
       animal_id: animalId,
       actor_user_id: user.id,
-      actor_org_id: grant.actor_org_id,
+      actor_organization_id: grant.actor_organization_id,
       action: "delete",
       previous_data: current,
       next_data: { ...current, status: "void" },
@@ -261,7 +261,7 @@ export async function POST(req: Request) {
   await safeWriteAudit(supabase, {
     req,
     actor_user_id: user.id,
-    actor_org_id: grant.actor_org_id,
+    actor_organization_id: grant.actor_organization_id,
     action: "event.delete",
     target_type: "event",
     target_id: id,

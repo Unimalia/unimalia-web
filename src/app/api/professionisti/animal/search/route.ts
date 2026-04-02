@@ -31,7 +31,6 @@ function normalizePhone(value?: string | null) {
 
   if (!digits) return null;
 
-  // rimuove prefisso internazionale italiano
   if (digits.startsWith("39") && digits.length > 10) {
     digits = digits.slice(2);
   }
@@ -66,24 +65,20 @@ export async function POST(req: NextRequest) {
 
     const email = normalizeEmail(body.email);
     const phone = normalizePhone(body.phone);
-    const chip = normalizeChip(body.microchip);
+    const chipNumber = normalizeChip(body.chip_number);
 
-    if (!email && !phone && !chip) {
+    if (!email && !phone && !chipNumber) {
       return NextResponse.json(
         { error: "Inserisci almeno email, telefono o microchip" },
         { status: 400 }
       );
     }
 
-    // =====================================================
-    // 1. MICROCHIP MATCH (PRIORITARIO)
-    // =====================================================
-
-    if (chip && chip.length === 15) {
+    if (chipNumber && chipNumber.length === 15) {
       const { data, error } = await admin
         .from("animals")
         .select("id, name, species, chip_number, owner_id, pending_owner_email, owner_claim_status")
-        .eq("chip_number", chip)
+        .eq("chip_number", chipNumber)
         .limit(1)
         .returns<AnimalRow[]>();
 
@@ -101,16 +96,12 @@ export async function POST(req: NextRequest) {
             id: animal.id,
             name: animal.name,
             species: animal.species,
-            microchip: animal.chip_number,
+            chip_number: animal.chip_number,
             owner_claim_status: animal.owner_claim_status,
           },
         });
       }
     }
-
-    // =====================================================
-    // 2. MATCH EMAIL + TELEFONO
-    // =====================================================
 
     let profileIds: string[] = [];
 
@@ -158,10 +149,6 @@ export async function POST(req: NextRequest) {
       animals = data || [];
     }
 
-    // =====================================================
-    // 3. MATCH SU EMAIL PENDING (owner non registrato)
-    // =====================================================
-
     if (email) {
       const { data } = await admin
         .from("animals")
@@ -174,10 +161,9 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // dedup
     const unique = new Map<string, AnimalRow>();
-    for (const a of animals) {
-      unique.set(a.id, a);
+    for (const animal of animals) {
+      unique.set(animal.id, animal);
     }
 
     const result = Array.from(unique.values());
@@ -188,12 +174,12 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       found: true,
-      candidates: result.map((a) => ({
-        id: a.id,
-        name: a.name,
-        species: a.species,
-        microchip: a.chip_number,
-        owner_claim_status: a.owner_claim_status,
+      candidates: result.map((animal) => ({
+        id: animal.id,
+        name: animal.name,
+        species: animal.species,
+        chip_number: animal.chip_number,
+        owner_claim_status: animal.owner_claim_status,
       })),
     });
   } catch (error: unknown) {

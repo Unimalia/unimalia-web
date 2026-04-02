@@ -113,7 +113,7 @@ export async function POST(req: Request) {
     await writeAudit(supabase, {
       req,
       actor_user_id: user.id,
-      actor_org_id: grant.actor_org_id,
+      actor_organization_id: grant.actor_organization_id,
       action: "imaging.download",
       target_type: "file",
       target_id: fileRow.id,

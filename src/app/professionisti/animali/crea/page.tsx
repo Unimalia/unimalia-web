@@ -11,21 +11,21 @@ export default function CreaAnimalePage() {
 
   const [name, setName] = useState("");
   const [species, setSpecies] = useState("Cane");
-  const [microchip, setMicrochip] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
+  const [chipNumber, setChipNumber] = useState("");
+  const [pendingOwnerEmail, setPendingOwnerEmail] = useState("");
+  const [pendingOwnerPhone, setPendingOwnerPhone] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const e = searchParams.get("email") || "";
-    const p = searchParams.get("phone") || "";
-    const m = searchParams.get("microchip") || "";
+    const email = searchParams.get("pending_owner_email") || "";
+    const phone = searchParams.get("pending_owner_phone") || "";
+    const chipNumberParam = searchParams.get("chip_number") || "";
 
-    setEmail(e);
-    setPhone(p);
-    setMicrochip(m);
+    setPendingOwnerEmail(email);
+    setPendingOwnerPhone(phone);
+    setChipNumber(chipNumberParam);
   }, [searchParams]);
 
   async function handleCreate() {
@@ -41,12 +41,12 @@ export default function CreaAnimalePage() {
       return;
     }
 
-    if (!email.trim()) {
+    if (!pendingOwnerEmail.trim()) {
       setError("Email proprietario obbligatoria");
       return;
     }
 
-    if (!phone.trim()) {
+    if (!pendingOwnerPhone.trim()) {
       setError("Telefono proprietario obbligatorio");
       return;
     }
@@ -62,9 +62,9 @@ export default function CreaAnimalePage() {
         body: JSON.stringify({
           name,
           species,
-          microchip,
-          owner_email: email,
-          owner_phone: phone,
+          chip_number: chipNumber,
+          pending_owner_email: pendingOwnerEmail,
+          pending_owner_phone: pendingOwnerPhone,
         }),
       });
 
@@ -113,8 +113,8 @@ export default function CreaAnimalePage() {
         <input
           placeholder="Microchip (opzionale)"
           className="w-full border rounded-lg px-3 py-2"
-          value={microchip}
-          onChange={(e) => setMicrochip(e.target.value)}
+          value={chipNumber}
+          onChange={(e) => setChipNumber(e.target.value)}
         />
 
         <hr />
@@ -122,15 +122,15 @@ export default function CreaAnimalePage() {
         <input
           placeholder="Email proprietario *"
           className="w-full border rounded-lg px-3 py-2"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          value={pendingOwnerEmail}
+          onChange={(e) => setPendingOwnerEmail(e.target.value)}
         />
 
         <input
           placeholder="Telefono proprietario *"
           className="w-full border rounded-lg px-3 py-2"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
+          value={pendingOwnerPhone}
+          onChange={(e) => setPendingOwnerPhone(e.target.value)}
         />
 
         <button

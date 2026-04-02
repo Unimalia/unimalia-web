@@ -45,9 +45,9 @@ type OrganizationRow = {
 
 type ProfessionalProfileRow = {
   user_id: string;
-  org_id: string | null;
+  organization_id: string | null;
   role: string | null;
-  org_name: string | null;
+  organization_name: string | null;
 };
 
 function clean(value: string | null | undefined) {
@@ -134,7 +134,7 @@ export async function syncProfessionalAuth(professionalId: string): Promise<Sync
 
   const existingProfileResult = await admin
     .from("professional_profiles")
-    .select("user_id, org_id, role, org_name")
+    .select("user_id, organization_id, role, organization_name")
     .eq("user_id", authUserId)
     .maybeSingle<ProfessionalProfileRow>();
 
@@ -145,26 +145,24 @@ export async function syncProfessionalAuth(professionalId: string): Promise<Sync
     };
   }
 
-  if (existingProfileResult.data?.org_id) {
-    const orgCheck = await admin
+  if (existingProfileResult.data?.organization_id) {
+    const organizationCheck = await admin
       .from("organizations")
       .select("id, name, email")
-      .eq("id", existingProfileResult.data.org_id)
+      .eq("id", existingProfileResult.data.organization_id)
       .maybeSingle<OrganizationRow>();
 
-    if (orgCheck.error) {
+    if (organizationCheck.error) {
       return {
         ok: false,
-        error: orgCheck.error.message,
+        error: organizationCheck.error.message,
       };
     }
 
-    if (orgCheck.data?.id) {
-      organizationId = orgCheck.data.id;
+    if (organizationCheck.data?.id) {
+      organizationId = organizationCheck.data.id;
     }
   }
-
-  // ❌ RIMOSSO lookup via email → niente fallback sporco
 
   if (!organizationId) {
     const organizationName = buildOrganizationName(professional);
@@ -203,8 +201,8 @@ export async function syncProfessionalAuth(professionalId: string): Promise<Sync
   const profilePayload = {
     user_id: authUserId,
     role: isVet ? "veterinarian" : "professional",
-    org_id: organizationId,
-    org_name: buildOrganizationName(professional),
+    organization_id: organizationId,
+    organization_name: buildOrganizationName(professional),
   };
 
   if (existingProfileResult.data) {
