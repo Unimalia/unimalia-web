@@ -102,7 +102,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: grant.reason }, { status: 403 });
   }
 
-  const { data: existing, error: existingError } = await admin
+  const { data: existingRows, error: existingError } = await admin
     .from("clinic_imaging_upload_sessions")
     .select("*")
     .eq("created_by_user_id", user.id)
@@ -111,13 +111,13 @@ export async function POST(req: Request) {
     .eq("file_size", fileSize)
     .eq("storage_key", finalPath)
     .in("status", ["initiated", "uploading"])
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .limit(10);
 
   if (existingError) {
     return NextResponse.json({ error: existingError.message }, { status: 500 });
   }
+
+  const existing = Array.isArray(existingRows) && existingRows.length > 0 ? existingRows[0] : null;
 
   if (existing) {
     return NextResponse.json({
