@@ -188,6 +188,35 @@ function buildStoneViewerUrl(studyInstanceUid: string) {
   )}`;
 }
 
+async function orthancStudyExists(
+  orthancBaseUrl: string,
+  authHeader: string,
+  studyInstanceUid: string
+): Promise<boolean> {
+  const url =
+    `${orthancBaseUrl}/dicom-web/studies?limit=1` +
+    `&offset=0&fuzzymatching=false` +
+    `&StudyInstanceUID=${encodeURIComponent(studyInstanceUid)}`;
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      Authorization: authHeader,
+      Accept: "application/dicom+json",
+    },
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Errore verifica studio Orthanc: ${response.status} ${text}`);
+  }
+
+  const json = (await response.json().catch(() => null)) as unknown;
+
+  return Array.isArray(json) && json.length > 0;
+}
+
 export async function GET(req: NextRequest) {
   try {
     const auth = await resolveAuthenticatedUser(req);
@@ -270,18 +299,6 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(signedDownloadUrl);
     }
 
-    const existingStudyInstanceUid = String(
-      file?.orthanc?.study_instance_uid || ""
-    ).trim();
-
-    if (existingStudyInstanceUid) {
-      const stoneUrl = buildStoneViewerUrl(existingStudyInstanceUid);
-
-      if (stoneUrl) {
-        return NextResponse.redirect(stoneUrl);
-      }
-    }
-
     const { orthancBaseUrl, username, password } = getOrthancConfig();
 
     if (!orthancBaseUrl || !username || !password) {
@@ -290,6 +307,26 @@ export async function GET(req: NextRequest) {
     }
 
     const authHeader = createOrthancBasicAuthHeader(username, password);
+
+    const existingStudyInstanceUid = String(
+      file?.orthanc?.study_instance_uid || ""
+    ).trim();
+
+    if (existingStudyInstanceUid) {
+      const exists = await orthancStudyExists(
+        orthancBaseUrl,
+        authHeader,
+        existingStudyInstanceUid
+      );
+
+      if (exists) {
+        const stoneUrl = buildStoneViewerUrl(existingStudyInstanceUid);
+
+        if (stoneUrl) {
+          return NextResponse.redirect(stoneUrl);
+        }
+      }
+    }
 
     const dicomBuffer = await downloadPrivateFileBuffer(filePath);
     const dicomBytes = new Uint8Array(dicomBuffer);
