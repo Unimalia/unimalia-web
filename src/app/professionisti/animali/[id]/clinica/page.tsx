@@ -637,13 +637,6 @@ export default function ClinicaPage() {
   };
 
   async function openImagingViewerOrFile(eventId: string, file: ImagingFileMeta) {
-    const directViewerUrl = String(file?.orthanc?.viewer_url || "").trim();
-
-    if (directViewerUrl) {
-      window.open(directViewerUrl, "_blank", "noopener,noreferrer");
-      return;
-    }
-
     const fileId = String(file?.id || "").trim();
 
     if (fileId) {
