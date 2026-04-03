@@ -163,31 +163,6 @@ function createOptionalOrthancHeaders(username: string, password: string) {
   return headers;
 }
 
-async function fetchOrthancSimplifiedTags(
-  orthancBaseUrl: string,
-  authHeaders: Record<string, string>,
-  orthancInstanceId: string
-): Promise<OrthancSimplifiedTagsResponse> {
-  const response = await fetch(
-    `${orthancBaseUrl}/instances/${encodeURIComponent(orthancInstanceId)}/simplified-tags`,
-    {
-      method: "GET",
-      headers: {
-        ...authHeaders,
-        Accept: "application/json",
-      },
-      cache: "no-store",
-    }
-  );
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`Errore lettura simplified-tags Orthanc: ${response.status} ${text}`);
-  }
-
-  return (await response.json()) as OrthancSimplifiedTagsResponse;
-}
-
 function buildOhifViewerUrl(viewerBaseUrl: string, studyInstanceUid: string) {
   if (!viewerBaseUrl || !studyInstanceUid) {
     return null;
@@ -225,6 +200,41 @@ async function orthancStudyExists(
   const json = (await response.json().catch(() => null)) as unknown;
 
   return Array.isArray(json) && json.length > 0;
+}
+
+async function fetchOrthancSimplifiedTags(
+  orthancBaseUrl: string,
+  authHeaders: Record<string, string>,
+  orthancInstanceId: string
+): Promise<OrthancSimplifiedTagsResponse> {
+  const response = await fetch(
+    `${orthancBaseUrl}/instances/${encodeURIComponent(orthancInstanceId)}/simplified-tags`,
+    {
+      method: "GET",
+      headers: {
+        ...authHeaders,
+        Accept: "application/json",
+      },
+      cache: "no-store",
+    }
+  );
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Errore lettura simplified-tags Orthanc: ${response.status} ${text}`);
+  }
+
+  return (await response.json()) as OrthancSimplifiedTagsResponse;
+}
+
+function dicomViewError(message: string, status = 503) {
+  return NextResponse.json(
+    {
+      error: message,
+      code: "IMAGING_VIEW_NOT_READY",
+    },
+    { status }
+  );
 }
 
 export async function GET(req: NextRequest) {
@@ -284,7 +294,7 @@ export async function GET(req: NextRequest) {
     const files = Array.isArray(imaging.files) ? imaging.files : [];
 
     const fileIndex = files.findIndex(
-      (f) => String(f?.id || "").trim() === fileId
+      f => String(f?.id || "").trim() === fileId
     );
 
     if (fileIndex < 0) {
@@ -304,7 +314,9 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    if (!isDicomFile(file)) {
+    const dicom = isDicomFile(file);
+
+    if (!dicom) {
       const signedDownloadUrl = await createSignedDownloadUrl(filePath, 60);
       return NextResponse.redirect(signedDownloadUrl);
     }
@@ -315,13 +327,12 @@ export async function GET(req: NextRequest) {
       orthancBaseUrl,
       viewerBaseUrl,
       username: username ? "***" : null,
-      hasPassword: !!password
+      hasPassword: !!password,
     });
 
     if (!orthancBaseUrl || !viewerBaseUrl) {
-      console.log("[IMAGING VIEW] Missing config fallback");
-      const signedDownloadUrl = await createSignedDownloadUrl(filePath, 60);
-      return NextResponse.redirect(signedDownloadUrl);
+      console.log("[IMAGING VIEW] Missing config for DICOM viewer");
+      return dicomViewError("Viewer DICOM non configurato correttamente.", 500);
     }
 
     const authHeaders = createOptionalOrthancHeaders(username, password);
@@ -334,7 +345,7 @@ export async function GET(req: NextRequest) {
       console.log("[IMAGING VIEW] Checking existing study", {
         existingStudyInstanceUid,
         orthancBaseUrl,
-        hasAuth: !!username && !!password
+        hasAuth: !!username && !!password,
       });
 
       const exists = await orthancStudyExists(
@@ -355,16 +366,25 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    console.log("[IMAGING VIEW] Downloading DICOM from private storage", { filePath });
+
     const dicomBuffer = await downloadPrivateFileBuffer(filePath);
     const dicomBytes = new Uint8Array(dicomBuffer);
 
-    console.log("[IMAGING VIEW] Downloading DICOM", { filePath });
-    console.log("[IMAGING VIEW] DICOM buffer size", { 
+    console.log("[IMAGING VIEW] DICOM buffer size", {
       bufferSize: dicomBytes.length,
-      filePath 
+      filePath,
     });
 
-    const uploadResp = await fetch(`${orthancBaseUrl}/instances`, {
+    const uploadUrl = `${orthancBaseUrl}/instances`;
+
+    console.log("[IMAGING VIEW] Starting Orthanc upload", {
+      uploadUrl,
+      bufferSize: dicomBytes.length,
+      hasAuth: !!username && !!password,
+    });
+
+    const uploadResp = await fetch(uploadUrl, {
       method: "POST",
       headers: {
         ...authHeaders,
@@ -375,33 +395,29 @@ export async function GET(req: NextRequest) {
       cache: "no-store",
     });
 
-    console.log("[IMAGING VIEW] Starting Orthanc upload", {
-      uploadUrl: `${orthancBaseUrl}/instances`,
-      bufferSize: dicomBytes.length,
-      hasAuth: !!username && !!password
-    });
-
     console.log("[IMAGING VIEW] Orthanc upload response", {
       status: uploadResp.status,
       statusText: uploadResp.statusText,
-      ok: uploadResp.ok
+      ok: uploadResp.ok,
     });
 
     const uploadJson = (await uploadResp.json().catch(() => null)) as OrthancInstanceUploadResponse | null;
 
     console.log("[IMAGING VIEW] Upload JSON response", {
       uploadJson,
-      hasId: !!uploadJson?.ID
+      hasId: !!uploadJson?.ID,
     });
 
     if (!uploadResp.ok || !uploadJson?.ID) {
-      console.log("[IMAGING VIEW] Upload failed - fallback download", {
+      console.log("[IMAGING VIEW] Upload failed for DICOM", {
         uploadOk: uploadResp.ok,
         hasId: !!uploadJson?.ID,
-        uploadStatus: uploadResp.status
+        uploadStatus: uploadResp.status,
       });
-      const signedDownloadUrl = await createSignedDownloadUrl(filePath, 60);
-      return NextResponse.redirect(signedDownloadUrl);
+
+      return dicomViewError(
+        "Il file DICOM non è ancora pronto per il viewer oppure l'import in Orthanc è fallito."
+      );
     }
 
     const orthancInstanceId = String(uploadJson.ID || "").trim() || null;
@@ -409,14 +425,13 @@ export async function GET(req: NextRequest) {
     const orthancSeriesId = String(uploadJson.ParentSeries || "").trim() || null;
 
     if (!orthancInstanceId) {
-      console.log("[IMAGING VIEW] Missing instance ID - fallback download");
-      const signedDownloadUrl = await createSignedDownloadUrl(filePath, 60);
-      return NextResponse.redirect(signedDownloadUrl);
+      console.log("[IMAGING VIEW] Missing instance ID for DICOM");
+      return dicomViewError("Istanza DICOM non disponibile dopo l'import.");
     }
 
     console.log("[IMAGING VIEW] Fetching Orthanc tags", {
       orthancInstanceId,
-      tagsUrl: `${orthancBaseUrl}/instances/${orthancInstanceId}/simplified-tags`
+      tagsUrl: `${orthancBaseUrl}/instances/${orthancInstanceId}/simplified-tags`,
     });
 
     const tags = await fetchOrthancSimplifiedTags(
@@ -428,7 +443,7 @@ export async function GET(req: NextRequest) {
     console.log("[IMAGING VIEW] Tags response", {
       studyInstanceUid: tags.StudyInstanceUID,
       seriesInstanceUid: tags.SeriesInstanceUID,
-      sopInstanceUid: tags.SOPInstanceUID
+      sopInstanceUid: tags.SOPInstanceUID,
     });
 
     const studyInstanceUid = String(tags.StudyInstanceUID || "").trim() || null;
@@ -436,9 +451,8 @@ export async function GET(req: NextRequest) {
     const sopInstanceUid = String(tags.SOPInstanceUID || "").trim() || null;
 
     if (!studyInstanceUid) {
-      console.log("[IMAGING VIEW] Missing StudyInstanceUID - fallback download");
-      const signedDownloadUrl = await createSignedDownloadUrl(filePath, 60);
-      return NextResponse.redirect(signedDownloadUrl);
+      console.log("[IMAGING VIEW] Missing StudyInstanceUID for DICOM");
+      return dicomViewError("StudyInstanceUID non disponibile per questo file DICOM.");
     }
 
     const viewerUrl = buildOhifViewerUrl(viewerBaseUrl, studyInstanceUid);
@@ -480,15 +494,15 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(viewerUrl);
     }
 
-    console.log("[IMAGING VIEW] No viewer URL - final fallback download");
-    const signedDownloadUrl = await createSignedDownloadUrl(filePath, 60);
-    return NextResponse.redirect(signedDownloadUrl);
+    console.log("[IMAGING VIEW] Viewer URL missing after successful import");
+    return dicomViewError("Viewer DICOM non disponibile dopo l'import.");
   } catch (err: unknown) {
     console.error("[IMAGING VIEW] Complete error details", {
       error: err instanceof Error ? err.message : "Unknown error",
       stack: err instanceof Error ? err.stack : undefined,
-      name: err instanceof Error ? err.name : undefined
+      name: err instanceof Error ? err.name : undefined,
     });
+
     return NextResponse.json(
       {
         error: "Errore viewer",
