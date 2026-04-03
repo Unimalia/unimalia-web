@@ -28,35 +28,37 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-[#faf8f4] text-zinc-900">
-      <header className="sticky top-0 z-50 border-b border-black/5 bg-[#faf8f4]/85 backdrop-blur-xl">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
-          <Link
-            href="/"
-            className="group flex min-w-0 items-center gap-3"
-            aria-label="Vai alla home UNIMALIA"
-          >
-            <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm sm:h-14 sm:w-14">
-              <Image
-                src="/logo-main.png"
-                alt="UNIMALIA"
-                width={120}
-                height={110}
-                priority
-                className="h-10 w-auto transition duration-300 group-hover:scale-[1.03] sm:h-11"
-              />
-            </div>
+      <header className="sticky top-0 z-50 border-b border-black/5 bg-[#faf8f4]/90 backdrop-blur-xl">
+        <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between gap-4 py-4">
+            <Link
+              href="/"
+              className="group flex min-w-0 items-center gap-3"
+              aria-label="Vai alla home UNIMALIA"
+            >
+              <div className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm sm:h-12 sm:w-12">
+                <Image
+                  src="/logo-main.png"
+                  alt="UNIMALIA"
+                  width={120}
+                  height={110}
+                  priority
+                  className="h-9 w-auto transition duration-300 group-hover:scale-[1.03] sm:h-10"
+                />
+              </div>
 
-            <div className="min-w-0">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                UNIMALIA
-              </p>
-              <p className="truncate text-sm font-medium text-zinc-800 sm:text-base">
-                Identità animale, smarrimenti e continuità clinica
-              </p>
-            </div>
-          </Link>
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                  UNIMALIA
+                </p>
+                <p className="truncate text-sm font-medium text-zinc-800">
+                  Identità animale e continuità clinica
+                </p>
+              </div>
+            </Link>
 
-          <AppShellClient nav={nav} proHref={proHref} />
+            <AppShellClient nav={nav} proHref={proHref} />
+          </div>
         </div>
       </header>
 

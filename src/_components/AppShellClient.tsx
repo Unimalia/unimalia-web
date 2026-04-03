@@ -12,6 +12,11 @@ const AuthButtons = dynamic(() => import("./AuthButtons"), {
 
 type NavItem = { href: string; label: string };
 
+type AppShellClientProps = {
+  nav: NavItem[];
+  proHref: string;
+};
+
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
@@ -40,7 +45,7 @@ function NavLink({
       href={href}
       onClick={onClick}
       className={cx(
-        "relative inline-flex items-center rounded-2xl px-4 py-2.5 text-sm font-medium transition",
+        "relative inline-flex items-center rounded-xl px-3 py-2 text-sm font-medium transition",
         fullWidth && "w-full justify-start",
         active
           ? "bg-zinc-900 text-white shadow-sm"
@@ -52,13 +57,7 @@ function NavLink({
   );
 }
 
-export default function AppShellClient({
-  nav,
-  proHref,
-}: {
-  nav: NavItem[];
-  proHref: string;
-}) {
+export default function AppShellClient({ nav, proHref }: AppShellClientProps) {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -147,8 +146,8 @@ export default function AppShellClient({
 
   return (
     <>
-      <div className="hidden min-w-0 flex-1 items-center justify-end gap-3 md:flex">
-        <nav className="flex min-w-0 flex-1 items-center justify-end overflow-x-auto whitespace-nowrap rounded-full border border-zinc-200 bg-[#f1ede6] p-1.5">
+      <div className="hidden min-w-0 flex-1 items-center justify-end gap-3 lg:flex">
+        <nav className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-1">
           {items.map((item) => (
             <NavLink key={item.href} href={item.href} label={item.label} />
           ))}
@@ -156,14 +155,32 @@ export default function AppShellClient({
 
         <Link
           href={proHref}
-          className="inline-flex min-w-[132px] items-center justify-center rounded-full bg-zinc-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-800"
+          className="inline-flex shrink-0 items-center justify-center rounded-full bg-zinc-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-800"
         >
           Professionisti
         </Link>
 
-        <div className="rounded-full border border-zinc-200 bg-white p-1 shadow-sm">
+        <div className="shrink-0 rounded-full border border-zinc-200 bg-white p-1 shadow-sm">
           <AuthButtons />
         </div>
+      </div>
+
+      <div className="hidden items-center gap-2 md:flex lg:hidden">
+        <Link
+          href={proHref}
+          className="inline-flex items-center justify-center rounded-full bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-800"
+        >
+          Professionisti
+        </Link>
+
+        <button
+          type="button"
+          className="inline-flex h-11 items-center justify-center rounded-full border border-zinc-200 bg-white px-4 text-sm font-semibold text-zinc-900 shadow-sm transition hover:bg-zinc-50"
+          onClick={() => setOpen(true)}
+          aria-label="Apri menu"
+        >
+          Menu
+        </button>
       </div>
 
       <div className="flex items-center gap-2 md:hidden">
