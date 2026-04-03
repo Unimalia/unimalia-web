@@ -29,7 +29,7 @@ export const metadata: Metadata = {
 };
 
 function Container({ children }: { children: React.ReactNode }) {
-  return <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">{children}</div>;
+  return <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">{children}</div>;
 }
 
 function Badge({ children }: { children: React.ReactNode }) {
@@ -79,6 +79,34 @@ function SectionTitle({
         <p className="mt-4 text-base leading-relaxed text-zinc-600">{description}</p>
       ) : null}
     </div>
+  );
+}
+
+function ActionCard({
+  title,
+  description,
+  href,
+  cta,
+}: {
+  title: string;
+  description: string;
+  href: string;
+  cta: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="group block rounded-[2rem] border border-zinc-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-zinc-300 hover:bg-zinc-50"
+    >
+      <div className="inline-flex rounded-2xl bg-zinc-900 px-3 py-1 text-xs font-semibold text-white">
+        Azione rapida
+      </div>
+      <h3 className="mt-4 text-xl font-semibold text-zinc-900">{title}</h3>
+      <p className="mt-3 text-sm leading-relaxed text-zinc-600">{description}</p>
+      <div className="mt-6 inline-flex items-center text-sm font-semibold text-zinc-900 transition group-hover:text-teal-700">
+        {cta} →
+      </div>
+    </Link>
   );
 }
 
@@ -199,7 +227,7 @@ export default function HomePage() {
           className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(20,184,166,0.10),transparent_28%),radial-gradient(circle_at_top_right,rgba(245,158,11,0.12),transparent_30%),linear-gradient(to_bottom,white,rgba(250,250,250,1))]"
         />
         <Container>
-          <div className="relative grid gap-12 py-14 sm:py-18 lg:grid-cols-12 lg:items-center lg:py-24">
+          <div className="relative grid gap-12 py-16 sm:py-20 lg:grid-cols-12 lg:items-center lg:py-24">
             <div className="lg:col-span-7">
               <div className="flex flex-wrap gap-2">
                 <Badge>Identità animale</Badge>
@@ -209,31 +237,30 @@ export default function HomePage() {
                 <Badge>Professionisti</Badge>
               </div>
 
-              <h1 className="text-3xl font-semibold text-zinc-900">
-                La salute e le informazioni del tuo animale, sempre organizzate.
+              <h1 className="mt-6 text-4xl font-bold tracking-tight text-zinc-900 sm:text-5xl lg:text-6xl">
+                Proteggi meglio il tuo animale. Parti subito dall’azione giusta.
               </h1>
 
-              <p className="mt-6 max-w-2xl text-lg leading-relaxed text-zinc-600">
-                UNIMALIA aiuta proprietari e professionisti a gestire in modo semplice dati
-                essenziali, accessi autorizzati, consulti, smarrimenti, segnalazioni di animali
-                trovati o avvistati e casi conclusi con lieto fine.
+              <p className="mt-6 max-w-2xl text-lg leading-relaxed text-zinc-600 sm:text-xl">
+                UNIMALIA ti aiuta a creare l’identità digitale dell’animale, gestire smarrimenti,
+                raccogliere segnalazioni utili e collaborare con professionisti in modo più chiaro
+                e ordinato.
               </p>
 
-              <p className="mt-3 text-sm text-zinc-500">
-                Progettato per migliorare la continuità delle informazioni tra proprietari e
-                veterinari.
+              <p className="mt-4 max-w-2xl text-base text-zinc-500">
+                Meno dispersione, più chiarezza, più velocità quando serve davvero.
               </p>
 
-              <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+              <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                 <PrimaryCTA href="/identita/nuovo">Crea identità animale</PrimaryCTA>
-                <SecondaryCTA href="/smarrimenti">Ho perso un animale</SecondaryCTA>
-                <SecondaryCTA href="/trovati">Ho trovato o avvistato un animale</SecondaryCTA>
+                <SecondaryCTA href="/smarrimenti/nuovo">Segnala uno smarrimento</SecondaryCTA>
+                <SecondaryCTA href="/trovati/nuovo">Segnala trovato o avvistato</SecondaryCTA>
                 <Link href="/prezzi" className="text-sm text-zinc-600 hover:text-zinc-900">
                   Prezzi
                 </Link>
               </div>
 
-              <div className="mt-8 grid max-w-3xl gap-3 sm:grid-cols-3">
+              <div className="mt-10 grid max-w-3xl gap-3 sm:grid-cols-3">
                 <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
                   <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
                     Per i proprietari
@@ -262,7 +289,7 @@ export default function HomePage() {
             </div>
 
             <div className="lg:col-span-5">
-              <div className="rounded-[2rem] border border-zinc-200 bg-white p-6 shadow-sm">
+              <div className="rounded-[2rem] border border-zinc-200 bg-white p-6 shadow-sm sm:p-7">
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <p className="text-sm font-semibold text-zinc-900">UNIMALIA</p>
@@ -312,8 +339,8 @@ export default function HomePage() {
                 <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4">
                   <p className="text-sm font-semibold text-amber-900">Messaggio chiave</p>
                   <p className="mt-2 text-sm leading-relaxed text-amber-800">
-                    UNIMALIA non vuole complicare: vuole rendere più semplice trovare, riconoscere,
-                    condividere e proteggere le informazioni giuste sull’animale.
+                    UNIMALIA vuole rendere più semplice trovare, riconoscere, condividere e
+                    proteggere le informazioni giuste sull’animale.
                   </p>
                 </div>
               </div>
@@ -322,297 +349,233 @@ export default function HomePage() {
         </Container>
       </section>
 
-      <section className="mt-6 rounded-3xl border border-zinc-200 bg-white p-6">
-        <h2 className="text-lg font-semibold text-zinc-900">
-          Non perdere mai più un referto veterinario.
-        </h2>
-
-        <p className="mt-2 text-sm text-zinc-600">
-          Email, WhatsApp e carta rendono tutto confuso. UNIMALIA aiuta a mantenere tutte le
-          informazioni più ordinate e sempre accessibili.
-        </p>
-
-        <div className="mt-4 grid gap-2 text-sm text-zinc-600">
-          <p>✔ Ricevi i referti e i documenti in modo più ordinato</p>
-          <p>✔ Mantieni una storia clinica sempre disponibile</p>
-          <p>✔ Condividi facilmente le informazioni quando serve</p>
-        </div>
-      </section>
-
-      <section className="mt-8 rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <h2 className="text-xl font-bold text-zinc-900">Risposte rapide</h2>
-
-        <div className="mt-4 space-y-4 text-zinc-700">
-          <p>
-            <strong>Cosa fare subito se un animale si smarrisce?</strong>
-            <br />
-            Tornare nell’ultima zona vista, cercare con metodo e preparare subito una segnalazione
-            chiara con foto e posizione precisa.
-          </p>
-
-          <p>
-            <strong>Qual è la prima cosa da fare?</strong>
-            <br />
-            Tornare immediatamente sul punto in cui è stato visto l’ultima volta e controllare le
-            aree vicine.
-          </p>
-
-          <p>
-            <strong>Serve il microchip?</strong>
-            <br />
-            Il microchip è fondamentale per l’identificazione ufficiale, ma non sostituisce una
-            segnalazione chiara e aggiornata.
-          </p>
-
-          <p>
-            <strong>Come aiuta UNIMALIA?</strong>
-            <br />
-            Permette di creare una scheda completa dello smarrimento, già pronta da condividere
-            ovunque, riducendo la frammentazione online.
-          </p>
-        </div>
-      </section>
-
-      <section className="mt-6 rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <h2 className="text-xl font-bold text-zinc-900">Cos’è uno smarrimento animale</h2>
-
-        <p className="mt-3 text-zinc-700">
-          Uno smarrimento animale è una situazione in cui un animale domestico si perde o si
-          allontana dal proprio proprietario, rendendo necessaria una ricerca immediata e una
-          segnalazione chiara per aumentare le possibilità di ritrovamento.
-        </p>
-      </section>
-
-      <section className="bg-zinc-50">
+      <section className="py-10 sm:py-12">
         <Container>
-          <div className="py-16 sm:py-20">
-            <SectionTitle
-              eyebrow="Capire subito"
-              title="Cosa puoi fare con UNIMALIA"
-              description="La homepage deve spiegare il prodotto in pochi secondi. Queste sono le aree che contano davvero."
+          <div className="grid gap-4 lg:grid-cols-3">
+            <ActionCard
+              title="Crea subito l’identità animale"
+              description="Prepara una scheda chiara con dati essenziali, QR code e strumenti utili da avere già pronti."
+              href="/identita/nuovo"
+              cta="Inizia da qui"
             />
-
-            <div className="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
-              <FeatureCard
-                title="Crea l’identità dell’animale"
-                description="Raccogli i dati essenziali dell’animale in una scheda digitale chiara e sempre accessibile."
-                href="/identita/nuovo"
-                cta="Crea identità"
-              />
-              <FeatureCard
-                title="Pubblica uno smarrimento"
-                description="Segnala rapidamente un animale smarrito e centralizza le informazioni importanti."
-                href="/smarrimenti/nuovo"
-                cta="Pubblica smarrimento"
-              />
-              <FeatureCard
-                title="Segnala un animale trovato o avvistato"
-                description="Aiuta a raccogliere segnalazioni utili sul territorio in modo più ordinato e verificabile."
-                href="/trovati/nuovo"
-                cta="Pubblica segnalazione"
-              />
-              <FeatureCard
-                title="Collabora con veterinari e professionisti"
-                description="Concedi accessi controllati e prepara un ecosistema utile anche per altri operatori del settore animale."
-                href="/professionisti"
-                cta="Vai ai professionisti"
-              />
-            </div>
+            <ActionCard
+              title="Hai perso un animale?"
+              description="Pubblica rapidamente una segnalazione completa per organizzare meglio ricerca, condivisione e informazioni."
+              href="/smarrimenti/nuovo"
+              cta="Segnala smarrimento"
+            />
+            <ActionCard
+              title="Hai trovato o avvistato un animale?"
+              description="Invia una segnalazione ordinata e utile per aiutare il ricongiungimento nel modo più rapido possibile."
+              href="/trovati/nuovo"
+              cta="Segnala ora"
+            />
           </div>
         </Container>
       </section>
 
-      <section className="border-y border-zinc-200 bg-white">
+      <section className="pb-10 sm:pb-12">
         <Container>
-          <div className="py-16 sm:py-20">
-            <SectionTitle
-              eyebrow="Guide utili"
-              title="Risorse pubbliche utili per proprietari e ricerche SEO"
-              description="Queste guide aiutano sia gli utenti sia la visibilità organica di UNIMALIA nelle ricerche informative e locali."
-            />
-
-            <div className="mt-10 grid gap-6 lg:grid-cols-3">
-              <GuideCard
-                title="Animale smarrito: cosa fare subito"
-                description="Guida pratica con passaggi immediati, errori da evitare e uso corretto di identità digitale e segnalazione."
-                href="/smarriti/animale-smarrito-cosa-fare"
-              />
-              <GuideCard
-                title="Cane smarrito a Firenze"
-                description="Prima pagina local costruita per query territoriali come “cane smarrito Firenze”."
-                href="/smarriti/cane-smarrito/firenze"
-              />
-              <GuideCard
-                title="Smarrimenti attivi"
-                description="Vai alla sezione pubblica con le segnalazioni attive pubblicate sulla piattaforma."
-                href="/smarrimenti"
-              />
-            </div>
-          </div>
-        </Container>
-      </section>
-
-      <section className="border-y border-zinc-200 bg-white">
-        <Container>
-          <div className="py-16 sm:py-20">
-            <SectionTitle
-              eyebrow="Per chi è"
-              title="Percorsi distinti per proprietari, veterinari e altri professionisti"
-              description="UNIMALIA funziona meglio quando il valore è immediato e il ruolo di ognuno è chiaro."
-            />
-
-            <div className="mt-10 grid gap-6 lg:grid-cols-3">
-              <AudienceCard
-                title="Per i proprietari"
-                description="Uno spazio più ordinato per gestire identità, accessi e situazioni delicate senza perdere tempo."
-                bullets={[
-                  "Crei l’identità digitale dell’animale e tieni i dati essenziali in un unico posto.",
-                  "Decidi tu chi può accedere alle informazioni cliniche e per quanto tempo.",
-                  "Hai strumenti rapidi per smarrimenti, segnalazioni e rientri con lieto fine.",
-                ]}
-                href="/identita"
-                cta="Apri area identità"
-              />
-
-              <AudienceCard
-                title="Per i veterinari"
-                description="Un flusso più pulito per accedere ai dati autorizzati, lavorare sulla cartella clinica e gestire consulti."
-                bullets={[
-                  "Richiedi accesso agli animali solo quando autorizzato dal proprietario.",
-                  "Operi sulla cartella clinica con tracciabilità e ruoli più chiari.",
-                  "Invii consulti e condividi eventi clinici in modo controllato.",
-                ]}
-                href="/professionisti"
-                cta="Apri area veterinari"
-              />
-
-              <AudienceCard
-                title="Per altri professionisti del settore animale"
-                description="Uno spazio pensato per crescere anche oltre l’area clinica, mantenendo ruoli e funzioni ben distinti."
-                bullets={[
-                  "Toelettatori, pet sitter, pensioni e addestratori avranno strumenti dedicati al proprio lavoro.",
-                  "Le attività non cliniche resteranno separate dalla cartella veterinaria.",
-                  "L’obiettivo è favorire collaborazione, ordine e continuità tra servizi diversi.",
-                ]}
-                href="/servizi"
-                cta="Scopri i servizi"
-              />
-            </div>
-          </div>
-        </Container>
-      </section>
-
-      <section className="bg-zinc-50">
-        <Container>
-          <div className="py-16 sm:py-20">
-            <SectionTitle
-              eyebrow="Come funziona"
-              title="Una logica semplice: prima prepari, poi reagisci meglio"
-              description="UNIMALIA deve essere utile prima dell’emergenza, non solo durante."
-            />
-
-            <div className="mt-10 grid gap-6 lg:grid-cols-4">
-              <Step
-                number="1"
-                title="Crea la scheda"
-                description="Inserisci i dati principali dell’animale e genera la sua identità digitale."
-              />
-              <Step
-                number="2"
-                title="Attiva strumenti e accessi"
-                description="Usa QR e codici, poi concedi ai professionisti solo gli accessi necessari."
-              />
-              <Step
-                number="3"
-                title="Gestisci segnalazioni"
-                description="In caso di smarrimento, ritrovamento o avvistamento hai già una base pronta e più ordinata."
-              />
-              <Step
-                number="4"
-                title="Chiudi con lieto fine"
-                description="Quando il caso si risolve, le informazioni restano più chiare e utili anche dopo l’emergenza."
-              />
-            </div>
-          </div>
-        </Container>
-      </section>
-
-      <section className="bg-white">
-        <Container>
-          <div className="py-16 sm:py-20">
-            <div className="rounded-[2.5rem] border border-zinc-200 bg-[linear-gradient(135deg,rgba(20,184,166,0.06),white,rgba(245,158,11,0.08))] p-8 shadow-sm sm:p-10">
-              <div className="max-w-3xl">
-                <p className="text-sm font-semibold text-teal-700">Chiusura forte</p>
-                <h2 className="mt-2 text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl">
-                  In pochi secondi deve essere chiaro: UNIMALIA serve a proteggere meglio
-                  l’animale.
+          <div className="rounded-[2rem] border border-zinc-200 bg-white p-8 shadow-sm">
+            <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-start">
+              <div>
+                <h2 className="text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl">
+                  Quando le informazioni sono disperse, agire diventa più difficile.
                 </h2>
-                <p className="mt-4 text-base leading-relaxed text-zinc-600">
-                  Identità digitale, accessi clinici controllati, consulti, smarrimenti, animali
-                  trovati, avvistamenti e lieti fine: meno dispersione, più chiarezza, più fiducia
-                  tra proprietari e professionisti.
+                <p className="mt-4 max-w-2xl text-base leading-relaxed text-zinc-600">
+                  Email, carta, messaggi sparsi e dati non aggiornati rendono tutto più lento.
+                  UNIMALIA nasce per tenere insieme identità animale, segnalazioni e collaborazione
+                  con i professionisti in modo più semplice e affidabile.
                 </p>
               </div>
 
-              <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-                <PrimaryCTA href="/identita/nuovo">Crea identità animale</PrimaryCTA>
-                <SecondaryCTA href="/smarrimenti">Vai agli smarrimenti</SecondaryCTA>
-                <SecondaryCTA href="/trovati">Vai a trovati / avvistati</SecondaryCTA>
-                <Link
-                  href="/prezzi"
-                  className="text-sm text-zinc-600 hover:text-zinc-900 underline"
-                >
-                  Prezzi
-                </Link>
+              <div className="grid gap-3">
+                <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-700">
+                  ✔ Dati essenziali più ordinati
+                </div>
+                <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-700">
+                  ✔ Strumenti rapidi quando serve agire
+                </div>
+                <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-700">
+                  ✔ Più chiarezza tra proprietari e professionisti
+                </div>
               </div>
             </div>
           </div>
         </Container>
       </section>
 
-      <section className="mt-12">
-        <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <h2 className="text-2xl font-bold text-zinc-900">Guide utili UNIMALIA</h2>
+      <section className="bg-zinc-50 py-12 sm:py-16">
+        <Container>
+          <SectionTitle
+            eyebrow="Capire subito"
+            title="Cosa puoi fare con UNIMALIA"
+            description="La homepage deve spiegare il prodotto in pochi secondi. Queste sono le aree che contano davvero."
+          />
 
-          <p className="mt-2 text-zinc-600">
-            Scopri come gestire smarrimenti, identità animale digitale e organizzare meglio le
-            informazioni del tuo animale.
-          </p>
-
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            <Link
-              href="/smarriti/animale-smarrito-cosa-fare"
-              className="rounded-xl border p-4 hover:bg-zinc-50"
-            >
-              <p className="font-semibold">Animale smarrito: cosa fare</p>
-              <p className="mt-1 text-sm text-zinc-500">Guida completa per agire subito</p>
-            </Link>
-
-            <Link
-              href="/identita-animale/cos-e-identita-animale-digitale"
-              className="rounded-xl border p-4 hover:bg-zinc-50"
-            >
-              <p className="font-semibold">Cos’è l’identità animale digitale</p>
-              <p className="mt-1 text-sm text-zinc-500">Spiegazione semplice e utile</p>
-            </Link>
-
-            <Link
-              href="/smarriti/cane-smarrito/firenze"
-              className="rounded-xl border p-4 hover:bg-zinc-50"
-            >
-              <p className="font-semibold">Cane smarrito a Firenze</p>
-              <p className="mt-1 text-sm text-zinc-500">Esempio guida locale</p>
-            </Link>
-
-            <Link
-              href="/identita-animale/come-registrare-un-animale"
-              className="rounded-xl border p-4 hover:bg-zinc-50"
-            >
-              <p className="font-semibold">Come registrare un animale</p>
-              <p className="mt-1 text-sm text-zinc-500">Passaggi semplici</p>
-            </Link>
+          <div className="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+            <FeatureCard
+              title="Crea l’identità dell’animale"
+              description="Raccogli i dati essenziali dell’animale in una scheda digitale chiara e sempre accessibile."
+              href="/identita/nuovo"
+              cta="Crea identità"
+            />
+            <FeatureCard
+              title="Pubblica uno smarrimento"
+              description="Segnala rapidamente un animale smarrito e centralizza le informazioni importanti."
+              href="/smarrimenti/nuovo"
+              cta="Pubblica smarrimento"
+            />
+            <FeatureCard
+              title="Segnala un animale trovato o avvistato"
+              description="Aiuta a raccogliere segnalazioni utili sul territorio in modo più ordinato e verificabile."
+              href="/trovati/nuovo"
+              cta="Pubblica segnalazione"
+            />
+            <FeatureCard
+              title="Collabora con veterinari e professionisti"
+              description="Concedi accessi controllati e prepara un ecosistema utile anche per altri operatori del settore animale."
+              href="/professionisti"
+              cta="Vai ai professionisti"
+            />
           </div>
-        </div>
+        </Container>
+      </section>
+
+      <section className="border-y border-zinc-200 bg-white py-12 sm:py-16">
+        <Container>
+          <SectionTitle
+            eyebrow="Per chi è"
+            title="Percorsi distinti per proprietari, veterinari e altri professionisti"
+            description="UNIMALIA funziona meglio quando il valore è immediato e il ruolo di ognuno è chiaro."
+          />
+
+          <div className="mt-10 grid gap-6 lg:grid-cols-3">
+            <AudienceCard
+              title="Per i proprietari"
+              description="Uno spazio più ordinato per gestire identità, accessi e situazioni delicate senza perdere tempo."
+              bullets={[
+                "Crei l’identità digitale dell’animale e tieni i dati essenziali in un unico posto.",
+                "Decidi tu chi può accedere alle informazioni cliniche e per quanto tempo.",
+                "Hai strumenti rapidi per smarrimenti, segnalazioni e rientri con lieto fine.",
+              ]}
+              href="/identita"
+              cta="Apri area identità"
+            />
+
+            <AudienceCard
+              title="Per i veterinari"
+              description="Un flusso più pulito per accedere ai dati autorizzati, lavorare sulla cartella clinica e gestire consulti."
+              bullets={[
+                "Richiedi accesso agli animali solo quando autorizzato dal proprietario.",
+                "Operi sulla cartella clinica con tracciabilità e ruoli più chiari.",
+                "Invii consulti e condividi eventi clinici in modo controllato.",
+              ]}
+              href="/professionisti"
+              cta="Apri area veterinari"
+            />
+
+            <AudienceCard
+              title="Per altri professionisti del settore animale"
+              description="Uno spazio pensato per crescere anche oltre l’area clinica, mantenendo ruoli e funzioni ben distinti."
+              bullets={[
+                "Toelettatori, pet sitter, pensioni e addestratori avranno strumenti dedicati al proprio lavoro.",
+                "Le attività non cliniche resteranno separate dalla cartella veterinaria.",
+                "L’obiettivo è favorire collaborazione, ordine e continuità tra servizi diversi.",
+              ]}
+              href="/servizi"
+              cta="Scopri i servizi"
+            />
+          </div>
+        </Container>
+      </section>
+
+      <section className="bg-zinc-50 py-12 sm:py-16">
+        <Container>
+          <SectionTitle
+            eyebrow="Come funziona"
+            title="Una logica semplice: prima prepari, poi reagisci meglio"
+            description="UNIMALIA deve essere utile prima dell’emergenza, non solo durante."
+          />
+
+          <div className="mt-10 grid gap-6 lg:grid-cols-4">
+            <Step
+              number="1"
+              title="Crea la scheda"
+              description="Inserisci i dati principali dell’animale e genera la sua identità digitale."
+            />
+            <Step
+              number="2"
+              title="Attiva strumenti e accessi"
+              description="Usa QR e codici, poi concedi ai professionisti solo gli accessi necessari."
+            />
+            <Step
+              number="3"
+              title="Gestisci segnalazioni"
+              description="In caso di smarrimento, ritrovamento o avvistamento hai già una base pronta e più ordinata."
+            />
+            <Step
+              number="4"
+              title="Chiudi con lieto fine"
+              description="Quando il caso si risolve, le informazioni restano più chiare e utili anche dopo l’emergenza."
+            />
+          </div>
+        </Container>
+      </section>
+
+      <section className="border-y border-zinc-200 bg-white py-12 sm:py-16">
+        <Container>
+          <SectionTitle
+            eyebrow="Guide utili"
+            title="Risorse pubbliche utili per proprietari e ricerche SEO"
+            description="Guide pratiche per capire subito come muoversi e per intercettare ricerche informative realmente utili."
+          />
+
+          <div className="mt-10 grid gap-6 lg:grid-cols-3">
+            <GuideCard
+              title="Animale smarrito: cosa fare subito"
+              description="Guida pratica con passaggi immediati, errori da evitare e uso corretto di identità digitale e segnalazione."
+              href="/smarriti/animale-smarrito-cosa-fare"
+            />
+            <GuideCard
+              title="Cane smarrito a Firenze"
+              description="Prima pagina local costruita per query territoriali come “cane smarrito Firenze”."
+              href="/smarriti/cane-smarrito/firenze"
+            />
+            <GuideCard
+              title="Smarrimenti attivi"
+              description="Vai alla sezione pubblica con le segnalazioni attive pubblicate sulla piattaforma."
+              href="/smarrimenti"
+            />
+          </div>
+        </Container>
+      </section>
+
+      <section className="bg-white py-12 sm:py-16">
+        <Container>
+          <div className="rounded-[2.5rem] border border-zinc-200 bg-[linear-gradient(135deg,rgba(20,184,166,0.06),white,rgba(245,158,11,0.08))] p-8 shadow-sm sm:p-10">
+            <div className="max-w-3xl">
+              <p className="text-sm font-semibold text-teal-700">Chiusura forte</p>
+              <h2 className="mt-2 text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl">
+                In pochi secondi deve essere chiaro: UNIMALIA serve a proteggere meglio l’animale.
+              </h2>
+              <p className="mt-4 text-base leading-relaxed text-zinc-600">
+                Identità digitale, accessi clinici controllati, consulti, smarrimenti, animali
+                trovati, avvistamenti e lieti fine: meno dispersione, più chiarezza, più fiducia
+                tra proprietari e professionisti.
+              </p>
+            </div>
+
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+              <PrimaryCTA href="/identita/nuovo">Crea identità animale</PrimaryCTA>
+              <SecondaryCTA href="/smarrimenti/nuovo">Segnala smarrimento</SecondaryCTA>
+              <SecondaryCTA href="/trovati/nuovo">Segnala trovato o avvistato</SecondaryCTA>
+              <Link href="/prezzi" className="text-sm text-zinc-600 hover:text-zinc-900">
+                Prezzi
+              </Link>
+            </div>
+          </div>
+        </Container>
       </section>
     </main>
   );
