@@ -132,9 +132,6 @@ async function resolveAuthenticatedUser(req: Request): Promise<AuthenticatedUser
 }
 
 function getOrthancConfig() {
-  const orthancPublicUrl = (process.env.NEXT_PUBLIC_ORTHANC_PUBLIC_URL || "")
-    .trim()
-    .replace(/\/+$/, "");
   const orthancBaseUrl = (process.env.ORTHANC_BASE_URL || "")
     .trim()
     .replace(/\/+$/, "");
@@ -142,7 +139,6 @@ function getOrthancConfig() {
   const password = (process.env.ORTHANC_PASSWORD || "").trim();
 
   return {
-    orthancPublicUrl,
     orthancBaseUrl,
     username,
     password,
@@ -176,6 +172,20 @@ async function fetchOrthancSimplifiedTags(
   }
 
   return (await response.json()) as OrthancSimplifiedTagsResponse;
+}
+
+function buildStoneViewerUrl(studyInstanceUid: string) {
+  const orthancPublicBase = (process.env.ORTHANC_BASE_URL || "")
+    .trim()
+    .replace(/\/+$/, "");
+
+  if (!orthancPublicBase) {
+    return null;
+  }
+
+  return `${orthancPublicBase}/stone-webviewer/index.html?study=${encodeURIComponent(
+    studyInstanceUid
+  )}`;
 }
 
 export async function GET(req: NextRequest) {
@@ -260,26 +270,21 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(signedDownloadUrl);
     }
 
-    const directViewerUrl = String(file?.orthanc?.viewer_url || "").trim();
-
-    if (directViewerUrl) {
-      return NextResponse.redirect(directViewerUrl);
-    }
-
     const existingStudyInstanceUid = String(
       file?.orthanc?.study_instance_uid || ""
     ).trim();
 
-    const { orthancPublicUrl, orthancBaseUrl, username, password } = getOrthancConfig();
+    if (existingStudyInstanceUid) {
+      const stoneUrl = buildStoneViewerUrl(existingStudyInstanceUid);
 
-    if (existingStudyInstanceUid && orthancPublicUrl) {
-      const redirectUrl = `${orthancPublicUrl}/viewer?StudyInstanceUIDs=${encodeURIComponent(
-        existingStudyInstanceUid
-      )}`;
-      return NextResponse.redirect(redirectUrl);
+      if (stoneUrl) {
+        return NextResponse.redirect(stoneUrl);
+      }
     }
 
-    if (!orthancPublicUrl || !orthancBaseUrl || !username || !password) {
+    const { orthancBaseUrl, username, password } = getOrthancConfig();
+
+    if (!orthancBaseUrl || !username || !password) {
       const signedDownloadUrl = await createSignedDownloadUrl(filePath, 60);
       return NextResponse.redirect(signedDownloadUrl);
     }
@@ -331,9 +336,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(signedDownloadUrl);
     }
 
-    const viewerUrl = `${orthancPublicUrl}/viewer?StudyInstanceUIDs=${encodeURIComponent(
-      studyInstanceUid
-    )}`;
+    const stoneUrl = buildStoneViewerUrl(studyInstanceUid);
 
     const updatedFile: ImagingFileMeta = {
       ...file,
@@ -345,7 +348,7 @@ export async function GET(req: NextRequest) {
         study_instance_uid: studyInstanceUid,
         series_instance_uid: seriesInstanceUid,
         sop_instance_uid: sopInstanceUid,
-        viewer_url: viewerUrl,
+        viewer_url: stoneUrl,
       },
     };
 
@@ -365,7 +368,12 @@ export async function GET(req: NextRequest) {
       .update({ meta: updatedMeta })
       .eq("id", eventId);
 
-    return NextResponse.redirect(viewerUrl);
+    if (stoneUrl) {
+      return NextResponse.redirect(stoneUrl);
+    }
+
+    const signedDownloadUrl = await createSignedDownloadUrl(filePath, 60);
+    return NextResponse.redirect(signedDownloadUrl);
   } catch (err: unknown) {
     return NextResponse.json(
       {
