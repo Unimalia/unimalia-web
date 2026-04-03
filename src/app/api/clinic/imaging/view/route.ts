@@ -311,7 +311,15 @@ export async function GET(req: NextRequest) {
 
     const { orthancBaseUrl, viewerBaseUrl, username, password } = getImagingGatewayConfig();
 
+    console.log("[IMAGING VIEW] Config check", {
+      orthancBaseUrl,
+      viewerBaseUrl,
+      username: username ? "***" : null,
+      hasPassword: !!password
+    });
+
     if (!orthancBaseUrl || !viewerBaseUrl) {
+      console.log("[IMAGING VIEW] Missing config fallback");
       const signedDownloadUrl = await createSignedDownloadUrl(filePath, 60);
       return NextResponse.redirect(signedDownloadUrl);
     }
@@ -323,14 +331,23 @@ export async function GET(req: NextRequest) {
     ).trim();
 
     if (existingStudyInstanceUid) {
+      console.log("[IMAGING VIEW] Checking existing study", {
+        existingStudyInstanceUid,
+        orthancBaseUrl,
+        hasAuth: !!username && !!password
+      });
+
       const exists = await orthancStudyExists(
         orthancBaseUrl,
         authHeaders,
         existingStudyInstanceUid
       );
 
+      console.log("[IMAGING VIEW] Study exists result", { exists });
+
       if (exists) {
         const viewerUrl = buildOhifViewerUrl(viewerBaseUrl, existingStudyInstanceUid);
+        console.log("[IMAGING VIEW] Built viewer URL from existing study", { viewerUrl });
 
         if (viewerUrl) {
           return NextResponse.redirect(viewerUrl);
@@ -340,6 +357,12 @@ export async function GET(req: NextRequest) {
 
     const dicomBuffer = await downloadPrivateFileBuffer(filePath);
     const dicomBytes = new Uint8Array(dicomBuffer);
+
+    console.log("[IMAGING VIEW] Downloading DICOM", { filePath });
+    console.log("[IMAGING VIEW] DICOM buffer size", { 
+      bufferSize: dicomBytes.length,
+      filePath 
+    });
 
     const uploadResp = await fetch(`${orthancBaseUrl}/instances`, {
       method: "POST",
@@ -352,9 +375,31 @@ export async function GET(req: NextRequest) {
       cache: "no-store",
     });
 
+    console.log("[IMAGING VIEW] Starting Orthanc upload", {
+      uploadUrl: `${orthancBaseUrl}/instances`,
+      bufferSize: dicomBytes.length,
+      hasAuth: !!username && !!password
+    });
+
+    console.log("[IMAGING VIEW] Orthanc upload response", {
+      status: uploadResp.status,
+      statusText: uploadResp.statusText,
+      ok: uploadResp.ok
+    });
+
     const uploadJson = (await uploadResp.json().catch(() => null)) as OrthancInstanceUploadResponse | null;
 
+    console.log("[IMAGING VIEW] Upload JSON response", {
+      uploadJson,
+      hasId: !!uploadJson?.ID
+    });
+
     if (!uploadResp.ok || !uploadJson?.ID) {
+      console.log("[IMAGING VIEW] Upload failed - fallback download", {
+        uploadOk: uploadResp.ok,
+        hasId: !!uploadJson?.ID,
+        uploadStatus: uploadResp.status
+      });
       const signedDownloadUrl = await createSignedDownloadUrl(filePath, 60);
       return NextResponse.redirect(signedDownloadUrl);
     }
@@ -364,9 +409,15 @@ export async function GET(req: NextRequest) {
     const orthancSeriesId = String(uploadJson.ParentSeries || "").trim() || null;
 
     if (!orthancInstanceId) {
+      console.log("[IMAGING VIEW] Missing instance ID - fallback download");
       const signedDownloadUrl = await createSignedDownloadUrl(filePath, 60);
       return NextResponse.redirect(signedDownloadUrl);
     }
+
+    console.log("[IMAGING VIEW] Fetching Orthanc tags", {
+      orthancInstanceId,
+      tagsUrl: `${orthancBaseUrl}/instances/${orthancInstanceId}/simplified-tags`
+    });
 
     const tags = await fetchOrthancSimplifiedTags(
       orthancBaseUrl,
@@ -374,16 +425,25 @@ export async function GET(req: NextRequest) {
       orthancInstanceId
     );
 
+    console.log("[IMAGING VIEW] Tags response", {
+      studyInstanceUid: tags.StudyInstanceUID,
+      seriesInstanceUid: tags.SeriesInstanceUID,
+      sopInstanceUid: tags.SOPInstanceUID
+    });
+
     const studyInstanceUid = String(tags.StudyInstanceUID || "").trim() || null;
     const seriesInstanceUid = String(tags.SeriesInstanceUID || "").trim() || null;
     const sopInstanceUid = String(tags.SOPInstanceUID || "").trim() || null;
 
     if (!studyInstanceUid) {
+      console.log("[IMAGING VIEW] Missing StudyInstanceUID - fallback download");
       const signedDownloadUrl = await createSignedDownloadUrl(filePath, 60);
       return NextResponse.redirect(signedDownloadUrl);
     }
 
     const viewerUrl = buildOhifViewerUrl(viewerBaseUrl, studyInstanceUid);
+
+    console.log("[IMAGING VIEW] Final viewer URL", { viewerUrl });
 
     const updatedFile: ImagingFileMeta = {
       ...file,
@@ -416,12 +476,19 @@ export async function GET(req: NextRequest) {
       .eq("id", eventId);
 
     if (viewerUrl) {
+      console.log("[IMAGING VIEW] Redirecting to viewer", { viewerUrl });
       return NextResponse.redirect(viewerUrl);
     }
 
+    console.log("[IMAGING VIEW] No viewer URL - final fallback download");
     const signedDownloadUrl = await createSignedDownloadUrl(filePath, 60);
     return NextResponse.redirect(signedDownloadUrl);
   } catch (err: unknown) {
+    console.error("[IMAGING VIEW] Complete error details", {
+      error: err instanceof Error ? err.message : "Unknown error",
+      stack: err instanceof Error ? err.stack : undefined,
+      name: err instanceof Error ? err.name : undefined
+    });
     return NextResponse.json(
       {
         error: "Errore viewer",
