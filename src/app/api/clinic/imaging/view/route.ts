@@ -131,27 +131,41 @@ async function resolveAuthenticatedUser(req: Request): Promise<AuthenticatedUser
   return null;
 }
 
-function getOrthancConfig() {
-  const orthancBaseUrl = (process.env.ORTHANC_BASE_URL || "")
+function getImagingGatewayConfig() {
+  const orthancBaseUrl = String(process.env.ORTHANC_BASE_URL || "")
     .trim()
     .replace(/\/+$/, "");
-  const username = (process.env.ORTHANC_USERNAME || "").trim();
-  const password = (process.env.ORTHANC_PASSWORD || "").trim();
+
+  const viewerBaseUrl = String(
+    process.env.NEXT_PUBLIC_ORTHANC_PUBLIC_URL || ""
+  )
+    .trim()
+    .replace(/\/+$/, "");
+
+  const username = String(process.env.ORTHANC_USERNAME || "").trim();
+  const password = String(process.env.ORTHANC_PASSWORD || "").trim();
 
   return {
     orthancBaseUrl,
+    viewerBaseUrl,
     username,
     password,
   };
 }
 
-function createOrthancBasicAuthHeader(username: string, password: string) {
-  return `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`;
+function createOptionalOrthancHeaders(username: string, password: string) {
+  const headers: Record<string, string> = {};
+
+  if (username && password) {
+    headers.Authorization = `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`;
+  }
+
+  return headers;
 }
 
 async function fetchOrthancSimplifiedTags(
   orthancBaseUrl: string,
-  authHeader: string,
+  authHeaders: Record<string, string>,
   orthancInstanceId: string
 ): Promise<OrthancSimplifiedTagsResponse> {
   const response = await fetch(
@@ -159,7 +173,7 @@ async function fetchOrthancSimplifiedTags(
     {
       method: "GET",
       headers: {
-        Authorization: authHeader,
+        ...authHeaders,
         Accept: "application/json",
       },
       cache: "no-store",
@@ -174,23 +188,19 @@ async function fetchOrthancSimplifiedTags(
   return (await response.json()) as OrthancSimplifiedTagsResponse;
 }
 
-function buildStoneViewerUrl(studyInstanceUid: string) {
-  const orthancPublicBase = (process.env.ORTHANC_BASE_URL || "")
-    .trim()
-    .replace(/\/+$/, "");
-
-  if (!orthancPublicBase) {
+function buildOhifViewerUrl(viewerBaseUrl: string, studyInstanceUid: string) {
+  if (!viewerBaseUrl || !studyInstanceUid) {
     return null;
   }
 
-  return `${orthancPublicBase}/stone-webviewer/index.html?study=${encodeURIComponent(
+  return `${viewerBaseUrl}/viewer?StudyInstanceUIDs=${encodeURIComponent(
     studyInstanceUid
   )}`;
 }
 
 async function orthancStudyExists(
   orthancBaseUrl: string,
-  authHeader: string,
+  authHeaders: Record<string, string>,
   studyInstanceUid: string
 ): Promise<boolean> {
   const url =
@@ -201,7 +211,7 @@ async function orthancStudyExists(
   const response = await fetch(url, {
     method: "GET",
     headers: {
-      Authorization: authHeader,
+      ...authHeaders,
       Accept: "application/dicom+json",
     },
     cache: "no-store",
@@ -299,14 +309,14 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(signedDownloadUrl);
     }
 
-    const { orthancBaseUrl, username, password } = getOrthancConfig();
+    const { orthancBaseUrl, viewerBaseUrl, username, password } = getImagingGatewayConfig();
 
-    if (!orthancBaseUrl || !username || !password) {
+    if (!orthancBaseUrl || !viewerBaseUrl) {
       const signedDownloadUrl = await createSignedDownloadUrl(filePath, 60);
       return NextResponse.redirect(signedDownloadUrl);
     }
 
-    const authHeader = createOrthancBasicAuthHeader(username, password);
+    const authHeaders = createOptionalOrthancHeaders(username, password);
 
     const existingStudyInstanceUid = String(
       file?.orthanc?.study_instance_uid || ""
@@ -315,15 +325,15 @@ export async function GET(req: NextRequest) {
     if (existingStudyInstanceUid) {
       const exists = await orthancStudyExists(
         orthancBaseUrl,
-        authHeader,
+        authHeaders,
         existingStudyInstanceUid
       );
 
       if (exists) {
-        const stoneUrl = buildStoneViewerUrl(existingStudyInstanceUid);
+        const viewerUrl = buildOhifViewerUrl(viewerBaseUrl, existingStudyInstanceUid);
 
-        if (stoneUrl) {
-          return NextResponse.redirect(stoneUrl);
+        if (viewerUrl) {
+          return NextResponse.redirect(viewerUrl);
         }
       }
     }
@@ -334,7 +344,7 @@ export async function GET(req: NextRequest) {
     const uploadResp = await fetch(`${orthancBaseUrl}/instances`, {
       method: "POST",
       headers: {
-        Authorization: authHeader,
+        ...authHeaders,
         "Content-Type": "application/dicom",
         Accept: "application/json",
       },
@@ -360,7 +370,7 @@ export async function GET(req: NextRequest) {
 
     const tags = await fetchOrthancSimplifiedTags(
       orthancBaseUrl,
-      authHeader,
+      authHeaders,
       orthancInstanceId
     );
 
@@ -373,7 +383,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(signedDownloadUrl);
     }
 
-    const stoneUrl = buildStoneViewerUrl(studyInstanceUid);
+    const viewerUrl = buildOhifViewerUrl(viewerBaseUrl, studyInstanceUid);
 
     const updatedFile: ImagingFileMeta = {
       ...file,
@@ -385,7 +395,7 @@ export async function GET(req: NextRequest) {
         study_instance_uid: studyInstanceUid,
         series_instance_uid: seriesInstanceUid,
         sop_instance_uid: sopInstanceUid,
-        viewer_url: stoneUrl,
+        viewer_url: viewerUrl,
       },
     };
 
@@ -405,8 +415,8 @@ export async function GET(req: NextRequest) {
       .update({ meta: updatedMeta })
       .eq("id", eventId);
 
-    if (stoneUrl) {
-      return NextResponse.redirect(stoneUrl);
+    if (viewerUrl) {
+      return NextResponse.redirect(viewerUrl);
     }
 
     const signedDownloadUrl = await createSignedDownloadUrl(filePath, 60);
