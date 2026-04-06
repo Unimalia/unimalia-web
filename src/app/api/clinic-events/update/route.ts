@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { requireOwnerOrGrant } from "@/lib/server/requireOwnerOrGrant";
 import { safeWriteAudit } from "@/lib/server/safeAudit";
 import { sendOwnerAnimalUpdateEmail } from "@/lib/email/sendOwnerAnimalUpdateEmail";
+import { createClinicalEventOwnerNotification } from "@/lib/notifications/create-owner-notification";
 import { getBearerToken } from "@/lib/server/bearer";
 import { isUuid } from "@/lib/server/validators";
 
@@ -37,6 +38,12 @@ type AnimalClinicEventRow = {
   verified_by_organization_id: string | null;
   verified_by_member_id: string | null;
   verified_by_label: string | null;
+};
+
+type AnimalRow = {
+  id: string;
+  name: string | null;
+  owner_id: string | null;
 };
 
 type RequireOwnerOrGrantClient = Parameters<typeof requireOwnerOrGrant>[0];
@@ -308,7 +315,11 @@ export async function POST(req: Request) {
     meta: nextMeta,
   };
 
-  if (current.verified_at || current.source === "professional" || current.source === "veterinarian") {
+  if (
+    current.verified_at ||
+    current.source === "professional" ||
+    current.source === "veterinarian"
+  ) {
     updateData.verified_at = null;
     updateData.verified_by_user_id = null;
     updateData.verified_by_organization_id = null;
@@ -351,6 +362,26 @@ export async function POST(req: Request) {
     });
   } catch (auditInsertError) {
     console.error("[CLINIC_EVENT_AUDIT_INSERT_ERROR]", auditInsertError);
+  }
+
+  try {
+    const { data: animalRow } = await supabase
+      .from("animals")
+      .select("id, name, owner_id")
+      .eq("id", animalId)
+      .maybeSingle<AnimalRow>();
+
+    if (animalRow?.owner_id) {
+      await createClinicalEventOwnerNotification({
+        ownerId: animalRow.owner_id,
+        animalId: animalRow.id,
+        animalName: animalRow.name ?? "Animale",
+        eventType: `${type || "Evento clinico"} aggiornato`,
+        shortDescription: description || title || "Un evento clinico è stato aggiornato",
+      });
+    }
+  } catch (notificationError) {
+    console.error("[OWNER_NOTIFICATION_UPDATE_ERROR]", notificationError);
   }
 
   try {

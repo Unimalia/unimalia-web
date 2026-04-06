@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { requireOwnerOrGrant } from "@/lib/server/requireOwnerOrGrant";
 import { safeWriteAudit } from "@/lib/server/safeAudit";
 import { sendOwnerAnimalUpdateEmail } from "@/lib/email/sendOwnerAnimalUpdateEmail";
+import { createClinicalEventOwnerNotification } from "@/lib/notifications/create-owner-notification";
 import { getBearerToken } from "@/lib/server/bearer";
 import { isUuid } from "@/lib/server/validators";
 
@@ -24,6 +25,12 @@ type AnimalClinicEventRow = {
   description: string | null;
   priority: string | null;
   meta: ClinicEventMeta | null;
+};
+
+type AnimalRow = {
+  id: string;
+  name: string | null;
+  owner_id: string | null;
 };
 
 type RequireOwnerOrGrantClient = Parameters<typeof requireOwnerOrGrant>[0];
@@ -208,6 +215,29 @@ export async function POST(req: Request) {
   }
 
   try {
+    const { data: animalRow } = await supabase
+      .from("animals")
+      .select("id, name, owner_id")
+      .eq("id", animalId)
+      .maybeSingle<AnimalRow>();
+
+    if (animalRow?.owner_id) {
+      await createClinicalEventOwnerNotification({
+        ownerId: animalRow.owner_id,
+        animalId: animalRow.id,
+        animalName: animalRow.name ?? "Animale",
+        eventType: `${current.type || "Evento clinico"} annullato`,
+        shortDescription:
+          current.description ||
+          current.title ||
+          "Un evento clinico è stato annullato",
+      });
+    }
+  } catch (notificationError) {
+    console.error("[OWNER_NOTIFICATION_DELETE_ERROR]", notificationError);
+  }
+
+  try {
     const currentTitle =
       typeof current.title === "string" && current.title.trim()
         ? current.title.trim()
@@ -219,7 +249,9 @@ export async function POST(req: Request) {
         : null;
 
     const currentType =
-      typeof current.type === "string" && current.type.trim() ? current.type.trim() : null;
+      typeof current.type === "string" && current.type.trim()
+        ? current.type.trim()
+        : null;
 
     const currentDescription =
       typeof current.description === "string" && current.description.trim()
