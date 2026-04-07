@@ -11,9 +11,15 @@ function cx(...classes: Array<string | false | null | undefined>) {
 
 type AuthButtonsProps = {
   onNavigate?: () => void;
+  compact?: boolean;
+  fullWidth?: boolean;
 };
 
-export default function AuthButtons({ onNavigate }: AuthButtonsProps = {}) {
+export default function AuthButtons({
+  onNavigate,
+  compact = false,
+  fullWidth = false,
+}: AuthButtonsProps = {}) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -64,12 +70,21 @@ export default function AuthButtons({ onNavigate }: AuthButtonsProps = {}) {
     "inline-flex h-10 items-center justify-center rounded-full px-3 text-sm font-medium transition"
   );
 
+  const containerClass = fullWidth
+    ? "flex min-h-10 w-full flex-col items-stretch gap-2"
+    : compact
+      ? "flex min-h-10 items-center justify-end gap-2"
+      : "flex min-h-10 min-w-[188px] items-center justify-end gap-2";
+
+  const firstButtonClass = fullWidth ? "w-full" : compact ? "w-[82px]" : "w-[88px]";
+  const secondButtonClass = fullWidth ? "w-full" : compact ? "w-[86px]" : "w-[92px]";
+
   return (
-    <div className="flex min-h-10 min-w-[188px] items-center justify-end gap-2">
+    <div className={containerClass}>
       {loading ? (
         <>
-          <div className="h-10 w-[88px] rounded-full bg-zinc-100" />
-          <div className="h-10 w-[92px] rounded-full bg-zinc-200" />
+          <div className={cx("h-10 rounded-full bg-zinc-100", firstButtonClass)} />
+          <div className={cx("h-10 rounded-full bg-zinc-200", secondButtonClass)} />
         </>
       ) : !session ? (
         <>
@@ -78,7 +93,8 @@ export default function AuthButtons({ onNavigate }: AuthButtonsProps = {}) {
             onClick={onNavigate}
             className={cx(
               subtleButton,
-              "w-[88px] border border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-50"
+              firstButtonClass,
+              "border border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-50"
             )}
           >
             Accedi
@@ -89,7 +105,8 @@ export default function AuthButtons({ onNavigate }: AuthButtonsProps = {}) {
             onClick={onNavigate}
             className={cx(
               subtleButton,
-              "w-[92px] bg-[#f1ede6] text-zinc-900 hover:bg-[#ebe5db]"
+              secondButtonClass,
+              "bg-[#f1ede6] text-zinc-900 hover:bg-[#ebe5db]"
             )}
           >
             Iscriviti
@@ -102,7 +119,8 @@ export default function AuthButtons({ onNavigate }: AuthButtonsProps = {}) {
             onClick={onNavigate}
             className={cx(
               subtleButton,
-              "w-[88px] border border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-50"
+              firstButtonClass,
+              "border border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-50"
             )}
           >
             Profilo
@@ -113,7 +131,8 @@ export default function AuthButtons({ onNavigate }: AuthButtonsProps = {}) {
             onClick={signOut}
             className={cx(
               subtleButton,
-              "w-[92px] bg-[#f1ede6] text-zinc-900 hover:bg-[#ebe5db]"
+              secondButtonClass,
+              "bg-[#f1ede6] text-zinc-900 hover:bg-[#ebe5db]"
             )}
           >
             Esci

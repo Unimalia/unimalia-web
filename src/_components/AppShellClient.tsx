@@ -93,7 +93,7 @@ export default function AppShellClient({ nav, proHref }: AppShellClientProps) {
   const mobileDrawer =
     open && typeof document !== "undefined"
       ? createPortal(
-          <div className="fixed inset-0 z-[1000] md:hidden">
+          <div className="fixed inset-0 z-[1000] lg:hidden">
             <button
               type="button"
               className="absolute inset-0 cursor-default bg-black/35 backdrop-blur-[2px]"
@@ -146,7 +146,7 @@ export default function AppShellClient({ nav, proHref }: AppShellClientProps) {
                 </div>
 
                 <div className="mt-auto border-t border-zinc-200 px-5 py-5">
-                  <AuthButtons onNavigate={() => setOpen(false)} />
+                  <AuthButtons onNavigate={() => setOpen(false)} fullWidth />
                 </div>
               </div>
             </div>
@@ -157,14 +157,14 @@ export default function AppShellClient({ nav, proHref }: AppShellClientProps) {
 
   return (
     <>
-      <div className="hidden min-w-0 flex-1 items-center justify-end gap-8 xl:flex">
+      <div className="hidden min-w-0 flex-1 items-center justify-end gap-6 lg:flex">
         <nav className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-x-5 gap-y-2">
           {items.map((item) => (
             <NavLink key={item.href} href={item.href} label={item.label} />
           ))}
         </nav>
 
-        <div className="flex shrink-0 items-center gap-4">
+        <div className="flex shrink-0 items-center gap-3">
           <Link
             href={proHref}
             className="inline-flex items-center justify-center rounded-full bg-zinc-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-800"
@@ -178,13 +178,10 @@ export default function AppShellClient({ nav, proHref }: AppShellClientProps) {
         </div>
       </div>
 
-      <div className="hidden items-center gap-2 md:flex xl:hidden">
-        <Link
-          href={proHref}
-          className="inline-flex items-center justify-center rounded-full bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-800"
-        >
-          Area professionisti
-        </Link>
+      <div className="hidden items-center gap-2 md:flex lg:hidden">
+        <div className="shrink-0">
+          <AuthButtons compact />
+        </div>
 
         <button
           type="button"
@@ -197,13 +194,6 @@ export default function AppShellClient({ nav, proHref }: AppShellClientProps) {
       </div>
 
       <div className="flex items-center gap-2 md:hidden">
-        <Link
-          href={proHref}
-          className="inline-flex items-center justify-center rounded-full bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-800"
-        >
-          Area professionisti
-        </Link>
-
         <button
           type="button"
           className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-white text-sm font-semibold text-zinc-900 shadow-sm transition hover:bg-zinc-50"
