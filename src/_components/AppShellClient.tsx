@@ -42,7 +42,7 @@ function NavLink({
       onClick={onClick}
       className={cx(
         "group relative inline-flex items-center text-sm font-medium transition",
-        fullWidth ? "w-full rounded-xl px-3 py-2.5 justify-start" : "px-2 py-2",
+        fullWidth ? "w-full justify-start rounded-xl px-3 py-2.5" : "px-1 py-2",
         fullWidth
           ? active
             ? "bg-zinc-900 text-white"
@@ -57,7 +57,7 @@ function NavLink({
       {!fullWidth ? (
         <span
           className={cx(
-            "absolute inset-x-2 -bottom-0.5 h-px origin-left transition-transform duration-200",
+            "absolute left-1 right-1 -bottom-0.5 h-px origin-left transition-transform duration-200",
             active
               ? "scale-x-100 bg-zinc-900"
               : "scale-x-0 bg-zinc-400 group-hover:scale-x-100"
@@ -101,7 +101,7 @@ export default function AppShellClient({ nav, proHref }: AppShellClientProps) {
               onClick={() => setOpen(false)}
             />
 
-            <div className="absolute right-0 top-0 h-full w-[88%] max-w-sm border-l border-zinc-200 bg-[#faf8f4] shadow-2xl">
+            <div className="absolute right-0 top-0 h-full w-[88%] max-w-sm border-l border-zinc-200 bg-[#f6f1e8] shadow-2xl">
               <div className="flex h-20 items-center justify-between border-b border-zinc-200 px-5">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
@@ -139,7 +139,7 @@ export default function AppShellClient({ nav, proHref }: AppShellClientProps) {
                   <Link
                     href={proHref}
                     onClick={() => setOpen(false)}
-                    className="inline-flex w-full items-center justify-center rounded-2xl bg-zinc-900 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-800"
+                    className="inline-flex w-full items-center justify-center rounded-full bg-zinc-900 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-800"
                   >
                     Professionisti
                   </Link>
@@ -157,8 +157,8 @@ export default function AppShellClient({ nav, proHref }: AppShellClientProps) {
 
   return (
     <>
-      <div className="hidden min-w-0 flex-1 items-center justify-end gap-6 xl:flex">
-        <nav className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-x-4 gap-y-2">
+      <div className="hidden min-w-0 flex-1 items-center justify-end gap-8 2xl:flex">
+        <nav className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-x-5 gap-y-2">
           {items.map((item) => (
             <NavLink key={item.href} href={item.href} label={item.label} />
           ))}
@@ -178,7 +178,7 @@ export default function AppShellClient({ nav, proHref }: AppShellClientProps) {
         </div>
       </div>
 
-      <div className="hidden items-center gap-2 md:flex xl:hidden">
+      <div className="hidden items-center gap-2 md:flex 2xl:hidden">
         <Link
           href={proHref}
           className="inline-flex items-center justify-center rounded-full bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-800"
