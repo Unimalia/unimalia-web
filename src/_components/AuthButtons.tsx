@@ -29,7 +29,6 @@ export default function AuthButtons({ onNavigate }: AuthButtonsProps = {}) {
         if (error) {
           setSession(null);
           setLoading(false);
-
           await supabase.auth.signOut({ scope: "local" });
           return;
         }
@@ -61,16 +60,16 @@ export default function AuthButtons({ onNavigate }: AuthButtonsProps = {}) {
     await supabase.auth.signOut();
   }
 
-  const baseButtonClass = cx(
-    "inline-flex h-10 items-center justify-center rounded-xl px-3 text-sm font-semibold transition"
+  const subtleButton = cx(
+    "inline-flex h-10 items-center justify-center rounded-full px-3 text-sm font-medium transition"
   );
 
   return (
-    <div className="flex min-h-10 min-w-[196px] items-center justify-end gap-2">
+    <div className="flex min-h-10 min-w-[188px] items-center justify-end gap-2">
       {loading ? (
         <>
-          <div className="h-10 w-[92px] rounded-xl bg-zinc-100" />
-          <div className="h-10 w-[96px] rounded-xl bg-zinc-200" />
+          <div className="h-10 w-[88px] rounded-full bg-zinc-100" />
+          <div className="h-10 w-[92px] rounded-full bg-zinc-200" />
         </>
       ) : !session ? (
         <>
@@ -78,8 +77,8 @@ export default function AuthButtons({ onNavigate }: AuthButtonsProps = {}) {
             href="/login"
             onClick={onNavigate}
             className={cx(
-              baseButtonClass,
-              "w-[92px] border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50"
+              subtleButton,
+              "w-[88px] border border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-50"
             )}
           >
             Accedi
@@ -88,7 +87,10 @@ export default function AuthButtons({ onNavigate }: AuthButtonsProps = {}) {
           <Link
             href="/login?mode=signup"
             onClick={onNavigate}
-            className={cx(baseButtonClass, "w-[96px] bg-zinc-900 text-white hover:bg-black")}
+            className={cx(
+              subtleButton,
+              "w-[92px] bg-[#f1ede6] text-zinc-900 hover:bg-[#ebe5db]"
+            )}
           >
             Iscriviti
           </Link>
@@ -99,8 +101,8 @@ export default function AuthButtons({ onNavigate }: AuthButtonsProps = {}) {
             href="/profilo"
             onClick={onNavigate}
             className={cx(
-              baseButtonClass,
-              "w-[92px] border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50"
+              subtleButton,
+              "w-[88px] border border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-50"
             )}
           >
             Profilo
@@ -109,7 +111,10 @@ export default function AuthButtons({ onNavigate }: AuthButtonsProps = {}) {
           <button
             type="button"
             onClick={signOut}
-            className={cx(baseButtonClass, "w-[96px] bg-zinc-900 text-white hover:bg-black")}
+            className={cx(
+              subtleButton,
+              "w-[92px] bg-[#f1ede6] text-zinc-900 hover:bg-[#ebe5db]"
+            )}
           >
             Esci
           </button>

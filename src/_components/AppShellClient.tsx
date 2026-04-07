@@ -41,14 +41,29 @@ function NavLink({
       href={href}
       onClick={onClick}
       className={cx(
-        "relative inline-flex items-center rounded-xl px-3 py-2 text-sm font-medium transition",
-        fullWidth && "w-full justify-start",
-        active
-          ? "bg-zinc-900 text-white shadow-sm"
-          : "text-zinc-700 hover:bg-white hover:text-zinc-900"
+        "group relative inline-flex items-center text-sm font-medium transition",
+        fullWidth ? "w-full rounded-xl px-3 py-2.5 justify-start" : "px-2 py-2",
+        fullWidth
+          ? active
+            ? "bg-zinc-900 text-white"
+            : "text-zinc-700 hover:bg-white hover:text-zinc-900"
+          : active
+            ? "text-zinc-900"
+            : "text-zinc-600 hover:text-zinc-900"
       )}
     >
-      {label}
+      <span>{label}</span>
+
+      {!fullWidth ? (
+        <span
+          className={cx(
+            "absolute inset-x-2 -bottom-0.5 h-px origin-left transition-transform duration-200",
+            active
+              ? "scale-x-100 bg-zinc-900"
+              : "scale-x-0 bg-zinc-400 group-hover:scale-x-100"
+          )}
+        />
+      ) : null}
     </Link>
   );
 }
@@ -142,26 +157,28 @@ export default function AppShellClient({ nav, proHref }: AppShellClientProps) {
 
   return (
     <>
-      <div className="hidden min-w-0 flex-1 items-center justify-end gap-3 lg:flex">
-        <nav className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-1">
+      <div className="hidden min-w-0 flex-1 items-center justify-end gap-6 xl:flex">
+        <nav className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-x-4 gap-y-2">
           {items.map((item) => (
             <NavLink key={item.href} href={item.href} label={item.label} />
           ))}
         </nav>
 
-        <Link
-          href={proHref}
-          className="inline-flex shrink-0 items-center justify-center rounded-full bg-zinc-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-800"
-        >
-          Professionisti
-        </Link>
+        <div className="flex shrink-0 items-center gap-3">
+          <Link
+            href={proHref}
+            className="inline-flex items-center justify-center rounded-full bg-zinc-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-800"
+          >
+            Professionisti
+          </Link>
 
-        <div className="shrink-0 rounded-full border border-zinc-200 bg-white p-1 shadow-sm">
-          <AuthButtons />
+          <div className="shrink-0">
+            <AuthButtons />
+          </div>
         </div>
       </div>
 
-      <div className="hidden items-center gap-2 md:flex lg:hidden">
+      <div className="hidden items-center gap-2 md:flex xl:hidden">
         <Link
           href={proHref}
           className="inline-flex items-center justify-center rounded-full bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-800"
