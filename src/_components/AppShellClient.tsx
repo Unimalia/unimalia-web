@@ -4,11 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { createPortal } from "react-dom";
-import dynamic from "next/dynamic";
-
-const AuthButtons = dynamic(() => import("./AuthButtons"), {
-  ssr: false,
-});
+import AuthButtons from "./AuthButtons";
 
 type NavItem = { href: string; label: string };
 

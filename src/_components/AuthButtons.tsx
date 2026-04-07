@@ -9,21 +9,46 @@ function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
 
-export default function AuthButtons({ onNavigate }: { onNavigate?: () => void } = {}) {
+type AuthButtonsProps = {
+  onNavigate?: () => void;
+};
+
+export default function AuthButtons({ onNavigate }: AuthButtonsProps = {}) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let mounted = true;
 
-    supabase.auth.getSession().then(({ data }) => {
-      if (!mounted) return;
-      setSession(data.session ?? null);
-      setLoading(false);
-    });
+    async function loadSession() {
+      try {
+        const { data, error } = await supabase.auth.getSession();
+
+        if (!mounted) return;
+
+        if (error) {
+          setSession(null);
+          setLoading(false);
+
+          await supabase.auth.signOut({ scope: "local" });
+          return;
+        }
+
+        setSession(data.session ?? null);
+        setLoading(false);
+      } catch {
+        if (!mounted) return;
+        setSession(null);
+        setLoading(false);
+      }
+    }
+
+    loadSession();
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      if (!mounted) return;
       setSession(newSession);
+      setLoading(false);
     });
 
     return () => {
@@ -36,65 +61,60 @@ export default function AuthButtons({ onNavigate }: { onNavigate?: () => void } 
     await supabase.auth.signOut();
   }
 
-  if (loading) {
-    return (
-      <div className="hidden min-w-[190px] md:flex items-center justify-end gap-2">
-        <div className="h-9 w-[190px] rounded-xl bg-zinc-100" />
-      </div>
-    );
-  }
-
-  if (!session) {
-    return (
-      <div className="flex items-center gap-2">
-        <Link
-          href="/login"
-          onClick={onNavigate}
-          className={cx(
-            "inline-flex items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold transition",
-            "border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50"
-          )}
-        >
-          Accedi
-        </Link>
-
-        <Link
-          href="/login?mode=signup"
-          onClick={onNavigate}
-          className={cx(
-            "inline-flex items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold transition",
-            "bg-zinc-900 text-white hover:bg-black"
-          )}
-        >
-          Iscriviti
-        </Link>
-      </div>
-    );
-  }
+  const baseButtonClass = cx(
+    "inline-flex h-10 items-center justify-center rounded-xl px-3 text-sm font-semibold transition"
+  );
 
   return (
-    <div className="flex items-center gap-2">
-      <Link
-        href="/profilo"
-        onClick={onNavigate}
-        className={cx(
-          "inline-flex items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold transition",
-          "border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50"
-        )}
-      >
-        Profilo
-      </Link>
+    <div className="flex min-h-10 min-w-[196px] items-center justify-end gap-2">
+      {loading ? (
+        <>
+          <div className="h-10 w-[92px] rounded-xl bg-zinc-100" />
+          <div className="h-10 w-[96px] rounded-xl bg-zinc-200" />
+        </>
+      ) : !session ? (
+        <>
+          <Link
+            href="/login"
+            onClick={onNavigate}
+            className={cx(
+              baseButtonClass,
+              "w-[92px] border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50"
+            )}
+          >
+            Accedi
+          </Link>
 
-      <button
-        type="button"
-        onClick={signOut}
-        className={cx(
-          "inline-flex items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold transition",
-          "bg-zinc-900 text-white hover:bg-black"
-        )}
-      >
-        Esci
-      </button>
+          <Link
+            href="/login?mode=signup"
+            onClick={onNavigate}
+            className={cx(baseButtonClass, "w-[96px] bg-zinc-900 text-white hover:bg-black")}
+          >
+            Iscriviti
+          </Link>
+        </>
+      ) : (
+        <>
+          <Link
+            href="/profilo"
+            onClick={onNavigate}
+            className={cx(
+              baseButtonClass,
+              "w-[92px] border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50"
+            )}
+          >
+            Profilo
+          </Link>
+
+          <button
+            type="button"
+            onClick={signOut}
+            className={cx(baseButtonClass, "w-[96px] bg-zinc-900 text-white hover:bg-black")}
+          >
+            Esci
+          </button>
+        </>
+      )}
     </div>
   );
 }
