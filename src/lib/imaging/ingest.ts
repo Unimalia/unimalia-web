@@ -387,7 +387,7 @@ async function setImagingFileReady(
   orthancData: OrthancImportResult,
   viewerUrl: string | null
 ) {
-  const updatedFile = await updateImagingFile(eventId, fileId, currentFile => ({
+  await updateImagingFile(eventId, fileId, currentFile => ({
     ...currentFile,
     status: "ready",
     orthanc: {
@@ -402,9 +402,11 @@ async function setImagingFileReady(
     },
   }));
 
-  const finalStatus = normalizeImagingFileStatus(updatedFile);
+  const { file: verifiedFile } = await loadImagingFile(eventId, fileId);
+
+  const finalStatus = normalizeImagingFileStatus(verifiedFile);
   const finalStudyUid =
-    String(updatedFile?.orthanc?.study_instance_uid || "").trim() || null;
+    String(verifiedFile?.orthanc?.study_instance_uid || "").trim() || null;
 
   if (finalStatus !== "ready") {
     throw new Error("Meta imaging non aggiornato correttamente a ready.");
@@ -414,7 +416,7 @@ async function setImagingFileReady(
     throw new Error("Meta imaging non sincronizzato con StudyInstanceUID di Orthanc.");
   }
 
-  return updatedFile;
+  return verifiedFile;
 }
 
 async function setImagingFileFailed(eventId: string, fileId: string) {
@@ -565,6 +567,8 @@ export async function runImagingIngest(
     throw new Error("eventId o fileId mancanti.");
   }
 
+  let readyCommitted = false;
+
   try {
     if (jobId) {
       await markJobProcessing(jobId);
@@ -596,6 +600,8 @@ export async function runImagingIngest(
         );
       }
 
+      readyCommitted = true;
+
       if (jobId) {
         await markJobReady(jobId);
       }
@@ -621,9 +627,7 @@ export async function runImagingIngest(
       };
     }
 
-    if (currentStatus !== "processing") {
-      await setImagingFileProcessing(eventId, fileId);
-    }
+    await setImagingFileProcessing(eventId, fileId);
 
     const filePath = String(file?.path || "").trim();
 
@@ -644,6 +648,7 @@ export async function runImagingIngest(
         : null;
 
     await setImagingFileReady(eventId, fileId, orthancData, viewerUrl);
+    readyCommitted = true;
 
     if (jobId) {
       await markJobReady(jobId);
@@ -668,14 +673,16 @@ export async function runImagingIngest(
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
 
-    try {
-      await setImagingFileFailed(eventId, fileId);
-    } catch (statusErr) {
-      console.error("[IMAGING INGEST] Failed to set file status to failed", {
-        eventId,
-        fileId,
-        error: statusErr instanceof Error ? statusErr.message : "Unknown error",
-      });
+    if (!readyCommitted) {
+      try {
+        await setImagingFileFailed(eventId, fileId);
+      } catch (statusErr) {
+        console.error("[IMAGING INGEST] Failed to set file status to failed", {
+          eventId,
+          fileId,
+          error: statusErr instanceof Error ? statusErr.message : "Unknown error",
+        });
+      }
     }
 
     if (jobId) {
