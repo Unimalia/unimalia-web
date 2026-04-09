@@ -4,7 +4,6 @@ import { createClient } from "@supabase/supabase-js";
 import {
   createSignedUploadUrl,
   deletePrivateFile,
-  downloadPrivateFileBuffer,
   fileExists,
 } from "@/lib/storage";
 import { createServerSupabaseClient, supabaseAdmin } from "@/lib/supabase/server";
@@ -24,27 +23,7 @@ type ProfessionalProfileRoleRow = {
   role: string | null;
 };
 
-type OrthancImportResult = {
-  orthancInstanceId: string | null;
-  orthancStudyId: string | null;
-  orthancSeriesId: string | null;
-  studyInstanceUID: string | null;
-  seriesInstanceUID: string | null;
-  sopInstanceUID: string | null;
-};
-
-type OrthancUploadResponse = {
-  ID?: string;
-  ParentStudy?: string;
-  ParentSeries?: string;
-  Status?: string;
-};
-
-type OrthancSimplifiedTagsResponse = {
-  StudyInstanceUID?: string;
-  SeriesInstanceUID?: string;
-  SOPInstanceUID?: string;
-};
+type ImagingFileStatus = "uploaded" | "processing" | "ready" | "failed";
 
 async function getProfessionalRole(userId: string) {
   const admin = supabaseAdmin();
@@ -167,93 +146,46 @@ async function trackImagingUpload(
   }
 }
 
-function getOrthancConfig() {
-  const baseUrl = process.env.ORTHANC_BASE_URL?.trim();
-  const username = process.env.ORTHANC_USERNAME?.trim();
-  const password = process.env.ORTHANC_PASSWORD?.trim();
+async function triggerInternalImagingIngest(
+  req: Request,
+  eventId: string,
+  fileId: string
+) {
+  const ingestSecret = String(process.env.IMAGING_INGEST_SECRET || "").trim();
 
-  if (!baseUrl || !username || !password) {
-    throw new Error("Orthanc non configurato. Verifica ORTHANC_BASE_URL, ORTHANC_USERNAME e ORTHANC_PASSWORD.");
+  if (!ingestSecret) {
+    console.error("[IMAGING INGEST TRIGGER] Missing IMAGING_INGEST_SECRET");
+    return false;
   }
 
-  return {
-    baseUrl: baseUrl.replace(/\/+$/, ""),
-    username,
-    password,
-  };
-}
+  const origin = new URL(req.url).origin;
+  const ingestUrl = `${origin}/api/clinic/imaging/ingest`;
 
-function createOrthancBasicAuthHeader(username: string, password: string) {
-  return `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`;
-}
-
-async function fetchOrthancSimplifiedTags(
-  orthancBaseUrl: string,
-  authHeader: string,
-  orthancInstanceId: string
-): Promise<OrthancSimplifiedTagsResponse> {
-  const response = await fetch(
-    `${orthancBaseUrl}/instances/${encodeURIComponent(orthancInstanceId)}/simplified-tags`,
-    {
-      method: "GET",
+  try {
+    fetch(ingestUrl, {
+      method: "POST",
       headers: {
-        Authorization: authHeader,
-        Accept: "application/json",
+        "Content-Type": "application/json",
+        "x-imaging-ingest-secret": ingestSecret,
       },
+      body: JSON.stringify({
+        eventId,
+        fileId,
+      }),
       cache: "no-store",
-    }
-  );
+    }).catch((err) => {
+      console.error("[IMAGING INGEST TRIGGER] Async trigger failed", {
+        error: err instanceof Error ? err.message : "Unknown error",
+      });
+    });
 
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`Errore lettura simplified-tags Orthanc: ${response.status} ${text}`);
+    return true;
+  } catch (err) {
+    console.error("[IMAGING INGEST TRIGGER] Trigger error", {
+      error: err instanceof Error ? err.message : "Unknown error",
+    });
+    return false;
   }
-
-  return (await response.json()) as OrthancSimplifiedTagsResponse;
-}
-
-async function importDicomFileToOrthanc(path: string): Promise<OrthancImportResult> {
-  const { baseUrl, username, password } = getOrthancConfig();
-  const authHeader = createOrthancBasicAuthHeader(username, password);
-
-  const dicomBuffer = await downloadPrivateFileBuffer(path);
-  const dicomBytes = new Uint8Array(dicomBuffer);
-
-  const uploadResponse = await fetch(`${baseUrl}/instances`, {
-    method: "POST",
-    headers: {
-      Authorization: authHeader,
-      "Content-Type": "application/dicom",
-      Accept: "application/json",
-    },
-    body: dicomBytes,
-    cache: "no-store",
-  });
-
-  if (!uploadResponse.ok) {
-    const text = await uploadResponse.text();
-    throw new Error(`Errore import DICOM in Orthanc: ${uploadResponse.status} ${text}`);
-  }
-
-  const uploadJson = (await uploadResponse.json()) as OrthancUploadResponse;
-  const orthancInstanceId = String(uploadJson.ID || "").trim() || null;
-  const orthancStudyId = String(uploadJson.ParentStudy || "").trim() || null;
-  const orthancSeriesId = String(uploadJson.ParentSeries || "").trim() || null;
-
-  if (!orthancInstanceId) {
-    throw new Error("Orthanc ha risposto senza ID istanza.");
-  }
-
-  const tags = await fetchOrthancSimplifiedTags(baseUrl, authHeader, orthancInstanceId);
-
-  return {
-    orthancInstanceId,
-    orthancStudyId,
-    orthancSeriesId,
-    studyInstanceUID: String(tags.StudyInstanceUID || "").trim() || null,
-    seriesInstanceUID: String(tags.SeriesInstanceUID || "").trim() || null,
-    sopInstanceUID: String(tags.SOPInstanceUID || "").trim() || null,
-  };
 }
 
 export async function POST(req: Request) {
@@ -419,19 +351,13 @@ export async function POST(req: Request) {
 
       const isDicomFile = isDicomImagingFile(fileName, mime);
 
-      let orthancData: OrthancImportResult | null = null;
-
-      if (isDicomFile) {
-        orthancData = await importDicomFileToOrthanc(path);
-      }
-
       const finalEventDate = eventDateRaw
         ? new Date(eventDateRaw).toISOString()
         : new Date().toISOString();
 
       const title = buildImagingTitle(modality, bodyPart);
 
-      const viewerBaseUrl = process.env.NEXT_PUBLIC_ORTHANC_PUBLIC_URL?.replace(/\/+$/, "") || "";
+      const fileStatus: ImagingFileStatus | null = isDicomFile ? "uploaded" : null;
 
       const eventMeta = {
         has_attachments: true,
@@ -445,19 +371,8 @@ export async function POST(req: Request) {
               name: fileName,
               size,
               mime,
-              orthanc: orthancData
-                ? {
-                    instance_id: orthancData.orthancInstanceId,
-                    study_id: orthancData.orthancStudyId,
-                    series_id: orthancData.orthancSeriesId,
-                    study_instance_uid: orthancData.studyInstanceUID,
-                    series_instance_uid: orthancData.seriesInstanceUID,
-                    sop_instance_uid: orthancData.sopInstanceUID,
-                    viewer_url: orthancData.studyInstanceUID && viewerBaseUrl
-                      ? `${viewerBaseUrl}/viewer?StudyInstanceUIDs=${encodeURIComponent(orthancData.studyInstanceUID)}`
-                      : null,
-                  }
-                : null,
+              status: fileStatus,
+              orthanc: null,
             },
           ],
         },
@@ -502,6 +417,10 @@ export async function POST(req: Request) {
         throw new Error(`Errore salvataggio file evento: ${fileInsertError.message}`);
       }
 
+      const ingestTriggered = isDicomFile
+        ? await triggerInternalImagingIngest(req, eventId, fileId)
+        : false;
+
       await trackImagingUpload({
         organization_id: grant.actor_organization_id ?? null,
         user_id: user.id,
@@ -521,17 +440,15 @@ export async function POST(req: Request) {
         req,
         actor_user_id: user.id,
         actor_organization_id: grant.actor_organization_id,
-        action: isDicomFile ? "imaging.upload.complete.orthanc" : "imaging.upload.complete",
+        action: isDicomFile ? "imaging.upload.complete" : "imaging.upload.complete",
         target_type: "event",
         target_id: eventId,
         animal_id: animalId,
         result: "success",
-        diff: orthancData
+        diff: isDicomFile
           ? {
-              orthanc_instance_id: orthancData.orthancInstanceId,
-              orthanc_study_id: orthancData.orthancStudyId,
-              orthanc_series_id: orthancData.orthancSeriesId,
-              study_instance_uid: orthancData.studyInstanceUID,
+              ingest_status: "uploaded",
+              ingest_triggered: ingestTriggered,
             }
           : undefined,
       });
@@ -557,22 +474,17 @@ export async function POST(req: Request) {
                 name: fileName,
                 size,
                 mime,
-                orthanc: orthancData
-                  ? {
-                      instance_id: orthancData.orthancInstanceId,
-                      study_id: orthancData.orthancStudyId,
-                      series_id: orthancData.orthancSeriesId,
-                      study_instance_uid: orthancData.studyInstanceUID,
-                      series_instance_uid: orthancData.seriesInstanceUID,
-                      sop_instance_uid: orthancData.sopInstanceUID,
-                      viewer_url: orthancData.studyInstanceUID && viewerBaseUrl
-                        ? `${viewerBaseUrl}/viewer?StudyInstanceUIDs=${encodeURIComponent(orthancData.studyInstanceUID)}`
-                        : null,
-                    }
-                  : null,
+                status: fileStatus,
+                orthanc: null,
               },
             ],
           },
+          ingest: isDicomFile
+            ? {
+                triggered: ingestTriggered,
+                status: "uploaded",
+              }
+            : null,
         },
       });
     }
