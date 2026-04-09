@@ -13,6 +13,8 @@ export type ImagingOrthancMeta = {
 
 export type ImagingFileStatus = "uploaded" | "processing" | "ready" | "failed";
 
+export type ImagingJobStatus = "queued" | "processing" | "ready" | "failed";
+
 export type ImagingFileMeta = {
   id?: string | null;
   path?: string | null;
@@ -53,15 +55,31 @@ type OrthancImportResult = {
   sopInstanceUID: string | null;
 };
 
+type ImagingIngestJobRow = {
+  id: string;
+  event_id: string;
+  file_id: string;
+  animal_id: string;
+  status: ImagingJobStatus;
+  attempts: number | null;
+  max_attempts: number | null;
+  last_error: string | null;
+  locked_at: string | null;
+  started_at: string | null;
+  finished_at: string | null;
+};
+
 export type RunImagingIngestInput = {
   eventId: string;
   fileId: string;
+  jobId?: string | null;
 };
 
 export type RunImagingIngestResult = {
   ok: true;
   eventId: string;
   fileId: string;
+  jobId?: string | null;
   status: "ready" | "processing";
   alreadyReady?: boolean;
   alreadyProcessing?: boolean;
@@ -75,6 +93,20 @@ export type RunImagingIngestResult = {
     viewer_url: string | null;
   };
 };
+
+export type RunQueuedImagingJobResult =
+  | {
+      ok: true;
+      action: "processed";
+      jobId: string;
+      eventId: string;
+      fileId: string;
+      status: "ready" | "processing";
+    }
+  | {
+      ok: true;
+      action: "idle";
+    };
 
 function isDicomFile(file: ImagingFileMeta) {
   const mime = String(file?.mime || "").toLowerCase().trim();
@@ -272,11 +304,121 @@ async function updateImagingFile(
   return updatedFile;
 }
 
+async function getImagingJob(jobId: string) {
+  const admin = supabaseAdmin();
+
+  const { data, error } = await admin
+    .from("imaging_ingest_jobs")
+    .select("id, event_id, file_id, animal_id, status, attempts, max_attempts, last_error, locked_at, started_at, finished_at")
+    .eq("id", jobId)
+    .single<ImagingIngestJobRow>();
+
+  if (error || !data) {
+    throw new Error("Job ingest imaging non trovato.");
+  }
+
+  return data;
+}
+
+async function updateImagingJob(jobId: string, values: Record<string, unknown>) {
+  const admin = supabaseAdmin();
+
+  const { error } = await admin
+    .from("imaging_ingest_jobs")
+    .update(values)
+    .eq("id", jobId);
+
+  if (error) {
+    throw new Error(`Errore aggiornamento job ingest imaging: ${error.message}`);
+  }
+}
+
+async function tryLockNextQueuedImagingJob(): Promise<ImagingIngestJobRow | null> {
+  const admin = supabaseAdmin();
+
+  const { data: candidate, error: candidateError } = await admin
+    .from("imaging_ingest_jobs")
+    .select("id, event_id, file_id, animal_id, status, attempts, max_attempts, last_error, locked_at, started_at, finished_at")
+    .eq("status", "queued")
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle<ImagingIngestJobRow>();
+
+  if (candidateError) {
+    throw new Error(`Errore lettura coda ingest imaging: ${candidateError.message}`);
+  }
+
+  if (!candidate) {
+    return null;
+  }
+
+  const now = new Date().toISOString();
+
+  const { data: lockedRows, error: lockError } = await admin
+    .from("imaging_ingest_jobs")
+    .update({
+      status: "processing",
+      locked_at: now,
+      started_at: now,
+      last_error: null,
+    })
+    .eq("id", candidate.id)
+    .eq("status", "queued")
+    .select("id, event_id, file_id, animal_id, status, attempts, max_attempts, last_error, locked_at, started_at, finished_at");
+
+  if (lockError) {
+    throw new Error(`Errore lock job ingest imaging: ${lockError.message}`);
+  }
+
+  const locked = Array.isArray(lockedRows) ? lockedRows[0] as ImagingIngestJobRow | undefined : undefined;
+
+  return locked || null;
+}
+
+async function markJobReady(jobId: string) {
+  const now = new Date().toISOString();
+
+  await updateImagingJob(jobId, {
+    status: "ready",
+    finished_at: now,
+    locked_at: null,
+    last_error: null,
+  });
+}
+
+async function markJobFailed(jobId: string, message: string) {
+  const job = await getImagingJob(jobId);
+  const attempts = Number(job.attempts || 0) + 1;
+  const maxAttempts = Number(job.max_attempts || 3);
+  const now = new Date().toISOString();
+
+  if (attempts < maxAttempts) {
+    await updateImagingJob(jobId, {
+      status: "queued",
+      attempts,
+      last_error: message,
+      locked_at: null,
+      started_at: null,
+      finished_at: null,
+    });
+    return;
+  }
+
+  await updateImagingJob(jobId, {
+    status: "failed",
+    attempts,
+    last_error: message,
+    locked_at: null,
+    finished_at: now,
+  });
+}
+
 export async function runImagingIngest(
   input: RunImagingIngestInput
 ): Promise<RunImagingIngestResult> {
   const eventId = String(input.eventId || "").trim();
   const fileId = String(input.fileId || "").trim();
+  const jobId = String(input.jobId || "").trim() || null;
 
   if (!eventId || !fileId) {
     throw new Error("eventId o fileId mancanti.");
@@ -292,10 +434,15 @@ export async function runImagingIngest(
     const currentStatus = normalizeImagingFileStatus(file);
 
     if (currentStatus === "ready") {
+      if (jobId) {
+        await markJobReady(jobId);
+      }
+
       return {
         ok: true,
         eventId,
         fileId,
+        jobId,
         status: "ready",
         alreadyReady: true,
         orthanc: {
@@ -310,14 +457,11 @@ export async function runImagingIngest(
       };
     }
 
-    if (currentStatus === "processing") {
-      return {
-        ok: true,
-        eventId,
-        fileId,
+    if (currentStatus !== "processing") {
+      await updateImagingFile(eventId, fileId, (currentFile) => ({
+        ...currentFile,
         status: "processing",
-        alreadyProcessing: true,
-      };
+      }));
     }
 
     const filePath = String(file?.path || "").trim();
@@ -325,11 +469,6 @@ export async function runImagingIngest(
     if (!filePath) {
       throw new Error("Percorso file imaging non disponibile.");
     }
-
-    await updateImagingFile(eventId, fileId, (currentFile) => ({
-      ...currentFile,
-      status: "processing",
-    }));
 
     const orthancData = await importDicomFileToOrthanc(filePath);
     const viewerBaseUrl = String(process.env.NEXT_PUBLIC_ORTHANC_PUBLIC_URL || "").trim().replace(/\/+$/, "");
@@ -352,10 +491,15 @@ export async function runImagingIngest(
       },
     }));
 
+    if (jobId) {
+      await markJobReady(jobId);
+    }
+
     return {
       ok: true,
       eventId,
       fileId,
+      jobId,
       status: "ready",
       orthanc: {
         instance_id: orthancData.orthancInstanceId,
@@ -368,6 +512,8 @@ export async function runImagingIngest(
       },
     };
   } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+
     try {
       await updateImagingFile(eventId, fileId, (currentFile) => ({
         ...currentFile,
@@ -381,6 +527,36 @@ export async function runImagingIngest(
       });
     }
 
+    if (jobId) {
+      await markJobFailed(jobId, message);
+    }
+
     throw err;
   }
+}
+
+export async function runNextQueuedImagingIngestJob(): Promise<RunQueuedImagingJobResult> {
+  const job = await tryLockNextQueuedImagingJob();
+
+  if (!job) {
+    return {
+      ok: true,
+      action: "idle",
+    };
+  }
+
+  const result = await runImagingIngest({
+    eventId: job.event_id,
+    fileId: job.file_id,
+    jobId: job.id,
+  });
+
+  return {
+    ok: true,
+    action: "processed",
+    jobId: job.id,
+    eventId: job.event_id,
+    fileId: job.file_id,
+    status: result.status,
+  };
 }

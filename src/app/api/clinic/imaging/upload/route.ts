@@ -1,4 +1,4 @@
-import { after, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { createClient } from "@supabase/supabase-js";
 import {
@@ -10,7 +10,6 @@ import { createServerSupabaseClient, supabaseAdmin } from "@/lib/supabase/server
 import { requireOwnerOrGrant } from "@/lib/server/requireOwnerOrGrant";
 import { writeAudit } from "@/lib/server/audit";
 import { getBearerToken } from "@/lib/server/bearer";
-import { runImagingIngest } from "@/lib/imaging/ingest";
 
 type AuthenticatedUserResult = {
   supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>;
@@ -377,20 +376,21 @@ export async function POST(req: Request) {
       }
 
       if (isDicomFile) {
-        after(async () => {
-          try {
-            await runImagingIngest({
-              eventId,
-              fileId,
-            });
-          } catch (err) {
-            console.error("[IMAGING INGEST AFTER] Error", {
-              eventId,
-              fileId,
-              error: err instanceof Error ? err.message : "Unknown error",
-            });
-          }
-        });
+        const { error: jobInsertError } = await admin
+          .from("imaging_ingest_jobs")
+          .insert({
+            event_id: eventId,
+            file_id: fileId,
+            animal_id: animalId,
+            status: "queued",
+            attempts: 0,
+            max_attempts: 3,
+            created_by_user_id: user.id,
+          });
+
+        if (jobInsertError) {
+          throw new Error(`Errore creazione job ingest imaging: ${jobInsertError.message}`);
+        }
       }
 
       await trackImagingUpload({
@@ -420,7 +420,7 @@ export async function POST(req: Request) {
         diff: isDicomFile
           ? {
               ingest_status: "uploaded",
-              ingest_triggered: true,
+              ingest_job_status: "queued",
             }
           : undefined,
       });
@@ -453,8 +453,9 @@ export async function POST(req: Request) {
           },
           ingest: isDicomFile
             ? {
-                triggered: true,
+                triggered: false,
                 status: "uploaded",
+                jobStatus: "queued",
               }
             : null,
         },
