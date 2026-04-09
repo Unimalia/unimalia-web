@@ -115,6 +115,7 @@ function isAllowedImagingFile(fileName: string, mimeType?: string | null) {
     "application/pdf",
     "image/jpeg",
     "image/png",
+    "application/octet-stream",
   ]);
 
   const allowedImagingExtensions = [
@@ -127,24 +128,33 @@ function isAllowedImagingFile(fileName: string, mimeType?: string | null) {
   ];
 
   const lowerName = String(fileName || "").toLowerCase();
-  const hasAllowedExtension = allowedImagingExtensions.some(ext =>
+  const lowerMime = String(mimeType || "").toLowerCase();
+  const hasAllowedExtension = allowedImagingExtensions.some((ext) =>
     lowerName.endsWith(ext)
   );
   const hasAllowedMime =
-    !mimeType || allowedImagingMimeTypes.has(String(mimeType).toLowerCase());
+    !lowerMime || allowedImagingMimeTypes.has(lowerMime);
 
   return hasAllowedExtension || hasAllowedMime;
 }
 
 function isDicomImagingFile(fileName: string, mimeType?: string | null) {
-  const lowerName = String(fileName || "").toLowerCase();
-  const lowerMime = String(mimeType || "").toLowerCase();
+  const lowerName = String(fileName || "").toLowerCase().trim();
+  const lowerMime = String(mimeType || "").toLowerCase().trim();
 
-  return (
-    lowerName.endsWith(".dcm") ||
-    lowerName.endsWith(".dicom") ||
-    lowerMime === "application/dicom"
-  );
+  if (lowerName.endsWith(".dcm") || lowerName.endsWith(".dicom")) {
+    return true;
+  }
+
+  if (lowerMime === "application/dicom") {
+    return true;
+  }
+
+  if (lowerMime === "application/octet-stream") {
+    return true;
+  }
+
+  return false;
 }
 
 const MAX_IMAGING_FILE_SIZE_BYTES = 500 * 1024 * 1024;
@@ -406,26 +416,36 @@ export async function POST(req: Request) {
       let ingestPayload:
         | {
             triggered: boolean;
-            status: "ready";
-            jobStatus: "ready";
+            status: "ready" | "processing";
+            jobStatus: "ready" | "retry_needed";
           }
         | null = null;
 
       if (isDicomFile) {
-        const ingestResult = await runImagingIngest({
-          eventId,
-          fileId,
-        });
+        try {
+          const ingestResult = await runImagingIngest({
+            eventId,
+            fileId,
+          });
 
-        if (ingestResult.status !== "ready") {
-          throw new Error("Ingest DICOM non completato correttamente.");
+          ingestPayload = {
+            triggered: true,
+            status: ingestResult.status === "ready" ? "ready" : "processing",
+            jobStatus: ingestResult.status === "ready" ? "ready" : "retry_needed",
+          };
+        } catch (ingestErr) {
+          console.error("[IMAGING COMPLETE] ingest first attempt failed", {
+            eventId,
+            fileId,
+            error: ingestErr instanceof Error ? ingestErr.message : "Unknown error",
+          });
+
+          ingestPayload = {
+            triggered: true,
+            status: "processing",
+            jobStatus: "retry_needed",
+          };
         }
-
-        ingestPayload = {
-          triggered: true,
-          status: "ready",
-          jobStatus: "ready",
-        };
       }
 
       await trackImagingUpload({
@@ -454,8 +474,8 @@ export async function POST(req: Request) {
         result: "success",
         diff: isDicomFile
           ? {
-              ingest_status: "ready",
-              ingest_job_status: "ready",
+              ingest_status: ingestPayload?.status ?? "processing",
+              ingest_job_status: ingestPayload?.jobStatus ?? "retry_needed",
             }
           : undefined,
       });
@@ -481,7 +501,12 @@ export async function POST(req: Request) {
                 name: fileName,
                 size,
                 mime,
-                status: isDicomFile ? "ready" : null,
+                status:
+                  isDicomFile
+                    ? ingestPayload?.status === "ready"
+                      ? "ready"
+                      : "uploaded"
+                    : null,
               },
             ],
           },

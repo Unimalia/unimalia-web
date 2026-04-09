@@ -4,6 +4,7 @@ import { createSignedDownloadUrl } from "@/lib/storage";
 import { supabaseAdmin, createServerSupabaseClient } from "@/lib/supabase/server";
 import { getBearerToken } from "@/lib/server/bearer";
 import { requireOwnerOrGrant } from "@/lib/server/requireOwnerOrGrant";
+import { runImagingIngest } from "@/lib/imaging/ingest";
 
 type ImagingOrthancMeta = {
   instance_id?: string | null;
@@ -54,6 +55,7 @@ function isDicomFile(file: ImagingFileMeta) {
 
   return (
     mime === "application/dicom" ||
+    mime === "application/octet-stream" ||
     name.endsWith(".dcm") ||
     name.endsWith(".dicom")
   );
@@ -219,6 +221,39 @@ function normalizeImagingFileStatus(file: ImagingFileMeta): ImagingFileStatus {
   return "uploaded";
 }
 
+async function loadEventAndFile(eventId: string, fileId: string) {
+  const admin = supabaseAdmin();
+
+  const { data: event, error: eventError } = await admin
+    .from("animal_clinic_events")
+    .select("id, animal_id, meta")
+    .eq("id", eventId)
+    .single();
+
+  if (eventError || !event) {
+    throw new Error("Evento imaging non trovato");
+  }
+
+  const eventMeta = (event.meta || {}) as ClinicEventMeta;
+  const imaging = eventMeta.imaging || {};
+  const files = Array.isArray(imaging.files) ? imaging.files : [];
+
+  const fileIndex = files.findIndex(
+    (f) => String(f?.id || "").trim() === fileId
+  );
+
+  if (fileIndex < 0) {
+    throw new Error("File imaging non trovato");
+  }
+
+  const file = files[fileIndex];
+
+  return {
+    event,
+    file,
+  };
+}
+
 export async function GET(req: NextRequest) {
   try {
     const auth = await resolveAuthenticatedUser(req);
@@ -248,22 +283,9 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const admin = supabaseAdmin();
+    let loaded = await loadEventAndFile(eventId, fileId);
 
-    const { data: event, error: eventError } = await admin
-      .from("animal_clinic_events")
-      .select("id, animal_id, meta")
-      .eq("id", eventId)
-      .single();
-
-    if (eventError || !event) {
-      return NextResponse.json(
-        { error: "Evento imaging non trovato" },
-        { status: 404 }
-      );
-    }
-
-    const animalId = String(event.animal_id || "").trim();
+    const animalId = String(loaded.event.animal_id || "").trim();
 
     const grant = await requireOwnerOrGrant(supabase, user.id, animalId, "read");
 
@@ -271,22 +293,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: grant.reason }, { status: 403 });
     }
 
-    const eventMeta = (event.meta || {}) as ClinicEventMeta;
-    const imaging = eventMeta.imaging || {};
-    const files = Array.isArray(imaging.files) ? imaging.files : [];
-
-    const fileIndex = files.findIndex(
-      f => String(f?.id || "").trim() === fileId
-    );
-
-    if (fileIndex < 0) {
-      return NextResponse.json(
-        { error: "File imaging non trovato" },
-        { status: 404 }
-      );
-    }
-
-    const file = files[fileIndex];
+    const file = loaded.file;
     const filePath = String(file?.path || "").trim();
 
     if (!filePath) {
@@ -303,12 +310,33 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(signedDownloadUrl);
     }
 
-    const status = normalizeImagingFileStatus(file);
+    let status = normalizeImagingFileStatus(file);
 
-    if (status === "uploaded" || status === "processing") {
+    if (status === "uploaded") {
+      try {
+        await runImagingIngest({
+          eventId,
+          fileId,
+        });
+
+        loaded = await loadEventAndFile(eventId, fileId);
+        status = normalizeImagingFileStatus(loaded.file);
+      } catch (ingestErr) {
+        console.error("[IMAGING VIEW] auto-ingest failed", {
+          eventId,
+          fileId,
+          error: ingestErr instanceof Error ? ingestErr.message : "Unknown error",
+        });
+
+        loaded = await loadEventAndFile(eventId, fileId);
+        status = normalizeImagingFileStatus(loaded.file);
+      }
+    }
+
+    if (status === "processing" || status === "uploaded") {
       return NextResponse.json(
         {
-          error: "File DICOM in elaborazione.",
+          error: "File DICOM in elaborazione. Riapri il viewer tra qualche secondo.",
           code: "IMAGING_VIEW_PROCESSING",
           status,
         },
@@ -338,7 +366,10 @@ export async function GET(req: NextRequest) {
       return dicomViewError("Orthanc non configurato correttamente.", 500);
     }
 
-    const studyInstanceUid = String(file?.orthanc?.study_instance_uid || "").trim();
+    const readyFile = loaded.file;
+    const studyInstanceUid = String(
+      readyFile?.orthanc?.study_instance_uid || ""
+    ).trim();
 
     if (!studyInstanceUid) {
       return dicomViewError("Studio DICOM non ancora disponibile per il viewer.");
@@ -363,7 +394,7 @@ export async function GET(req: NextRequest) {
     }
 
     const viewerUrl =
-      String(file?.orthanc?.viewer_url || "").trim() ||
+      String(readyFile?.orthanc?.viewer_url || "").trim() ||
       buildOhifViewerUrl(viewerBaseUrl, studyInstanceUid);
 
     if (!viewerUrl) {
