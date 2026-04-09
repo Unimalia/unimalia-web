@@ -146,6 +146,25 @@ async function trackImagingUpload(
   }
 }
 
+function resolveInternalBaseUrl(req: Request) {
+  const explicitBaseUrl = String(process.env.INTERNAL_API_BASE_URL || "").trim().replace(/\/+$/, "");
+  if (explicitBaseUrl) {
+    return explicitBaseUrl;
+  }
+
+  const productionUrl = String(process.env.VERCEL_PROJECT_PRODUCTION_URL || "").trim();
+  if (productionUrl) {
+    return `https://${productionUrl.replace(/^https?:\/\//, "").replace(/\/+$/, "")}`;
+  }
+
+  const vercelUrl = String(process.env.VERCEL_URL || "").trim();
+  if (vercelUrl) {
+    return `https://${vercelUrl.replace(/^https?:\/\//, "").replace(/\/+$/, "")}`;
+  }
+
+  return new URL(req.url).origin;
+}
+
 async function triggerInternalImagingIngest(
   req: Request,
   eventId: string,
@@ -158,11 +177,11 @@ async function triggerInternalImagingIngest(
     return false;
   }
 
-  const origin = new URL(req.url).origin;
-  const ingestUrl = `${origin}/api/clinic/imaging/ingest`;
+  const baseUrl = resolveInternalBaseUrl(req);
+  const ingestUrl = `${baseUrl}/api/clinic/imaging/ingest`;
 
   try {
-    fetch(ingestUrl, {
+    const response = await fetch(ingestUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -173,15 +192,35 @@ async function triggerInternalImagingIngest(
         fileId,
       }),
       cache: "no-store",
-    }).catch((err) => {
-      console.error("[IMAGING INGEST TRIGGER] Async trigger failed", {
-        error: err instanceof Error ? err.message : "Unknown error",
+      signal: AbortSignal.timeout(15000),
+    });
+
+    if (!response.ok) {
+      const responseText = await response.text().catch(() => "");
+      console.error("[IMAGING INGEST TRIGGER] Ingest request rejected", {
+        ingestUrl,
+        status: response.status,
+        statusText: response.statusText,
+        body: responseText.slice(0, 500),
+        eventId,
+        fileId,
       });
+      return false;
+    }
+
+    console.log("[IMAGING INGEST TRIGGER] Ingest request accepted", {
+      ingestUrl,
+      status: response.status,
+      eventId,
+      fileId,
     });
 
     return true;
   } catch (err) {
     console.error("[IMAGING INGEST TRIGGER] Trigger error", {
+      ingestUrl,
+      eventId,
+      fileId,
       error: err instanceof Error ? err.message : "Unknown error",
     });
     return false;
@@ -440,7 +479,7 @@ export async function POST(req: Request) {
         req,
         actor_user_id: user.id,
         actor_organization_id: grant.actor_organization_id,
-        action: isDicomFile ? "imaging.upload.complete" : "imaging.upload.complete",
+        action: "imaging.upload.complete",
         target_type: "event",
         target_id: eventId,
         animal_id: animalId,
