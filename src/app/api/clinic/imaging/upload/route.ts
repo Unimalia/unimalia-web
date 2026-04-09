@@ -10,6 +10,7 @@ import { createServerSupabaseClient, supabaseAdmin } from "@/lib/supabase/server
 import { requireOwnerOrGrant } from "@/lib/server/requireOwnerOrGrant";
 import { writeAudit } from "@/lib/server/audit";
 import { getBearerToken } from "@/lib/server/bearer";
+import { runImagingIngest } from "@/lib/imaging/ingest";
 
 type AuthenticatedUserResult = {
   supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>;
@@ -342,7 +343,7 @@ export async function POST(req: Request) {
 
       const title = buildImagingTitle(modality, bodyPart);
 
-      const fileStatus: ImagingFileStatus | null = isDicomFile ? "uploaded" : null;
+      const initialFileStatus: ImagingFileStatus | null = isDicomFile ? "uploaded" : null;
 
       const eventMeta = {
         has_attachments: true,
@@ -356,7 +357,7 @@ export async function POST(req: Request) {
               name: fileName,
               size,
               mime,
-              status: fileStatus,
+              status: initialFileStatus,
               orthanc: null,
             },
           ],
@@ -402,22 +403,29 @@ export async function POST(req: Request) {
         throw new Error(`Errore salvataggio file evento: ${fileInsertError.message}`);
       }
 
-      if (isDicomFile) {
-        const { error: jobInsertError } = await admin
-          .from("imaging_ingest_jobs")
-          .insert({
-            event_id: eventId,
-            file_id: fileId,
-            animal_id: animalId,
-            status: "queued",
-            attempts: 0,
-            max_attempts: 3,
-            created_by_user_id: user.id,
-          });
+      let ingestPayload:
+        | {
+            triggered: boolean;
+            status: "ready";
+            jobStatus: "ready";
+          }
+        | null = null;
 
-        if (jobInsertError) {
-          throw new Error(`Errore creazione job ingest imaging: ${jobInsertError.message}`);
+      if (isDicomFile) {
+        const ingestResult = await runImagingIngest({
+          eventId,
+          fileId,
+        });
+
+        if (ingestResult.status !== "ready") {
+          throw new Error("Ingest DICOM non completato correttamente.");
         }
+
+        ingestPayload = {
+          triggered: true,
+          status: "ready",
+          jobStatus: "ready",
+        };
       }
 
       await trackImagingUpload({
@@ -446,8 +454,8 @@ export async function POST(req: Request) {
         result: "success",
         diff: isDicomFile
           ? {
-              ingest_status: "uploaded",
-              ingest_job_status: "queued",
+              ingest_status: "ready",
+              ingest_job_status: "ready",
             }
           : undefined,
       });
@@ -473,18 +481,11 @@ export async function POST(req: Request) {
                 name: fileName,
                 size,
                 mime,
-                status: fileStatus,
-                orthanc: null,
+                status: isDicomFile ? "ready" : null,
               },
             ],
           },
-          ingest: isDicomFile
-            ? {
-                triggered: false,
-                status: "uploaded",
-                jobStatus: "queued",
-              }
-            : null,
+          ingest: isDicomFile ? ingestPayload : null,
         },
       });
     }
