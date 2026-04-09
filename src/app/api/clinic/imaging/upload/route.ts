@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { createClient } from "@supabase/supabase-js";
 import {
@@ -10,6 +10,7 @@ import { createServerSupabaseClient, supabaseAdmin } from "@/lib/supabase/server
 import { requireOwnerOrGrant } from "@/lib/server/requireOwnerOrGrant";
 import { writeAudit } from "@/lib/server/audit";
 import { getBearerToken } from "@/lib/server/bearer";
+import { runImagingIngest } from "@/lib/imaging/ingest";
 
 type AuthenticatedUserResult = {
   supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>;
@@ -143,87 +144,6 @@ async function trackImagingUpload(
     await supabaseAdmin().from("clinic_imaging_uploads").insert(payload);
   } catch (err) {
     console.error("IMAGING TRACKING ERROR:", err);
-  }
-}
-
-function resolveInternalBaseUrl(req: Request) {
-  const explicitBaseUrl = String(process.env.INTERNAL_API_BASE_URL || "").trim().replace(/\/+$/, "");
-  if (explicitBaseUrl) {
-    return explicitBaseUrl;
-  }
-
-  const productionUrl = String(process.env.VERCEL_PROJECT_PRODUCTION_URL || "").trim();
-  if (productionUrl) {
-    return `https://${productionUrl.replace(/^https?:\/\//, "").replace(/\/+$/, "")}`;
-  }
-
-  const vercelUrl = String(process.env.VERCEL_URL || "").trim();
-  if (vercelUrl) {
-    return `https://${vercelUrl.replace(/^https?:\/\//, "").replace(/\/+$/, "")}`;
-  }
-
-  return new URL(req.url).origin;
-}
-
-async function triggerInternalImagingIngest(
-  req: Request,
-  eventId: string,
-  fileId: string
-) {
-  const ingestSecret = String(process.env.IMAGING_INGEST_SECRET || "").trim();
-
-  if (!ingestSecret) {
-    console.error("[IMAGING INGEST TRIGGER] Missing IMAGING_INGEST_SECRET");
-    return false;
-  }
-
-  const baseUrl = resolveInternalBaseUrl(req);
-  const ingestUrl = `${baseUrl}/api/clinic/imaging/ingest`;
-
-  try {
-    const response = await fetch(ingestUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-imaging-ingest-secret": ingestSecret,
-      },
-      body: JSON.stringify({
-        eventId,
-        fileId,
-      }),
-      cache: "no-store",
-      signal: AbortSignal.timeout(15000),
-    });
-
-    if (!response.ok) {
-      const responseText = await response.text().catch(() => "");
-      console.error("[IMAGING INGEST TRIGGER] Ingest request rejected", {
-        ingestUrl,
-        status: response.status,
-        statusText: response.statusText,
-        body: responseText.slice(0, 500),
-        eventId,
-        fileId,
-      });
-      return false;
-    }
-
-    console.log("[IMAGING INGEST TRIGGER] Ingest request accepted", {
-      ingestUrl,
-      status: response.status,
-      eventId,
-      fileId,
-    });
-
-    return true;
-  } catch (err) {
-    console.error("[IMAGING INGEST TRIGGER] Trigger error", {
-      ingestUrl,
-      eventId,
-      fileId,
-      error: err instanceof Error ? err.message : "Unknown error",
-    });
-    return false;
   }
 }
 
@@ -456,9 +376,22 @@ export async function POST(req: Request) {
         throw new Error(`Errore salvataggio file evento: ${fileInsertError.message}`);
       }
 
-      const ingestTriggered = isDicomFile
-        ? await triggerInternalImagingIngest(req, eventId, fileId)
-        : false;
+      if (isDicomFile) {
+        after(async () => {
+          try {
+            await runImagingIngest({
+              eventId,
+              fileId,
+            });
+          } catch (err) {
+            console.error("[IMAGING INGEST AFTER] Error", {
+              eventId,
+              fileId,
+              error: err instanceof Error ? err.message : "Unknown error",
+            });
+          }
+        });
+      }
 
       await trackImagingUpload({
         organization_id: grant.actor_organization_id ?? null,
@@ -487,7 +420,7 @@ export async function POST(req: Request) {
         diff: isDicomFile
           ? {
               ingest_status: "uploaded",
-              ingest_triggered: ingestTriggered,
+              ingest_triggered: true,
             }
           : undefined,
       });
@@ -520,7 +453,7 @@ export async function POST(req: Request) {
           },
           ingest: isDicomFile
             ? {
-                triggered: ingestTriggered,
+                triggered: true,
                 status: "uploaded",
               }
             : null,
