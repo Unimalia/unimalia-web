@@ -135,13 +135,19 @@ function normalizeImagingFileStatus(file: ImagingFileMeta): ImagingFileStatus {
 }
 
 function getOrthancConfig() {
-  const baseUrl = String(process.env.ORTHANC_BASE_URL || "").trim().replace(/\/+$/, "");
-  const viewerBaseUrl = String(process.env.NEXT_PUBLIC_ORTHANC_PUBLIC_URL || "").trim().replace(/\/+$/, "");
+  const baseUrl = String(process.env.ORTHANC_BASE_URL || "")
+    .trim()
+    .replace(/\/+$/, "");
+  const viewerBaseUrl = String(process.env.NEXT_PUBLIC_ORTHANC_PUBLIC_URL || "")
+    .trim()
+    .replace(/\/+$/, "");
   const username = String(process.env.ORTHANC_USERNAME || "").trim();
   const password = String(process.env.ORTHANC_PASSWORD || "").trim();
 
   if (!baseUrl || !username || !password) {
-    throw new Error("Orthanc non configurato. Verifica ORTHANC_BASE_URL, ORTHANC_USERNAME e ORTHANC_PASSWORD.");
+    throw new Error(
+      "Orthanc non configurato. Verifica ORTHANC_BASE_URL, ORTHANC_USERNAME e ORTHANC_PASSWORD."
+    );
   }
 
   return {
@@ -172,7 +178,9 @@ async function fetchOrthancSimplifiedTags(
   orthancInstanceId: string
 ): Promise<OrthancSimplifiedTagsResponse> {
   const response = await fetch(
-    `${orthancBaseUrl}/instances/${encodeURIComponent(orthancInstanceId)}/simplified-tags`,
+    `${orthancBaseUrl}/instances/${encodeURIComponent(
+      orthancInstanceId
+    )}/simplified-tags`,
     {
       method: "GET",
       headers: {
@@ -185,10 +193,41 @@ async function fetchOrthancSimplifiedTags(
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(`Errore lettura simplified-tags Orthanc: ${response.status} ${text}`);
+    throw new Error(
+      `Errore lettura simplified-tags Orthanc: ${response.status} ${text}`
+    );
   }
 
   return (await response.json()) as OrthancSimplifiedTagsResponse;
+}
+
+async function orthancStudyExists(
+  orthancBaseUrl: string,
+  authHeader: string,
+  studyInstanceUid: string
+): Promise<boolean> {
+  const url =
+    `${orthancBaseUrl}/orthanc/dicom-web/studies?limit=1&offset=0&fuzzymatching=false` +
+    `&StudyInstanceUID=${encodeURIComponent(studyInstanceUid)}`;
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      Authorization: authHeader,
+      Accept: "application/dicom+json",
+    },
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(
+      `Errore verifica studio Orthanc via QIDO: ${response.status} ${text}`
+    );
+  }
+
+  const json = (await response.json().catch(() => null)) as unknown;
+  return Array.isArray(json) && json.length > 0;
 }
 
 async function importDicomFileToOrthanc(path: string): Promise<OrthancImportResult> {
@@ -211,7 +250,9 @@ async function importDicomFileToOrthanc(path: string): Promise<OrthancImportResu
 
   if (!uploadResponse.ok) {
     const text = await uploadResponse.text();
-    throw new Error(`Errore import DICOM in Orthanc: ${uploadResponse.status} ${text}`);
+    throw new Error(
+      `Errore import DICOM in Orthanc: ${uploadResponse.status} ${text}`
+    );
   }
 
   const uploadJson = (await uploadResponse.json()) as OrthancUploadResponse;
@@ -225,13 +266,29 @@ async function importDicomFileToOrthanc(path: string): Promise<OrthancImportResu
 
   const tags = await fetchOrthancSimplifiedTags(baseUrl, authHeader, orthancInstanceId);
 
+  const studyInstanceUID = String(tags.StudyInstanceUID || "").trim() || null;
+  const seriesInstanceUID = String(tags.SeriesInstanceUID || "").trim() || null;
+  const sopInstanceUID = String(tags.SOPInstanceUID || "").trim() || null;
+
+  if (!studyInstanceUID) {
+    throw new Error("StudyInstanceUID mancante dopo import in Orthanc.");
+  }
+
+  const exists = await orthancStudyExists(baseUrl, authHeader, studyInstanceUID);
+
+  if (!exists) {
+    throw new Error(
+      `Lo studio non risulta ancora disponibile via QIDO in Orthanc: ${studyInstanceUID}`
+    );
+  }
+
   return {
     orthancInstanceId,
     orthancStudyId,
     orthancSeriesId,
-    studyInstanceUID: String(tags.StudyInstanceUID || "").trim() || null,
-    seriesInstanceUID: String(tags.SeriesInstanceUID || "").trim() || null,
-    sopInstanceUID: String(tags.SOPInstanceUID || "").trim() || null,
+    studyInstanceUID,
+    seriesInstanceUID,
+    sopInstanceUID,
   };
 }
 
@@ -253,7 +310,7 @@ async function loadImagingFile(eventId: string, fileId: string) {
   const files = Array.isArray(imaging.files) ? imaging.files : [];
 
   const fileIndex = files.findIndex(
-    (file) => String(file?.id || "").trim() === fileId
+    file => String(file?.id || "").trim() === fileId
   );
 
   if (fileIndex < 0) {
@@ -278,7 +335,10 @@ async function updateImagingFile(
 ) {
   const admin = supabaseAdmin();
 
-  const { eventMeta, imaging, files, fileIndex, file } = await loadImagingFile(eventId, fileId);
+  const { eventMeta, imaging, files, fileIndex, file } = await loadImagingFile(
+    eventId,
+    fileId
+  );
 
   const updatedFile = updater(file);
   const updatedFiles = [...files];
@@ -309,7 +369,9 @@ async function getImagingJob(jobId: string) {
 
   const { data, error } = await admin
     .from("imaging_ingest_jobs")
-    .select("id, event_id, file_id, animal_id, status, attempts, max_attempts, last_error, locked_at, started_at, finished_at")
+    .select(
+      "id, event_id, file_id, animal_id, status, attempts, max_attempts, last_error, locked_at, started_at, finished_at"
+    )
     .eq("id", jobId)
     .single<ImagingIngestJobRow>();
 
@@ -338,7 +400,9 @@ async function tryLockNextQueuedImagingJob(): Promise<ImagingIngestJobRow | null
 
   const { data: candidate, error: candidateError } = await admin
     .from("imaging_ingest_jobs")
-    .select("id, event_id, file_id, animal_id, status, attempts, max_attempts, last_error, locked_at, started_at, finished_at")
+    .select(
+      "id, event_id, file_id, animal_id, status, attempts, max_attempts, last_error, locked_at, started_at, finished_at"
+    )
     .eq("status", "queued")
     .order("created_at", { ascending: true })
     .limit(1)
@@ -364,13 +428,17 @@ async function tryLockNextQueuedImagingJob(): Promise<ImagingIngestJobRow | null
     })
     .eq("id", candidate.id)
     .eq("status", "queued")
-    .select("id, event_id, file_id, animal_id, status, attempts, max_attempts, last_error, locked_at, started_at, finished_at");
+    .select(
+      "id, event_id, file_id, animal_id, status, attempts, max_attempts, last_error, locked_at, started_at, finished_at"
+    );
 
   if (lockError) {
     throw new Error(`Errore lock job ingest imaging: ${lockError.message}`);
   }
 
-  const locked = Array.isArray(lockedRows) ? lockedRows[0] as ImagingIngestJobRow | undefined : undefined;
+  const locked = Array.isArray(lockedRows)
+    ? (lockedRows[0] as ImagingIngestJobRow | undefined)
+    : undefined;
 
   return locked || null;
 }
@@ -434,31 +502,44 @@ export async function runImagingIngest(
     const currentStatus = normalizeImagingFileStatus(file);
 
     if (currentStatus === "ready") {
-      if (jobId) {
-        await markJobReady(jobId);
-      }
+      const studyInstanceUid =
+        String(file?.orthanc?.study_instance_uid || "").trim() || null;
 
-      return {
-        ok: true,
-        eventId,
-        fileId,
-        jobId,
-        status: "ready",
-        alreadyReady: true,
-        orthanc: {
-          instance_id: String(file?.orthanc?.instance_id || "").trim() || null,
-          study_id: String(file?.orthanc?.study_id || "").trim() || null,
-          series_id: String(file?.orthanc?.series_id || "").trim() || null,
-          study_instance_uid: String(file?.orthanc?.study_instance_uid || "").trim() || null,
-          series_instance_uid: String(file?.orthanc?.series_instance_uid || "").trim() || null,
-          sop_instance_uid: String(file?.orthanc?.sop_instance_uid || "").trim() || null,
-          viewer_url: String(file?.orthanc?.viewer_url || "").trim() || null,
-        },
-      };
+      if (studyInstanceUid) {
+        const { baseUrl, username, password } = getOrthancConfig();
+        const authHeader = createOrthancBasicAuthHeader(username, password);
+        const exists = await orthancStudyExists(baseUrl, authHeader, studyInstanceUid);
+
+        if (exists) {
+          if (jobId) {
+            await markJobReady(jobId);
+          }
+
+          return {
+            ok: true,
+            eventId,
+            fileId,
+            jobId,
+            status: "ready",
+            alreadyReady: true,
+            orthanc: {
+              instance_id: String(file?.orthanc?.instance_id || "").trim() || null,
+              study_id: String(file?.orthanc?.study_id || "").trim() || null,
+              series_id: String(file?.orthanc?.series_id || "").trim() || null,
+              study_instance_uid: studyInstanceUid,
+              series_instance_uid:
+                String(file?.orthanc?.series_instance_uid || "").trim() || null,
+              sop_instance_uid:
+                String(file?.orthanc?.sop_instance_uid || "").trim() || null,
+              viewer_url: String(file?.orthanc?.viewer_url || "").trim() || null,
+            },
+          };
+        }
+      }
     }
 
     if (currentStatus !== "processing") {
-      await updateImagingFile(eventId, fileId, (currentFile) => ({
+      await updateImagingFile(eventId, fileId, currentFile => ({
         ...currentFile,
         status: "processing",
       }));
@@ -471,12 +552,18 @@ export async function runImagingIngest(
     }
 
     const orthancData = await importDicomFileToOrthanc(filePath);
-    const viewerBaseUrl = String(process.env.NEXT_PUBLIC_ORTHANC_PUBLIC_URL || "").trim().replace(/\/+$/, "");
-    const viewerUrl = orthancData.studyInstanceUID && viewerBaseUrl
-      ? buildOhifViewerUrl(viewerBaseUrl, orthancData.studyInstanceUID)
-      : null;
+    const viewerBaseUrl = String(
+      process.env.NEXT_PUBLIC_ORTHANC_PUBLIC_URL || ""
+    )
+      .trim()
+      .replace(/\/+$/, "");
 
-    await updateImagingFile(eventId, fileId, (currentFile) => ({
+    const viewerUrl =
+      orthancData.studyInstanceUID && viewerBaseUrl
+        ? buildOhifViewerUrl(viewerBaseUrl, orthancData.studyInstanceUID)
+        : null;
+
+    await updateImagingFile(eventId, fileId, currentFile => ({
       ...currentFile,
       status: "ready",
       orthanc: {
@@ -515,7 +602,7 @@ export async function runImagingIngest(
     const message = err instanceof Error ? err.message : "Unknown error";
 
     try {
-      await updateImagingFile(eventId, fileId, (currentFile) => ({
+      await updateImagingFile(eventId, fileId, currentFile => ({
         ...currentFile,
         status: "failed",
       }));

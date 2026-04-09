@@ -75,7 +75,9 @@ async function getProfessionalRole(userId: string) {
   return String(result.data?.role || "").trim() || null;
 }
 
-async function resolveAuthenticatedUser(req: Request): Promise<AuthenticatedUserResult | null> {
+async function resolveAuthenticatedUser(
+  req: Request
+): Promise<AuthenticatedUserResult | null> {
   const token = getBearerToken(req);
 
   if (token) {
@@ -94,7 +96,8 @@ async function resolveAuthenticatedUser(req: Request): Promise<AuthenticatedUser
 
     if (!bearerUserResp.error && bearerUserResp.data?.user) {
       return {
-        supabase: bearerSupabase as Awaited<ReturnType<typeof createServerSupabaseClient>>,
+        supabase:
+          bearerSupabase as Awaited<ReturnType<typeof createServerSupabaseClient>>,
         user: bearerUserResp.data.user,
       };
     }
@@ -123,15 +126,62 @@ async function resolveAuthenticatedUser(req: Request): Promise<AuthenticatedUser
 }
 
 function getImagingGatewayConfig() {
-  const viewerBaseUrl = String(
-    process.env.NEXT_PUBLIC_ORTHANC_PUBLIC_URL || ""
-  )
+  const viewerBaseUrl = String(process.env.NEXT_PUBLIC_ORTHANC_PUBLIC_URL || "")
     .trim()
     .replace(/\/+$/, "");
 
+  const orthancBaseUrl = String(process.env.ORTHANC_BASE_URL || "")
+    .trim()
+    .replace(/\/+$/, "");
+
+  const username = String(process.env.ORTHANC_USERNAME || "").trim();
+  const password = String(process.env.ORTHANC_PASSWORD || "").trim();
+
   return {
     viewerBaseUrl,
+    orthancBaseUrl,
+    username,
+    password,
   };
+}
+
+function createOptionalOrthancHeaders(username: string, password: string) {
+  const headers: Record<string, string> = {};
+
+  if (username && password) {
+    headers.Authorization = `Basic ${Buffer.from(`${username}:${password}`).toString(
+      "base64"
+    )}`;
+  }
+
+  return headers;
+}
+
+async function orthancStudyExists(
+  orthancBaseUrl: string,
+  authHeaders: Record<string, string>,
+  studyInstanceUid: string
+): Promise<boolean> {
+  const url =
+    `${orthancBaseUrl}/orthanc/dicom-web/studies?limit=1&offset=0&fuzzymatching=false` +
+    `&StudyInstanceUID=${encodeURIComponent(studyInstanceUid)}`;
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      ...authHeaders,
+      Accept: "application/dicom+json",
+    },
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Errore verifica studio Orthanc: ${response.status} ${text}`);
+  }
+
+  const json = (await response.json().catch(() => null)) as unknown;
+  return Array.isArray(json) && json.length > 0;
 }
 
 function buildOhifViewerUrl(viewerBaseUrl: string, studyInstanceUid: string) {
@@ -144,11 +194,11 @@ function buildOhifViewerUrl(viewerBaseUrl: string, studyInstanceUid: string) {
   )}`;
 }
 
-function dicomViewError(message: string, status = 503) {
+function dicomViewError(message: string, status = 503, code = "IMAGING_VIEW_NOT_READY") {
   return NextResponse.json(
     {
       error: message,
-      code: "IMAGING_VIEW_NOT_READY",
+      code,
     },
     { status }
   );
@@ -277,19 +327,38 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const { viewerBaseUrl } = getImagingGatewayConfig();
+    const { viewerBaseUrl, orthancBaseUrl, username, password } =
+      getImagingGatewayConfig();
 
     if (!viewerBaseUrl) {
       return dicomViewError("Viewer DICOM non configurato correttamente.", 500);
     }
 
-    const studyInstanceUid = String(
-      file?.orthanc?.study_instance_uid || ""
-    ).trim();
+    if (!orthancBaseUrl) {
+      return dicomViewError("Orthanc non configurato correttamente.", 500);
+    }
+
+    const studyInstanceUid = String(file?.orthanc?.study_instance_uid || "").trim();
 
     if (!studyInstanceUid) {
-      return dicomViewError(
-        "Studio DICOM non ancora disponibile per il viewer."
+      return dicomViewError("Studio DICOM non ancora disponibile per il viewer.");
+    }
+
+    const authHeaders = createOptionalOrthancHeaders(username, password);
+    const exists = await orthancStudyExists(
+      orthancBaseUrl,
+      authHeaders,
+      studyInstanceUid
+    );
+
+    if (!exists) {
+      return NextResponse.json(
+        {
+          error: "Studio DICOM non ancora disponibile in Orthanc.",
+          code: "IMAGING_VIEW_PROCESSING",
+          status: "processing",
+        },
+        { status: 409 }
       );
     }
 

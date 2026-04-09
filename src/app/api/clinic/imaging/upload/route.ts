@@ -41,7 +41,9 @@ async function getProfessionalRole(userId: string) {
   return String(result.data?.role || "").trim() || null;
 }
 
-async function resolveAuthenticatedUser(req: Request): Promise<AuthenticatedUserResult | null> {
+async function resolveAuthenticatedUser(
+  req: Request
+): Promise<AuthenticatedUserResult | null> {
   const token = getBearerToken(req);
 
   if (token) {
@@ -114,11 +116,21 @@ function isAllowedImagingFile(fileName: string, mimeType?: string | null) {
     "image/png",
   ]);
 
-  const allowedImagingExtensions = [".dcm", ".dicom", ".pdf", ".jpg", ".jpeg", ".png"];
+  const allowedImagingExtensions = [
+    ".dcm",
+    ".dicom",
+    ".pdf",
+    ".jpg",
+    ".jpeg",
+    ".png",
+  ];
 
   const lowerName = String(fileName || "").toLowerCase();
-  const hasAllowedExtension = allowedImagingExtensions.some((ext) => lowerName.endsWith(ext));
-  const hasAllowedMime = !mimeType || allowedImagingMimeTypes.has(String(mimeType).toLowerCase());
+  const hasAllowedExtension = allowedImagingExtensions.some(ext =>
+    lowerName.endsWith(ext)
+  );
+  const hasAllowedMime =
+    !mimeType || allowedImagingMimeTypes.has(String(mimeType).toLowerCase());
 
   return hasAllowedExtension || hasAllowedMime;
 }
@@ -136,9 +148,7 @@ function isDicomImagingFile(fileName: string, mimeType?: string | null) {
 
 const MAX_IMAGING_FILE_SIZE_BYTES = 500 * 1024 * 1024;
 
-async function trackImagingUpload(
-  payload: Record<string, unknown>
-) {
+async function trackImagingUpload(payload: Record<string, unknown>) {
   try {
     await supabaseAdmin().from("clinic_imaging_uploads").insert(payload);
   } catch (err) {
@@ -149,6 +159,12 @@ async function trackImagingUpload(
 export async function POST(req: Request) {
   let uploadedPathToCleanup: string | null = null;
   let trackedAnimalId: string | null = null;
+  let trackedEventId: string | null = null;
+  let trackedFileId: string | null = null;
+  let trackedMime: string | null = null;
+  let trackedFileName: string | null = null;
+  let trackedFileSize: number | null = null;
+  let trackedModality: string | null = null;
 
   const auth = await resolveAuthenticatedUser(req);
   if (!auth) {
@@ -180,6 +196,8 @@ export async function POST(req: Request) {
     const visibility = String(formData.get("visibility") || "").trim() || "owner";
     const eventDateRaw = String(formData.get("eventDate") || "").trim();
 
+    trackedModality = modality;
+
     if (!animalId) {
       return NextResponse.json({ error: "animalId mancante" }, { status: 400 });
     }
@@ -203,7 +221,8 @@ export async function POST(req: Request) {
 
     if (mode === "prepare") {
       const originalFileName = String(formData.get("fileName") || "").trim();
-      const mime = String(formData.get("fileType") || "").trim() || "application/octet-stream";
+      const mime =
+        String(formData.get("fileType") || "").trim() || "application/octet-stream";
       const size = parsePositiveInt(formData.get("fileSize"));
 
       if (!originalFileName) {
@@ -275,8 +294,16 @@ export async function POST(req: Request) {
       const fileId = String(formData.get("fileId") || "").trim();
       const path = String(formData.get("path") || "").trim();
       const fileName = String(formData.get("fileName") || "").trim();
-      const mime = String(formData.get("fileType") || "").trim() || "application/octet-stream";
+      const mime =
+        String(formData.get("fileType") || "").trim() || "application/octet-stream";
       const size = parsePositiveInt(formData.get("fileSize"));
+
+      trackedEventId = eventId || null;
+      trackedFileId = fileId || null;
+      trackedMime = mime;
+      trackedFileName = fileName || null;
+      trackedFileSize = size;
+      trackedModality = modality;
 
       if (!eventId || !fileId || !path || !fileName || !size) {
         return NextResponse.json(
@@ -470,12 +497,12 @@ export async function POST(req: Request) {
       organization_id: null,
       user_id: user.id,
       animal_id: trackedAnimalId,
-      event_id: null,
-      file_id: null,
-      file_name: null,
-      file_size: null,
-      mime: null,
-      modality: null,
+      event_id: trackedEventId,
+      file_id: trackedFileId,
+      file_name: trackedFileName,
+      file_size: trackedFileSize,
+      mime: trackedMime,
+      modality: trackedModality,
       status: "failed",
     });
 
