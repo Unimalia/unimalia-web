@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { createSignedDownloadUrl, downloadPrivateFileBuffer } from "@/lib/storage";
+import { createSignedDownloadUrl } from "@/lib/storage";
 import { supabaseAdmin, createServerSupabaseClient } from "@/lib/supabase/server";
 import { getBearerToken } from "@/lib/server/bearer";
 import { requireOwnerOrGrant } from "@/lib/server/requireOwnerOrGrant";
@@ -15,12 +15,15 @@ type ImagingOrthancMeta = {
   viewer_url?: string | null;
 };
 
+type ImagingFileStatus = "uploaded" | "processing" | "ready" | "failed";
+
 type ImagingFileMeta = {
   id?: string | null;
   path?: string | null;
   name?: string | null;
   mime?: string | null;
   size?: number | null;
+  status?: ImagingFileStatus | null;
   orthanc?: ImagingOrthancMeta | null;
 };
 
@@ -31,18 +34,6 @@ type ClinicEventMeta = {
     files?: ImagingFileMeta[] | null;
   } | null;
   [key: string]: unknown;
-};
-
-type OrthancInstanceUploadResponse = {
-  ID?: string;
-  ParentStudy?: string;
-  ParentSeries?: string;
-};
-
-type OrthancSimplifiedTagsResponse = {
-  StudyInstanceUID?: string | null;
-  SeriesInstanceUID?: string | null;
-  SOPInstanceUID?: string | null;
 };
 
 type ProfessionalProfileRoleRow = {
@@ -132,35 +123,15 @@ async function resolveAuthenticatedUser(req: Request): Promise<AuthenticatedUser
 }
 
 function getImagingGatewayConfig() {
-  const orthancBaseUrl = String(process.env.ORTHANC_BASE_URL || "")
-    .trim()
-    .replace(/\/+$/, "");
-
   const viewerBaseUrl = String(
     process.env.NEXT_PUBLIC_ORTHANC_PUBLIC_URL || ""
   )
     .trim()
     .replace(/\/+$/, "");
 
-  const username = String(process.env.ORTHANC_USERNAME || "").trim();
-  const password = String(process.env.ORTHANC_PASSWORD || "").trim();
-
   return {
-    orthancBaseUrl,
     viewerBaseUrl,
-    username,
-    password,
   };
-}
-
-function createOptionalOrthancHeaders(username: string, password: string) {
-  const headers: Record<string, string> = {};
-
-  if (username && password) {
-    headers.Authorization = `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`;
-  }
-
-  return headers;
 }
 
 function buildOhifViewerUrl(viewerBaseUrl: string, studyInstanceUid: string) {
@@ -173,60 +144,6 @@ function buildOhifViewerUrl(viewerBaseUrl: string, studyInstanceUid: string) {
   )}`;
 }
 
-async function orthancStudyExists(
-  orthancBaseUrl: string,
-  authHeaders: Record<string, string>,
-  studyInstanceUid: string
-): Promise<boolean> {
-  const url =
-    `${orthancBaseUrl}/dicom-web/studies?limit=1` +
-    `&offset=0&fuzzymatching=false` +
-    `&StudyInstanceUID=${encodeURIComponent(studyInstanceUid)}`;
-
-  const response = await fetch(url, {
-    method: "GET",
-    headers: {
-      ...authHeaders,
-      Accept: "application/dicom+json",
-    },
-    cache: "no-store",
-  });
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`Errore verifica studio Orthanc: ${response.status} ${text}`);
-  }
-
-  const json = (await response.json().catch(() => null)) as unknown;
-
-  return Array.isArray(json) && json.length > 0;
-}
-
-async function fetchOrthancSimplifiedTags(
-  orthancBaseUrl: string,
-  authHeaders: Record<string, string>,
-  orthancInstanceId: string
-): Promise<OrthancSimplifiedTagsResponse> {
-  const response = await fetch(
-    `${orthancBaseUrl}/instances/${encodeURIComponent(orthancInstanceId)}/simplified-tags`,
-    {
-      method: "GET",
-      headers: {
-        ...authHeaders,
-        Accept: "application/json",
-      },
-      cache: "no-store",
-    }
-  );
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`Errore lettura simplified-tags Orthanc: ${response.status} ${text}`);
-  }
-
-  return (await response.json()) as OrthancSimplifiedTagsResponse;
-}
-
 function dicomViewError(message: string, status = 503) {
   return NextResponse.json(
     {
@@ -235,6 +152,21 @@ function dicomViewError(message: string, status = 503) {
     },
     { status }
   );
+}
+
+function normalizeImagingFileStatus(file: ImagingFileMeta): ImagingFileStatus {
+  const rawStatus = String(file?.status || "").trim().toLowerCase();
+
+  if (
+    rawStatus === "uploaded" ||
+    rawStatus === "processing" ||
+    rawStatus === "ready" ||
+    rawStatus === "failed"
+  ) {
+    return rawStatus;
+  }
+
+  return "uploaded";
 }
 
 export async function GET(req: NextRequest) {
@@ -321,186 +253,58 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(signedDownloadUrl);
     }
 
-    const { orthancBaseUrl, viewerBaseUrl, username, password } = getImagingGatewayConfig();
+    const status = normalizeImagingFileStatus(file);
 
-    console.log("[IMAGING VIEW] Config check", {
-      orthancBaseUrl,
-      viewerBaseUrl,
-      username: username ? "***" : null,
-      hasPassword: !!password,
-    });
+    if (status === "uploaded" || status === "processing") {
+      return NextResponse.json(
+        {
+          error: "File DICOM in elaborazione.",
+          code: "IMAGING_VIEW_PROCESSING",
+          status,
+        },
+        { status: 409 }
+      );
+    }
 
-    if (!orthancBaseUrl || !viewerBaseUrl) {
-      console.log("[IMAGING VIEW] Missing config for DICOM viewer");
+    if (status === "failed") {
+      return NextResponse.json(
+        {
+          error: "Elaborazione DICOM non riuscita. Riprovare l'ingest.",
+          code: "IMAGING_VIEW_FAILED",
+          status,
+        },
+        { status: 409 }
+      );
+    }
+
+    const { viewerBaseUrl } = getImagingGatewayConfig();
+
+    if (!viewerBaseUrl) {
       return dicomViewError("Viewer DICOM non configurato correttamente.", 500);
     }
 
-    const authHeaders = createOptionalOrthancHeaders(username, password);
-
-    const existingStudyInstanceUid = String(
+    const studyInstanceUid = String(
       file?.orthanc?.study_instance_uid || ""
     ).trim();
 
-    if (existingStudyInstanceUid) {
-      console.log("[IMAGING VIEW] Checking existing study", {
-        existingStudyInstanceUid,
-        orthancBaseUrl,
-        hasAuth: !!username && !!password,
-      });
-
-      const exists = await orthancStudyExists(
-        orthancBaseUrl,
-        authHeaders,
-        existingStudyInstanceUid
-      );
-
-      console.log("[IMAGING VIEW] Study exists result", { exists });
-
-      if (exists) {
-        const viewerUrl = buildOhifViewerUrl(viewerBaseUrl, existingStudyInstanceUid);
-        console.log("[IMAGING VIEW] Built viewer URL from existing study", { viewerUrl });
-
-        if (viewerUrl) {
-          return NextResponse.redirect(viewerUrl);
-        }
-      }
-    }
-
-    console.log("[IMAGING VIEW] Downloading DICOM from private storage", { filePath });
-
-    const dicomBuffer = await downloadPrivateFileBuffer(filePath);
-    const dicomBytes = new Uint8Array(dicomBuffer);
-
-    console.log("[IMAGING VIEW] DICOM buffer size", {
-      bufferSize: dicomBytes.length,
-      filePath,
-    });
-
-    const uploadUrl = `${orthancBaseUrl}/instances`;
-
-    console.log("[IMAGING VIEW] Starting Orthanc upload", {
-      uploadUrl,
-      bufferSize: dicomBytes.length,
-      hasAuth: !!username && !!password,
-    });
-
-    const uploadResp = await fetch(uploadUrl, {
-      method: "POST",
-      headers: {
-        ...authHeaders,
-        "Content-Type": "application/dicom",
-        Accept: "application/json",
-      },
-      body: dicomBytes,
-      cache: "no-store",
-    });
-
-    console.log("[IMAGING VIEW] Orthanc upload response", {
-      status: uploadResp.status,
-      statusText: uploadResp.statusText,
-      ok: uploadResp.ok,
-    });
-
-    const uploadJson = (await uploadResp.json().catch(() => null)) as OrthancInstanceUploadResponse | null;
-
-    console.log("[IMAGING VIEW] Upload JSON response", {
-      uploadJson,
-      hasId: !!uploadJson?.ID,
-    });
-
-    if (!uploadResp.ok || !uploadJson?.ID) {
-      console.log("[IMAGING VIEW] Upload failed for DICOM", {
-        uploadOk: uploadResp.ok,
-        hasId: !!uploadJson?.ID,
-        uploadStatus: uploadResp.status,
-      });
-
-      return dicomViewError(
-        "Il file DICOM non è ancora pronto per il viewer oppure l'import in Orthanc è fallito."
-      );
-    }
-
-    const orthancInstanceId = String(uploadJson.ID || "").trim() || null;
-    const orthancStudyId = String(uploadJson.ParentStudy || "").trim() || null;
-    const orthancSeriesId = String(uploadJson.ParentSeries || "").trim() || null;
-
-    if (!orthancInstanceId) {
-      console.log("[IMAGING VIEW] Missing instance ID for DICOM");
-      return dicomViewError("Istanza DICOM non disponibile dopo l'import.");
-    }
-
-    console.log("[IMAGING VIEW] Fetching Orthanc tags", {
-      orthancInstanceId,
-      tagsUrl: `${orthancBaseUrl}/instances/${orthancInstanceId}/simplified-tags`,
-    });
-
-    const tags = await fetchOrthancSimplifiedTags(
-      orthancBaseUrl,
-      authHeaders,
-      orthancInstanceId
-    );
-
-    console.log("[IMAGING VIEW] Tags response", {
-      studyInstanceUid: tags.StudyInstanceUID,
-      seriesInstanceUid: tags.SeriesInstanceUID,
-      sopInstanceUid: tags.SOPInstanceUID,
-    });
-
-    const studyInstanceUid = String(tags.StudyInstanceUID || "").trim() || null;
-    const seriesInstanceUid = String(tags.SeriesInstanceUID || "").trim() || null;
-    const sopInstanceUid = String(tags.SOPInstanceUID || "").trim() || null;
-
     if (!studyInstanceUid) {
-      console.log("[IMAGING VIEW] Missing StudyInstanceUID for DICOM");
-      return dicomViewError("StudyInstanceUID non disponibile per questo file DICOM.");
+      return dicomViewError(
+        "Studio DICOM non ancora disponibile per il viewer."
+      );
     }
 
-    const viewerUrl = buildOhifViewerUrl(viewerBaseUrl, studyInstanceUid);
+    const viewerUrl =
+      String(file?.orthanc?.viewer_url || "").trim() ||
+      buildOhifViewerUrl(viewerBaseUrl, studyInstanceUid);
 
-    console.log("[IMAGING VIEW] Final viewer URL", { viewerUrl });
-
-    const updatedFile: ImagingFileMeta = {
-      ...file,
-      orthanc: {
-        ...(file?.orthanc || {}),
-        instance_id: orthancInstanceId,
-        study_id: orthancStudyId,
-        series_id: orthancSeriesId,
-        study_instance_uid: studyInstanceUid,
-        series_instance_uid: seriesInstanceUid,
-        sop_instance_uid: sopInstanceUid,
-        viewer_url: viewerUrl,
-      },
-    };
-
-    const updatedFiles = [...files];
-    updatedFiles[fileIndex] = updatedFile;
-
-    const updatedMeta: ClinicEventMeta = {
-      ...eventMeta,
-      imaging: {
-        ...(imaging || {}),
-        files: updatedFiles,
-      },
-    };
-
-    await admin
-      .from("animal_clinic_events")
-      .update({ meta: updatedMeta })
-      .eq("id", eventId);
-
-    if (viewerUrl) {
-      console.log("[IMAGING VIEW] Redirecting to viewer", { viewerUrl });
-      return NextResponse.redirect(viewerUrl);
+    if (!viewerUrl) {
+      return dicomViewError("Viewer DICOM non disponibile per questo studio.");
     }
 
-    console.log("[IMAGING VIEW] Viewer URL missing after successful import");
-    return dicomViewError("Viewer DICOM non disponibile dopo l'import.");
+    return NextResponse.redirect(viewerUrl);
   } catch (err: unknown) {
-    console.error("[IMAGING VIEW] Complete error details", {
+    console.error("[IMAGING VIEW] Error", {
       error: err instanceof Error ? err.message : "Unknown error",
-      stack: err instanceof Error ? err.stack : undefined,
-      name: err instanceof Error ? err.name : undefined,
     });
 
     return NextResponse.json(
