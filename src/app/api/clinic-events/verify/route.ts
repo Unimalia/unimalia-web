@@ -178,7 +178,6 @@ export async function POST(req: Request) {
         verified_at: nowIso,
         verified_by_user_id: user.id,
         verified_by_organization_id: grant.actor_organization_id ?? null,
-        verified_by_member_id: user.id,
         verified_by_label: verifierLabel,
       })
       .eq("id", id)
