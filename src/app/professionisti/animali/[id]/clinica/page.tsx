@@ -1747,6 +1747,7 @@ export default function ClinicaPage() {
                 <option value="exam">🔬 Esame</option>
                 <option value="imaging">🖼️ Imaging</option>
                 <option value="therapy">💊 Terapia</option>
+                <option value="allergy">⚠️ Allergia</option>
                 <option value="chronic_condition">📌 Patologia cronica</option>
                 <option value="follow_up">🔁 Prossimo ricontrollo</option>
                 <option value="surgery">🏥 Intervento chirurgico</option>
@@ -2843,6 +2844,7 @@ export default function ClinicaPage() {
                                 <option value="exam">🔬 Esame</option>
                                 <option value="imaging">🖼️ Imaging</option>
                                 <option value="therapy">💊 Terapia</option>
+                                <option value="allergy">⚠️ Allergia</option>
                                 <option value="chronic_condition">📌 Patologia cronica</option>
                                 <option value="follow_up">🔁 Prossimo ricontrollo</option>
                                 <option value="surgery">🏥 Intervento chirurgico</option>
