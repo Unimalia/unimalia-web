@@ -64,10 +64,10 @@ function Section({
 
 export default function ComeRegistrareAnimalePage() {
   const breadcrumbJsonLd = buildIdentityBreadcrumbJsonLd([
-    { name: "Home", item: "https://www.unimalia.it/" },
+    { name: "Home", item: "https://unimalia.it/" },
     {
       name: "Come registrare un animale",
-      item: "https://www.unimalia.it/identita-animale/come-registrare-un-animale",
+      item: "https://unimalia.it/identita-animale/come-registrare-un-animale",
     },
   ]);
 

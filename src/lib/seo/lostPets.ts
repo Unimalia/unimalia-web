@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import type { SeoCity } from "./cities";
 
-const SITE_URL = "https://www.unimalia.it";
+const SITE_URL = "https://unimalia.it";
 
 export function buildAbsoluteUrl(path: string) {
   return `${SITE_URL}${path.startsWith("/") ? path : `/${path}`}`;

@@ -64,10 +64,10 @@ function Section({
 
 export default function IdentityAnimalDigitalPage() {
   const breadcrumbJsonLd = buildIdentityBreadcrumbJsonLd([
-    { name: "Home", item: "https://www.unimalia.it/" },
+    { name: "Home", item: "https://unimalia.it/" },
     {
       name: "Cos’è l’identità animale digitale",
-      item: "https://www.unimalia.it/identita-animale/cos-e-identita-animale-digitale",
+      item: "https://unimalia.it/identita-animale/cos-e-identita-animale-digitale",
     },
   ]);
 

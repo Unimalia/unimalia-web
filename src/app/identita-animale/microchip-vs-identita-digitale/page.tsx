@@ -64,10 +64,10 @@ function Section({
 
 export default function MicrochipVsIdentitaDigitalePage() {
   const breadcrumbJsonLd = buildIdentityBreadcrumbJsonLd([
-    { name: "Home", item: "https://www.unimalia.it/" },
+    { name: "Home", item: "https://unimalia.it/" },
     {
       name: "Microchip vs identità digitale",
-      item: "https://www.unimalia.it/identita-animale/microchip-vs-identita-digitale",
+      item: "https://unimalia.it/identita-animale/microchip-vs-identita-digitale",
     },
   ]);
 
