@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { requireOwnerOrGrant } from "@/lib/server/requireOwnerOrGrant";
+import { requireClinicOperatorSession } from "@/lib/server/requireClinicOperatorSession";
 import { safeWriteAudit } from "@/lib/server/safeAudit";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { sendOwnerAnimalUpdateEmail } from "@/lib/email/sendOwnerAnimalUpdateEmail";
@@ -152,6 +153,11 @@ function sanitizeMeta(input: unknown): Record<string, unknown> | null {
     "created_by_organization_name",
     "has_attachments",
     "priority",
+    "active_operator_user_id",
+    "active_operator_professional_id",
+    "active_operator_label",
+    "operator_session_id",
+    "signature_mode",
   ]);
 
   const output: Record<string, unknown> = {};
@@ -191,6 +197,17 @@ export async function POST(req: Request) {
     return unauthorized();
   }
 
+  const operatorContext = await requireClinicOperatorSession(req, user.id);
+
+  if (!operatorContext.ok) {
+    return NextResponse.json(
+      { error: operatorContext.reason },
+      { status: operatorContext.status }
+    );
+  }
+
+  const operator = operatorContext.data;
+
   const body = (await req.json().catch(() => null)) as Body | null;
 
   if (!body) {
@@ -210,8 +227,8 @@ export async function POST(req: Request) {
   if (!isVetUser(user)) {
     await safeWriteAudit(supabase, {
       req,
-      actor_user_id: user.id,
-      actor_organization_id: null,
+      actor_user_id: operator.activeOperatorUserId,
+      actor_organization_id: operator.organizationId,
       action: "event.create",
       target_type: "animal",
       target_id: animalId,
@@ -233,8 +250,8 @@ export async function POST(req: Request) {
   if (!grant.ok) {
     await safeWriteAudit(supabase, {
       req,
-      actor_user_id: user.id,
-      actor_organization_id: null,
+      actor_user_id: operator.activeOperatorUserId,
+      actor_organization_id: operator.organizationId,
       action: "event.create",
       target_type: "animal",
       target_id: animalId,
@@ -299,9 +316,6 @@ export async function POST(req: Request) {
     return badRequest("therapyEndDate non può essere precedente a therapyStartDate");
   }
 
-  const vetSignature =
-    typeof body.vetSignature === "string" ? body.vetSignature.trim() || null : null;
-
   const priority: EventPriority | null =
     body.priority === "low" ||
     body.priority === "normal" ||
@@ -330,7 +344,7 @@ export async function POST(req: Request) {
     const { data: professionalRow } = await admin
       .from("professionals")
       .select("display_name,business_name,first_name,last_name")
-      .eq("owner_id", user.id)
+      .eq("owner_id", operator.activeOperatorUserId)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle<ProfessionalRow>();
@@ -351,9 +365,13 @@ export async function POST(req: Request) {
 
   if (weightKg) meta.weight_kg = weightKg;
 
-  meta.created_by_member_id = user.id;
-  meta.created_by_member_label =
-    vetSignature && vetSignature.length <= 120 ? vetSignature : user.email || "Veterinario";
+  meta.created_by_member_id = operator.activeOperatorUserId;
+  meta.created_by_member_label = operator.activeOperatorLabel;
+  meta.active_operator_user_id = operator.activeOperatorUserId;
+  meta.active_operator_professional_id = operator.activeOperatorProfessionalId;
+  meta.active_operator_label = operator.activeOperatorLabel;
+  meta.operator_session_id = operator.operatorSessionId;
+  meta.signature_mode = "operator_session_pin";
 
   if (priority) meta.priority = priority;
   if (actorOrgName) meta.created_by_organization_name = actorOrgName;
@@ -377,12 +395,13 @@ export async function POST(req: Request) {
         description,
         visibility,
         source,
-        created_by_user_id: user.id,
+        created_by_user_id: operator.activeOperatorUserId,
         event_date: dateStr,
         verified_at: nowIso,
-        verified_by_user_id: user.id,
+        verified_by_user_id: operator.activeOperatorUserId,
         verified_by_organization_id: verifiedByOrganizationId,
-        verified_by_label: user.email || "Veterinario",
+        verified_by_member_id: operator.activeOperatorUserId,
+        verified_by_label: operator.activeOperatorLabel,
         meta,
         priority: priority || null,
         status: "active",
@@ -395,8 +414,8 @@ export async function POST(req: Request) {
     if (error || !data) {
       await safeWriteAudit(supabase, {
         req,
-        actor_user_id: user.id,
-        actor_organization_id: grant.actor_organization_id,
+        actor_user_id: operator.activeOperatorUserId,
+        actor_organization_id: grant.actor_organization_id ?? operator.organizationId,
         action: "event.create",
         target_type: "animal",
         target_id: animalId,
@@ -412,9 +431,9 @@ export async function POST(req: Request) {
       await admin.from("animal_clinic_event_audit").insert({
         event_id: data.id,
         animal_id: animalId,
-        actor_user_id: user.id,
-        actor_organization_id: grant.actor_organization_id,
-        actor_member_id: user.id,
+        actor_user_id: operator.activeOperatorUserId,
+        actor_organization_id: grant.actor_organization_id ?? operator.organizationId,
+        actor_member_id: operator.activeOperatorUserId,
         action: "create",
         previous_data: null,
         next_data: data,
@@ -470,7 +489,7 @@ export async function POST(req: Request) {
           weightKg,
           therapyStartDate,
           therapyEndDate,
-          vetSignature,
+          vetSignature: operator.activeOperatorLabel,
           meta,
           attachments: null,
         });
@@ -535,8 +554,8 @@ export async function POST(req: Request) {
 
     await safeWriteAudit(supabase, {
       req,
-      actor_user_id: user.id,
-      actor_organization_id: grant.actor_organization_id,
+      actor_user_id: operator.activeOperatorUserId,
+      actor_organization_id: grant.actor_organization_id ?? operator.organizationId,
       action: "event.create",
       target_type: "event",
       target_id: data.id,
@@ -548,8 +567,8 @@ export async function POST(req: Request) {
   } catch (error: unknown) {
     await safeWriteAudit(supabase, {
       req,
-      actor_user_id: user.id,
-      actor_organization_id: grant.actor_organization_id,
+      actor_user_id: operator.activeOperatorUserId,
+      actor_organization_id: grant.actor_organization_id ?? operator.organizationId,
       action: "event.create",
       target_type: "animal",
       target_id: animalId,

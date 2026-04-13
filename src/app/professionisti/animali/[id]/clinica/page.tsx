@@ -7,6 +7,8 @@ import { supabase } from "@/lib/supabaseClient";
 import { isVetUser } from "@/app/professionisti/_components/ProShell";
 import { authHeaders } from "@/lib/client/authHeaders";
 import { multipartUpload } from "@/lib/client/imagingMultipartUpload";
+import { getWorkstationKey } from "@/lib/client/workstationKey";
+import { getOperatorSessionCurrent, type OperatorSession } from "@/lib/client/operatorSession";
 
 type ClinicEventType =
   | "visit"
@@ -51,6 +53,13 @@ type ClinicEventMeta = {
   vaccine_types?: string[] | null;
   batch_number?: string | null;
   next_due_date?: string | null;
+  active_operator_user_id?: string | null;
+  active_operator_professional_id?: string | null;
+  active_operator_label?: string | null;
+  operator_session_id?: string | null;
+  signature_mode?: string | null;
+  created_by_member_label?: string | null;
+  updated_by_member_label?: string | null;
 } & Record<string, unknown>;
 
 type ClinicEventRow = {
@@ -357,7 +366,19 @@ function hasVerificationAudit(ev: ClinicEventRow) {
 }
 
 function getEventAuthorLabel(ev: ClinicEventRow) {
+  const activeOperatorLabel =
+    typeof ev.meta?.active_operator_label === "string" ? ev.meta.active_operator_label.trim() : "";
+
+  if (activeOperatorLabel) return activeOperatorLabel;
   if (ev.verified_by_label) return ev.verified_by_label;
+
+  const createdByMemberLabel =
+    typeof ev.meta?.created_by_member_label === "string"
+      ? ev.meta.created_by_member_label.trim()
+      : "";
+
+  if (createdByMemberLabel) return createdByMemberLabel;
+
   if (ev.source === "owner") return "Proprietario";
   if (ev.source === "veterinarian") return "Veterinario";
   if (ev.source === "professional") return "Clinica";
@@ -384,6 +405,9 @@ export default function ClinicaPage() {
   const [animal, setAnimal] = useState<AnimalSummary | null>(null);
   const [animalSpecies, setAnimalSpecies] = useState<string | null>(null);
 
+  const [operatorSession, setOperatorSession] = useState<OperatorSession | null>(null);
+  const [workstationKey, setWorkstationKey] = useState<string>("");
+
   const [eventsLoading, setEventsLoading] = useState(false);
   const [events, setEvents] = useState<ClinicEventRow[]>([]);
   const [eventsErr, setEventsErr] = useState<string | null>(null);
@@ -405,7 +429,6 @@ export default function ClinicaPage() {
   const [newWeightKg, setNewWeightKg] = useState<string>("");
   const [newNotes, setNewNotes] = useState<string>("");
   const [newFiles, setNewFiles] = useState<File[]>([]);
-  const [newVetSignature, setNewVetSignature] = useState<string>("");
   const [newImagingModality, setNewImagingModality] = useState<string>("RX");
   const [newImagingBodyPart, setNewImagingBodyPart] = useState<string>("");
   const [uploadDrafts, setUploadDrafts] = useState<UploadDraft[]>([]);
@@ -464,6 +487,26 @@ export default function ClinicaPage() {
     );
   }
 
+  const buildClinicWriteHeaders = useCallback(async () => {
+    const headers = await authHeaders();
+    const wsKey = workstationKey || getWorkstationKey();
+    return {
+      ...headers,
+      "x-workstation-key": wsKey,
+    };
+  }, [workstationKey]);
+
+  const refreshOperatorSession = useCallback(async () => {
+    try {
+      const wsKey = getWorkstationKey();
+      setWorkstationKey(wsKey);
+      const data = await getOperatorSessionCurrent(wsKey);
+      setOperatorSession(data.session || null);
+    } catch {
+      setOperatorSession(null);
+    }
+  }, []);
+
   useEffect(() => {
     void (async () => {
       const { data: authData } = await supabase.auth.getUser();
@@ -487,8 +530,24 @@ export default function ClinicaPage() {
       setIsVet(true);
       setCurrentUserId(user.id);
       setAccessChecked(true);
+
+      const wsKey = getWorkstationKey();
+      setWorkstationKey(wsKey);
+      await refreshOperatorSession();
     })();
-  }, [id, router]);
+  }, [id, router, refreshOperatorSession]);
+
+  useEffect(() => {
+    if (!accessChecked) return;
+
+    const timer = window.setInterval(() => {
+      void refreshOperatorSession();
+    }, 60 * 1000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [accessChecked, refreshOperatorSession]);
 
   const loadClinicEvents = useCallback(async () => {
     if (!id) return;
@@ -816,6 +875,11 @@ export default function ClinicaPage() {
       return;
     }
 
+    if (!operatorSession?.id) {
+      setSaveErr("Nessun operatore attivo su questa postazione. Attivalo dal menu professionisti.");
+      return;
+    }
+
     setSaving(true);
     setSaveErr(null);
     setSaveOk(null);
@@ -855,7 +919,7 @@ export default function ClinicaPage() {
         const file = newFiles[0];
         setResumeHint(null);
 
-        const imagingAuthHeaders = await authHeaders();
+        const imagingAuthHeaders = await buildClinicWriteHeaders();
 
         setUploadPhase("Preparazione upload…");
         const prepareFd = new FormData();
@@ -957,7 +1021,6 @@ export default function ClinicaPage() {
         setNewNotes("");
         setNewFiles([]);
         setNewWeightKg("");
-        setNewVetSignature("");
         setTherapyStartDate("");
         setTherapyEndDate("");
         setSelectedVaccines([]);
@@ -972,6 +1035,7 @@ export default function ClinicaPage() {
         await loadClinicEvents();
         await loadFilesCount();
         await loadUploadDrafts();
+        await refreshOperatorSession();
 
         setSaving(false);
         return;
@@ -988,7 +1052,6 @@ export default function ClinicaPage() {
         description: newNotes.trim() || null,
         visibility: "owner" as const,
         weightKg,
-        vetSignature: newVetSignature.trim() || null,
         therapyStartDate: newType === "therapy" ? therapyStartDate || null : null,
         therapyEndDate: newType === "therapy" ? therapyEndDate || null : null,
         meta:
@@ -1010,7 +1073,7 @@ export default function ClinicaPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(await authHeaders()),
+          ...(await buildClinicWriteHeaders()),
         },
         body: JSON.stringify(payload),
       });
@@ -1049,7 +1112,7 @@ export default function ClinicaPage() {
         const upRes = await fetch("/api/clinic-events/files/upload", {
           method: "POST",
           headers: {
-            ...(await authHeaders()),
+            ...(await buildClinicWriteHeaders()),
           },
           body: fd,
         });
@@ -1073,7 +1136,6 @@ export default function ClinicaPage() {
       setNewNotes("");
       setNewFiles([]);
       setNewWeightKg("");
-      setNewVetSignature("");
       setTherapyStartDate("");
       setTherapyEndDate("");
       setSelectedVaccines([]);
@@ -1086,6 +1148,7 @@ export default function ClinicaPage() {
 
       await loadClinicEvents();
       await loadFilesCount();
+      await refreshOperatorSession();
     } catch (err) {
       console.error("[IMAGING] SAVE ERROR", err);
       setSaveErr("Errore di rete durante il salvataggio.");
@@ -1106,6 +1169,11 @@ export default function ClinicaPage() {
       return;
     }
 
+    if (!operatorSession?.id) {
+      setVerifyErr("Nessun operatore attivo su questa postazione. Attivalo dal menu professionisti.");
+      return;
+    }
+
     setVerifyingId(eventId);
     setVerifyErr(null);
 
@@ -1114,7 +1182,7 @@ export default function ClinicaPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(await authHeaders()),
+          ...(await buildClinicWriteHeaders()),
         },
         body: JSON.stringify({ eventIds: [eventId], ids: [eventId] }),
       });
@@ -1132,7 +1200,7 @@ export default function ClinicaPage() {
                 ...e,
                 verified_at: new Date().toISOString(),
                 verified_by_user_id: currentUserId,
-                verified_by_label: e.verified_by_label || "Veterinario",
+                verified_by_label: operatorSession.activeOperatorLabel || "Veterinario",
               }
             : e
         )
@@ -1140,6 +1208,7 @@ export default function ClinicaPage() {
 
       await loadClinicEvents();
       await loadFilesCount();
+      await refreshOperatorSession();
     } catch {
       setVerifyErr("Errore di rete durante la validazione.");
     } finally {
@@ -1190,6 +1259,11 @@ export default function ClinicaPage() {
       return;
     }
 
+    if (!operatorSession?.id) {
+      setVerifyErr("Nessun operatore attivo su questa postazione. Attivalo dal menu professionisti.");
+      return;
+    }
+
     setBulkVerifying(true);
     setVerifyErr(null);
 
@@ -1198,7 +1272,7 @@ export default function ClinicaPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(await authHeaders()),
+          ...(await buildClinicWriteHeaders()),
         },
         body: JSON.stringify({ eventIds: idsToVerify, ids: idsToVerify }),
       });
@@ -1217,7 +1291,7 @@ export default function ClinicaPage() {
                 ...e,
                 verified_at: nowIso,
                 verified_by_user_id: currentUserId,
-                verified_by_label: e.verified_by_label || "Veterinario",
+                verified_by_label: operatorSession.activeOperatorLabel || "Veterinario",
               }
             : e
         )
@@ -1226,6 +1300,7 @@ export default function ClinicaPage() {
       clearSelection();
       await loadClinicEvents();
       await loadFilesCount();
+      await refreshOperatorSession();
     } catch {
       setVerifyErr("Errore di rete durante la validazione.");
     } finally {
@@ -1235,15 +1310,20 @@ export default function ClinicaPage() {
 
   function canEditOrDelete(ev: ClinicEventRow) {
     if (!canWriteClinicEvents) return false;
-    if (!currentUserId) return false;
+    if (!operatorSession?.activeUserId) return false;
     if (!ev.created_by_user_id) return false;
-    return ev.created_by_user_id === currentUserId;
+    return ev.created_by_user_id === operatorSession.activeUserId;
   }
 
   async function updateDetailEvent() {
     if (!detailEvent) return;
     if (!canWriteClinicEvents) {
       setModalErr("Grant revocato: non puoi modificare eventi.");
+      return;
+    }
+
+    if (!operatorSession?.id) {
+      setModalErr("Nessun operatore attivo su questa postazione. Attivalo dal menu professionisti.");
       return;
     }
 
@@ -1255,7 +1335,7 @@ export default function ClinicaPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(await authHeaders()),
+          ...(await buildClinicWriteHeaders()),
         },
         body: JSON.stringify({
           id: detailEvent.id,
@@ -1284,6 +1364,7 @@ export default function ClinicaPage() {
       setDeleteConfirm(false);
       await loadClinicEvents();
       await loadFilesCount();
+      await refreshOperatorSession();
     } catch {
       setModalErr("Errore di rete durante la modifica.");
     } finally {
@@ -1298,6 +1379,11 @@ export default function ClinicaPage() {
       return;
     }
 
+    if (!operatorSession?.id) {
+      setModalErr("Nessun operatore attivo su questa postazione. Attivalo dal menu professionisti.");
+      return;
+    }
+
     setDeleting(true);
     setModalErr(null);
 
@@ -1306,7 +1392,7 @@ export default function ClinicaPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(await authHeaders()),
+          ...(await buildClinicWriteHeaders()),
         },
         body: JSON.stringify({ id: detailEvent.id }),
       });
@@ -1323,6 +1409,7 @@ export default function ClinicaPage() {
       setDeleteConfirm(false);
       await loadClinicEvents();
       await loadFilesCount();
+      await refreshOperatorSession();
     } catch {
       setModalErr("Errore di rete durante l’eliminazione.");
     } finally {
@@ -1402,7 +1489,7 @@ export default function ClinicaPage() {
   }, [groupedEvents, shownEventIds]);
 
   const hasMore = flattenedShownEvents.length < filteredEvents.length;
-  const canSave = canWriteClinicEvents && !saving && !!newDate && !!newType;
+  const canSave = canWriteClinicEvents && !saving && !!newDate && !!newType && !!operatorSession?.id;
 
   const detailInitialSnapshot = useMemo(() => {
     if (!detailEvent) return "";
@@ -1542,7 +1629,7 @@ export default function ClinicaPage() {
           </div>
         </div>
 
-        <div className="grid gap-4 px-5 py-5 md:grid-cols-3 md:px-6">
+        <div className="grid gap-4 px-5 py-5 md:grid-cols-4 md:px-6">
           <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
             <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
               Animale
@@ -1581,6 +1668,26 @@ export default function ClinicaPage() {
 
             <div className="mt-1 text-sm text-zinc-600">
               Telefono: {animal?.owner_phone || "—"}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+            <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+              Operatore attivo
+            </div>
+
+            <div className="mt-2 text-sm font-semibold text-zinc-900">
+              {operatorSession?.activeOperatorLabel || "Non attivo"}
+            </div>
+
+            <div className="mt-1 text-xs text-zinc-500">
+              Postazione: <span className="font-mono">{workstationKey || "—"}</span>
+            </div>
+
+            <div className="mt-1 text-xs text-zinc-500">
+              {operatorSession?.expiresAt
+                ? `Sessione valida fino a ${formatDateIT(operatorSession.expiresAt)}`
+                : "Attiva l’operatore dal menu professionisti"}
             </div>
           </div>
         </div>
@@ -1652,6 +1759,13 @@ export default function ClinicaPage() {
           <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">
             Grant revocato: la clinica può leggere solo gli eventi consentiti dall’audit attuale,
             ma non può creare, modificare, validare, eliminare o allegare nuovi file.
+          </div>
+        ) : null}
+
+        {!operatorSession?.id ? (
+          <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-medium text-blue-900">
+            Nessun operatore attivo su questa postazione. Apri il menu professionisti e attiva
+            l’operatore con PIN prima di creare, modificare o validare eventi.
           </div>
         ) : null}
 
@@ -1967,22 +2081,18 @@ export default function ClinicaPage() {
           </div>
 
           <div className="mt-5 grid gap-4 md:grid-cols-12">
-            <label className="block md:col-span-9">
-              <span className={FIELD_LABEL_CLASS}>Firma veterinario (opzionale)</span>
-              <input
-                type="text"
-                className={FIELD_CLASS}
-                placeholder="Temporaneo: sarà sostituito da tendina ricercabile veterinari"
-                value={newVetSignature || ""}
-                onChange={(e) => setNewVetSignature(e.target.value)}
-                disabled={!canWriteClinicEvents}
-              />
-              {vetOptions.length === 0 && !selectedVetId ? (
-                <div className="mt-1.5 text-[11px] leading-5 text-zinc-500">
-                  Campo temporaneo: presto verrà sostituito da una tendina ricercabile.
-                </div>
-              ) : null}
-            </label>
+            <div className="md:col-span-9 rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3">
+              <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                Firma operatore attiva
+              </div>
+              <div className="mt-2 text-sm font-semibold text-zinc-900">
+                {operatorSession?.activeOperatorLabel || "Nessun operatore attivo"}
+              </div>
+              <div className="mt-1 text-xs text-zinc-500">
+                La firma evento viene presa automaticamente dalla sessione operatore attiva della
+                postazione.
+              </div>
+            </div>
 
             <div className="md:col-span-3">
               <button
@@ -2705,7 +2815,7 @@ export default function ClinicaPage() {
                                   const uploadRes = await fetch("/api/clinic-events/files/upload", {
                                     method: "POST",
                                     headers: {
-                                      ...(await authHeaders()),
+                                      ...(await buildClinicWriteHeaders()),
                                     },
                                     body: fd,
                                   });
@@ -2784,6 +2894,24 @@ export default function ClinicaPage() {
                               <div>Visibilità: {visibilityLabel(detailEvent.visibility)}</div>
                               <div>Fonte: {detailEvent.source}</div>
                               <div>Registrato da: {getEventAuthorLabel(detailEvent)}</div>
+                              <div>
+                                Operatore attivo:{" "}
+                                <span className="font-mono">
+                                  {String(detailEvent.meta?.active_operator_label || "—")}
+                                </span>
+                              </div>
+                              <div>
+                                Sessione operatore:{" "}
+                                <span className="font-mono">
+                                  {String(detailEvent.meta?.operator_session_id || "—")}
+                                </span>
+                              </div>
+                              <div>
+                                Signature mode:{" "}
+                                <span className="font-mono">
+                                  {String(detailEvent.meta?.signature_mode || "—")}
+                                </span>
+                              </div>
                               <div>
                                 Creato da user:{" "}
                                 <span className="font-mono">

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { requireOwnerOrGrant } from "@/lib/server/requireOwnerOrGrant";
+import { requireClinicOperatorSession } from "@/lib/server/requireClinicOperatorSession";
 import { safeWriteAudit } from "@/lib/server/safeAudit";
 import { sendOwnerAnimalUpdateEmail } from "@/lib/email/sendOwnerAnimalUpdateEmail";
 import { createClinicalEventOwnerNotification } from "@/lib/notifications/create-owner-notification";
@@ -85,6 +86,17 @@ export async function POST(req: Request) {
     return unauthorized();
   }
 
+  const operatorContext = await requireClinicOperatorSession(req, user.id);
+
+  if (!operatorContext.ok) {
+    return NextResponse.json(
+      { error: operatorContext.reason },
+      { status: operatorContext.status }
+    );
+  }
+
+  const operator = operatorContext.data;
+
   const body = (await req.json().catch(() => null)) as Body | null;
 
   if (!body) {
@@ -124,8 +136,8 @@ export async function POST(req: Request) {
   if (!isVetUser(user)) {
     await safeWriteAudit(supabase, {
       req,
-      actor_user_id: user.id,
-      actor_organization_id: null,
+      actor_user_id: operator.activeOperatorUserId,
+      actor_organization_id: operator.organizationId,
       action: "event.delete",
       target_type: "event",
       target_id: id,
@@ -147,7 +159,8 @@ export async function POST(req: Request) {
   if (!grant.ok) {
     await safeWriteAudit(supabase, {
       req,
-      actor_user_id: user.id,
+      actor_user_id: operator.activeOperatorUserId,
+      actor_organization_id: operator.organizationId,
       action: "event.delete",
       target_type: "event",
       target_id: id,
@@ -161,13 +174,13 @@ export async function POST(req: Request) {
 
   const createdByUserId = current.created_by_user_id ?? null;
 
-  if (!createdByUserId || createdByUserId !== user.id) {
+  if (!createdByUserId || createdByUserId !== operator.activeOperatorUserId) {
     const reason = "Non autorizzato: puoi eliminare solo i tuoi eventi clinici.";
 
     await safeWriteAudit(supabase, {
       req,
-      actor_user_id: user.id,
-      actor_organization_id: grant.actor_organization_id,
+      actor_user_id: operator.activeOperatorUserId,
+      actor_organization_id: grant.actor_organization_id ?? operator.organizationId,
       action: "event.delete",
       target_type: "event",
       target_id: id,
@@ -187,8 +200,8 @@ export async function POST(req: Request) {
   if (error) {
     await safeWriteAudit(supabase, {
       req,
-      actor_user_id: user.id,
-      actor_organization_id: grant.actor_organization_id,
+      actor_user_id: operator.activeOperatorUserId,
+      actor_organization_id: grant.actor_organization_id ?? operator.organizationId,
       action: "event.delete",
       target_type: "event",
       target_id: id,
@@ -204,8 +217,9 @@ export async function POST(req: Request) {
     await supabase.from("animal_clinic_event_audit").insert({
       event_id: current.id,
       animal_id: animalId,
-      actor_user_id: user.id,
-      actor_organization_id: grant.actor_organization_id,
+      actor_user_id: operator.activeOperatorUserId,
+      actor_organization_id: grant.actor_organization_id ?? operator.organizationId,
+      actor_member_id: operator.activeOperatorUserId,
       action: "delete",
       previous_data: current,
       next_data: { ...current, status: "void" },
@@ -292,8 +306,8 @@ export async function POST(req: Request) {
 
   await safeWriteAudit(supabase, {
     req,
-    actor_user_id: user.id,
-    actor_organization_id: grant.actor_organization_id,
+    actor_user_id: operator.activeOperatorUserId,
+    actor_organization_id: grant.actor_organization_id ?? operator.organizationId,
     action: "event.delete",
     target_type: "event",
     target_id: id,

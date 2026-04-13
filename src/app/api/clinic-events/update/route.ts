@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { requireOwnerOrGrant } from "@/lib/server/requireOwnerOrGrant";
+import { requireClinicOperatorSession } from "@/lib/server/requireClinicOperatorSession";
 import { safeWriteAudit } from "@/lib/server/safeAudit";
 import { sendOwnerAnimalUpdateEmail } from "@/lib/email/sendOwnerAnimalUpdateEmail";
 import { createClinicalEventOwnerNotification } from "@/lib/notifications/create-owner-notification";
@@ -93,6 +94,11 @@ function sanitizeMeta(input: unknown): Record<string, unknown> | null {
     "created_by_organization_name",
     "has_attachments",
     "weight_kg",
+    "active_operator_user_id",
+    "active_operator_professional_id",
+    "active_operator_label",
+    "operator_session_id",
+    "signature_mode",
   ]);
 
   const output: Record<string, unknown> = {};
@@ -132,6 +138,17 @@ export async function POST(req: Request) {
   if (userErr || !user) {
     return unauthorized();
   }
+
+  const operatorContext = await requireClinicOperatorSession(req, user.id);
+
+  if (!operatorContext.ok) {
+    return NextResponse.json(
+      { error: operatorContext.reason },
+      { status: operatorContext.status }
+    );
+  }
+
+  const operator = operatorContext.data;
 
   if (!isVetUser(user)) {
     return forbidden("Cartella clinica riservata ai veterinari autorizzati.");
@@ -207,7 +224,8 @@ export async function POST(req: Request) {
   if (!grant.ok) {
     await safeWriteAudit(supabase, {
       req,
-      actor_user_id: user.id,
+      actor_user_id: operator.activeOperatorUserId,
+      actor_organization_id: operator.organizationId,
       action: "event.update",
       target_type: "event",
       target_id: id,
@@ -221,13 +239,13 @@ export async function POST(req: Request) {
 
   const createdByUserId = current.created_by_user_id ?? null;
 
-  if (!createdByUserId || createdByUserId !== user.id) {
+  if (!createdByUserId || createdByUserId !== operator.activeOperatorUserId) {
     const reason = "Non autorizzato: puoi modificare solo i tuoi eventi clinici.";
 
     await safeWriteAudit(supabase, {
       req,
-      actor_user_id: user.id,
-      actor_organization_id: grant.actor_organization_id,
+      actor_user_id: operator.activeOperatorUserId,
+      actor_organization_id: grant.actor_organization_id ?? operator.organizationId,
       action: "event.update",
       target_type: "event",
       target_id: id,
@@ -283,6 +301,14 @@ export async function POST(req: Request) {
     delete nextMeta.priority;
   }
 
+  nextMeta.active_operator_user_id = operator.activeOperatorUserId;
+  nextMeta.active_operator_professional_id = operator.activeOperatorProfessionalId;
+  nextMeta.active_operator_label = operator.activeOperatorLabel;
+  nextMeta.operator_session_id = operator.operatorSessionId;
+  nextMeta.signature_mode = "operator_session_pin";
+  nextMeta.updated_by_member_id = operator.activeOperatorUserId;
+  nextMeta.updated_by_member_label = operator.activeOperatorLabel;
+
   const before = {
     title: current.title,
     type: current.type,
@@ -337,8 +363,8 @@ export async function POST(req: Request) {
   if (error || !updated) {
     await safeWriteAudit(supabase, {
       req,
-      actor_user_id: user.id,
-      actor_organization_id: grant.actor_organization_id,
+      actor_user_id: operator.activeOperatorUserId,
+      actor_organization_id: grant.actor_organization_id ?? operator.organizationId,
       action: "event.update",
       target_type: "event",
       target_id: id,
@@ -354,8 +380,9 @@ export async function POST(req: Request) {
     await supabase.from("animal_clinic_event_audit").insert({
       event_id: current.id,
       animal_id: animalId,
-      actor_user_id: user.id,
-      actor_organization_id: grant.actor_organization_id,
+      actor_user_id: operator.activeOperatorUserId,
+      actor_organization_id: grant.actor_organization_id ?? operator.organizationId,
+      actor_member_id: operator.activeOperatorUserId,
       action: "update",
       previous_data: current,
       next_data: { ...current, ...updateData },
@@ -417,8 +444,8 @@ export async function POST(req: Request) {
 
   await safeWriteAudit(supabase, {
     req,
-    actor_user_id: user.id,
-    actor_organization_id: grant.actor_organization_id,
+    actor_user_id: operator.activeOperatorUserId,
+    actor_organization_id: grant.actor_organization_id ?? operator.organizationId,
     action: "event.update",
     target_type: "event",
     target_id: id,

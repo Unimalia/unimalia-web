@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { requireOwnerOrGrant } from "@/lib/server/requireOwnerOrGrant";
+import { requireClinicOperatorSession } from "@/lib/server/requireClinicOperatorSession";
 import { safeWriteAudit } from "@/lib/server/safeAudit";
 import { getBearerToken } from "@/lib/server/bearer";
 import { isUuid } from "@/lib/server/validators";
@@ -109,6 +110,17 @@ export async function POST(req: Request) {
     return unauthorized();
   }
 
+  const operatorContext = await requireClinicOperatorSession(req, user.id);
+
+  if (!operatorContext.ok) {
+    return NextResponse.json(
+      { error: operatorContext.reason },
+      { status: operatorContext.status }
+    );
+  }
+
+  const operator = operatorContext.data;
+
   if (!isVetUser(user)) {
     return forbidden("Cartella clinica riservata ai veterinari autorizzati.");
   }
@@ -153,7 +165,8 @@ export async function POST(req: Request) {
     if (!grant.ok) {
       await safeWriteAudit(supabase, {
         req,
-        actor_user_id: user.id,
+        actor_user_id: operator.activeOperatorUserId,
+        actor_organization_id: operator.organizationId,
         action: "event.verify",
         target_type: "event",
         target_id: id,
@@ -170,14 +183,15 @@ export async function POST(req: Request) {
     }
 
     const nowIso = new Date().toISOString();
-    const verifierLabel = "Veterinario";
+    const verifierLabel = operator.activeOperatorLabel;
 
     const { data: updated, error } = await supabase
       .from("animal_clinic_events")
       .update({
         verified_at: nowIso,
-        verified_by_user_id: user.id,
-        verified_by_organization_id: grant.actor_organization_id ?? null,
+        verified_by_user_id: operator.activeOperatorUserId,
+        verified_by_organization_id: grant.actor_organization_id ?? operator.organizationId,
+        verified_by_member_id: operator.activeOperatorUserId,
         verified_by_label: verifierLabel,
       })
       .eq("id", id)
@@ -189,8 +203,8 @@ export async function POST(req: Request) {
     if (error || !updated) {
       await safeWriteAudit(supabase, {
         req,
-        actor_user_id: user.id,
-        actor_organization_id: grant.actor_organization_id,
+        actor_user_id: operator.activeOperatorUserId,
+        actor_organization_id: grant.actor_organization_id ?? operator.organizationId,
         action: "event.verify",
         target_type: "event",
         target_id: id,
@@ -206,9 +220,9 @@ export async function POST(req: Request) {
       await supabase.from("animal_clinic_event_audit").insert({
         event_id: id,
         animal_id: animalId,
-        actor_user_id: user.id,
-        actor_organization_id: grant.actor_organization_id,
-        actor_member_id: user.id,
+        actor_user_id: operator.activeOperatorUserId,
+        actor_organization_id: grant.actor_organization_id ?? operator.organizationId,
+        actor_member_id: operator.activeOperatorUserId,
         action: "verify",
         previous_data: current,
         next_data: updated,
@@ -219,8 +233,8 @@ export async function POST(req: Request) {
 
     await safeWriteAudit(supabase, {
       req,
-      actor_user_id: user.id,
-      actor_organization_id: grant.actor_organization_id,
+      actor_user_id: operator.activeOperatorUserId,
+      actor_organization_id: grant.actor_organization_id ?? operator.organizationId,
       action: "event.verify",
       target_type: "event",
       target_id: id,
