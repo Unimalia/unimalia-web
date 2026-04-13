@@ -5,7 +5,7 @@ import "./globals.css";
 import AppShell from "../_components/AppShell";
 
 const GA_MEASUREMENT_ID = "G-YE91HM8ZLW";
-const SITE_URL = "https://www.unimalia.it";
+const SITE_URL = "https://unimalia.it";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),

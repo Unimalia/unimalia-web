@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { authHeaders } from "@/lib/client/authHeaders";
 
 type Professional = {
   id: string;
@@ -20,6 +21,8 @@ type Professional = {
 };
 
 type ProfessionalType = "generic" | "veterinarian";
+
+type VetinfoStatus = "not_configured" | "not_connected" | "connected" | "reauth_required";
 
 const MACRO = [
   { key: "veterinari", label: "Veterinari" },
@@ -81,6 +84,20 @@ function getAllowedMacroByProfessionalType(professionalType: ProfessionalType) {
   return MACRO.filter((item) => item.key !== "veterinari");
 }
 
+function vetinfoStatusLabel(status: VetinfoStatus) {
+  switch (status) {
+    case "connected":
+      return "Collegato";
+    case "reauth_required":
+      return "Ricollegare";
+    case "not_connected":
+      return "Non collegato";
+    case "not_configured":
+    default:
+      return "Non configurato";
+  }
+}
+
 export default function ProfessionistiImpostazioniPage() {
   const router = useRouter();
 
@@ -88,6 +105,8 @@ export default function ProfessionistiImpostazioniPage() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPrefs, setSavingPrefs] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [loadingVetinfo, setLoadingVetinfo] = useState(false);
+  const [connectingVetinfo, setConnectingVetinfo] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
@@ -109,6 +128,9 @@ export default function ProfessionistiImpostazioniPage() {
   const [description, setDescription] = useState("");
 
   const [prefs, setPrefs] = useState<LocalPrefs>(DEFAULT_PREFS);
+
+  const [vetinfoConfigured, setVetinfoConfigured] = useState(false);
+  const [vetinfoStatus, setVetinfoStatus] = useState<VetinfoStatus>("not_configured");
 
   const allowedMacro = useMemo(
     () => getAllowedMacroByProfessionalType(professionalType),
@@ -201,6 +223,53 @@ export default function ProfessionistiImpostazioniPage() {
       setCategory(professionalType === "veterinarian" ? "veterinari" : "altro");
     }
   }, [allowedMacro, category, professionalType]);
+
+  useEffect(() => {
+    let alive = true;
+
+    async function loadVetinfoStatus() {
+      if (professionalType !== "veterinarian") return;
+
+      setLoadingVetinfo(true);
+
+      try {
+        const res = await fetch("/api/integrations/vetinfo/status", {
+          method: "GET",
+          cache: "no-store",
+          headers: {
+            ...(await authHeaders()),
+          },
+        });
+
+        const json = await res.json().catch(() => ({}));
+
+        if (!alive) return;
+
+        if (!res.ok) {
+          setVetinfoConfigured(false);
+          setVetinfoStatus("not_configured");
+          return;
+        }
+
+        setVetinfoConfigured(Boolean(json?.configured));
+        setVetinfoStatus((json?.status as VetinfoStatus) || "not_configured");
+      } catch {
+        if (!alive) return;
+        setVetinfoConfigured(false);
+        setVetinfoStatus("not_configured");
+      } finally {
+        if (alive) {
+          setLoadingVetinfo(false);
+        }
+      }
+    }
+
+    void loadVetinfoStatus();
+
+    return () => {
+      alive = false;
+    };
+  }, [professionalType]);
 
   const currentDefaultViewLabel = useMemo(() => {
     switch (prefs.defaultView) {
@@ -343,6 +412,52 @@ export default function ProfessionistiImpostazioniPage() {
     }
   }
 
+  async function handleConnectVetinfo() {
+    setError(null);
+    setInfo(null);
+    setConnectingVetinfo(true);
+
+    try {
+      const res = await fetch("/api/integrations/vetinfo/auth/start", {
+        method: "GET",
+        cache: "no-store",
+        headers: {
+          ...(await authHeaders()),
+        },
+      });
+
+      const json = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        if (json?.error === "VETINFO_NOT_CONFIGURED") {
+          setError(
+            "Integrazione REV non ancora configurata. Appena arrivano i dati definitivi IZS attiviamo il collegamento."
+          );
+          return;
+        }
+
+        if (json?.error === "UNAUTHORIZED") {
+          setError("Sessione non valida. Rientra nel portale e riprova.");
+          return;
+        }
+
+        setError("Impossibile avviare il collegamento REV.");
+        return;
+      }
+
+      if (!json?.authorizeUrl) {
+        setError("Risposta collegamento REV incompleta.");
+        return;
+      }
+
+      window.location.href = json.authorizeUrl;
+    } catch {
+      setError("Errore di rete durante l’avvio del collegamento REV.");
+    } finally {
+      setConnectingVetinfo(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
@@ -374,6 +489,65 @@ export default function ProfessionistiImpostazioniPage() {
       ) : null}
 
       <div className="grid gap-4 md:grid-cols-2">
+        {professionalType === "veterinarian" ? (
+          <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm md:col-span-2">
+            <p className="text-xs font-semibold tracking-wide text-zinc-500">REV / VETINFO</p>
+            <h2 className="mt-2 text-lg font-semibold text-zinc-900">Collegamento personale REV</h2>
+            <p className="mt-2 text-sm leading-6 text-zinc-600">
+              Questa sezione prepara il nuovo flusso prescrittivo personale del veterinario. Il
+              collegamento reale SPID/CAS verrà completato appena saranno definiti gli ultimi dati
+              operativi.
+            </p>
+
+            <div className="mt-4 grid gap-4 md:grid-cols-3">
+              <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+                <p className="text-xs font-semibold tracking-wide text-zinc-500">STATO</p>
+                <p className="mt-2 text-sm font-semibold text-zinc-900">
+                  {loadingVetinfo ? "Verifica in corso..." : vetinfoStatusLabel(vetinfoStatus)}
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+                <p className="text-xs font-semibold tracking-wide text-zinc-500">CONFIGURAZIONE</p>
+                <p className="mt-2 text-sm font-semibold text-zinc-900">
+                  {vetinfoConfigured ? "Presente" : "Non attiva"}
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+                <p className="text-xs font-semibold tracking-wide text-zinc-500">IDENTITÀ</p>
+                <p className="mt-2 text-sm font-semibold text-zinc-900">
+                  Collegamento personale veterinario
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4 flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={handleConnectVetinfo}
+                disabled={connectingVetinfo}
+                className="inline-flex items-center justify-center rounded-xl bg-black px-5 py-3 text-sm font-semibold text-white hover:bg-zinc-800 disabled:opacity-60"
+              >
+                {connectingVetinfo ? "Avvio..." : "Collega REV"}
+              </button>
+
+              <span className="inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-zinc-50 px-5 py-3 text-sm font-semibold text-zinc-600">
+                Emissione prescrizioni • in preparazione
+              </span>
+            </div>
+
+            <div className="mt-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+              <p className="text-sm font-medium text-zinc-900">Direzione impostata</p>
+              <ul className="mt-2 space-y-2 text-sm leading-6 text-zinc-600">
+                <li>• collegamento REV personale del singolo veterinario</li>
+                <li>• nessun account REV condiviso di clinica</li>
+                <li>• base pronta per prescrizioni collegate alla cartella clinica</li>
+              </ul>
+            </div>
+          </section>
+        ) : null}
+
         <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
           <p className="text-xs font-semibold tracking-wide text-zinc-500">
             PROFILO PROFESSIONISTA

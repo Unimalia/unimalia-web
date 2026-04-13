@@ -1,30 +1,24 @@
 import "server-only";
-import { createServerSupabaseClient, supabaseAdmin } from "@/lib/supabase/server";
+import { supabaseAdmin } from "@/lib/supabase/server";
 
 type ProfessionalProfileRow = {
   user_id: string;
   organization_id: string | null;
 };
 
-export async function getProfessionalOrgId(): Promise<string | null> {
-  const supabase = await createServerSupabaseClient();
+export async function getProfessionalOrgId(userId: string): Promise<string | null> {
   const admin = supabaseAdmin();
 
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
+  const normalizedUserId = String(userId || "").trim();
 
-  if (userError) {
-    throw userError;
+  if (!normalizedUserId) {
+    return null;
   }
-
-  if (!user) return null;
 
   const profileResult = await admin
     .from("professional_profiles")
     .select("user_id, organization_id")
-    .eq("user_id", user.id)
+    .eq("user_id", normalizedUserId)
     .maybeSingle<ProfessionalProfileRow>();
 
   if (profileResult.error) {

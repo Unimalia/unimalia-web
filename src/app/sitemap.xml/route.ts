@@ -1,4 +1,4 @@
-const SITE_URL = "https://www.unimalia.it";
+const SITE_URL = "https://unimalia.it";
 
 type SitemapUrl = {
   path: string;

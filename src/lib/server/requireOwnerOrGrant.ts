@@ -107,7 +107,7 @@ export async function requireOwnerOrGrant(
     return { ok: true, actor_organization_id: null, mode: "grant_user" };
   }
 
-  const organizationId = await getProfessionalOrgId();
+  const organizationId = await getProfessionalOrgId(userId);
 
   const organizationGrant = activeGrants.find(
     (grant) =>
