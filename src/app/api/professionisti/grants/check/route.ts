@@ -60,7 +60,7 @@ export async function GET(req: Request) {
       );
     }
 
-    const organizationId = await getProfessionalOrgId();
+    const organizationId = await getProfessionalOrgId(user.id);
 
     if (!organizationId) {
       return NextResponse.json({

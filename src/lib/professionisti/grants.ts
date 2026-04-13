@@ -33,7 +33,7 @@ export async function hasActiveGrantForAnimal(animalId: string) {
   if (!userId) return false;
 
   const admin = supabaseAdmin();
-  const organizationId = await getProfessionalOrgId();
+  const organizationId = await getProfessionalOrgId(userId);
 
   const { data: animal, error: animalError } = await admin
     .from("animals")

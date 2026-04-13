@@ -36,7 +36,7 @@ async function getProfessionalRefs(userId: string) {
   refs.add(userId);
 
   try {
-    const organizationId = await getProfessionalOrgId();
+    const organizationId = await getProfessionalOrgId(userId);
     if (organizationId) {
       refs.add(organizationId);
     }
@@ -251,7 +251,7 @@ export async function POST(req: NextRequest) {
     let organizationId: string | null = null;
 
     try {
-      organizationId = await getProfessionalOrgId();
+      organizationId = await getProfessionalOrgId(user.id);
     } catch {
       organizationId = null;
     }

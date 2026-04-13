@@ -63,7 +63,7 @@ type OwnerProfileRow = {
 };
 
 async function getProfessionalContext(userId: string) {
-  const organizationId = await getProfessionalOrgId();
+  const organizationId = await getProfessionalOrgId(userId);
 
   if (!organizationId) {
     return {

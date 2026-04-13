@@ -154,7 +154,7 @@ export async function POST(req: NextRequest) {
     let organizationId: string | null = null;
 
     try {
-      organizationId = await getProfessionalOrgId();
+      organizationId = await getProfessionalOrgId(user.id);
     } catch (error: unknown) {
       return NextResponse.json(
         {

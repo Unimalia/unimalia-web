@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Email non valida" }, { status: 400 });
     }
 
-    const organizationId = await getProfessionalOrgId();
+    const organizationId = await getProfessionalOrgId(user.id);
 
     let clinicName: string | null = null;
 

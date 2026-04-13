@@ -87,8 +87,8 @@ function unauthorized() {
   return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 }
 
-async function ensureProfessionalContext() {
-  const organizationId = await getProfessionalOrgId();
+async function ensureProfessionalContext(userId: string) {
+  const organizationId = await getProfessionalOrgId(userId);
   return Boolean(organizationId);
 }
 
@@ -150,7 +150,7 @@ export async function GET(req: Request) {
   }
 
   try {
-    const hasProfessionalContext = await ensureProfessionalContext();
+    const hasProfessionalContext = await ensureProfessionalContext(user.id);
 
     if (!hasProfessionalContext) {
       return NextResponse.json(

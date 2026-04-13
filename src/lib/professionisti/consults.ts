@@ -181,7 +181,7 @@ async function getAuthenticatedUserId() {
 export async function getCurrentProfessionalContext(): Promise<CurrentProfessionalContext> {
   const admin = supabaseAdmin();
   const userId = await getAuthenticatedUserId();
-  const organizationId = await getProfessionalOrgId();
+  const organizationId = await getProfessionalOrgId(userId);
 
   const { data, error } = await admin
     .from("professionals")
