@@ -5,6 +5,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { authHeaders } from "@/lib/client/authHeaders";
+import {
+  createClinicOperatorClient,
+  listClinicOperatorsClient,
+  type ClinicOperatorItem,
+} from "@/lib/client/clinicOperators";
 
 type Professional = {
   id: string;
@@ -98,6 +103,23 @@ function vetinfoStatusLabel(status: VetinfoStatus) {
   }
 }
 
+function operatorStatusLabel(status: string) {
+  switch (status) {
+    case "draft":
+      return "Bozza";
+    case "pending_director_approval":
+      return "In attesa";
+    case "active":
+      return "Attivo";
+    case "suspended":
+      return "Sospeso";
+    case "revoked":
+      return "Revocato";
+    default:
+      return status;
+  }
+}
+
 export default function ProfessionistiImpostazioniPage() {
   const router = useRouter();
 
@@ -107,6 +129,9 @@ export default function ProfessionistiImpostazioniPage() {
   const [loggingOut, setLoggingOut] = useState(false);
   const [loadingVetinfo, setLoadingVetinfo] = useState(false);
   const [connectingVetinfo, setConnectingVetinfo] = useState(false);
+
+  const [loadingOperators, setLoadingOperators] = useState(false);
+  const [savingOperator, setSavingOperator] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
@@ -132,10 +157,43 @@ export default function ProfessionistiImpostazioniPage() {
   const [vetinfoConfigured, setVetinfoConfigured] = useState(false);
   const [vetinfoStatus, setVetinfoStatus] = useState<VetinfoStatus>("not_configured");
 
+  const [operators, setOperators] = useState<ClinicOperatorItem[]>([]);
+  const [actorOperator, setActorOperator] = useState<ClinicOperatorItem | null>(null);
+
+  const [opFirstName, setOpFirstName] = useState("");
+  const [opLastName, setOpLastName] = useState("");
+  const [opDisplayName, setOpDisplayName] = useState("");
+  const [opRole, setOpRole] = useState("");
+  const [opIsVeterinarian, setOpIsVeterinarian] = useState(true);
+  const [opIsPrescriber, setOpIsPrescriber] = useState(true);
+  const [opFnoviNumber, setOpFnoviNumber] = useState("");
+  const [opFnoviProvince, setOpFnoviProvince] = useState("");
+  const [opTaxCode, setOpTaxCode] = useState("");
+  const [opEmail, setOpEmail] = useState("");
+  const [opPhone, setOpPhone] = useState("");
+  const [opCanUseRev, setOpCanUseRev] = useState(false);
+  const [opApprovalNotes, setOpApprovalNotes] = useState("");
+
   const allowedMacro = useMemo(
     () => getAllowedMacroByProfessionalType(professionalType),
     [professionalType]
   );
+
+  const canManageOperators = Boolean(actorOperator?.isMedicalDirector || actorOperator?.canManageOperators);
+
+  async function loadOperators() {
+    setLoadingOperators(true);
+    try {
+      const result = await listClinicOperatorsClient();
+      setOperators(result.operators ?? []);
+      setActorOperator(result.actor ?? null);
+    } catch {
+      setOperators([]);
+      setActorOperator(null);
+    } finally {
+      setLoadingOperators(false);
+    }
+  }
 
   useEffect(() => {
     let alive = true;
@@ -211,7 +269,7 @@ export default function ProfessionistiImpostazioniPage() {
       setLoading(false);
     }
 
-    load();
+    void load();
 
     return () => {
       alive = false;
@@ -270,6 +328,10 @@ export default function ProfessionistiImpostazioniPage() {
       alive = false;
     };
   }, [professionalType]);
+
+  useEffect(() => {
+    void loadOperators();
+  }, []);
 
   const currentDefaultViewLabel = useMemo(() => {
     switch (prefs.defaultView) {
@@ -458,6 +520,94 @@ export default function ProfessionistiImpostazioniPage() {
     }
   }
 
+  async function handleCreateOperator() {
+    setError(null);
+    setInfo(null);
+
+    if (!canManageOperators) {
+      setError("Solo il direttore sanitario o un gestore autorizzato può creare operatori.");
+      return;
+    }
+
+    if (!opFirstName.trim()) {
+      setError("Nome operatore obbligatorio.");
+      return;
+    }
+
+    if (!opLastName.trim()) {
+      setError("Cognome operatore obbligatorio.");
+      return;
+    }
+
+    if (!opRole.trim()) {
+      setError("Ruolo operatore obbligatorio.");
+      return;
+    }
+
+    if (opIsVeterinarian) {
+      if (!opFnoviNumber.trim()) {
+        setError("Numero FNOVI obbligatorio per veterinario.");
+        return;
+      }
+
+      if (!opFnoviProvince.trim()) {
+        setError("Provincia albo obbligatoria per veterinario.");
+        return;
+      }
+
+      if (!opTaxCode.trim()) {
+        setError("Codice fiscale obbligatorio per veterinario.");
+        return;
+      }
+
+      if (!opEmail.trim()) {
+        setError("Email obbligatoria per veterinario.");
+        return;
+      }
+    }
+
+    setSavingOperator(true);
+
+    try {
+      await createClinicOperatorClient({
+        firstName: opFirstName.trim(),
+        lastName: opLastName.trim(),
+        displayName: opDisplayName.trim() || null,
+        role: opRole.trim(),
+        isVeterinarian: opIsVeterinarian,
+        isPrescriber: opIsVeterinarian ? opIsPrescriber : false,
+        fnoviNumber: opIsVeterinarian ? opFnoviNumber.trim() || null : null,
+        fnoviProvince: opIsVeterinarian ? normalizeProvince(opFnoviProvince) || null : null,
+        taxCode: opIsVeterinarian ? opTaxCode.trim() || null : null,
+        email: opEmail.trim() || null,
+        phone: opPhone.trim() || null,
+        approvalNotes: opApprovalNotes.trim() || null,
+        canUseRev: opIsVeterinarian ? opCanUseRev : false,
+      });
+
+      setOpFirstName("");
+      setOpLastName("");
+      setOpDisplayName("");
+      setOpRole("");
+      setOpIsVeterinarian(true);
+      setOpIsPrescriber(true);
+      setOpFnoviNumber("");
+      setOpFnoviProvince("");
+      setOpTaxCode("");
+      setOpEmail("");
+      setOpPhone("");
+      setOpCanUseRev(false);
+      setOpApprovalNotes("");
+
+      setInfo("Operatore clinico creato ✅");
+      await loadOperators();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Errore creazione operatore.");
+    } finally {
+      setSavingOperator(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
@@ -471,7 +621,7 @@ export default function ProfessionistiImpostazioniPage() {
       <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
         <h1 className="text-2xl font-semibold text-zinc-900">Impostazioni</h1>
         <p className="mt-2 text-sm text-zinc-600">
-          Gestisci profilo professionista, preferenze operative, notifiche e sicurezza del portale.
+          Gestisci profilo professionista, preferenze operative, notifiche, sicurezza e operatori della clinica.
         </p>
       </div>
 
@@ -494,9 +644,7 @@ export default function ProfessionistiImpostazioniPage() {
             <p className="text-xs font-semibold tracking-wide text-zinc-500">REV / VETINFO</p>
             <h2 className="mt-2 text-lg font-semibold text-zinc-900">Collegamento personale REV</h2>
             <p className="mt-2 text-sm leading-6 text-zinc-600">
-              Questa sezione prepara il nuovo flusso prescrittivo personale del veterinario. Il
-              collegamento reale SPID/CAS verrà completato appena saranno definiti gli ultimi dati
-              operativi.
+              Questa sezione prepara il nuovo flusso prescrittivo personale del veterinario. Il collegamento reale SPID/CAS verrà completato appena saranno definiti gli ultimi dati operativi.
             </p>
 
             <div className="mt-4 grid gap-4 md:grid-cols-3">
@@ -548,10 +696,254 @@ export default function ProfessionistiImpostazioniPage() {
           </section>
         ) : null}
 
-        <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <p className="text-xs font-semibold tracking-wide text-zinc-500">
-            PROFILO PROFESSIONISTA
+        <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm md:col-span-2">
+          <p className="text-xs font-semibold tracking-wide text-zinc-500">OPERATORI CLINICA</p>
+          <h2 className="mt-2 text-lg font-semibold text-zinc-900">Gestione operatori</h2>
+          <p className="mt-2 text-sm text-zinc-600">
+            La clinica è verificata da UNIMALIA. La validazione e gestione dei sublogin è responsabilità del direttore sanitario o dei gestori autorizzati.
           </p>
+
+          <div className="mt-4 grid gap-4 md:grid-cols-3">
+            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+              <p className="text-xs font-semibold tracking-wide text-zinc-500">ATTORE ATTIVO</p>
+              <p className="mt-2 text-sm font-semibold text-zinc-900">
+                {actorOperator?.label || "Non disponibile"}
+              </p>
+              <p className="mt-1 text-xs text-zinc-600">
+                {actorOperator?.role || "—"}
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+              <p className="text-xs font-semibold tracking-wide text-zinc-500">PERMESSI</p>
+              <p className="mt-2 text-sm font-semibold text-zinc-900">
+                {canManageOperators ? "Gestione operatori attiva" : "Solo lettura / non autorizzato"}
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+              <p className="text-xs font-semibold tracking-wide text-zinc-500">OPERATORI</p>
+              <p className="mt-2 text-sm font-semibold text-zinc-900">
+                {loadingOperators ? "Caricamento..." : operators.length}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-5 space-y-3">
+            {operators.map((operator) => (
+              <div
+                key={operator.clinicOperatorId}
+                className="rounded-2xl border border-zinc-200 bg-white p-4"
+              >
+                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                  <div>
+                    <div className="text-sm font-semibold text-zinc-900">{operator.label}</div>
+                    <div className="mt-1 text-sm text-zinc-600">{operator.role}</div>
+                    <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                      <span className="rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 font-medium text-zinc-700">
+                        {operator.isVet ? "Veterinario" : "Operatore"}
+                      </span>
+                      <span className="rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 font-medium text-zinc-700">
+                        {operatorStatusLabel(operator.approvalStatus)}
+                      </span>
+                      {operator.isMedicalDirector ? (
+                        <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 font-medium text-emerald-700">
+                          Direttore sanitario
+                        </span>
+                      ) : null}
+                      {operator.canManageOperators ? (
+                        <span className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 font-medium text-blue-700">
+                          Gestore operatori
+                        </span>
+                      ) : null}
+                      {operator.canUseRev ? (
+                        <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 font-medium text-amber-700">
+                          REV abilitabile
+                        </span>
+                      ) : null}
+                    </div>
+                    {operator.isVet ? (
+                      <div className="mt-2 text-xs text-zinc-500">
+                        FNOVI: {operator.fnoviNumber || "—"}
+                        {operator.fnoviProvince ? ` • ${operator.fnoviProvince}` : ""}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {canManageOperators ? (
+            <div className="mt-6 rounded-2xl border border-zinc-200 bg-zinc-50 p-5">
+              <div className="text-sm font-semibold text-zinc-900">Aggiungi operatore</div>
+              <p className="mt-1 text-sm text-zinc-600">
+                Per i veterinari inserisci già i dati necessari per il futuro collegamento REV.
+              </p>
+
+              <div className="mt-5 grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="block text-sm font-medium text-zinc-900">Nome</label>
+                  <input
+                    className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
+                    value={opFirstName}
+                    onChange={(e) => setOpFirstName(e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-zinc-900">Cognome</label>
+                  <input
+                    className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
+                    value={opLastName}
+                    onChange={(e) => setOpLastName(e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-zinc-900">Nome visibile</label>
+                  <input
+                    className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
+                    value={opDisplayName}
+                    onChange={(e) => setOpDisplayName(e.target.value)}
+                    placeholder="Opzionale"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-zinc-900">Ruolo</label>
+                  <input
+                    className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
+                    value={opRole}
+                    onChange={(e) => setOpRole(e.target.value)}
+                    placeholder="Es. Veterinario collaboratore"
+                  />
+                </div>
+
+                <label className="flex items-start gap-3 rounded-2xl border border-zinc-200 bg-white p-4 md:col-span-2">
+                  <input
+                    type="checkbox"
+                    className="mt-1"
+                    checked={opIsVeterinarian}
+                    onChange={(e) => setOpIsVeterinarian(e.target.checked)}
+                  />
+                  <div>
+                    <p className="text-sm font-medium text-zinc-900">Operatore veterinario</p>
+                    <p className="text-xs text-zinc-500">
+                      Se attivo, vengono richiesti FNOVI e dati pronti per REV.
+                    </p>
+                  </div>
+                </label>
+
+                {opIsVeterinarian ? (
+                  <>
+                    <label className="flex items-start gap-3 rounded-2xl border border-zinc-200 bg-white p-4 md:col-span-2">
+                      <input
+                        type="checkbox"
+                        className="mt-1"
+                        checked={opIsPrescriber}
+                        onChange={(e) => setOpIsPrescriber(e.target.checked)}
+                      />
+                      <div>
+                        <p className="text-sm font-medium text-zinc-900">Prescrittore</p>
+                        <p className="text-xs text-zinc-500">
+                          Abilita il profilo a futuri flussi REV personali.
+                        </p>
+                      </div>
+                    </label>
+
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-900">Numero FNOVI</label>
+                      <input
+                        className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
+                        value={opFnoviNumber}
+                        onChange={(e) => setOpFnoviNumber(e.target.value)}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-900">Provincia albo</label>
+                      <input
+                        className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 uppercase outline-none focus:border-zinc-900"
+                        value={opFnoviProvince}
+                        onChange={(e) => setOpFnoviProvince(e.target.value.toUpperCase())}
+                        maxLength={2}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-900">Codice fiscale</label>
+                      <input
+                        className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
+                        value={opTaxCode}
+                        onChange={(e) => setOpTaxCode(e.target.value.toUpperCase())}
+                      />
+                    </div>
+
+                    <label className="flex items-start gap-3 rounded-2xl border border-zinc-200 bg-white p-4 md:col-span-2">
+                      <input
+                        type="checkbox"
+                        className="mt-1"
+                        checked={opCanUseRev}
+                        onChange={(e) => setOpCanUseRev(e.target.checked)}
+                      />
+                      <div>
+                        <p className="text-sm font-medium text-zinc-900">Abilitabile REV</p>
+                        <p className="text-xs text-zinc-500">
+                          Mantiene il profilo pronto per collegamento personale SPID/CIE/CNS.
+                        </p>
+                      </div>
+                    </label>
+                  </>
+                ) : null}
+
+                <div>
+                  <label className="block text-sm font-medium text-zinc-900">Email</label>
+                  <input
+                    type="email"
+                    className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
+                    value={opEmail}
+                    onChange={(e) => setOpEmail(e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-zinc-900">Telefono</label>
+                  <input
+                    className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
+                    value={opPhone}
+                    onChange={(e) => setOpPhone(e.target.value)}
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-zinc-900">Note interne</label>
+                  <textarea
+                    className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
+                    rows={4}
+                    value={opApprovalNotes}
+                    onChange={(e) => setOpApprovalNotes(e.target.value)}
+                    placeholder="Annotazioni iniziali per direttore sanitario / struttura"
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <button
+                    type="button"
+                    onClick={handleCreateOperator}
+                    disabled={savingOperator}
+                    className="inline-flex items-center justify-center rounded-xl bg-black px-5 py-3 text-sm font-semibold text-white hover:bg-zinc-800 disabled:opacity-60"
+                  >
+                    {savingOperator ? "Creazione..." : "Crea operatore"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
+        </section>
+
+        <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
+          <p className="text-xs font-semibold tracking-wide text-zinc-500">PROFILO PROFESSIONISTA</p>
           <h2 className="mt-2 text-lg font-semibold text-zinc-900">Profilo</h2>
           <p className="mt-2 text-sm text-zinc-600">
             Nome struttura, contatti, indirizzo, categoria e dati pubblici della scheda.
@@ -559,9 +951,7 @@ export default function ProfessionistiImpostazioniPage() {
 
           <div className="mt-4 grid gap-4">
             <div>
-              <label className="block text-sm font-medium text-zinc-900">
-                Nome struttura / professionista
-              </label>
+              <label className="block text-sm font-medium text-zinc-900">Nome struttura / professionista</label>
               <input
                 className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
                 value={displayName}
@@ -677,15 +1067,12 @@ export default function ProfessionistiImpostazioniPage() {
           <p className="text-xs font-semibold tracking-wide text-zinc-500">PREFERENZE</p>
           <h2 className="mt-2 text-lg font-semibold text-zinc-900">Preferenze</h2>
           <p className="mt-2 text-sm text-zinc-600">
-            Configurazioni del portale e personalizzazioni operative. Salvataggio locale su questo
-            dispositivo.
+            Configurazioni del portale e personalizzazioni operative. Salvataggio locale su questo dispositivo.
           </p>
 
           <div className="mt-4 space-y-4">
             <div>
-              <label className="block text-sm font-medium text-zinc-900">
-                Vista iniziale dashboard
-              </label>
+              <label className="block text-sm font-medium text-zinc-900">Vista iniziale dashboard</label>
               <select
                 className="mt-1 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 outline-none focus:border-zinc-900"
                 value={prefs.defaultView}
@@ -735,9 +1122,7 @@ export default function ProfessionistiImpostazioniPage() {
                 }
               />
               <div>
-                <p className="text-sm font-medium text-zinc-900">
-                  Preferenze operative struttura
-                </p>
+                <p className="text-sm font-medium text-zinc-900">Preferenze operative struttura</p>
                 <p className="text-xs text-zinc-500">
                   Mantiene attive le opzioni operative locali del portale.
                 </p>
@@ -750,8 +1135,7 @@ export default function ProfessionistiImpostazioniPage() {
           <p className="text-xs font-semibold tracking-wide text-zinc-500">NOTIFICHE</p>
           <h2 className="mt-2 text-lg font-semibold text-zinc-900">Notifiche</h2>
           <p className="mt-2 text-sm text-zinc-600">
-            Gestione avvisi per richieste accesso, consulti e aggiornamenti clinici. Salvataggio
-            locale su questo dispositivo.
+            Gestione avvisi per richieste accesso, consulti e aggiornamenti clinici. Salvataggio locale su questo dispositivo.
           </p>
 
           <div className="mt-4 space-y-3">
@@ -769,9 +1153,7 @@ export default function ProfessionistiImpostazioniPage() {
               />
               <div>
                 <p className="text-sm font-medium text-zinc-900">Richieste accesso</p>
-                <p className="text-xs text-zinc-500">
-                  Avvisi per nuove richieste o cambi di stato.
-                </p>
+                <p className="text-xs text-zinc-500">Avvisi per nuove richieste o cambi di stato.</p>
               </div>
             </label>
 
@@ -789,9 +1171,7 @@ export default function ProfessionistiImpostazioniPage() {
               />
               <div>
                 <p className="text-sm font-medium text-zinc-900">Consulti e messaggi</p>
-                <p className="text-xs text-zinc-500">
-                  Avvisi per consulti in arrivo e messaggi dal portale.
-                </p>
+                <p className="text-xs text-zinc-500">Avvisi per consulti in arrivo e messaggi dal portale.</p>
               </div>
             </label>
 
@@ -808,12 +1188,8 @@ export default function ProfessionistiImpostazioniPage() {
                 }
               />
               <div>
-                <p className="text-sm font-medium text-zinc-900">
-                  Aggiornamenti clinici e alert
-                </p>
-                <p className="text-xs text-zinc-500">
-                  Avvisi per attività cliniche rilevanti e aggiornamenti rapidi.
-                </p>
+                <p className="text-sm font-medium text-zinc-900">Aggiornamenti clinici e alert</p>
+                <p className="text-xs text-zinc-500">Avvisi per attività cliniche rilevanti e aggiornamenti rapidi.</p>
               </div>
             </label>
 
@@ -839,10 +1215,7 @@ export default function ProfessionistiImpostazioniPage() {
             <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
               <p className="text-sm font-medium text-zinc-900">Sessione attiva</p>
               <p className="mt-1 text-sm text-zinc-600">
-                Account:{" "}
-                <span className="font-medium text-zinc-800">
-                  {userEmail || "Non disponibile"}
-                </span>
+                Account: <span className="font-medium text-zinc-800">{userEmail || "Non disponibile"}</span>
               </p>
               <p className="mt-1 text-xs text-zinc-500">
                 Vista iniziale preferita: {currentDefaultViewLabel}
@@ -876,9 +1249,7 @@ export default function ProfessionistiImpostazioniPage() {
 
             <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
               <p className="text-sm font-medium text-zinc-900">Logout e controllo accessi</p>
-              <p className="mt-1 text-sm text-zinc-600">
-                Esci in sicurezza dal portale professionisti.
-              </p>
+              <p className="mt-1 text-sm text-zinc-600">Esci in sicurezza dal portale professionisti.</p>
 
               <button
                 type="button"

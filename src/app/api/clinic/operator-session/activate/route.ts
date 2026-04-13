@@ -12,7 +12,7 @@ import {
 } from "@/lib/clinic/operatorSession";
 
 type Body = {
-  targetUserId?: string;
+  clinicOperatorId?: string;
   pin?: string;
 };
 
@@ -53,14 +53,14 @@ export async function POST(req: Request) {
 
   const body = (await req.json().catch(() => null)) as Body | null;
   const pin = String(body?.pin || "").trim();
-  const targetUserId = String(body?.targetUserId || "").trim();
+  const clinicOperatorId = String(body?.clinicOperatorId || "").trim();
 
   if (!pin) {
     return badRequest("PIN obbligatorio");
   }
 
-  if (!targetUserId || !isUuid(targetUserId)) {
-    return badRequest("targetUserId non valido");
+  if (!clinicOperatorId || !isUuid(clinicOperatorId)) {
+    return badRequest("clinicOperatorId non valido");
   }
 
   const supabase = createClient(supabaseUrl, supabaseAnon, {
@@ -82,16 +82,24 @@ export async function POST(req: Request) {
 
   const operator = await resolveOrganizationOperator({
     organizationId,
-    userId: targetUserId,
+    clinicOperatorId,
   });
 
   if (!operator) {
     return forbidden("Operatore non disponibile per questa organizzazione.");
   }
 
+  if (!operator.isActive) {
+    return forbidden("Operatore disattivato.");
+  }
+
+  if (operator.approvalStatus !== "active") {
+    return forbidden("Operatore non ancora approvato dal direttore sanitario.");
+  }
+
   const pinRow = await getOperatorPinRow({
     organizationId,
-    userId: targetUserId,
+    clinicOperatorId,
   });
 
   if (!pinRow?.id || !pinRow.is_active || !pinRow.pin_hash) {
@@ -107,9 +115,14 @@ export async function POST(req: Request) {
   const session = await upsertOperatorSession({
     organizationId,
     workstationKey,
+    clinicOperatorId: operator.clinicOperatorId,
     activeUserId: operator.userId,
     activeProfessionalId: operator.professionalId,
     activeOperatorLabel: operator.label,
+    activeOperatorRole: operator.role,
+    activeOperatorIsVeterinarian: operator.isVet,
+    activeOperatorFnoviNumber: operator.fnoviNumber,
+    activeOperatorFnoviProvince: operator.fnoviProvince,
   });
 
   return NextResponse.json({
@@ -118,12 +131,18 @@ export async function POST(req: Request) {
       id: session.id,
       organizationId: session.organization_id,
       workstationKey: session.workstation_key,
+      activeClinicOperatorId: session.active_clinic_operator_id,
       activeUserId: session.active_user_id,
       activeProfessionalId: session.active_professional_id,
       activeOperatorLabel: session.active_operator_label,
+      activeOperatorRole: session.active_operator_role,
+      activeOperatorIsVeterinarian: session.active_operator_is_veterinarian,
+      activeOperatorFnoviNumber: session.active_operator_fnovi_number,
+      activeOperatorFnoviProvince: session.active_operator_fnovi_province,
       pinVerifiedAt: session.pin_verified_at,
       lastSeenAt: session.last_seen_at,
       expiresAt: session.expires_at,
+      signatureMode: session.signature_mode,
     },
   });
 }

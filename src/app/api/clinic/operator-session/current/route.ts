@@ -8,6 +8,7 @@ import {
   getWorkstationKeyFromRequest,
   hasOperatorPinConfigured,
   listOrganizationOperators,
+  resolveOrganizationOperator,
 } from "@/lib/clinic/operatorSession";
 
 function unauthorized(message = "Non autorizzato") {
@@ -62,34 +63,50 @@ export async function GET(req: Request) {
     return forbidden("Profilo professionista non collegato a una organizzazione.");
   }
 
+  const currentUserOperator = await resolveOrganizationOperator({
+    organizationId,
+    userId: user.id,
+  });
+
+  const currentUserClinicOperatorId = currentUserOperator?.clinicOperatorId ?? null;
+
   const [session, availableOperators, currentUserHasPin] = await Promise.all([
     getOperatorSession({
       organizationId,
       workstationKey,
     }),
     listOrganizationOperators(organizationId),
-    hasOperatorPinConfigured({
-      organizationId,
-      userId: user.id,
-    }),
+    currentUserClinicOperatorId
+      ? hasOperatorPinConfigured({
+          organizationId,
+          clinicOperatorId: currentUserClinicOperatorId,
+        })
+      : Promise.resolve(false),
   ]);
 
   return NextResponse.json({
     ok: true,
     workstationKey,
     currentUserId: user.id,
+    currentUserClinicOperatorId,
     currentUserHasPin,
     session: session
       ? {
           id: session.id,
           organizationId: session.organization_id,
           workstationKey: session.workstation_key,
+          activeClinicOperatorId: session.active_clinic_operator_id,
           activeUserId: session.active_user_id,
           activeProfessionalId: session.active_professional_id,
           activeOperatorLabel: session.active_operator_label,
+          activeOperatorRole: session.active_operator_role,
+          activeOperatorIsVeterinarian: session.active_operator_is_veterinarian,
+          activeOperatorFnoviNumber: session.active_operator_fnovi_number,
+          activeOperatorFnoviProvince: session.active_operator_fnovi_province,
           pinVerifiedAt: session.pin_verified_at,
           lastSeenAt: session.last_seen_at,
           expiresAt: session.expires_at,
+          signatureMode: session.signature_mode,
         }
       : null,
     availableOperators,

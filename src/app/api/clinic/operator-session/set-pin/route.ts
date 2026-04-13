@@ -5,11 +5,13 @@ import { isUuid } from "@/lib/server/validators";
 import {
   getCurrentProfessionalOrganizationId,
   isValidOperatorPin,
+  resolveOrganizationOperator,
   upsertOperatorPin,
 } from "@/lib/clinic/operatorSession";
 
 type Body = {
   pin?: string;
+  clinicOperatorId?: string;
 };
 
 function unauthorized(message = "Non autorizzato") {
@@ -43,9 +45,14 @@ export async function POST(req: Request) {
 
   const body = (await req.json().catch(() => null)) as Body | null;
   const pin = String(body?.pin || "").trim();
+  const clinicOperatorId = String(body?.clinicOperatorId || "").trim();
 
   if (!isValidOperatorPin(pin)) {
     return badRequest("PIN non valido: usa 4-8 cifre numeriche.");
+  }
+
+  if (!clinicOperatorId || !isUuid(clinicOperatorId)) {
+    return badRequest("clinicOperatorId non valido");
   }
 
   const supabase = createClient(supabaseUrl, supabaseAnon, {
@@ -65,9 +72,18 @@ export async function POST(req: Request) {
     return forbidden("Profilo professionista non collegato a una organizzazione.");
   }
 
+  const operator = await resolveOrganizationOperator({
+    organizationId,
+    clinicOperatorId,
+  });
+
+  if (!operator) {
+    return forbidden("Operatore non disponibile per questa organizzazione.");
+  }
+
   await upsertOperatorPin({
     organizationId,
-    userId: user.id,
+    clinicOperatorId,
     pin,
   });
 

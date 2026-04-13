@@ -1,28 +1,45 @@
 import { authHeaders } from "@/lib/client/authHeaders";
 
 export type OperatorOption = {
-  userId: string;
+  clinicOperatorId: string;
+  userId: string | null;
   professionalId: string | null;
   label: string;
+  role: string;
   isVet: boolean;
+  isPrescriber: boolean;
+  fnoviNumber: string | null;
+  fnoviProvince: string | null;
+  approvalStatus: string;
+  isActive: boolean;
+  canUseRev: boolean;
+  isMedicalDirector: boolean;
+  canManageOperators: boolean;
 };
 
 export type OperatorSession = {
   id: string;
   organizationId: string;
   workstationKey: string;
-  activeUserId: string;
+  activeClinicOperatorId: string | null;
+  activeUserId: string | null;
   activeProfessionalId: string | null;
   activeOperatorLabel: string;
+  activeOperatorRole: string | null;
+  activeOperatorIsVeterinarian: boolean | null;
+  activeOperatorFnoviNumber: string | null;
+  activeOperatorFnoviProvince: string | null;
   pinVerifiedAt: string;
   lastSeenAt: string;
   expiresAt: string;
+  signatureMode: string | null;
 };
 
 type CurrentResponse = {
   ok: true;
   workstationKey: string;
   currentUserId: string;
+  currentUserClinicOperatorId: string | null;
   currentUserHasPin: boolean;
   session: OperatorSession | null;
   availableOperators: OperatorOption[];
@@ -58,7 +75,7 @@ export async function getOperatorSessionCurrent(workstationKey: string) {
 
 export async function activateOperatorSession(params: {
   workstationKey: string;
-  targetUserId: string;
+  clinicOperatorId: string;
   pin: string;
 }) {
   return await jsonFetch<{
@@ -71,7 +88,7 @@ export async function activateOperatorSession(params: {
       "x-workstation-key": params.workstationKey,
     },
     body: JSON.stringify({
-      targetUserId: params.targetUserId,
+      clinicOperatorId: params.clinicOperatorId,
       pin: params.pin,
     }),
   });
@@ -79,7 +96,7 @@ export async function activateOperatorSession(params: {
 
 export async function switchOperatorSession(params: {
   workstationKey: string;
-  targetUserId: string;
+  clinicOperatorId: string;
   pin: string;
 }) {
   return await jsonFetch<{
@@ -92,7 +109,7 @@ export async function switchOperatorSession(params: {
       "x-workstation-key": params.workstationKey,
     },
     body: JSON.stringify({
-      targetUserId: params.targetUserId,
+      clinicOperatorId: params.clinicOperatorId,
       pin: params.pin,
     }),
   });
@@ -123,12 +140,12 @@ export async function heartbeatOperatorSession(workstationKey: string) {
   });
 }
 
-export async function setMyOperatorPin(pin: string) {
+export async function setMyOperatorPin(clinicOperatorId: string, pin: string) {
   return await jsonFetch<{ ok: true }>("/api/clinic/operator-session/set-pin", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ pin }),
+    body: JSON.stringify({ clinicOperatorId, pin }),
   });
 }
