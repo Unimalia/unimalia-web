@@ -257,13 +257,30 @@ export async function resolveOrganizationOperator(params: {
   clinicOperatorId?: string | null;
 }) {
   const admin = supabaseAdmin();
+  const selectColumns =
+    "id, organization_id, user_id, professional_id, first_name, last_name, display_name, role, is_veterinarian, is_prescriber, fnovi_number, fnovi_province, tax_code, email, phone, approval_status, approved_by_medical_director_user_id, approved_at, approval_notes, is_medical_director, can_manage_operators, can_use_rev, rev_enabled, rev_integration_status, rev_last_auth_at, rev_linked_at, rev_external_subject_id, rev_auth_method, is_active, created_at, updated_at";
+
+  const toOption = (row: ClinicOperatorRow): ClinicOperatorOption => ({
+    clinicOperatorId: row.id,
+    userId: row.user_id,
+    professionalId: row.professional_id,
+    label: row.display_name,
+    role: row.role,
+    isVet: Boolean(row.is_veterinarian),
+    isPrescriber: Boolean(row.is_prescriber),
+    fnoviNumber: row.fnovi_number,
+    fnoviProvince: row.fnovi_province,
+    approvalStatus: row.approval_status,
+    isActive: Boolean(row.is_active),
+    canUseRev: Boolean(row.can_use_rev),
+    isMedicalDirector: Boolean(row.is_medical_director),
+    canManageOperators: Boolean(row.can_manage_operators),
+  });
 
   if (params.clinicOperatorId) {
     const byId = await admin
       .from("clinic_operators")
-      .select(
-        "id, organization_id, user_id, professional_id, first_name, last_name, display_name, role, is_veterinarian, is_prescriber, fnovi_number, fnovi_province, tax_code, email, phone, approval_status, approved_by_medical_director_user_id, approved_at, approval_notes, is_medical_director, can_manage_operators, can_use_rev, rev_enabled, rev_integration_status, rev_last_auth_at, rev_linked_at, rev_external_subject_id, rev_auth_method, is_active, created_at, updated_at"
-      )
+      .select(selectColumns)
       .eq("organization_id", params.organizationId)
       .eq("id", params.clinicOperatorId)
       .maybeSingle<ClinicOperatorRow>();
@@ -274,30 +291,13 @@ export async function resolveOrganizationOperator(params: {
 
     if (!byId.data) return null;
 
-    return {
-      clinicOperatorId: byId.data.id,
-      userId: byId.data.user_id,
-      professionalId: byId.data.professional_id,
-      label: byId.data.display_name,
-      role: byId.data.role,
-      isVet: Boolean(byId.data.is_veterinarian),
-      isPrescriber: Boolean(byId.data.is_prescriber),
-      fnoviNumber: byId.data.fnovi_number,
-      fnoviProvince: byId.data.fnovi_province,
-      approvalStatus: byId.data.approval_status,
-      isActive: Boolean(byId.data.is_active),
-      canUseRev: Boolean(byId.data.can_use_rev),
-      isMedicalDirector: Boolean(byId.data.is_medical_director),
-      canManageOperators: Boolean(byId.data.can_manage_operators),
-    } satisfies ClinicOperatorOption;
+    return toOption(byId.data);
   }
 
   if (params.userId) {
     const byUser = await admin
       .from("clinic_operators")
-      .select(
-        "id, organization_id, user_id, professional_id, first_name, last_name, display_name, role, is_veterinarian, is_prescriber, fnovi_number, fnovi_province, tax_code, email, phone, approval_status, approved_by_medical_director_user_id, approved_at, approval_notes, is_medical_director, can_manage_operators, can_use_rev, rev_enabled, rev_integration_status, rev_last_auth_at, rev_linked_at, rev_external_subject_id, rev_auth_method, is_active, created_at, updated_at"
-      )
+      .select(selectColumns)
       .eq("organization_id", params.organizationId)
       .eq("user_id", params.userId)
       .maybeSingle<ClinicOperatorRow>();
@@ -306,24 +306,43 @@ export async function resolveOrganizationOperator(params: {
       throw byUser.error;
     }
 
-    if (!byUser.data) return null;
+    if (byUser.data) {
+      return toOption(byUser.data);
+    }
 
-    return {
-      clinicOperatorId: byUser.data.id,
-      userId: byUser.data.user_id,
-      professionalId: byUser.data.professional_id,
-      label: byUser.data.display_name,
-      role: byUser.data.role,
-      isVet: Boolean(byUser.data.is_veterinarian),
-      isPrescriber: Boolean(byUser.data.is_prescriber),
-      fnoviNumber: byUser.data.fnovi_number,
-      fnoviProvince: byUser.data.fnovi_province,
-      approvalStatus: byUser.data.approval_status,
-      isActive: Boolean(byUser.data.is_active),
-      canUseRev: Boolean(byUser.data.can_use_rev),
-      isMedicalDirector: Boolean(byUser.data.is_medical_director),
-      canManageOperators: Boolean(byUser.data.can_manage_operators),
-    } satisfies ClinicOperatorOption;
+    const professionalByOwner = await admin
+      .from("professionals")
+      .select("id")
+      .eq("owner_id", params.userId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle<{ id: string }>();
+
+    if (professionalByOwner.error) {
+      throw professionalByOwner.error;
+    }
+
+    const professionalId = professionalByOwner.data?.id ?? null;
+    if (!professionalId) {
+      return null;
+    }
+
+    const byProfessional = await admin
+      .from("clinic_operators")
+      .select(selectColumns)
+      .eq("organization_id", params.organizationId)
+      .eq("professional_id", professionalId)
+      .maybeSingle<ClinicOperatorRow>();
+
+    if (byProfessional.error) {
+      throw byProfessional.error;
+    }
+
+    if (!byProfessional.data) {
+      return null;
+    }
+
+    return toOption(byProfessional.data);
   }
 
   return null;
