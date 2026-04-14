@@ -82,12 +82,18 @@ export async function POST(req: Request) {
           id: session.id,
           organizationId: session.organization_id,
           workstationKey: session.workstation_key,
+          activeClinicOperatorId: session.active_clinic_operator_id,
           activeUserId: session.active_user_id,
           activeProfessionalId: session.active_professional_id,
           activeOperatorLabel: session.active_operator_label,
+          activeOperatorRole: session.active_operator_role,
+          activeOperatorIsVeterinarian: session.active_operator_is_veterinarian,
+          activeOperatorFnoviNumber: session.active_operator_fnovi_number,
+          activeOperatorFnoviProvince: session.active_operator_fnovi_province,
           pinVerifiedAt: session.pin_verified_at,
           lastSeenAt: session.last_seen_at,
           expiresAt: session.expires_at,
+          signatureMode: session.signature_mode,
         }
       : null,
   });

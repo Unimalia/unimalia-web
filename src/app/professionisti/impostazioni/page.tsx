@@ -10,6 +10,14 @@ import {
   listClinicOperatorsClient,
   type ClinicOperatorItem,
 } from "@/lib/client/clinicOperators";
+import {
+  activateOperatorSession,
+  getOperatorSessionCurrent,
+  heartbeatOperatorSession,
+  logoutOperatorSession,
+  switchOperatorSession,
+  type OperatorSession,
+} from "@/lib/client/operatorSession";
 
 type Professional = {
   id: string;
@@ -57,6 +65,8 @@ const DEFAULT_PREFS: LocalPrefs = {
   notifyConsults: true,
   notifyClinicalUpdates: true,
 };
+
+const WORKSTATION_STORAGE_KEY = "unimalia:clinic-workstation-key";
 
 function isEmailValid(email: string) {
   const e = email.trim();
@@ -120,6 +130,21 @@ function operatorStatusLabel(status: string) {
   }
 }
 
+function getOrCreateWorkstationKey() {
+  if (typeof window === "undefined") {
+    return "";
+  }
+
+  const existing = window.localStorage.getItem(WORKSTATION_STORAGE_KEY);
+  if (existing) {
+    return existing;
+  }
+
+  const generated = `ws_${crypto.randomUUID().toLowerCase()}`;
+  window.localStorage.setItem(WORKSTATION_STORAGE_KEY, generated);
+  return generated;
+}
+
 export default function ProfessionistiImpostazioniPage() {
   const router = useRouter();
 
@@ -132,6 +157,9 @@ export default function ProfessionistiImpostazioniPage() {
 
   const [loadingOperators, setLoadingOperators] = useState(false);
   const [savingOperator, setSavingOperator] = useState(false);
+
+  const [loadingOperatorSession, setLoadingOperatorSession] = useState(false);
+  const [savingOperatorSession, setSavingOperatorSession] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
@@ -159,6 +187,11 @@ export default function ProfessionistiImpostazioniPage() {
 
   const [operators, setOperators] = useState<ClinicOperatorItem[]>([]);
   const [actorOperator, setActorOperator] = useState<ClinicOperatorItem | null>(null);
+
+  const [workstationKey, setWorkstationKey] = useState("");
+  const [currentOperatorSession, setCurrentOperatorSession] = useState<OperatorSession | null>(null);
+  const [selectedSessionOperatorId, setSelectedSessionOperatorId] = useState("");
+  const [sessionPin, setSessionPin] = useState("");
 
   const [opFirstName, setOpFirstName] = useState("");
   const [opLastName, setOpLastName] = useState("");
@@ -188,11 +221,39 @@ export default function ProfessionistiImpostazioniPage() {
       const result = await listClinicOperatorsClient();
       setOperators(result.operators ?? []);
       setActorOperator(result.actor ?? null);
-    } catch (err) {
+    } catch {
       setOperators([]);
       setActorOperator(null);
     } finally {
       setLoadingOperators(false);
+    }
+  }
+
+  async function refreshOperatorSession(workstationKeyValue?: string) {
+    const resolvedWorkstationKey = workstationKeyValue || workstationKey || getOrCreateWorkstationKey();
+
+    if (!resolvedWorkstationKey) {
+      return;
+    }
+
+    setLoadingOperatorSession(true);
+
+    try {
+      const result = await getOperatorSessionCurrent(resolvedWorkstationKey);
+      setWorkstationKey(result.workstationKey);
+      setCurrentOperatorSession(result.session);
+
+      if (result.session?.activeClinicOperatorId) {
+        setSelectedSessionOperatorId(result.session.activeClinicOperatorId);
+      } else if (result.currentUserClinicOperatorId) {
+        setSelectedSessionOperatorId(result.currentUserClinicOperatorId);
+      } else if (result.availableOperators?.length) {
+        setSelectedSessionOperatorId((prev) => prev || result.availableOperators[0].clinicOperatorId);
+      }
+    } catch {
+      setCurrentOperatorSession(null);
+    } finally {
+      setLoadingOperatorSession(false);
     }
   }
 
@@ -219,6 +280,9 @@ export default function ProfessionistiImpostazioniPage() {
       setUserId(user.id);
       setUserEmail(user.email ?? "");
       setProfessionalType(resolvedProfessionalType);
+
+      const initialWorkstationKey = getOrCreateWorkstationKey();
+      setWorkstationKey(initialWorkstationKey);
 
       const { data: proData, error: proErr } = await supabase
         .from("professionals")
@@ -268,6 +332,9 @@ export default function ProfessionistiImpostazioniPage() {
       }
 
       setLoading(false);
+
+      await loadOperators();
+      await refreshOperatorSession(initialWorkstationKey);
     }
 
     void load();
@@ -331,8 +398,29 @@ export default function ProfessionistiImpostazioniPage() {
   }, [professionalType]);
 
   useEffect(() => {
-    void loadOperators();
-  }, []);
+    if (!selectedSessionOperatorId && operators.length > 0) {
+      setSelectedSessionOperatorId(operators[0].clinicOperatorId);
+    }
+  }, [operators, selectedSessionOperatorId]);
+
+  useEffect(() => {
+    if (!workstationKey || !currentOperatorSession) {
+      return;
+    }
+
+    const timer = window.setInterval(async () => {
+      try {
+        const result = await heartbeatOperatorSession(workstationKey);
+        setCurrentOperatorSession(result.session);
+      } catch {
+        // ignore heartbeat errors
+      }
+    }, 120000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [workstationKey, currentOperatorSession]);
 
   const currentDefaultViewLabel = useMemo(() => {
     switch (prefs.defaultView) {
@@ -602,10 +690,86 @@ export default function ProfessionistiImpostazioniPage() {
 
       setInfo("Operatore clinico creato");
       await loadOperators();
+      await refreshOperatorSession();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore creazione operatore.");
     } finally {
       setSavingOperator(false);
+    }
+  }
+
+  async function handleActivateOrSwitchOperatorSession() {
+    setError(null);
+    setInfo(null);
+
+    if (!workstationKey) {
+      setError("Workstation non disponibile.");
+      return;
+    }
+
+    if (!selectedSessionOperatorId) {
+      setError("Seleziona un operatore.");
+      return;
+    }
+
+    if (!/^\d{4,8}$/.test(sessionPin.trim())) {
+      setError("Inserisci un PIN valido di 4-8 cifre.");
+      return;
+    }
+
+    setSavingOperatorSession(true);
+
+    try {
+      const isSwitch =
+        Boolean(currentOperatorSession?.activeClinicOperatorId) &&
+        currentOperatorSession?.activeClinicOperatorId !== selectedSessionOperatorId;
+
+      const result = isSwitch
+        ? await switchOperatorSession({
+            workstationKey,
+            clinicOperatorId: selectedSessionOperatorId,
+            pin: sessionPin.trim(),
+          })
+        : await activateOperatorSession({
+            workstationKey,
+            clinicOperatorId: selectedSessionOperatorId,
+            pin: sessionPin.trim(),
+          });
+
+      setCurrentOperatorSession(result.session);
+      setSessionPin("");
+      setInfo(
+        isSwitch
+          ? `Operatore attivo aggiornato ✅ ${result.session.activeOperatorLabel}`
+          : `Sessione operatore attivata ✅ ${result.session.activeOperatorLabel}`
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Errore sessione operatore.");
+    } finally {
+      setSavingOperatorSession(false);
+    }
+  }
+
+  async function handleCloseOperatorSession() {
+    setError(null);
+    setInfo(null);
+
+    if (!workstationKey) {
+      setError("Workstation non disponibile.");
+      return;
+    }
+
+    setSavingOperatorSession(true);
+
+    try {
+      await logoutOperatorSession(workstationKey);
+      setCurrentOperatorSession(null);
+      setSessionPin("");
+      setInfo("Sessione operatore chiusa ✅");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Errore chiusura sessione.");
+    } finally {
+      setSavingOperatorSession(false);
     }
   }
 
@@ -962,7 +1126,6 @@ export default function ProfessionistiImpostazioniPage() {
             </div>
           ) : null}
 
-          {/* Sessione Operatore Corrente */}
           <div className="mt-6 rounded-2xl border border-zinc-200 bg-zinc-50 p-5">
             <div className="text-sm font-semibold text-zinc-900">Sessione operatore corrente</div>
             <p className="mt-1 text-sm text-zinc-600">
@@ -971,38 +1134,101 @@ export default function ProfessionistiImpostazioniPage() {
 
             <div className="mt-4 rounded-xl border border-zinc-200 bg-white p-4">
               <div className="grid gap-3 text-sm">
-                <div className="flex justify-between">
+                <div className="flex justify-between gap-4">
                   <span className="text-zinc-600">Workstation:</span>
-                  <span className="font-mono text-zinc-900">localhost</span>
+                  <span className="font-mono text-right text-zinc-900 break-all">
+                    {workstationKey || "Non disponibile"}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-zinc-600">Operatore attivo:</span>
                   <span className="font-medium text-zinc-900">
-                    {actorOperator?.label || "Nessuno"}
+                    {loadingOperatorSession
+                      ? "Caricamento..."
+                      : currentOperatorSession?.activeOperatorLabel || "Nessuno"}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-zinc-600">Stato:</span>
                   <span className="font-medium text-zinc-900">
-                    Sessione non attiva
+                    {loadingOperatorSession
+                      ? "Verifica in corso..."
+                      : currentOperatorSession
+                        ? "Sessione attiva"
+                        : "Sessione non attiva"}
                   </span>
+                </div>
+                {currentOperatorSession?.expiresAt ? (
+                  <div className="flex justify-between gap-4">
+                    <span className="text-zinc-600">Scadenza:</span>
+                    <span className="text-right text-zinc-900">
+                      {new Date(currentOperatorSession.expiresAt).toLocaleString("it-IT")}
+                    </span>
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-zinc-900">Operatore</label>
+                  <select
+                    className="mt-1 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 outline-none focus:border-zinc-900"
+                    value={selectedSessionOperatorId}
+                    onChange={(e) => setSelectedSessionOperatorId(e.target.value)}
+                  >
+                    <option value="">Seleziona operatore</option>
+                    {operators
+                      .filter((operator) => operator.isActive)
+                      .map((operator) => (
+                        <option key={operator.clinicOperatorId} value={operator.clinicOperatorId}>
+                          {operator.label} — {operator.role}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-zinc-900">PIN operatore</label>
+                  <input
+                    type="password"
+                    inputMode="numeric"
+                    maxLength={8}
+                    className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
+                    value={sessionPin}
+                    onChange={(e) => setSessionPin(e.target.value.replace(/\D/g, ""))}
+                    placeholder="4-8 cifre"
+                  />
                 </div>
               </div>
 
-              <div className="mt-4 flex gap-3">
+              <div className="mt-4 flex flex-wrap gap-3">
                 <button
                   type="button"
+                  onClick={handleActivateOrSwitchOperatorSession}
+                  disabled={savingOperatorSession || loadingOperatorSession}
                   className="inline-flex items-center justify-center rounded-xl bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800 disabled:opacity-60"
-                  disabled
                 >
-                  Attiva sessione operatore
+                  {savingOperatorSession
+                    ? "Salvataggio..."
+                    : currentOperatorSession
+                      ? "Attiva / cambia operatore"
+                      : "Attiva sessione operatore"}
                 </button>
                 <button
                   type="button"
+                  onClick={handleCloseOperatorSession}
+                  disabled={savingOperatorSession || !currentOperatorSession}
                   className="inline-flex items-center justify-center rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 disabled:opacity-60"
-                  disabled
                 >
                   Chiudi sessione
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void refreshOperatorSession()}
+                  disabled={loadingOperatorSession || savingOperatorSession}
+                  className="inline-flex items-center justify-center rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 disabled:opacity-60"
+                >
+                  Aggiorna stato
                 </button>
               </div>
             </div>

@@ -10,7 +10,7 @@ export type RequiredClinicOperatorSession = {
   organizationId: string;
   workstationKey: string;
   operatorSessionId: string;
-  activeOperatorUserId: string;
+  activeOperatorUserId: string | null;
   activeOperatorProfessionalId: string | null;
   activeOperatorLabel: string;
   pinVerifiedAt: string;

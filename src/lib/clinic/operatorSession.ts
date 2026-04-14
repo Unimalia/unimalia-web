@@ -55,7 +55,7 @@ export type ClinicOperatorSessionRow = {
   id: string;
   organization_id: string;
   workstation_key: string;
-  active_user_id: string;
+  active_user_id: string | null;
   active_professional_id: string | null;
   active_operator_label: string;
   pin_verified_at: string;
@@ -295,7 +295,6 @@ export async function resolveOrganizationOperator(params: {
   }
 
   if (params.userId) {
-    // 1. Cerca prima per user_id diretto
     const byUser = await admin
       .from("clinic_operators")
       .select(selectColumns)
@@ -317,7 +316,6 @@ export async function resolveOrganizationOperator(params: {
       return toOption(byUser.data);
     }
 
-    // 2. Cerca professional_id tramite owner_id
     const professionalByOwner = await admin
       .from("professionals")
       .select("id")
@@ -338,7 +336,6 @@ export async function resolveOrganizationOperator(params: {
         professionalId,
       });
 
-      // 3. Cerca clinic_operators per professional_id
       const byProfessional = await admin
         .from("clinic_operators")
         .select(selectColumns)
@@ -362,7 +359,6 @@ export async function resolveOrganizationOperator(params: {
       }
     }
 
-    // 4. Diagnostica chiara per capire perché l'actor non viene risolto
     console.error("[resolveOrganizationOperator] Actor not found - needs data fix", {
       userId: params.userId,
       organizationId: params.organizationId,
@@ -371,7 +367,7 @@ export async function resolveOrganizationOperator(params: {
       hasProfessionalRecord: Boolean(professionalByOwner.data),
       hasOperatorByProfessional: false,
       resolutionPath: "user_id -> professional_id -> clinic_operators",
-      suggestedFix: "Create clinic_operators record linking user_id or professional_id to this user"
+      suggestedFix: "Create clinic_operators record linking user_id or professional_id to this user",
     });
 
     return null;
