@@ -47,7 +47,6 @@ type OperatorPinRow = {
   clinic_operator_id: string;
   pin_hash: string;
   is_active: boolean;
-  must_change_pin: boolean | null;
   created_at: string;
   updated_at: string;
 };
@@ -87,8 +86,6 @@ export type ClinicOperatorOption = {
   canUseRev: boolean;
   isMedicalDirector: boolean;
   canManageOperators: boolean;
-  hasPinConfigured: boolean;
-  mustChangePin: boolean;
 };
 
 export type CreateClinicOperatorInput = {
@@ -194,47 +191,23 @@ export async function getCurrentProfessionalOrganizationId(userId: string) {
   return await getProfessionalOrgId(userId);
 }
 
-async function getPinStatusMapForOrganization(organizationId: string) {
+export async function listClinicOperators(organizationId: string) {
   const admin = supabaseAdmin();
 
   const result = await admin
-    .from("clinic_operator_pins_v2")
+    .from("clinic_operators")
     .select(
-      "id, organization_id, clinic_operator_id, pin_hash, is_active, must_change_pin, created_at, updated_at"
+      "id, organization_id, user_id, professional_id, first_name, last_name, display_name, role, is_veterinarian, is_prescriber, fnovi_number, fnovi_province, tax_code, email, phone, approval_status, approved_by_medical_director_user_id, approved_at, approval_notes, is_medical_director, can_manage_operators, can_use_rev, rev_enabled, rev_integration_status, rev_last_auth_at, rev_linked_at, rev_external_subject_id, rev_auth_method, is_active, created_at, updated_at"
     )
     .eq("organization_id", organizationId)
-    .returns<OperatorPinRow[]>();
+    .order("display_name", { ascending: true })
+    .returns<ClinicOperatorRow[]>();
 
   if (result.error) {
     throw result.error;
   }
 
-  const map = new Map<
-    string,
-    {
-      hasPinConfigured: boolean;
-      mustChangePin: boolean;
-    }
-  >();
-
-  for (const row of result.data ?? []) {
-    map.set(row.clinic_operator_id, {
-      hasPinConfigured: Boolean(row.id && row.is_active && row.pin_hash),
-      mustChangePin: Boolean(row.must_change_pin),
-    });
-  }
-
-  return map;
-}
-
-function toClinicOperatorOption(
-  row: ClinicOperatorRow,
-  pinStatus?: {
-    hasPinConfigured: boolean;
-    mustChangePin: boolean;
-  } | null
-): ClinicOperatorOption {
-  return {
+  return (result.data ?? []).map((row) => ({
     clinicOperatorId: row.id,
     userId: row.user_id,
     professionalId: row.professional_id,
@@ -249,33 +222,7 @@ function toClinicOperatorOption(
     canUseRev: Boolean(row.can_use_rev),
     isMedicalDirector: Boolean(row.is_medical_director),
     canManageOperators: Boolean(row.can_manage_operators),
-    hasPinConfigured: Boolean(pinStatus?.hasPinConfigured),
-    mustChangePin: Boolean(pinStatus?.mustChangePin),
-  };
-}
-
-export async function listClinicOperators(organizationId: string) {
-  const admin = supabaseAdmin();
-
-  const [operatorsResult, pinStatusMap] = await Promise.all([
-    admin
-      .from("clinic_operators")
-      .select(
-        "id, organization_id, user_id, professional_id, first_name, last_name, display_name, role, is_veterinarian, is_prescriber, fnovi_number, fnovi_province, tax_code, email, phone, approval_status, approved_by_medical_director_user_id, approved_at, approval_notes, is_medical_director, can_manage_operators, can_use_rev, rev_enabled, rev_integration_status, rev_last_auth_at, rev_linked_at, rev_external_subject_id, rev_auth_method, is_active, created_at, updated_at"
-      )
-      .eq("organization_id", organizationId)
-      .order("display_name", { ascending: true })
-      .returns<ClinicOperatorRow[]>(),
-    getPinStatusMapForOrganization(organizationId),
-  ]);
-
-  if (operatorsResult.error) {
-    throw operatorsResult.error;
-  }
-
-  return (operatorsResult.data ?? []).map((row) =>
-    toClinicOperatorOption(row, pinStatusMap.get(row.id) ?? null)
-  );
+  })) as ClinicOperatorOption[];
 }
 
 export async function listOrganizationOperators(organizationId: string) {
@@ -288,33 +235,20 @@ export async function getClinicOperatorById(params: {
 }) {
   const admin = supabaseAdmin();
 
-  const [result, pinRow] = await Promise.all([
-    admin
-      .from("clinic_operators")
-      .select(
-        "id, organization_id, user_id, professional_id, first_name, last_name, display_name, role, is_veterinarian, is_prescriber, fnovi_number, fnovi_province, tax_code, email, phone, approval_status, approved_by_medical_director_user_id, approved_at, approval_notes, is_medical_director, can_manage_operators, can_use_rev, rev_enabled, rev_integration_status, rev_last_auth_at, rev_linked_at, rev_external_subject_id, rev_auth_method, is_active, created_at, updated_at"
-      )
-      .eq("organization_id", params.organizationId)
-      .eq("id", params.clinicOperatorId)
-      .maybeSingle<ClinicOperatorRow>(),
-    getOperatorPinRow({
-      organizationId: params.organizationId,
-      clinicOperatorId: params.clinicOperatorId,
-    }),
-  ]);
+  const result = await admin
+    .from("clinic_operators")
+    .select(
+      "id, organization_id, user_id, professional_id, first_name, last_name, display_name, role, is_veterinarian, is_prescriber, fnovi_number, fnovi_province, tax_code, email, phone, approval_status, approved_by_medical_director_user_id, approved_at, approval_notes, is_medical_director, can_manage_operators, can_use_rev, rev_enabled, rev_integration_status, rev_last_auth_at, rev_linked_at, rev_external_subject_id, rev_auth_method, is_active, created_at, updated_at"
+    )
+    .eq("organization_id", params.organizationId)
+    .eq("id", params.clinicOperatorId)
+    .maybeSingle<ClinicOperatorRow>();
 
   if (result.error) {
     throw result.error;
   }
 
-  if (!result.data) {
-    return null;
-  }
-
-  return toClinicOperatorOption(result.data, {
-    hasPinConfigured: Boolean(pinRow?.id && pinRow?.is_active && pinRow?.pin_hash),
-    mustChangePin: Boolean(pinRow?.must_change_pin),
-  });
+  return result.data ?? null;
 }
 
 export async function resolveOrganizationOperator(params: {
@@ -326,19 +260,30 @@ export async function resolveOrganizationOperator(params: {
   const selectColumns =
     "id, organization_id, user_id, professional_id, first_name, last_name, display_name, role, is_veterinarian, is_prescriber, fnovi_number, fnovi_province, tax_code, email, phone, approval_status, approved_by_medical_director_user_id, approved_at, approval_notes, is_medical_director, can_manage_operators, can_use_rev, rev_enabled, rev_integration_status, rev_last_auth_at, rev_linked_at, rev_external_subject_id, rev_auth_method, is_active, created_at, updated_at";
 
+  const toOption = (row: ClinicOperatorRow): ClinicOperatorOption => ({
+    clinicOperatorId: row.id,
+    userId: row.user_id,
+    professionalId: row.professional_id,
+    label: row.display_name,
+    role: row.role,
+    isVet: Boolean(row.is_veterinarian),
+    isPrescriber: Boolean(row.is_prescriber),
+    fnoviNumber: row.fnovi_number,
+    fnoviProvince: row.fnovi_province,
+    approvalStatus: row.approval_status,
+    isActive: Boolean(row.is_active),
+    canUseRev: Boolean(row.can_use_rev),
+    isMedicalDirector: Boolean(row.is_medical_director),
+    canManageOperators: Boolean(row.can_manage_operators),
+  });
+
   if (params.clinicOperatorId) {
-    const [byId, pinRow] = await Promise.all([
-      admin
-        .from("clinic_operators")
-        .select(selectColumns)
-        .eq("organization_id", params.organizationId)
-        .eq("id", params.clinicOperatorId)
-        .maybeSingle<ClinicOperatorRow>(),
-      getOperatorPinRow({
-        organizationId: params.organizationId,
-        clinicOperatorId: params.clinicOperatorId,
-      }),
-    ]);
+    const byId = await admin
+      .from("clinic_operators")
+      .select(selectColumns)
+      .eq("organization_id", params.organizationId)
+      .eq("id", params.clinicOperatorId)
+      .maybeSingle<ClinicOperatorRow>();
 
     if (byId.error) {
       throw byId.error;
@@ -346,13 +291,11 @@ export async function resolveOrganizationOperator(params: {
 
     if (!byId.data) return null;
 
-    return toClinicOperatorOption(byId.data, {
-      hasPinConfigured: Boolean(pinRow?.id && pinRow?.is_active && pinRow?.pin_hash),
-      mustChangePin: Boolean(pinRow?.must_change_pin),
-    });
+    return toOption(byId.data);
   }
 
   if (params.userId) {
+    // 1. Cerca prima per user_id diretto
     const byUser = await admin
       .from("clinic_operators")
       .select(selectColumns)
@@ -365,17 +308,16 @@ export async function resolveOrganizationOperator(params: {
     }
 
     if (byUser.data) {
-      const pinRow = await getOperatorPinRow({
+      console.info("[resolveOrganizationOperator] Found operator by user_id", {
+        userId: params.userId,
         organizationId: params.organizationId,
-        clinicOperatorId: byUser.data.id,
+        operatorId: byUser.data.id,
+        operatorLabel: byUser.data.display_name,
       });
-
-      return toClinicOperatorOption(byUser.data, {
-        hasPinConfigured: Boolean(pinRow?.id && pinRow?.is_active && pinRow?.pin_hash),
-        mustChangePin: Boolean(pinRow?.must_change_pin),
-      });
+      return toOption(byUser.data);
     }
 
+    // 2. Cerca professional_id tramite owner_id
     const professionalByOwner = await admin
       .from("professionals")
       .select("id")
@@ -389,34 +331,50 @@ export async function resolveOrganizationOperator(params: {
     }
 
     const professionalId = professionalByOwner.data?.id ?? null;
-    if (!professionalId) {
-      return null;
+    if (professionalId) {
+      console.info("[resolveOrganizationOperator] Found professional for user", {
+        userId: params.userId,
+        organizationId: params.organizationId,
+        professionalId,
+      });
+
+      // 3. Cerca clinic_operators per professional_id
+      const byProfessional = await admin
+        .from("clinic_operators")
+        .select(selectColumns)
+        .eq("organization_id", params.organizationId)
+        .eq("professional_id", professionalId)
+        .maybeSingle<ClinicOperatorRow>();
+
+      if (byProfessional.error) {
+        throw byProfessional.error;
+      }
+
+      if (byProfessional.data) {
+        console.info("[resolveOrganizationOperator] Found operator by professional_id", {
+          userId: params.userId,
+          organizationId: params.organizationId,
+          professionalId,
+          operatorId: byProfessional.data.id,
+          operatorLabel: byProfessional.data.display_name,
+        });
+        return toOption(byProfessional.data);
+      }
     }
 
-    const byProfessional = await admin
-      .from("clinic_operators")
-      .select(selectColumns)
-      .eq("organization_id", params.organizationId)
-      .eq("professional_id", professionalId)
-      .maybeSingle<ClinicOperatorRow>();
-
-    if (byProfessional.error) {
-      throw byProfessional.error;
-    }
-
-    if (!byProfessional.data) {
-      return null;
-    }
-
-    const pinRow = await getOperatorPinRow({
+    // 4. Diagnostica chiara per capire perché l'actor non viene risolto
+    console.error("[resolveOrganizationOperator] Actor not found - needs data fix", {
+      userId: params.userId,
       organizationId: params.organizationId,
-      clinicOperatorId: byProfessional.data.id,
+      professionalId,
+      hasUserRecord: Boolean(byUser.data),
+      hasProfessionalRecord: Boolean(professionalByOwner.data),
+      hasOperatorByProfessional: false,
+      resolutionPath: "user_id -> professional_id -> clinic_operators",
+      suggestedFix: "Create clinic_operators record linking user_id or professional_id to this user"
     });
 
-    return toClinicOperatorOption(byProfessional.data, {
-      hasPinConfigured: Boolean(pinRow?.id && pinRow?.is_active && pinRow?.pin_hash),
-      mustChangePin: Boolean(pinRow?.must_change_pin),
-    });
+    return null;
   }
 
   return null;
@@ -493,9 +451,7 @@ export async function getOperatorPinRow(params: {
 
   const result = await admin
     .from("clinic_operator_pins_v2")
-    .select(
-      "id, organization_id, clinic_operator_id, pin_hash, is_active, must_change_pin, created_at, updated_at"
-    )
+    .select("id, organization_id, clinic_operator_id, pin_hash, is_active, created_at, updated_at")
     .eq("organization_id", params.organizationId)
     .eq("clinic_operator_id", params.clinicOperatorId)
     .maybeSingle<OperatorPinRow>();
@@ -534,9 +490,7 @@ export async function upsertOperatorPin(params: {
       },
       { onConflict: "organization_id,clinic_operator_id" }
     )
-    .select(
-      "id, organization_id, clinic_operator_id, pin_hash, is_active, must_change_pin, created_at, updated_at"
-    )
+    .select("id, organization_id, clinic_operator_id, pin_hash, is_active, created_at, updated_at")
     .single<OperatorPinRow>();
 
   if (result.error || !result.data) {

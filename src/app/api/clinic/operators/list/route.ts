@@ -43,7 +43,6 @@ export async function GET(req: Request) {
 
   const { data: userData, error: userErr } = await supabase.auth.getUser(token);
   const user = userData?.user;
-
   console.info("[clinic/operators/list] auth user", {
     userId: user?.id ?? null,
     hasUserError: Boolean(userErr),
@@ -54,7 +53,6 @@ export async function GET(req: Request) {
   }
 
   const organizationId = await getCurrentProfessionalOrganizationId(user.id);
-
   console.info("[clinic/operators/list] organization resolved", {
     userId: user.id,
     organizationId,
@@ -71,24 +69,14 @@ export async function GET(req: Request) {
       userId: user.id,
     }),
   ]);
-
   console.info("[clinic/operators/list] actor/operators", {
     userId: user.id,
     organizationId,
     actorFound: Boolean(actor),
     actorUserId: actor?.userId ?? null,
     actorProfessionalId: actor?.professionalId ?? null,
-    actorHasPinConfigured: actor?.hasPinConfigured ?? false,
-    actorMustChangePin: actor?.mustChangePin ?? false,
     operatorsCount: operators.length,
-    operatorsList: operators.map((op) => ({
-      id: op.clinicOperatorId,
-      label: op.label,
-      userId: op.userId,
-      professionalId: op.professionalId,
-      hasPinConfigured: op.hasPinConfigured,
-      mustChangePin: op.mustChangePin,
-    })),
+    operatorsList: operators.map(op => ({ id: op.clinicOperatorId, label: op.label, userId: op.userId, professionalId: op.professionalId })),
   });
 
   if (!actor) {
@@ -96,10 +84,8 @@ export async function GET(req: Request) {
       userId: user.id,
       organizationId,
       operatorsAvailable: operators.length,
-      reason:
-        "L'utente loggato non ha un record in clinic_operators con user_id corrispondente o professional_id collegato",
+      reason: "L'utente loggato non ha un record in clinic_operators con user_id corrispondente o professional_id collegato"
     });
-
     return forbidden("Operatore clinico non configurato per questo utente.");
   }
 

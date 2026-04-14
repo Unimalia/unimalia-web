@@ -124,7 +124,6 @@ export async function POST(req: Request) {
 
   return NextResponse.json({
     ok: true,
-    mustChangePin: Boolean(pinRow.must_change_pin),
     session: {
       id: session.id,
       organizationId: session.organization_id,
