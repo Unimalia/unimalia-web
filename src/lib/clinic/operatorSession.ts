@@ -277,23 +277,6 @@ export async function resolveOrganizationOperator(params: {
     canManageOperators: Boolean(row.can_manage_operators),
   });
 
-  const toOption = (row: ClinicOperatorRow): ClinicOperatorOption => ({
-    clinicOperatorId: row.id,
-    userId: row.user_id,
-    professionalId: row.professional_id,
-    label: row.display_name,
-    role: row.role,
-    isVet: Boolean(row.is_veterinarian),
-    isPrescriber: Boolean(row.is_prescriber),
-    fnoviNumber: row.fnovi_number,
-    fnoviProvince: row.fnovi_province,
-    approvalStatus: row.approval_status,
-    isActive: Boolean(row.is_active),
-    canUseRev: Boolean(row.can_use_rev),
-    isMedicalDirector: Boolean(row.is_medical_director),
-    canManageOperators: Boolean(row.can_manage_operators),
-  });
-
   if (params.clinicOperatorId) {
     const byId = await admin
       .from("clinic_operators")
@@ -306,7 +289,9 @@ export async function resolveOrganizationOperator(params: {
       throw byId.error;
     }
 
-    if (!byId.data) return null;
+    if (!byId.data) {
+      return null;
+    }
 
     return toOption(byId.data);
   }
@@ -340,29 +325,25 @@ export async function resolveOrganizationOperator(params: {
     }
 
     const professionalId = professionalByOwner.data?.id ?? null;
+
     if (professionalId) {
-      console.info("[resolveOrganizationOperator] Found professional for user", {
-        userId: params.userId,
-        organizationId: params.organizationId,
-        professionalId,
-      });
+      const byProfessional = await admin
+        .from("clinic_operators")
+        .select(selectColumns)
+        .eq("organization_id", params.organizationId)
+        .eq("professional_id", professionalId)
+        .maybeSingle<ClinicOperatorRow>();
 
-    const byProfessional = await admin
-      .from("clinic_operators")
-      .select(selectColumns)
-      .eq("organization_id", params.organizationId)
-      .eq("professional_id", professionalId)
-      .maybeSingle<ClinicOperatorRow>();
+      if (byProfessional.error) {
+        throw byProfessional.error;
+      }
 
-    if (byProfessional.error) {
-      throw byProfessional.error;
+      if (byProfessional.data) {
+        return toOption(byProfessional.data);
+      }
     }
 
-    if (!byProfessional.data) {
-      return null;
-    }
-
-    return toOption(byProfessional.data);
+    return null;
   }
 
   return null;
