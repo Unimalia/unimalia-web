@@ -6,6 +6,7 @@ import {
   createClinicOperator,
   getCurrentProfessionalOrganizationId,
   resolveOrganizationOperator,
+  upsertOperatorPin,
 } from "@/lib/clinic/operatorSession";
 
 type Body = {
@@ -22,6 +23,7 @@ type Body = {
   phone?: string | null;
   approvalNotes?: string | null;
   canUseRev?: boolean;
+  initialPin?: string | null;
 };
 
 function unauthorized(message = "Non autorizzato") {
@@ -58,6 +60,11 @@ function normalizeTaxCode(value: string | null | undefined) {
 function normalizeEmail(value: string | null | undefined) {
   const normalized = normalizeText(value).toLowerCase();
   return normalized || null;
+}
+
+function isValidInitialPin(pin: string | null) {
+  if (!pin) return false;
+  return /^\d{4,8}$/.test(pin);
 }
 
 export async function POST(req: Request) {
@@ -127,40 +134,26 @@ export async function POST(req: Request) {
   const isPrescriber = isVeterinarian ? Boolean(body.isPrescriber) : false;
   const fnoviNumber = isVeterinarian ? normalizeNullableText(body.fnoviNumber) : null;
   const fnoviProvince = isVeterinarian ? normalizeProvince(body.fnoviProvince) : null;
-  const taxCode = isVeterinarian ? normalizeTaxCode(body.taxCode) : normalizeTaxCode(body.taxCode);
+  const taxCode = normalizeTaxCode(body.taxCode);
   const email = normalizeEmail(body.email);
   const phone = normalizeNullableText(body.phone);
   const approvalNotes = normalizeNullableText(body.approvalNotes);
   const canUseRev = isVeterinarian ? Boolean(body.canUseRev) : false;
+  const initialPin = normalizeNullableText(body.initialPin);
 
-  if (!firstName) {
-    return badRequest("Nome operatore obbligatorio.");
-  }
+  if (!firstName) return badRequest("Nome operatore obbligatorio.");
+  if (!lastName) return badRequest("Cognome operatore obbligatorio.");
+  if (!role) return badRequest("Ruolo operatore obbligatorio.");
 
-  if (!lastName) {
-    return badRequest("Cognome operatore obbligatorio.");
-  }
-
-  if (!role) {
-    return badRequest("Ruolo operatore obbligatorio.");
+  if (!isValidInitialPin(initialPin)) {
+    return badRequest("PIN iniziale obbligatorio: 4-8 cifre numeriche.");
   }
 
   if (isVeterinarian) {
-    if (!fnoviNumber) {
-      return badRequest("Numero FNOVI obbligatorio per veterinario.");
-    }
-
-    if (!fnoviProvince) {
-      return badRequest("Provincia albo obbligatoria per veterinario.");
-    }
-
-    if (!taxCode) {
-      return badRequest("Codice fiscale obbligatorio per veterinario.");
-    }
-
-    if (!email) {
-      return badRequest("Email obbligatoria per veterinario.");
-    }
+    if (!fnoviNumber) return badRequest("Numero FNOVI obbligatorio per veterinario.");
+    if (!fnoviProvince) return badRequest("Provincia albo obbligatoria per veterinario.");
+    if (!taxCode) return badRequest("Codice fiscale obbligatorio per veterinario.");
+    if (!email) return badRequest("Email obbligatoria per veterinario.");
   }
 
   try {
@@ -189,6 +182,25 @@ export async function POST(req: Request) {
       userId: null,
       professionalId: null,
     });
+
+    await upsertOperatorPin({
+      organizationId,
+      clinicOperatorId: operator.id,
+      pin: initialPin!,
+    });
+
+    const admin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    await admin
+      .from("clinic_operator_pins_v2")
+      .update({
+        must_change_pin: true,
+      })
+      .eq("organization_id", organizationId)
+      .eq("clinic_operator_id", operator.id);
 
     return NextResponse.json({
       ok: true,

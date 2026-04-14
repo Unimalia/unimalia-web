@@ -171,6 +171,7 @@ export default function ProfessionistiImpostazioniPage() {
   const [opTaxCode, setOpTaxCode] = useState("");
   const [opEmail, setOpEmail] = useState("");
   const [opPhone, setOpPhone] = useState("");
+  const [opInitialPin, setOpInitialPin] = useState("");
   const [opCanUseRev, setOpCanUseRev] = useState(false);
   const [opApprovalNotes, setOpApprovalNotes] = useState("");
 
@@ -566,6 +567,11 @@ export default function ProfessionistiImpostazioniPage() {
       }
     }
 
+    if (!/^\d{4,8}$/.test(opInitialPin.trim())) {
+      setError("PIN iniziale obbligatorio: 4-8 cifre numeriche.");
+      return;
+    }
+
     setSavingOperator(true);
 
     try {
@@ -583,6 +589,7 @@ export default function ProfessionistiImpostazioniPage() {
         phone: opPhone.trim() || null,
         approvalNotes: opApprovalNotes.trim() || null,
         canUseRev: opIsVeterinarian ? opCanUseRev : false,
+        initialPin: opInitialPin.trim(),
       });
 
       setOpFirstName("");
@@ -596,6 +603,7 @@ export default function ProfessionistiImpostazioniPage() {
       setOpTaxCode("");
       setOpEmail("");
       setOpPhone("");
+      setOpInitialPin("");
       setOpCanUseRev(false);
       setOpApprovalNotes("");
 
@@ -914,6 +922,26 @@ export default function ProfessionistiImpostazioniPage() {
                     value={opPhone}
                     onChange={(e) => setOpPhone(e.target.value)}
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-zinc-900">
+                    PIN iniziale operatore
+                  </label>
+                  <input
+                    type="password"
+                    inputMode="numeric"
+                    maxLength={8}
+                    className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
+                    value={opInitialPin}
+                    onChange={(e) =>
+                      setOpInitialPin(e.target.value.replace(/\D/g, ""))
+                    }
+                    placeholder="4-8 cifre"
+                  />
+                  <p className="mt-1 text-xs text-zinc-500">
+                    Il direttore sanitario assegna il PIN iniziale. Al primo accesso l’operatore dovrà cambiarlo.
+                  </p>
                 </div>
 
                 <div className="md:col-span-2">

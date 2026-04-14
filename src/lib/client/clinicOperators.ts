@@ -20,12 +20,12 @@ export type ClinicOperatorItem = {
 type ListResponse = {
   ok: true;
   operators: ClinicOperatorItem[];
-  actor: ClinicOperatorItem;
+  actor: ClinicOperatorItem | null;
 };
 
 type CreateResponse = {
   ok: true;
-  operator: unknown;
+  operator: ClinicOperatorItem;
 };
 
 async function jsonFetch<T>(input: RequestInfo | URL, init?: RequestInit) {
@@ -67,6 +67,7 @@ export async function createClinicOperatorClient(input: {
   phone?: string | null;
   approvalNotes?: string | null;
   canUseRev?: boolean;
+  initialPin: string;
 }) {
   return await jsonFetch<CreateResponse>("/api/clinic/operators/create", {
     method: "POST",
