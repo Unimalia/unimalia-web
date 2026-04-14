@@ -6,14 +6,15 @@ import {
   getCurrentProfessionalOrganizationId,
   getOperatorPinRow,
   getWorkstationKeyFromRequest,
+  isValidOperatorPin,
   resolveOrganizationOperator,
   upsertOperatorSession,
   verifyOperatorPin,
 } from "@/lib/clinic/operatorSession";
 
 type Body = {
-  clinicOperatorId?: string;
   pin?: string;
+  clinicOperatorId?: string;
 };
 
 function unauthorized(message = "Non autorizzato") {
@@ -55,8 +56,8 @@ export async function POST(req: Request) {
   const pin = String(body?.pin || "").trim();
   const clinicOperatorId = String(body?.clinicOperatorId || "").trim();
 
-  if (!pin) {
-    return badRequest("PIN obbligatorio");
+  if (!isValidOperatorPin(pin)) {
+    return badRequest("PIN non valido: usa 4-8 cifre numeriche.");
   }
 
   if (!clinicOperatorId || !isUuid(clinicOperatorId)) {
@@ -90,11 +91,7 @@ export async function POST(req: Request) {
   }
 
   if (!operator.isActive) {
-    return forbidden("Operatore disattivato.");
-  }
-
-  if (operator.approvalStatus !== "active") {
-    return forbidden("Operatore non ancora approvato dal direttore sanitario.");
+    return forbidden("Operatore non attivo.");
   }
 
   const pinRow = await getOperatorPinRow({
@@ -106,10 +103,10 @@ export async function POST(req: Request) {
     return forbidden("PIN operatore non configurato.");
   }
 
-  const pinOk = verifyOperatorPin(pin, pinRow.pin_hash);
+  const isValid = verifyOperatorPin(pin, pinRow.pin_hash);
 
-  if (!pinOk) {
-    return forbidden("PIN non valido.");
+  if (!isValid) {
+    return forbidden("PIN non corretto.");
   }
 
   const session = await upsertOperatorSession({
