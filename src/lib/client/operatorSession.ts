@@ -102,7 +102,7 @@ export async function switchOperatorSession(params: {
   return await jsonFetch<{
     ok: true;
     session: OperatorSession;
-  }>("/api/clinic/operator-session/switch", {
+  }>("/api/clinic/operator-session/activate", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

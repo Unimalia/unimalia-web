@@ -185,13 +185,10 @@ export default function ProfessionistiImpostazioniPage() {
   async function loadOperators() {
     setLoadingOperators(true);
     try {
-      console.log("[DEBUG] Caricamento operatori...");
       const result = await listClinicOperatorsClient();
-      console.log("[DEBUG] Risposta operatori:", result);
       setOperators(result.operators ?? []);
       setActorOperator(result.actor ?? null);
     } catch (err) {
-      console.error("[DEBUG] Errore caricamento operatori:", err);
       setOperators([]);
       setActorOperator(null);
     } finally {
@@ -548,31 +545,24 @@ export default function ProfessionistiImpostazioniPage() {
       return;
     }
 
-    if (opIsVeterinarian) {
-      if (!opFnoviNumber.trim()) {
-        setError("Numero FNOVI obbligatorio per veterinario.");
-        return;
-      }
-
-      if (!opFnoviProvince.trim()) {
-        setError("Provincia albo obbligatoria per veterinario.");
-        return;
-      }
-
-      if (!opTaxCode.trim()) {
-        setError("Codice fiscale obbligatorio per veterinario.");
-        return;
-      }
-
-      if (!opEmail.trim()) {
-        setError("Email obbligatoria per veterinario.");
-        return;
-      }
-    }
-
-    if (!/^\d{4,8}$/.test(opInitialPin.trim())) {
+    if (!opInitialPin.trim() || !/^\d{4,8}$/.test(opInitialPin.trim())) {
       setError("PIN iniziale obbligatorio: 4-8 cifre numeriche.");
       return;
+    }
+
+    if (opIsVeterinarian) {
+      if (!opFnoviNumber.trim() || !opFnoviProvince.trim()) {
+        setError("Per i veterinari FNOVI e provincia albo sono obbligatori.");
+        return;
+      }
+      if (!opTaxCode.trim()) {
+        setError("Per i veterinari il codice fiscale è obbligatorio.");
+        return;
+      }
+      if (!opEmail.trim() || !isEmailValid(opEmail.trim())) {
+        setError("Per i veterinari l'email è obbligatoria.");
+        return;
+      }
     }
 
     setSavingOperator(true);
@@ -581,16 +571,16 @@ export default function ProfessionistiImpostazioniPage() {
       await createClinicOperatorClient({
         firstName: opFirstName.trim(),
         lastName: opLastName.trim(),
-        displayName: opDisplayName.trim() || null,
+        displayName: opDisplayName.trim() || undefined,
         role: opRole.trim(),
         isVeterinarian: opIsVeterinarian,
-        isPrescriber: opIsVeterinarian ? opIsPrescriber : false,
-        fnoviNumber: opIsVeterinarian ? opFnoviNumber.trim() || null : null,
-        fnoviProvince: opIsVeterinarian ? normalizeProvince(opFnoviProvince) || null : null,
-        taxCode: opIsVeterinarian ? opTaxCode.trim() || null : null,
-        email: opEmail.trim() || null,
-        phone: opPhone.trim() || null,
-        approvalNotes: opApprovalNotes.trim() || null,
+        isPrescriber: opIsPrescriber,
+        fnoviNumber: opIsVeterinarian ? opFnoviNumber.trim() : undefined,
+        fnoviProvince: opIsVeterinarian ? opFnoviProvince.trim() : undefined,
+        taxCode: opIsVeterinarian ? opTaxCode.trim() : undefined,
+        email: opEmail.trim() || undefined,
+        phone: opPhone.trim() || undefined,
+        approvalNotes: opApprovalNotes.trim() || undefined,
         canUseRev: opIsVeterinarian ? opCanUseRev : false,
         initialPin: opInitialPin.trim(),
       });
@@ -610,7 +600,7 @@ export default function ProfessionistiImpostazioniPage() {
       setOpCanUseRev(false);
       setOpApprovalNotes("");
 
-      setInfo("Operatore clinico creato ✅");
+      setInfo("Operatore clinico creato");
       await loadOperators();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore creazione operatore.");
@@ -971,6 +961,52 @@ export default function ProfessionistiImpostazioniPage() {
               </div>
             </div>
           ) : null}
+
+          {/* Sessione Operatore Corrente */}
+          <div className="mt-6 rounded-2xl border border-zinc-200 bg-zinc-50 p-5">
+            <div className="text-sm font-semibold text-zinc-900">Sessione operatore corrente</div>
+            <p className="mt-1 text-sm text-zinc-600">
+              Stato della sessione attiva su questa workstation per accesso condiviso.
+            </p>
+
+            <div className="mt-4 rounded-xl border border-zinc-200 bg-white p-4">
+              <div className="grid gap-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-zinc-600">Workstation:</span>
+                  <span className="font-mono text-zinc-900">localhost</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-zinc-600">Operatore attivo:</span>
+                  <span className="font-medium text-zinc-900">
+                    {actorOperator?.label || "Nessuno"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-zinc-600">Stato:</span>
+                  <span className="font-medium text-zinc-900">
+                    Sessione non attiva
+                  </span>
+                </div>
+              </div>
+
+              <div className="mt-4 flex gap-3">
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-center rounded-xl bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800 disabled:opacity-60"
+                  disabled
+                >
+                  Attiva sessione operatore
+                </button>
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-center rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 disabled:opacity-60"
+                  disabled
+                >
+                  Chiudi sessione
+                </button>
+              </div>
+            </div>
+          </div>
         </section>
 
         <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
