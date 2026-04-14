@@ -36,13 +36,7 @@ function Badge({ children }: { children: React.ReactNode }) {
   );
 }
 
-function PrimaryCTA({
-  href,
-  children,
-}: {
-  href: string;
-  children: React.ReactNode;
-}) {
+function PrimaryCTA({ href, children }: { href: string; children: React.ReactNode }) {
   return (
     <Link
       href={href}
@@ -53,13 +47,7 @@ function PrimaryCTA({
   );
 }
 
-function SecondaryCTA({
-  href,
-  children,
-}: {
-  href: string;
-  children: React.ReactNode;
-}) {
+function SecondaryCTA({ href, children }: { href: string; children: React.ReactNode }) {
   return (
     <Link
       href={href}
@@ -90,26 +78,16 @@ function SectionIntro({
         {title}
       </h2>
       {description ? (
-        <p className="mt-5 text-base leading-relaxed text-zinc-600 sm:text-lg">
-          {description}
-        </p>
+        <p className="mt-5 text-base leading-relaxed text-zinc-600 sm:text-lg">{description}</p>
       ) : null}
     </div>
   );
 }
 
-function FeatureCard({
-  title,
-  text,
-}: {
-  title: string;
-  text: string;
-}) {
+function FeatureCard({ title, text }: { title: string; text: string }) {
   return (
     <div className="rounded-[1.75rem] border border-black/5 bg-white p-6 shadow-[0_14px_40px_rgba(0,0,0,0.04)]">
-      <h3 className="text-lg font-semibold tracking-tight text-zinc-900 sm:text-xl">
-        {title}
-      </h3>
+      <h3 className="text-lg font-semibold tracking-tight text-zinc-900 sm:text-xl">{title}</h3>
       <p className="mt-3 text-sm leading-relaxed text-zinc-600 sm:text-base">{text}</p>
     </div>
   );
@@ -301,7 +279,7 @@ export default function HomePage() {
                 <div className="rounded-2xl bg-white p-4 ring-1 ring-black/5">
                   <p className="text-sm font-semibold text-zinc-900">Territorio ed emergenza</p>
                   <p className="mt-1 text-sm leading-relaxed text-zinc-600">
-                    Smarrimenti, trovati, avvistamenti e lieti fine più leggibili e ordinati.
+                    Smarrimenti, animali ritrovati con geolocalizzazione, avvistamenti e lieti fine più leggibili e ordinati.
                   </p>
                 </div>
 
@@ -328,34 +306,7 @@ export default function HomePage() {
           </div>
         </div>
       </section>
-
-      <section className="py-14 sm:py-18">
-        <div className="grid gap-5 xl:grid-cols-3">
-          <QuickActionCard
-            number="1"
-            title="Crea l’identità animale"
-            text="Parti da una base chiara: dati essenziali, QR code e strumenti pronti all’uso."
-            href="/identita/nuovo"
-            cta="Inizia ora"
-          />
-          <QuickActionCard
-            number="2"
-            title="Hai perso un animale?"
-            text="Pubblica subito una segnalazione ordinata per muoverti in modo più rapido e concreto."
-            href="/smarrimenti/nuovo"
-            cta="Segnala smarrimento"
-          />
-          <QuickActionCard
-            number="3"
-            title="Hai trovato o avvistato un animale?"
-            text="Invia una segnalazione utile per facilitare il ricongiungimento e raccogliere informazioni."
-            href="/trovati/nuovo"
-            cta="Segnala ora"
-          />
-        </div>
-      </section>
-
-      <section className="py-10 sm:py-14">
+            <section className="py-10 sm:py-14">
         <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
           <div>
             <SectionIntro
@@ -491,8 +442,7 @@ export default function HomePage() {
           />
         </div>
       </section>
-
-      <section className="py-14 sm:py-20">
+            <section className="py-14 sm:py-20">
         <div className="rounded-[2.5rem] border border-black/5 bg-white px-6 py-8 shadow-[0_24px_80px_rgba(0,0,0,0.05)] sm:px-8 sm:py-10 lg:px-10">
           <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-end">
             <div className="max-w-3xl">
