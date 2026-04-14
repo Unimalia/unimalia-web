@@ -81,65 +81,84 @@ export async function POST(req: Request) {
     return forbidden("Profilo professionista non collegato a una organizzazione.");
   }
 
-  const operator = await resolveOrganizationOperator({
-    organizationId,
-    clinicOperatorId,
-  });
+  try {
+    const operator = await resolveOrganizationOperator({
+      organizationId,
+      clinicOperatorId,
+    });
 
-  if (!operator) {
-    return forbidden("Operatore non disponibile per questa organizzazione.");
+    if (!operator) {
+      return forbidden("Operatore non disponibile per questa organizzazione.");
+    }
+
+    if (!operator.isActive) {
+      return forbidden("Operatore non attivo.");
+    }
+
+    const pinRow = await getOperatorPinRow({
+      organizationId,
+      clinicOperatorId,
+    });
+
+    if (!pinRow?.id || !pinRow.is_active || !pinRow.pin_hash) {
+      return forbidden("PIN operatore non configurato.");
+    }
+
+    const isPinValid = verifyOperatorPin(pin, pinRow.pin_hash);
+
+    if (!isPinValid) {
+      return forbidden("PIN non corretto.");
+    }
+
+    const session = await upsertOperatorSession({
+      organizationId,
+      workstationKey,
+      clinicOperatorId: operator.clinicOperatorId,
+      activeUserId: operator.userId,
+      activeProfessionalId: operator.professionalId,
+      activeOperatorLabel: operator.label,
+      activeOperatorRole: operator.role,
+      activeOperatorIsVeterinarian: operator.isVet,
+      activeOperatorFnoviNumber: operator.fnoviNumber,
+      activeOperatorFnoviProvince: operator.fnoviProvince,
+    });
+
+    return NextResponse.json({
+      ok: true,
+      session: {
+        id: session.id,
+        organizationId: session.organization_id,
+        workstationKey: session.workstation_key,
+        activeClinicOperatorId: session.active_clinic_operator_id,
+        activeUserId: session.active_user_id,
+        activeProfessionalId: session.active_professional_id,
+        activeOperatorLabel: session.active_operator_label,
+        activeOperatorRole: session.active_operator_role,
+        activeOperatorIsVeterinarian: session.active_operator_is_veterinarian,
+        activeOperatorFnoviNumber: session.active_operator_fnovi_number,
+        activeOperatorFnoviProvince: session.active_operator_fnovi_province,
+        pinVerifiedAt: session.pin_verified_at,
+        lastSeenAt: session.last_seen_at,
+        expiresAt: session.expires_at,
+        signatureMode: session.signature_mode,
+      },
+    });
+  } catch (error) {
+    console.error("[operator-session/activate] fatal error", {
+      organizationId,
+      workstationKey,
+      clinicOperatorId,
+      error,
+    });
+
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Errore attivazione sessione operatore.",
+      },
+      { status: 500 }
+    );
   }
-
-  if (!operator.isActive) {
-    return forbidden("Operatore non attivo.");
-  }
-
-  const pinRow = await getOperatorPinRow({
-    organizationId,
-    clinicOperatorId,
-  });
-
-  if (!pinRow?.id || !pinRow.is_active || !pinRow.pin_hash) {
-    return forbidden("PIN operatore non configurato.");
-  }
-
-  const isValid = verifyOperatorPin(pin, pinRow.pin_hash);
-
-  if (!isValid) {
-    return forbidden("PIN non corretto.");
-  }
-
-  const session = await upsertOperatorSession({
-    organizationId,
-    workstationKey,
-    clinicOperatorId: operator.clinicOperatorId,
-    activeUserId: operator.userId,
-    activeProfessionalId: operator.professionalId,
-    activeOperatorLabel: operator.label,
-    activeOperatorRole: operator.role,
-    activeOperatorIsVeterinarian: operator.isVet,
-    activeOperatorFnoviNumber: operator.fnoviNumber,
-    activeOperatorFnoviProvince: operator.fnoviProvince,
-  });
-
-  return NextResponse.json({
-    ok: true,
-    session: {
-      id: session.id,
-      organizationId: session.organization_id,
-      workstationKey: session.workstation_key,
-      activeClinicOperatorId: session.active_clinic_operator_id,
-      activeUserId: session.active_user_id,
-      activeProfessionalId: session.active_professional_id,
-      activeOperatorLabel: session.active_operator_label,
-      activeOperatorRole: session.active_operator_role,
-      activeOperatorIsVeterinarian: session.active_operator_is_veterinarian,
-      activeOperatorFnoviNumber: session.active_operator_fnovi_number,
-      activeOperatorFnoviProvince: session.active_operator_fnovi_province,
-      pinVerifiedAt: session.pin_verified_at,
-      lastSeenAt: session.last_seen_at,
-      expiresAt: session.expires_at,
-      signatureMode: session.signature_mode,
-    },
-  });
 }
