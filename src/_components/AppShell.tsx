@@ -21,8 +21,13 @@ const proHref = "/professionisti/dashboard";
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isProfessionalArea = pathname?.startsWith("/professionisti");
+  const isHomePage = pathname === "/";
 
   if (isProfessionalArea) {
+    return <>{children}</>;
+  }
+
+  if (isHomePage) {
     return <>{children}</>;
   }
 
