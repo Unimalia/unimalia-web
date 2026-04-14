@@ -277,6 +277,23 @@ export async function resolveOrganizationOperator(params: {
     canManageOperators: Boolean(row.can_manage_operators),
   });
 
+  const toOption = (row: ClinicOperatorRow): ClinicOperatorOption => ({
+    clinicOperatorId: row.id,
+    userId: row.user_id,
+    professionalId: row.professional_id,
+    label: row.display_name,
+    role: row.role,
+    isVet: Boolean(row.is_veterinarian),
+    isPrescriber: Boolean(row.is_prescriber),
+    fnoviNumber: row.fnovi_number,
+    fnoviProvince: row.fnovi_province,
+    approvalStatus: row.approval_status,
+    isActive: Boolean(row.is_active),
+    canUseRev: Boolean(row.can_use_rev),
+    isMedicalDirector: Boolean(row.is_medical_director),
+    canManageOperators: Boolean(row.can_manage_operators),
+  });
+
   if (params.clinicOperatorId) {
     const byId = await admin
       .from("clinic_operators")
@@ -307,12 +324,6 @@ export async function resolveOrganizationOperator(params: {
     }
 
     if (byUser.data) {
-      console.info("[resolveOrganizationOperator] Found operator by user_id", {
-        userId: params.userId,
-        organizationId: params.organizationId,
-        operatorId: byUser.data.id,
-        operatorLabel: byUser.data.display_name,
-      });
       return toOption(byUser.data);
     }
 
@@ -336,41 +347,22 @@ export async function resolveOrganizationOperator(params: {
         professionalId,
       });
 
-      const byProfessional = await admin
-        .from("clinic_operators")
-        .select(selectColumns)
-        .eq("organization_id", params.organizationId)
-        .eq("professional_id", professionalId)
-        .maybeSingle<ClinicOperatorRow>();
+    const byProfessional = await admin
+      .from("clinic_operators")
+      .select(selectColumns)
+      .eq("organization_id", params.organizationId)
+      .eq("professional_id", professionalId)
+      .maybeSingle<ClinicOperatorRow>();
 
-      if (byProfessional.error) {
-        throw byProfessional.error;
-      }
-
-      if (byProfessional.data) {
-        console.info("[resolveOrganizationOperator] Found operator by professional_id", {
-          userId: params.userId,
-          organizationId: params.organizationId,
-          professionalId,
-          operatorId: byProfessional.data.id,
-          operatorLabel: byProfessional.data.display_name,
-        });
-        return toOption(byProfessional.data);
-      }
+    if (byProfessional.error) {
+      throw byProfessional.error;
     }
 
-    console.error("[resolveOrganizationOperator] Actor not found - needs data fix", {
-      userId: params.userId,
-      organizationId: params.organizationId,
-      professionalId,
-      hasUserRecord: Boolean(byUser.data),
-      hasProfessionalRecord: Boolean(professionalByOwner.data),
-      hasOperatorByProfessional: false,
-      resolutionPath: "user_id -> professional_id -> clinic_operators",
-      suggestedFix: "Create clinic_operators record linking user_id or professional_id to this user",
-    });
+    if (!byProfessional.data) {
+      return null;
+    }
 
-    return null;
+    return toOption(byProfessional.data);
   }
 
   return null;

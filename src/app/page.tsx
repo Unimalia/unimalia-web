@@ -28,581 +28,469 @@ export const metadata: Metadata = {
   },
 };
 
-function MainButton({
-  href,
-  children,
-  variant = "primary",
-}: {
-  href: string;
-  children: React.ReactNode;
-  variant?: "primary" | "secondary";
-}) {
-  const className =
-    variant === "primary"
-      ? "inline-flex items-center justify-center rounded-full bg-[#223a73] px-6 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-[#1c3162]"
-      : "inline-flex items-center justify-center rounded-full border border-[#d7dfef] bg-white px-6 py-3.5 text-sm font-semibold text-[#223a73] shadow-sm transition hover:-translate-y-0.5 hover:bg-[#f7f9fd]";
-
+export default function HomePage() {
   return (
-    <Link href={href} className={className}>
-      {children}
-    </Link>
-  );
-}
-
-function SectionTitle({
-  eyebrow,
-  title,
-  description,
-}: {
-  eyebrow?: string;
-  title: string;
-  description?: string;
-}) {
-  return (
-    <div className="max-w-3xl">
-      {eyebrow ? (
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#6f7f9c]">
-          {eyebrow}
-        </p>
-      ) : null}
-      <h2 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-[#1f2d4d] sm:text-4xl lg:text-5xl">
-        {title}
-      </h2>
-      {description ? (
-        <p className="mt-5 text-base leading-relaxed text-[#5f6f8e] sm:text-lg">{description}</p>
-      ) : null}
-    </div>
-  );
-}
-
-function BenefitPill({
-  title,
-  text,
-}: {
-  title: string;
-  text: string;
-}) {
-  return (
-    <div className="rounded-3xl border border-[#d9e2f1] bg-white p-5 shadow-[0_12px_34px_rgba(32,55,100,0.08)]">
-      <p className="text-base font-semibold text-[#223a73]">{title}</p>
-      <p className="mt-2 text-sm leading-relaxed text-[#60708f]">{text}</p>
-    </div>
-  );
-}
-
-function HighlightCard({
-  title,
-  text,
-  href,
-  cta,
-  tone = "blue",
-}: {
-  title: string;
-  text: string;
-  href: string;
-  cta: string;
-  tone?: "blue" | "orange" | "teal" | "cream";
-}) {
-  const toneClass =
-    tone === "orange"
-      ? "bg-[#fff7ee]"
-      : tone === "teal"
-        ? "bg-[#eefaf7]"
-        : tone === "cream"
-          ? "bg-[#fffdf7]"
-          : "bg-[#f5f8fe]";
-
-  return (
-    <div
-      className={`relative overflow-hidden rounded-[2rem] border border-[#d9e2f1] ${toneClass} p-6 shadow-[0_18px_40px_rgba(32,55,100,0.08)]`}
-    >
-      <div className="absolute right-0 top-0 h-32 w-32 rounded-full bg-white/60 blur-2xl" />
-      <div className="relative">
-        <div className="mb-5 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-[#d9e2f1]">
-          <div className="h-7 w-7 rounded-full bg-gradient-to-br from-[#f5a93f] via-[#41c8b6] to-[#4b6fbe]" />
-        </div>
-        <h3 className="text-2xl font-semibold tracking-tight text-[#1f2d4d]">{title}</h3>
-        <p className="mt-3 text-sm leading-relaxed text-[#60708f] sm:text-base">{text}</p>
-        <div className="mt-8">
-          <Link
-            href={href}
-            className="inline-flex items-center text-sm font-semibold text-[#223a73] transition hover:text-[#f08e2d]"
-          >
-            {cta} →
-          </Link>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function AudienceBlock({
-  title,
-  text,
-  bullets,
-  href,
-  cta,
-  accent,
-}: {
-  title: string;
-  text: string;
-  bullets: string[];
-  href: string;
-  cta: string;
-  accent: "blue" | "orange";
-}) {
-  const accentBg = accent === "orange" ? "bg-[#fff5ea]" : "bg-[#f5f8fe]";
-  const dotBg = accent === "orange" ? "bg-[#f29a35]" : "bg-[#223a73]";
-
-  return (
-    <div
-      className={`rounded-[2rem] border border-[#d9e2f1] ${accentBg} p-7 shadow-[0_18px_40px_rgba(32,55,100,0.08)]`}
-    >
-      <h3 className="text-2xl font-semibold tracking-tight text-[#1f2d4d]">{title}</h3>
-      <p className="mt-4 text-sm leading-relaxed text-[#60708f] sm:text-base">{text}</p>
-
-      <ul className="mt-6 space-y-3 text-sm leading-relaxed text-[#46577a]">
-        {bullets.map((bullet) => (
-          <li key={bullet} className="flex gap-3">
-            <span className={`mt-2 h-2.5 w-2.5 shrink-0 rounded-full ${dotBg}`} />
-            <span>{bullet}</span>
-          </li>
-        ))}
-      </ul>
-
-      <div className="mt-8">
-        <Link
-          href={href}
-          className="inline-flex items-center text-sm font-semibold text-[#223a73] transition hover:text-[#f08e2d]"
-        >
-          {cta} →
-        </Link>
-      </div>
-    </div>
-  );
-}
-
-function FlowCard({
-  number,
-  title,
-  text,
-}: {
-  number: string;
-  title: string;
-  text: string;
-}) {
-  return (
-    <div className="rounded-[2rem] border border-[#d9e2f1] bg-white p-6 shadow-[0_16px_36px_rgba(32,55,100,0.08)]">
-      <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-[#223a73] text-sm font-semibold text-white">
-        {number}
-      </div>
-      <h3 className="mt-5 text-xl font-semibold text-[#1f2d4d]">{title}</h3>
-      <p className="mt-3 text-sm leading-relaxed text-[#60708f]">{text}</p>
-    </div>
-  );
-}
-
-function MockPhoneCard() {
-  return (
-    <div className="relative mx-auto w-full max-w-[470px]">
-      <div className="absolute -left-6 top-10 h-28 w-28 rounded-full bg-[#ffd27a]/60 blur-2xl" />
-      <div className="absolute -right-4 bottom-10 h-32 w-32 rounded-full bg-[#9fe6dc]/60 blur-2xl" />
-
-      <div className="relative rounded-[2.25rem] border border-[#d7dfef] bg-white p-5 shadow-[0_30px_80px_rgba(32,55,100,0.18)]">
-        <div className="rounded-[1.75rem] bg-gradient-to-br from-[#edf4ff] via-[#fff9f0] to-[#eefaf7] p-5">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#70809d]">
-                UNIMALIA
-              </p>
-              <h3 className="mt-2 text-2xl font-semibold tracking-tight text-[#1f2d4d]">
-                Proteggi, ritrova, gestisci.
-              </h3>
+    <div className="min-h-screen bg-white">
+      {/* Header */}
+      <header className="border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-4">
+            <div className="flex items-center">
+              <div className="w-8 h-8 bg-blue-600 rounded-lg mr-3"></div>
+              <span className="text-xl font-bold text-gray-900">UNIMALIA</span>
             </div>
-
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-[#d9e2f1]">
-              <Image
-                src="/logo-main.png"
-                alt="Logo UNIMALIA"
-                width={90}
-                height={80}
-                className="h-11 w-auto"
-                priority
-              />
-            </div>
+            <nav className="hidden md:flex space-x-8">
+              <a href="#" className="text-gray-700 hover:text-blue-600">Identità</a>
+              <a href="#" className="text-gray-700 hover:text-blue-600">Smarrimenti</a>
+              <a href="#" className="text-gray-700 hover:text-blue-600">Clinica</a>
+              <a href="#" className="text-gray-700 hover:text-blue-600">Professionisti</a>
+            </nav>
+            <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+              Accedi
+            </button>
           </div>
+        </div>
+      </header>
 
-          <div className="mt-5 rounded-[1.5rem] bg-white p-4 shadow-sm ring-1 ring-[#d9e2f1]">
-            <div className="grid gap-4 sm:grid-cols-[1fr_155px] sm:items-center">
-              <div>
-                <p className="text-sm font-semibold text-[#1f2d4d]">Identità animale digitale</p>
-                <p className="mt-2 text-sm leading-relaxed text-[#60708f]">
-                  Un’unica base ordinata per QR code, dati principali, accessi controllati e
-                  strumenti pronti quando serve davvero.
-                </p>
-
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <span className="rounded-full bg-[#eef4ff] px-3 py-1 text-xs font-medium text-[#223a73]">
-                    QR code
-                  </span>
-                  <span className="rounded-full bg-[#eefbf8] px-3 py-1 text-xs font-medium text-[#1f8c7d]">
-                    Accessi clinici
-                  </span>
-                  <span className="rounded-full bg-[#fff5ea] px-3 py-1 text-xs font-medium text-[#cc7b1d]">
-                    Smarrimenti
-                  </span>
-                </div>
+      {/* Hero Section */}
+      <section className="py-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            <div>
+              <div className="inline-block bg-orange-100 text-orange-800 px-4 py-2 rounded-full text-sm font-semibold mb-6">
+                Identità digitale · Smarrimenti · Cartella clinica
               </div>
-
-              <div className="flex justify-center">
-                <div className="relative h-[220px] w-[145px] rounded-[2rem] border-[8px] border-[#1f2d4d] bg-[#f8fbff] shadow-[0_12px_35px_rgba(32,55,100,0.12)]">
-                  <div className="mx-auto mt-2 h-1.5 w-14 rounded-full bg-[#1f2d4d]" />
-                  <div className="p-3">
-                    <div className="rounded-2xl bg-gradient-to-br from-[#223a73] to-[#3f67bd] p-3 text-white">
-                      <p className="text-[10px] uppercase tracking-[0.2em] text-white/80">
-                        Scheda attiva
-                      </p>
-                      <p className="mt-2 text-sm font-semibold">Luna</p>
-                      <p className="text-xs text-white/80">Golden Retriever</p>
+              <h1 className="text-5xl font-bold text-gray-900 mb-6">
+                La piattaforma digitale per proteggere l'animale in ogni momento che conta.
+              </h1>
+              <p className="text-xl text-gray-600 mb-8">
+                UNIMALIA unisce identità animale, strumenti territoriali, accessi clinici controllati e collaborazione con i professionisti in un ecosistema più chiaro, affidabile e immediato.
+              </p>
+              <div className="flex flex-wrap gap-4">
+                <button className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-semibold">
+                  Crea identità animale
+                </button>
+                <button className="border border-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-50 font-semibold">
+                  Segnala smarrimento
+                </button>
+                <button className="border border-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-50 font-semibold">
+                  Segnala trovato
+                </button>
+              </div>
+            </div>
+            <div className="relative">
+              <div className="bg-gradient-to-br from-blue-50 to-orange-50 rounded-2xl p-8 shadow-xl">
+                <div className="bg-white rounded-xl p-6 shadow-lg">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <p className="text-sm text-gray-600 font-semibold">UNIMALIA</p>
+                      <h3 className="text-xl font-bold text-gray-900">Proteggi, ritrova, gestisci.</h3>
                     </div>
-
-                    <div className="mt-3 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-[#d9e2f1]">
-                      <div className="mb-2 h-2 rounded-full bg-[#eef3fb]" />
-                      <div className="mb-2 h-2 w-5/6 rounded-full bg-[#eef3fb]" />
-                      <div className="mb-2 h-2 w-4/6 rounded-full bg-[#eef3fb]" />
-                      <div className="mt-3 flex items-center justify-between rounded-xl bg-[#fff6eb] px-2 py-2">
-                        <span className="text-[10px] font-semibold text-[#cc7b1d]">QR</span>
-                        <span className="text-[10px] text-[#60708f]">attivo</span>
+                    <div className="w-12 h-12 bg-blue-600 rounded-lg"></div>
+                  </div>
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <p className="font-semibold text-gray-900 mb-2">Identità animale digitale</p>
+                    <p className="text-sm text-gray-600 mb-4">
+                      Un'unica base ordinata per QR code, dati principali, accessi controllati e strumenti pronti quando serve davvero.
+                    </p>
+                    <div className="flex gap-2 mb-4">
+                      <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-medium">QR code</span>
+                      <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-medium">Accessi clinici</span>
+                      <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-medium">Smarrimenti</span>
+                    </div>
+                    <div className="flex justify-center">
+                      <div className="w-32 h-48 bg-gray-200 rounded-lg border-4 border-gray-800 relative">
+                        <div className="absolute top-2 left-1/2 transform -translate-x-1/2 w-12 h-1 bg-gray-800 rounded-full"></div>
+                        <div className="p-3">
+                          <div className="bg-blue-600 text-white rounded-lg p-2 mb-2">
+                            <p className="text-xs">SCHEDA ATTIVA</p>
+                            <p className="text-sm font-bold">Luna</p>
+                            <p className="text-xs">Golden Retriever</p>
+                          </div>
+                          <div className="bg-white rounded-lg p-2 border border-gray-200">
+                            <div className="h-2 bg-gray-200 rounded mb-1"></div>
+                            <div className="h-2 bg-gray-200 rounded mb-1 w-3/4"></div>
+                            <div className="h-2 bg-gray-200 rounded mb-2 w-1/2"></div>
+                            <div className="bg-orange-100 rounded px-2 py-1 flex justify-between">
+                              <span className="text-xs font-bold text-orange-800">QR</span>
+                              <span className="text-xs text-orange-600">attivo</span>
+                            </div>
+                          </div>
+                        </div>
                       </div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3 mt-4">
+                    <div className="bg-white rounded-lg p-3 border border-gray-200">
+                      <p className="text-sm font-semibold text-blue-600">Smarrimenti</p>
+                      <p className="text-xs text-gray-600">Segnalazioni più chiare</p>
+                    </div>
+                    <div className="bg-white rounded-lg p-3 border border-gray-200">
+                      <p className="text-sm font-semibold text-blue-600">Trovati</p>
+                      <p className="text-xs text-gray-600">Avvistamenti ordinati</p>
+                    </div>
+                    <div className="bg-white rounded-lg p-3 border border-gray-200">
+                      <p className="text-sm font-semibold text-blue-600">Cartella</p>
+                      <p className="text-xs text-gray-600">Continuità veterinari</p>
                     </div>
                   </div>
                 </div>
               </div>
+              {/* Decorative elements */}
+              <div className="absolute -top-4 -right-4 w-24 h-24 bg-orange-200 rounded-full opacity-50 blur-xl"></div>
+              <div className="absolute -bottom-4 -left-4 w-32 h-32 bg-blue-200 rounded-full opacity-50 blur-xl"></div>
             </div>
           </div>
+        </div>
+      </section>
 
-          <div className="mt-4 grid gap-3 sm:grid-cols-3">
-            <div className="rounded-2xl bg-white p-4 ring-1 ring-[#d9e2f1]">
-              <p className="text-sm font-semibold text-[#223a73]">Smarrimenti</p>
-              <p className="mt-1 text-xs leading-relaxed text-[#60708f]">
-                Segnalazioni più chiare e più facili da seguire.
+      {/* Features Grid */}
+      <section className="py-16 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid lg:grid-cols-3 gap-8">
+            <div className="bg-orange-50 rounded-2xl p-6 border border-orange-200">
+              <h3 className="text-xl font-bold text-gray-900 mb-3">Un'unica base più chiara</h3>
+              <p className="text-gray-600">
+                Identità animale, dati essenziali e strumenti utili nello stesso ecosistema.
               </p>
             </div>
-            <div className="rounded-2xl bg-white p-4 ring-1 ring-[#d9e2f1]">
-              <p className="text-sm font-semibold text-[#223a73]">Trovati</p>
-              <p className="mt-1 text-xs leading-relaxed text-[#60708f]">
-                Avvistamenti e ritrovamenti in un flusso più ordinato.
+            <div className="bg-green-50 rounded-2xl p-6 border border-green-200">
+              <h3 className="text-xl font-bold text-gray-900 mb-3">Supporto nei momenti delicati</h3>
+              <p className="text-gray-600">
+                Smarrimenti, trovati, avvistamenti e lieti fine in flussi più leggibili.
               </p>
             </div>
-            <div className="rounded-2xl bg-white p-4 ring-1 ring-[#d9e2f1]">
-              <p className="text-sm font-semibold text-[#223a73]">Cartella</p>
-              <p className="mt-1 text-xs leading-relaxed text-[#60708f]">
-                Continuità migliore con i professionisti autorizzati.
+            <div className="bg-blue-50 rounded-2xl p-6 border border-blue-200">
+              <h3 className="text-xl font-bold text-gray-900 mb-3">Continuità con i professionisti</h3>
+              <p className="text-gray-600">
+                Accessi controllati, consulti e collaborazione in modo più ordinato.
               </p>
             </div>
           </div>
         </div>
-      </div>
-    </div>
-  );
-}
-
-export default function HomePage() {
-  return (
-    <>
-      <section className="relative overflow-hidden rounded-[2.75rem] border border-[#d9e2f1] bg-gradient-to-br from-[#f4f8ff] via-[#fffdf8] to-[#f6fcfa] px-6 py-10 shadow-[0_28px_90px_rgba(32,55,100,0.12)] sm:px-8 sm:py-14 lg:px-12 lg:py-16">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(242,154,53,0.16),transparent_22%),radial-gradient(circle_at_top_right,rgba(66,199,182,0.16),transparent_24%),radial-gradient(circle_at_bottom_left,rgba(75,111,190,0.12),transparent_28%)]" />
-
-        <div className="relative grid gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
-          <div>
-            <p className="inline-flex rounded-full border border-[#d9e2f1] bg-white px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.22em] text-[#6f7f9c] shadow-sm">
-              Identità digitale · Smarrimenti · Cartella clinica
-            </p>
-
-            <h1 className="mt-7 max-w-3xl text-4xl font-semibold leading-tight tracking-[-0.05em] text-[#1f2d4d] sm:text-5xl lg:text-6xl">
-              La piattaforma digitale per proteggere l’animale in ogni momento che conta.
-            </h1>
-
-            <p className="mt-6 max-w-2xl text-lg leading-relaxed text-[#60708f] sm:text-xl">
-              UNIMALIA unisce identità animale, strumenti territoriali, accessi clinici
-              controllati e collaborazione con i professionisti in un ecosistema più chiaro,
-              affidabile e immediato.
-            </p>
-
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-              <MainButton href="/identita/nuovo">Crea identità animale</MainButton>
-              <MainButton href="/smarrimenti/nuovo" variant="secondary">
-                Segnala smarrimento
-              </MainButton>
-              <MainButton href="/trovati/nuovo" variant="secondary">
-                Segnala trovato o avvistato
-              </MainButton>
-            </div>
-
-            <div className="mt-10 grid gap-4 sm:grid-cols-3">
-              <BenefitPill
-                title="Più ordine"
-                text="Dati essenziali, QR code e strumenti in una base unica."
-              />
-              <BenefitPill
-                title="Più rapidità"
-                text="Azioni principali più visibili, pronte quando servono."
-              />
-              <BenefitPill
-                title="Più continuità"
-                text="Flussi più chiari tra proprietari, veterinari e servizi."
-              />
-            </div>
-          </div>
-
-          <div>
-            <MockPhoneCard />
-          </div>
-        </div>
       </section>
 
-      <section className="py-14 sm:py-18">
-        <div className="grid gap-4 lg:grid-cols-3">
-          <div className="rounded-[2rem] border border-[#d9e2f1] bg-[#fff6eb] p-6 shadow-[0_16px_36px_rgba(32,55,100,0.08)]">
-            <p className="text-lg font-semibold text-[#1f2d4d]">Un’unica base più chiara</p>
-            <p className="mt-2 text-sm leading-relaxed text-[#60708f]">
-              Identità animale, dati essenziali e strumenti utili nello stesso ecosistema.
+      {/* Tools Section */}
+      <section className="py-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">
+              Tutto quello che serve, organizzato in aree più semplici da capire
+            </h2>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              Una homepage più chiara deve far capire subito cosa puoi fare e dove devi andare.
             </p>
           </div>
-
-          <div className="rounded-[2rem] border border-[#d9e2f1] bg-[#eefbf8] p-6 shadow-[0_16px_36px_rgba(32,55,100,0.08)]">
-            <p className="text-lg font-semibold text-[#1f2d4d]">Supporto nei momenti delicati</p>
-            <p className="mt-2 text-sm leading-relaxed text-[#60708f]">
-              Smarrimenti, trovati, avvistamenti e lieti fine in flussi più leggibili.
-            </p>
-          </div>
-
-          <div className="rounded-[2rem] border border-[#d9e2f1] bg-[#f5f8fe] p-6 shadow-[0_16px_36px_rgba(32,55,100,0.08)]">
-            <p className="text-lg font-semibold text-[#1f2d4d]">Continuità con i professionisti</p>
-            <p className="mt-2 text-sm leading-relaxed text-[#60708f]">
-              Accessi controllati, consulti e collaborazione in modo più ordinato.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section className="py-10 sm:py-14">
-        <SectionTitle
-          eyebrow="Strumenti principali"
-          title="Tutto quello che serve, organizzato in aree più semplici da capire"
-          description="Una homepage più chiara deve far capire subito cosa puoi fare e dove devi andare."
-        />
-
-        <div className="mt-10 grid gap-6 lg:grid-cols-2">
-          <HighlightCard
-            title="Identità digitale"
-            text="Una scheda animale moderna con dati essenziali, QR code e base informativa pronta da consultare e usare nel tempo."
-            href="/identita/nuovo"
-            cta="Crea identità animale"
-            tone="blue"
-          />
-
-          <HighlightCard
-            title="Cartella clinica"
-            text="Una continuità migliore con i veterinari grazie ad accessi controllati, visibilità più chiara e collaborazione ordinata."
-            href="/professionisti/dashboard"
-            cta="Apri area professionisti"
-            tone="teal"
-          />
-
-          <HighlightCard
-            title="Smarrimenti"
-            text="Segnala subito un animale smarrito in un flusso più chiaro, pensato per dare struttura e velocità al momento della ricerca."
-            href="/smarrimenti/nuovo"
-            cta="Segnala smarrimento"
-            tone="orange"
-          />
-
-          <HighlightCard
-            title="Animali trovati e avvistati"
-            text="Raccogli segnalazioni utili sul territorio in modo più leggibile, con un sistema progettato per favorire il ricongiungimento."
-            href="/trovati/nuovo"
-            cta="Segnala trovato o avvistato"
-            tone="cream"
-          />
-        </div>
-      </section>
-
-      <section className="py-14 sm:py-20">
-        <div className="grid gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
-          <div>
-            <SectionTitle
-              eyebrow="Perché nasce"
-              title="Quando le informazioni sono sparse, anche le azioni semplici diventano più difficili."
-              description="UNIMALIA nasce per ridurre dispersione, aumentare chiarezza e offrire una base più solida prima dell’emergenza, durante l’emergenza e dopo."
-            />
-
-            <div className="mt-8 grid gap-3">
-              <div className="rounded-2xl border border-[#d9e2f1] bg-white px-5 py-4 text-sm font-semibold text-[#223a73] shadow-sm">
-                ✔ Dati essenziali più ordinati
-              </div>
-              <div className="rounded-2xl border border-[#d9e2f1] bg-white px-5 py-4 text-sm font-semibold text-[#223a73] shadow-sm">
-                ✔ Strumenti rapidi quando serve agire
-              </div>
-              <div className="rounded-2xl border border-[#d9e2f1] bg-white px-5 py-4 text-sm font-semibold text-[#223a73] shadow-sm">
-                ✔ Più chiarezza tra proprietari e professionisti
-              </div>
-              <div className="rounded-2xl border border-[#d9e2f1] bg-white px-5 py-4 text-sm font-semibold text-[#223a73] shadow-sm">
-                ✔ Meno dispersione, più continuità
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-[2.25rem] border border-[#d9e2f1] bg-gradient-to-br from-[#223a73] to-[#3f67bd] p-7 text-white shadow-[0_26px_70px_rgba(32,55,100,0.22)]">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/75">
-              Ecosistema UNIMALIA
-            </p>
-            <h3 className="mt-4 text-3xl font-semibold tracking-tight">
-              Tutto più coerente, meno disperso.
-            </h3>
-            <p className="mt-4 max-w-xl text-sm leading-relaxed text-white/80 sm:text-base">
-              Identità animale, territorio, emergenza, accessi clinici e collaborazione con i
-              professionisti non devono vivere in strumenti scollegati. Devono stare nello stesso
-              sistema.
-            </p>
-
-            <div className="mt-8 grid gap-4 sm:grid-cols-3">
-              <div className="rounded-2xl bg-white/10 p-4 ring-1 ring-white/15 backdrop-blur">
-                <p className="text-sm font-semibold">Identità</p>
-                <p className="mt-1 text-xs leading-relaxed text-white/80">
-                  Scheda animale, QR e dati principali.
-                </p>
-              </div>
-              <div className="rounded-2xl bg-white/10 p-4 ring-1 ring-white/15 backdrop-blur">
-                <p className="text-sm font-semibold">Territorio</p>
-                <p className="mt-1 text-xs leading-relaxed text-white/80">
-                  Smarrimenti, trovati, avvistamenti e lieti fine.
-                </p>
-              </div>
-              <div className="rounded-2xl bg-white/10 p-4 ring-1 ring-white/15 backdrop-blur">
-                <p className="text-sm font-semibold">Clinica</p>
-                <p className="mt-1 text-xs leading-relaxed text-white/80">
-                  Accessi autorizzati e continuità con i veterinari.
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-8 flex flex-wrap gap-4 text-sm">
-              <Link
-                href="/professionisti/dashboard"
-                className="font-semibold text-white transition hover:text-[#ffd27a]"
-              >
-                Area professionisti →
-              </Link>
-              <Link href="/prezzi" className="text-white/80 transition hover:text-white">
-                Prezzi
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="py-14 sm:py-20">
-        <SectionTitle
-          eyebrow="Per chi è"
-          title="Due grandi percorsi, ruoli più chiari"
-          description="La piattaforma funziona meglio quando ogni persona capisce subito il proprio spazio e le proprie responsabilità."
-        />
-
-        <div className="mt-10 grid gap-6 lg:grid-cols-2">
-          <AudienceBlock
-            title="Veterinari"
-            text="Uno spazio più strutturato per lavorare con accessi autorizzati, consulti, cartella clinica e continuità operativa."
-            bullets={[
-              "Richieste di accesso più chiare e tracciabili.",
-              "Lavoro ordinato sulla cartella clinica e sugli eventi.",
-              "Collaborazione migliore tra clinica, consulti e follow-up.",
-            ]}
-            href="/professionisti/dashboard"
-            cta="Apri area veterinari"
-            accent="blue"
-          />
-
-          <AudienceBlock
-            title="Professionisti Pet"
-            text="Uno spazio dedicato per servizi non clinici, con ruoli distinti e una collaborazione più pulita con l’ecosistema UNIMALIA."
-            bullets={[
-              "Percorsi separati dall’area clinica veterinaria.",
-              "Base pronta per toelettatori, pensioni, pet sitter e addestratori.",
-              "Più ordine e più continuità tra i diversi servizi intorno all’animale.",
-            ]}
-            href="/servizi"
-            cta="Scopri i servizi"
-            accent="orange"
-          />
-        </div>
-      </section>
-
-      <section className="py-14 sm:py-20">
-        <SectionTitle
-          eyebrow="Come funziona"
-          title="Prima costruisci una base chiara, poi reagisci meglio"
-          description="UNIMALIA deve essere utile prima dell’emergenza, durante l’emergenza e anche dopo."
-        />
-
-        <div className="mt-10 grid gap-5 lg:grid-cols-4">
-          <FlowCard
-            number="1"
-            title="Crea la scheda"
-            text="Inserisci i dati principali dell’animale e genera la sua identità digitale."
-          />
-          <FlowCard
-            number="2"
-            title="Attiva strumenti"
-            text="Usa QR, dati essenziali e accessi controllati per preparare una base solida."
-          />
-          <FlowCard
-            number="3"
-            title="Gestisci segnalazioni"
-            text="In caso di smarrimento, ritrovamento o avvistamento hai già una struttura pronta."
-          />
-          <FlowCard
-            number="4"
-            title="Mantieni continuità"
-            text="Quando tutto si risolve, le informazioni restano più ordinate e utili nel tempo."
-          />
-        </div>
-      </section>
-
-      <section className="py-14 sm:py-20">
-        <div className="rounded-[2.75rem] border border-[#d9e2f1] bg-gradient-to-br from-[#fff9f0] via-white to-[#f5f8fe] px-6 py-8 shadow-[0_28px_90px_rgba(32,55,100,0.12)] sm:px-8 sm:py-10 lg:px-10">
-          <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-end">
-            <div className="max-w-3xl">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#6f7f9c]">
-                Chiusura
+          <div className="grid lg:grid-cols-2 gap-8">
+            <div className="bg-blue-50 rounded-2xl p-8 border border-blue-200">
+              <div className="w-12 h-12 bg-blue-600 rounded-xl mb-4"></div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-4">Identità digitale</h3>
+              <p className="text-gray-600 mb-6">
+                Una scheda animale moderna con dati essenziali, QR code e base informativa pronta da consultare e usare nel tempo.
               </p>
-              <h2 className="mt-4 text-3xl font-semibold tracking-[-0.04em] text-[#1f2d4d] sm:text-4xl lg:text-5xl">
-                UNIMALIA rende più semplice proteggere l’animale nel momento in cui conta davvero.
+              <a href="#" className="text-blue-600 font-semibold hover:text-blue-700">
+                Crea identità animale {'->'}
+              </a>
+            </div>
+            <div className="bg-green-50 rounded-2xl p-8 border border-green-200">
+              <div className="w-12 h-12 bg-green-600 rounded-xl mb-4"></div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-4">Cartella clinica</h3>
+              <p className="text-gray-600 mb-6">
+                Una continuità migliore con i veterinari grazie ad accessi controllati, visibilità più chiara e collaborazione ordinata.
+              </p>
+              <a href="#" className="text-green-600 font-semibold hover:text-green-700">
+                Apri area professionisti {'->'}
+              </a>
+            </div>
+            <div className="bg-orange-50 rounded-2xl p-8 border border-orange-200">
+              <div className="w-12 h-12 bg-orange-600 rounded-xl mb-4"></div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-4">Smarrimenti</h3>
+              <p className="text-gray-600 mb-6">
+                Segnala subito un animale smarrito in un flusso più chiaro, pensato per dare struttura e velocità al momento della ricerca.
+              </p>
+              <a href="#" className="text-orange-600 font-semibold hover:text-orange-700">
+                Segnala smarrimento {'->'}
+              </a>
+            </div>
+            <div className="bg-yellow-50 rounded-2xl p-8 border border-yellow-200">
+              <div className="w-12 h-12 bg-yellow-600 rounded-xl mb-4"></div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-4">Animali trovati e avvistati</h3>
+              <p className="text-gray-600 mb-6">
+                Raccogli segnalazioni utili sul territorio in modo più leggibile, con un sistema progettato per favorire il ricongiungimento.
+              </p>
+              <a href="#" className="text-yellow-600 font-semibold hover:text-yellow-700">
+                Segnala trovato o avvistato {'->'}
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Why Section */}
+      <section className="py-20 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            <div>
+              <div className="inline-block bg-gray-200 text-gray-800 px-4 py-2 rounded-full text-sm font-semibold mb-6">
+                Perché nasce
+              </div>
+              <h2 className="text-4xl font-bold text-gray-900 mb-6">
+                Quando le informazioni sono sparse, anche le azioni semplici diventano più difficili.
               </h2>
-              <p className="mt-5 text-base leading-relaxed text-[#60708f] sm:text-lg">
-                Identità digitale, accessi clinici controllati, consulti, smarrimenti, animali
-                trovati, avvistamenti e lieti fine: meno dispersione, più chiarezza, più fiducia.
+              <p className="text-xl text-gray-600 mb-8">
+                UNIMALIA nasce per ridurre dispersione, aumentare chiarezza e offrire una base più solida prima dell'emergenza, durante l'emergenza e dopo.
               </p>
+              <div className="space-y-3">
+                <div className="bg-white rounded-lg p-4 border border-gray-200 flex items-center">
+                  <div className="w-5 h-5 bg-green-500 rounded-full mr-3"></div>
+                  <span className="font-semibold text-gray-900">Dati essenziali più ordinati</span>
+                </div>
+                <div className="bg-white rounded-lg p-4 border border-gray-200 flex items-center">
+                  <div className="w-5 h-5 bg-green-500 rounded-full mr-3"></div>
+                  <span className="font-semibold text-gray-900">Strumenti rapidi quando serve agire</span>
+                </div>
+                <div className="bg-white rounded-lg p-4 border border-gray-200 flex items-center">
+                  <div className="w-5 h-5 bg-green-500 rounded-full mr-3"></div>
+                  <span className="font-semibold text-gray-900">Più chiarezza tra proprietari e professionisti</span>
+                </div>
+                <div className="bg-white rounded-lg p-4 border border-gray-200 flex items-center">
+                  <div className="w-5 h-5 bg-green-500 rounded-full mr-3"></div>
+                  <span className="font-semibold text-gray-900">Meno dispersione, più continuità</span>
+                </div>
+              </div>
             </div>
-
-            <div className="flex flex-col gap-3">
-              <MainButton href="/identita/nuovo">Crea identità animale</MainButton>
-              <MainButton href="/smarrimenti/nuovo" variant="secondary">
-                Segnala smarrimento
-              </MainButton>
-              <MainButton href="/trovati/nuovo" variant="secondary">
-                Segnala trovato o avvistato
-              </MainButton>
-              <Link
-                href="/prezzi"
-                className="pt-2 text-sm text-[#60708f] transition hover:text-[#223a73]"
-              >
-                Prezzi
-              </Link>
+            <div className="bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl p-8 text-white">
+              <div className="inline-block bg-white/20 px-4 py-2 rounded-full text-sm font-semibold mb-6">
+                Ecosistema UNIMALIA
+              </div>
+              <h3 className="text-3xl font-bold mb-6">
+                Tutto più coerente, meno disperso.
+              </h3>
+              <p className="text-lg mb-8 text-blue-100">
+                Identità animale, territorio, emergenza, accessi clinici e collaborazione con i professionisti non devono vivere in strumenti scollegati. Devono stare nello stesso sistema.
+              </p>
+              <div className="grid grid-cols-3 gap-4 mb-8">
+                <div className="bg-white/10 rounded-lg p-4 backdrop-blur">
+                  <p className="font-semibold mb-2">Identità</p>
+                  <p className="text-sm text-blue-100">Scheda animale, QR e dati principali.</p>
+                </div>
+                <div className="bg-white/10 rounded-lg p-4 backdrop-blur">
+                  <p className="font-semibold mb-2">Territorio</p>
+                  <p className="text-sm text-blue-100">Smarrimenti, trovati, avvistamenti e lieti fine.</p>
+                </div>
+                <div className="bg-white/10 rounded-lg p-4 backdrop-blur">
+                  <p className="font-semibold mb-2">Clinica</p>
+                  <p className="text-sm text-blue-100">Accessi autorizzati e continuità con i veterinari.</p>
+                </div>
+              </div>
+              <div className="flex gap-6">
+                <a href="#" className="text-white font-semibold hover:text-blue-200">
+                  Area professionisti {'->'}
+                </a>
+                <a href="#" className="text-blue-100 hover:text-white">
+                  Prezzi
+                </a>
+              </div>
             </div>
           </div>
         </div>
       </section>
-    </>
+
+      {/* Audience Section */}
+      <section className="py-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">
+              Due grandi percorsi, ruoli più chiari
+            </h2>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              La piattaforma funziona meglio quando ogni persona capisce subito il proprio spazio e le proprie responsabilità.
+            </p>
+          </div>
+          <div className="grid lg:grid-cols-2 gap-8">
+            <div className="bg-blue-50 rounded-2xl p-8 border border-blue-200">
+              <h3 className="text-2xl font-bold text-gray-900 mb-4">Veterinari</h3>
+              <p className="text-gray-600 mb-6">
+                Uno spazio più strutturato per lavorare con accessi autorizzati, consulti, cartella clinica e continuità operativa.
+              </p>
+              <ul className="space-y-3 mb-8">
+                <li className="flex items-start">
+                  <div className="w-2 h-2 bg-blue-600 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                  <span className="text-gray-700">Richieste di accesso più chiare e tracciabili.</span>
+                </li>
+                <li className="flex items-start">
+                  <div className="w-2 h-2 bg-blue-600 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                  <span className="text-gray-700">Lavoro ordinato sulla cartella clinica e sugli eventi.</span>
+                </li>
+                <li className="flex items-start">
+                  <div className="w-2 h-2 bg-blue-600 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                  <span className="text-gray-700">Collaborazione migliore tra clinica, consulti e follow-up.</span>
+                </li>
+              </ul>
+              <a href="#" className="text-blue-600 font-semibold hover:text-blue-700">
+                Apri area veterinari {'->'}
+              </a>
+            </div>
+            <div className="bg-orange-50 rounded-2xl p-8 border border-orange-200">
+              <h3 className="text-2xl font-bold text-gray-900 mb-4">Professionisti Pet</h3>
+              <p className="text-gray-600 mb-6">
+                Uno spazio dedicato per servizi non clinici, con ruoli distinti e una collaborazione più pulita con l'ecosistema UNIMALIA.
+              </p>
+              <ul className="space-y-3 mb-8">
+                <li className="flex items-start">
+                  <div className="w-2 h-2 bg-orange-600 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                  <span className="text-gray-700">Percorsi separati dall'area clinica veterinaria.</span>
+                </li>
+                <li className="flex items-start">
+                  <div className="w-2 h-2 bg-orange-600 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                  <span className="text-gray-700">Base pronta per toelettatori, pensioni, pet sitter e addestratori.</span>
+                </li>
+                <li className="flex items-start">
+                  <div className="w-2 h-2 bg-orange-600 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                  <span className="text-gray-700">Più ordine e più continuità tra i diversi servizi intorno all'animale.</span>
+                </li>
+              </ul>
+              <a href="#" className="text-orange-600 font-semibold hover:text-orange-700">
+                Scopri i servizi {'->'}
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* How it works */}
+      <section className="py-20 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">
+              Prima costruisci una base chiara, poi reagisci meglio
+            </h2>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              UNIMALIA deve essere utile prima dell'emergenza, durante l'emergenza e anche dopo.
+            </p>
+          </div>
+          <div className="grid lg:grid-cols-4 gap-6">
+            <div className="bg-white rounded-2xl p-6 border border-gray-200">
+              <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-xl mb-4">
+                1
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-3">Crea la scheda</h3>
+              <p className="text-gray-600">
+                Inserisci i dati principali dell'animale e genera la sua identità digitale.
+              </p>
+            </div>
+            <div className="bg-white rounded-2xl p-6 border border-gray-200">
+              <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-xl mb-4">
+                2
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-3">Attiva strumenti</h3>
+              <p className="text-gray-600">
+                Usa QR, dati essenziali e accessi controllati per preparare una base solida.
+              </p>
+            </div>
+            <div className="bg-white rounded-2xl p-6 border border-gray-200">
+              <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-xl mb-4">
+                3
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-3">Gestisci segnalazioni</h3>
+              <p className="text-gray-600">
+                In caso di smarrimento, ritrovamento o avvistamento hai già una struttura pronta.
+              </p>
+            </div>
+            <div className="bg-white rounded-2xl p-6 border border-gray-200">
+              <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-xl mb-4">
+                4
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-3">Mantieni continuità</h3>
+              <p className="text-gray-600">
+                Quando tutto si risolve, le informazioni restano più ordinate e utili nel tempo.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="bg-gradient-to-br from-orange-50 via-white to-blue-50 rounded-3xl p-12 border border-gray-200">
+            <div className="grid lg:grid-cols-2 gap-12 items-end">
+              <div>
+                <div className="inline-block bg-gray-200 text-gray-800 px-4 py-2 rounded-full text-sm font-semibold mb-6">
+                  Chiusura
+                </div>
+                <h2 className="text-4xl font-bold text-gray-900 mb-6">
+                  UNIMALIA rende più semplice proteggere l'animale nel momento in cui conta davvero.
+                </h2>
+                <p className="text-xl text-gray-600 mb-8">
+                  Identità digitale, accessi clinici controllati, consulti, smarrimenti, animali trovati, avvistamenti e lieti fine: meno dispersione, più chiarezza, più fiducia.
+                </p>
+              </div>
+              <div className="space-y-4">
+                <button className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-semibold">
+                  Crea identità animale
+                </button>
+                <button className="w-full border border-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-50 font-semibold">
+                  Segnala smarrimento
+                </button>
+                <button className="w-full border border-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-50 font-semibold">
+                  Segnala trovato o avvistato
+                </button>
+                <a href="#" className="block text-center text-gray-600 hover:text-gray-900 pt-2">
+                  Prezzi
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="bg-gray-900 text-white py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid lg:grid-cols-4 gap-8">
+            <div>
+              <div className="flex items-center mb-4">
+                <div className="w-8 h-8 bg-blue-600 rounded-lg mr-3"></div>
+                <span className="text-xl font-bold">UNIMALIA</span>
+              </div>
+              <p className="text-gray-400">
+                La piattaforma digitale per proteggere l'animale in ogni momento che conta.
+              </p>
+            </div>
+            <div>
+              <h4 className="font-semibold mb-4">Prodotti</h4>
+              <ul className="space-y-2 text-gray-400">
+                <li><a href="#" className="hover:text-white">Identità digitale</a></li>
+                <li><a href="#" className="hover:text-white">Smarrimenti</a></li>
+                <li><a href="#" className="hover:text-white">Cartella clinica</a></li>
+                <li><a href="#" className="hover:text-white">Professionisti</a></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold mb-4">Azienda</h4>
+              <ul className="space-y-2 text-gray-400">
+                <li><a href="#" className="hover:text-white">Chi siamo</a></li>
+                <li><a href="#" className="hover:text-white">Blog</a></li>
+                <li><a href="#" className="hover:text-white">Lavora con noi</a></li>
+                <li><a href="#" className="hover:text-white">Contatti</a></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold mb-4">Legale</h4>
+              <ul className="space-y-2 text-gray-400">
+                <li><a href="#" className="hover:text-white">Privacy</a></li>
+                <li><a href="#" className="hover:text-white">Termini</a></li>
+                <li><a href="#" className="hover:text-white">Cookie</a></li>
+                <li><a href="#" className="hover:text-white">Licenze</a></li>
+              </ul>
+            </div>
+          </div>
+          <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
+            <p>&copy; 2024 UNIMALIA. Tutti i diritti riservati.</p>
+          </div>
+        </div>
+      </footer>
+    </div>
   );
 }
