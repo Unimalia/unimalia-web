@@ -76,9 +76,16 @@ export async function GET(req: Request) {
     actorUserId: actor?.userId ?? null,
     actorProfessionalId: actor?.professionalId ?? null,
     operatorsCount: operators.length,
+    operatorsList: operators.map(op => ({ id: op.clinicOperatorId, label: op.label, userId: op.userId, professionalId: op.professionalId })),
   });
 
   if (!actor) {
+    console.error("[clinic/operators/list] ATTENZIONE: Utente non trovato come operatore", {
+      userId: user.id,
+      organizationId,
+      operatorsAvailable: operators.length,
+      reason: "L'utente loggato non ha un record in clinic_operators con user_id corrispondente o professional_id collegato"
+    });
     return forbidden("Operatore clinico non configurato per questo utente.");
   }
 

@@ -185,10 +185,13 @@ export default function ProfessionistiImpostazioniPage() {
   async function loadOperators() {
     setLoadingOperators(true);
     try {
+      console.log("[DEBUG] Caricamento operatori...");
       const result = await listClinicOperatorsClient();
+      console.log("[DEBUG] Risposta operatori:", result);
       setOperators(result.operators ?? []);
       setActorOperator(result.actor ?? null);
-    } catch {
+    } catch (err) {
+      console.error("[DEBUG] Errore caricamento operatori:", err);
       setOperators([]);
       setActorOperator(null);
     } finally {
