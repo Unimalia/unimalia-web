@@ -15,7 +15,7 @@ export const metadata: Metadata = {
       "Identità animale, cartella clinica condivisa, smarrimenti, ritrovamenti e continuità tra professionisti in un unico ecosistema digitale.",
     url: "https://unimalia.it/",
     siteName: "UNIMALIA",
-    images: ["/logo-512.png"],
+    images: ["/home/logo-app.png"],
     locale: "it_IT",
     type: "website",
   },
@@ -24,28 +24,38 @@ export const metadata: Metadata = {
     title: "UNIMALIA | Infrastruttura digitale per il mondo animale",
     description:
       "Identità animale, cartella clinica condivisa, smarrimenti, ritrovamenti e continuità tra professionisti in un unico ecosistema digitale.",
-    images: ["/logo-512.png"],
+    images: ["/home/logo-app.png"],
   },
 };
 
-function HeaderButton({
+function NavLink({
   href,
   children,
-  primary = false,
 }: {
   href: string;
   children: React.ReactNode;
-  primary?: boolean;
 }) {
   return (
     <Link
       href={href}
-      className={[
-        "inline-flex items-center justify-center rounded-full px-5 py-2.5 text-sm font-medium transition",
-        primary
-          ? "bg-[#2f69c7] text-white shadow-[0_10px_22px_rgba(47,105,199,0.22)] hover:bg-[#2558ab]"
-          : "border border-[#d4dce7] bg-white text-[#31486f] hover:bg-[#f8fbff]",
-      ].join(" ")}
+      className="text-[14px] font-medium tracking-[-0.01em] text-[#44597c] transition hover:text-[#274d84]"
+    >
+      {children}
+    </Link>
+  );
+}
+
+function HeaderButton({
+  href,
+  children,
+}: {
+  href: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      className="inline-flex items-center justify-center rounded-full border border-[#d5dde8] bg-white px-6 py-2.5 text-sm font-medium text-[#31486f] transition hover:bg-[#f8fbff]"
     >
       {children}
     </Link>
@@ -62,7 +72,7 @@ function PrimaryButton({
   return (
     <Link
       href={href}
-      className="inline-flex items-center justify-center rounded-full bg-[#2f69c7] px-7 py-3.5 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(47,105,199,0.24)] transition hover:bg-[#2558ab]"
+      className="inline-flex items-center justify-center rounded-full bg-[linear-gradient(180deg,#2f69c7_0%,#2558ab_100%)] px-7 py-3.5 text-sm font-semibold text-white shadow-[0_14px_28px_rgba(47,105,199,0.24)] transition hover:scale-[1.01]"
     >
       {children}
     </Link>
@@ -79,127 +89,226 @@ function SecondaryButton({
   return (
     <Link
       href={href}
-      className="inline-flex items-center justify-center rounded-full border border-[#d5dde8] bg-white px-7 py-3.5 text-sm font-semibold text-[#2b456f] transition hover:bg-[#f8fbff]"
+      className="inline-flex items-center justify-center rounded-full border border-[#d7dfe9] bg-white px-7 py-3.5 text-sm font-semibold text-[#31486f] transition hover:bg-[#f8fbff]"
     >
       {children}
     </Link>
   );
 }
 
-function Section({
+function MainShell({
   children,
-  className = "",
 }: {
   children: React.ReactNode;
-  className?: string;
-}) {
-  return <section className={`mx-auto w-full max-w-[1180px] px-4 ${className}`}>{children}</section>;
-}
-
-function SectionTitle({
-  title,
-  text,
-}: {
-  title: string;
-  text?: string;
 }) {
   return (
-    <div className="text-center">
-      <h2 className="text-[30px] font-semibold tracking-[-0.03em] text-[#30486f] md:text-[38px]">
+    <div className="overflow-hidden rounded-[30px] border border-[#dde4ec] bg-white shadow-[0_24px_60px_rgba(42,56,86,0.10)]">
+      {children}
+    </div>
+  );
+}
+
+function SectionDivider() {
+  return <div className="h-px w-full bg-[#e5ebf1]" />;
+}
+
+function SectionIntro({
+  eyebrow,
+  title,
+  description,
+}: {
+  eyebrow?: string;
+  title: string;
+  description?: string;
+}) {
+  return (
+    <div className="max-w-3xl">
+      {eyebrow ? (
+        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#7a879b]">
+          {eyebrow}
+        </p>
+      ) : null}
+      <h2 className="mt-4 text-3xl font-semibold tracking-[-0.04em] text-[#30486f] sm:text-4xl lg:text-5xl">
         {title}
       </h2>
-      {text ? (
-        <p className="mx-auto mt-4 max-w-3xl text-base leading-relaxed text-[#64748e] md:text-lg">
-          {text}
+      {description ? (
+        <p className="mt-5 text-base leading-relaxed text-[#65758f] sm:text-lg">
+          {description}
         </p>
       ) : null}
     </div>
   );
 }
 
-function CardShell({
-  children,
-  className = "",
+function HeroStat({
+  value,
+  text,
 }: {
-  children: React.ReactNode;
-  className?: string;
+  value: string;
+  text: string;
 }) {
   return (
-    <div
-      className={[
-        "rounded-[28px] border border-[#dce3ec] bg-white shadow-[0_18px_40px_rgba(37,54,88,0.08)]",
-        className,
-      ].join(" ")}
-    >
-      {children}
+    <div className="rounded-[22px] border border-[#e3e9f0] bg-white/85 p-4 shadow-[0_10px_24px_rgba(42,56,86,0.06)] backdrop-blur">
+      <p className="text-[22px] font-semibold tracking-[-0.03em] text-[#30486f]">{value}</p>
+      <p className="mt-1 text-sm leading-relaxed text-[#65758f]">{text}</p>
     </div>
   );
 }
 
-function TopCard({
+function FeatureImageCard({
   title,
   text,
-  icon,
+  imageSrc,
+  imageAlt,
+  bordered = false,
 }: {
   title: string;
   text: string;
-  icon: React.ReactNode;
+  imageSrc: string;
+  imageAlt: string;
+  bordered?: boolean;
 }) {
   return (
-    <CardShell className="h-full p-7">
-      <div className="flex flex-col items-center text-center">
-        <div className="flex h-28 w-28 items-center justify-center rounded-full bg-[#eef4fb]">
-          {icon}
+    <div
+      className={[
+        "flex h-full flex-col items-center px-5 py-6 text-center",
+        bordered ? "md:border-r md:border-[#e5ebf1]" : "",
+      ].join(" ")}
+    >
+      <h3 className="text-[20px] font-semibold tracking-[-0.03em] text-[#30486f]">
+        {title}
+      </h3>
+
+      <div className="relative mt-6 flex h-[180px] w-full items-center justify-center">
+        <div className="relative h-full w-full max-w-[320px]">
+          <Image
+            src={imageSrc}
+            alt={imageAlt}
+            fill
+            className="object-contain"
+            sizes="(max-width: 768px) 100vw, 320px"
+          />
         </div>
-        <h3 className="mt-6 text-[28px] font-semibold tracking-[-0.03em] text-[#30486f]">
-          {title}
-        </h3>
-        <p className="mt-4 text-[15px] leading-relaxed text-[#667691]">{text}</p>
       </div>
-    </CardShell>
+
+      <p className="mt-4 max-w-[280px] text-[14px] leading-relaxed text-[#697992] md:text-[15px]">
+        {text}
+      </p>
+    </div>
   );
 }
 
-function SplitFeature({
+function SplitImageFeature({
   title,
   text,
-  bullets,
-  visual,
+  imageSrc,
+  imageAlt,
   reverse = false,
+  bordered = false,
 }: {
   title: string;
   text: string;
-  bullets: string[];
-  visual: React.ReactNode;
+  imageSrc: string;
+  imageAlt: string;
   reverse?: boolean;
+  bordered?: boolean;
 }) {
   return (
-    <CardShell className="overflow-hidden">
-      <div
-        className={[
-          "grid min-h-[340px] grid-cols-1 md:grid-cols-2",
-          reverse ? "md:[&>*:first-child]:order-2 md:[&>*:last-child]:order-1" : "",
-        ].join(" ")}
-      >
-        <div className="flex flex-col justify-center px-8 py-8 md:px-10">
-          <h3 className="text-[30px] font-semibold tracking-[-0.03em] text-[#30486f]">{title}</h3>
-          <p className="mt-4 text-[16px] leading-relaxed text-[#667691]">{text}</p>
-
-          <div className="mt-6 space-y-3">
-            {bullets.map((bullet) => (
-              <div key={bullet} className="flex items-start gap-3">
-                <span className="mt-2 h-2.5 w-2.5 rounded-full bg-[#2f69c7]" />
-                <p className="text-[15px] font-medium text-[#395277]">{bullet}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="relative overflow-hidden bg-[linear-gradient(180deg,#f8fbff_0%,#edf3fa_100%)]">
-          {visual}
+    <div
+      className={[
+        "grid min-h-[300px] grid-cols-1 md:grid-cols-2",
+        bordered ? "md:border-r md:border-[#e5ebf1]" : "",
+        reverse ? "md:[&>*:first-child]:order-2 md:[&>*:last-child]:order-1" : "",
+      ].join(" ")}
+    >
+      <div className="flex items-center px-8 py-8 md:px-10 md:py-10">
+        <div className="max-w-[420px]">
+          <h3 className="text-[30px] font-semibold leading-[1.05] tracking-[-0.04em] text-[#30486f] md:text-[38px]">
+            {title}
+          </h3>
+          <p className="mt-4 text-[16px] leading-relaxed text-[#677792] md:text-[18px]">
+            {text}
+          </p>
         </div>
       </div>
-    </CardShell>
+
+      <div className="relative min-h-[250px] overflow-hidden">
+        <div className="relative h-full min-h-[250px] w-full">
+          <Image
+            src={imageSrc}
+            alt={imageAlt}
+            fill
+            className="object-contain object-center"
+            sizes="(max-width: 768px) 100vw, 620px"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function QuickActionCard({
+  number,
+  title,
+  text,
+  href,
+  cta,
+}: {
+  number: string;
+  title: string;
+  text: string;
+  href: string;
+  cta: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="group block rounded-[2rem] border border-[#e3e9f0] bg-white p-7 shadow-[0_14px_40px_rgba(42,56,86,0.06)] transition hover:-translate-y-1 hover:shadow-[0_20px_50px_rgba(42,56,86,0.08)]"
+    >
+      <div className="flex items-center justify-between gap-4">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#7a879b]">
+          Azione {number}
+        </p>
+        <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-[#30486f] text-sm font-semibold text-white">
+          {number}
+        </div>
+      </div>
+
+      <h3 className="mt-8 text-2xl font-semibold tracking-tight text-[#30486f]">{title}</h3>
+      <p className="mt-4 text-sm leading-relaxed text-[#65758f] sm:text-base">{text}</p>
+      <div className="mt-8 text-sm font-semibold text-[#30486f] transition group-hover:text-[#2f69c7]">
+        {cta} →
+      </div>
+    </Link>
+  );
+}
+
+function HighlightBox({
+  text,
+}: {
+  text: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-[#e3e9f0] bg-white p-5 shadow-[0_14px_40px_rgba(42,56,86,0.06)]">
+      <p className="text-sm font-semibold text-[#30486f]">{text}</p>
+    </div>
+  );
+}
+
+function UseCaseCard({
+  title,
+  text,
+}: {
+  title: string;
+  text: string;
+}) {
+  return (
+    <div className="rounded-[1.75rem] border border-[#e3e9f0] bg-white p-6 shadow-[0_14px_40px_rgba(42,56,86,0.06)]">
+      <h3 className="text-lg font-semibold tracking-tight text-[#30486f] sm:text-xl">
+        {title}
+      </h3>
+      <p className="mt-3 text-sm leading-relaxed text-[#65758f] sm:text-base">{text}</p>
+    </div>
   );
 }
 
@@ -209,376 +318,95 @@ function AudienceCard({
   bullets,
   href,
   cta,
-  accent = "blue",
 }: {
   title: string;
   text: string;
   bullets: string[];
   href: string;
   cta: string;
-  accent?: "blue" | "green" | "orange";
 }) {
-  const dotClass =
-    accent === "green"
-      ? "bg-[#4aa05c]"
-      : accent === "orange"
-        ? "bg-[#ef7a2f]"
-        : "bg-[#2f69c7]";
-
   return (
-    <CardShell className="h-full p-7">
-      <h3 className="text-[28px] font-semibold tracking-[-0.03em] text-[#30486f]">{title}</h3>
-      <p className="mt-4 text-[15px] leading-relaxed text-[#667691]">{text}</p>
+    <div className="rounded-[2rem] border border-[#e3e9f0] bg-white p-7 shadow-[0_14px_40px_rgba(42,56,86,0.06)]">
+      <h3 className="text-2xl font-semibold tracking-tight text-[#30486f]">{title}</h3>
+      <p className="mt-4 text-sm leading-relaxed text-[#65758f] sm:text-base">{text}</p>
 
-      <div className="mt-6 space-y-3">
+      <ul className="mt-6 space-y-3 text-sm leading-relaxed text-[#4f6078]">
         {bullets.map((bullet) => (
-          <div key={bullet} className="flex items-start gap-3">
-            <span className={`mt-2 h-2.5 w-2.5 rounded-full ${dotClass}`} />
-            <p className="text-[15px] font-medium text-[#395277]">{bullet}</p>
-          </div>
+          <li key={bullet} className="flex gap-3">
+            <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-[#2f69c7]" />
+            <span>{bullet}</span>
+          </li>
         ))}
-      </div>
+      </ul>
 
       <div className="mt-8">
         <Link
           href={href}
-          className="inline-flex items-center text-sm font-semibold text-[#2f69c7] transition hover:text-[#2558ab]"
+          className="inline-flex items-center text-sm font-semibold text-[#30486f] transition hover:text-[#2f69c7]"
         >
           {cta} →
         </Link>
       </div>
-    </CardShell>
+    </div>
   );
 }
 
-function ActionCard({
+function TimelineStep({
+  number,
   title,
   text,
-  href,
-  cta,
-  accent,
-  icon,
 }: {
+  number: string;
   title: string;
   text: string;
-  href: string;
-  cta: string;
-  accent: "blue" | "orange" | "green";
-  icon: React.ReactNode;
 }) {
-  const accentClass =
-    accent === "orange"
-      ? "bg-[#fff5ec]"
-      : accent === "green"
-        ? "bg-[#f2fbf4]"
-        : "bg-[#f5f9ff]";
-
   return (
-    <CardShell className={`h-full p-7 ${accentClass}`}>
-      <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-sm">
-        {icon}
+    <div className="rounded-[2rem] border border-[#e3e9f0] bg-white p-7 shadow-[0_14px_40px_rgba(42,56,86,0.06)]">
+      <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-[#30486f] text-sm font-semibold text-white">
+        {number}
       </div>
-      <h3 className="text-[26px] font-semibold tracking-[-0.03em] text-[#30486f]">{title}</h3>
-      <p className="mt-4 text-[15px] leading-relaxed text-[#667691]">{text}</p>
-
-      <div className="mt-8">
-        <Link
-          href={href}
-          className="inline-flex items-center text-sm font-semibold text-[#2f69c7] transition hover:text-[#2558ab]"
-        >
-          {cta} →
-        </Link>
-      </div>
-    </CardShell>
-  );
-}
-
-function HeroAnimalOutline() {
-  return (
-    <svg
-      viewBox="0 0 620 360"
-      className="absolute inset-0 h-full w-full"
-      fill="none"
-      aria-hidden="true"
-    >
-      <defs>
-        <linearGradient id="dogLine" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#a7b9cd" />
-          <stop offset="100%" stopColor="#7b91ad" />
-        </linearGradient>
-      </defs>
-
-      <circle cx="455" cy="88" r="22" fill="#f3f7fb" />
-      <circle cx="498" cy="112" r="16" fill="#f3f7fb" />
-      <circle cx="420" cy="124" r="14" fill="#f3f7fb" />
-      <circle cx="175" cy="280" r="10" fill="#eef4fa" />
-      <circle cx="224" cy="250" r="7" fill="#eef4fa" />
-      <circle cx="553" cy="212" r="11" fill="#eef4fa" />
-
-      <path
-        d="M325 54c44 9 83 36 108 71 16 22 25 46 27 71l23 14c14 8 26 19 35 35 7 12 12 25 14 42l-20-6c-7-13-16-24-29-32l-28-16c-11 30-36 56-69 67-33 11-71 8-108-8l-63-27c-31-13-61-20-95-20H74l3-20h63c38 0 74 8 108 22l62 26c31 13 63 15 92 6 42-13 67-49 62-91-3-30-20-59-46-79-23-18-52-31-84-36l-17-3 8-16z"
-        stroke="url(#dogLine)"
-        strokeWidth="3.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M321 58l-43-31 10 53"
-        stroke="#bdcad7"
-        strokeWidth="3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M444 136l-25-31-11 43"
-        stroke="#bdcad7"
-        strokeWidth="3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M365 160c15 10 33 11 49 4"
-        stroke="#7d93af"
-        strokeWidth="3.2"
-        strokeLinecap="round"
-      />
-      <circle cx="368" cy="143" r="4.5" fill="#7d93af" />
-      <circle cx="432" cy="186" r="4.5" fill="#7d93af" />
-
-      <path d="M260 245l35-29m34 50l24-34m55 46l12-38m74 24l-9-48" stroke="#cdd8e4" strokeWidth="2.3" />
-      <path d="M300 200l55 32 52-15 58 23 61-5" stroke="#c3d0de" strokeWidth="2.3" />
-      <path d="M334 176l40 54m45-42l-14 45m61-40l-5 47" stroke="#c3d0de" strokeWidth="2.3" />
-
-      {[334, 355, 407, 465, 526, 419, 480].map((x, idx) => (
-        <circle
-          key={x}
-          cx={x}
-          cy={[176, 232, 217, 241, 236, 188, 193][idx]}
-          r="3.3"
-          fill="#9eb1c5"
-        />
-      ))}
-    </svg>
-  );
-}
-
-function IdentityIcon() {
-  return (
-    <svg width="92" height="92" viewBox="0 0 92 92" fill="none" aria-hidden="true">
-      <rect x="14" y="20" width="46" height="30" rx="6" fill="white" stroke="#d5e0ee" strokeWidth="2" />
-      <rect x="21" y="27" width="22" height="4" rx="2" fill="#bfd0e8" />
-      <rect x="21" y="35" width="15" height="4" rx="2" fill="#d4dfec" />
-      <rect x="21" y="43" width="22" height="4" rx="2" fill="#d4dfec" />
-      <path d="M27 58h40" stroke="#b5c4d8" strokeWidth="3" strokeLinecap="round" />
-      <rect x="50" y="24" width="22" height="22" rx="4" fill="white" stroke="#d5e0ee" strokeWidth="2" />
-      <rect x="54" y="28" width="6" height="6" fill="#2f69c7" />
-      <rect x="62" y="28" width="6" height="6" fill="#2f69c7" />
-      <rect x="54" y="36" width="6" height="6" fill="#2f69c7" />
-      <rect x="62" y="36" width="3" height="3" fill="#2f69c7" />
-      <circle cx="59" cy="50" r="11" fill="#2f69c7" />
-      <path d="M54 50l4 4 7-8" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function ClinicIcon() {
-  return (
-    <svg width="104" height="92" viewBox="0 0 104 92" fill="none" aria-hidden="true">
-      <rect x="14" y="18" width="64" height="40" rx="6" fill="#334155" />
-      <rect x="20" y="24" width="52" height="28" rx="4" fill="#f8fbff" />
-      <rect x="24" y="28" width="20" height="4" rx="2" fill="#bfd0e8" />
-      <rect x="24" y="36" width="28" height="4" rx="2" fill="#d6e0ec" />
-      <rect x="24" y="44" width="18" height="4" rx="2" fill="#d6e0ec" />
-      <path d="M8 64h76" stroke="#9fb2c8" strokeWidth="3" strokeLinecap="round" />
-      <rect x="62" y="33" width="22" height="26" rx="5" fill="white" stroke="#d5e0ee" strokeWidth="2" />
-      <path d="M73 40l2.5 5h5l-4 3.5 1.2 5-4.7-2.5-4.7 2.5 1.2-5-4-3.5h5L73 40z" fill="#7ea6dd" />
-    </svg>
-  );
-}
-
-function ImagingIcon() {
-  return (
-    <svg width="104" height="92" viewBox="0 0 104 92" fill="none" aria-hidden="true">
-      <rect x="14" y="18" width="60" height="40" rx="6" fill="#2d3748" />
-      <rect x="19" y="23" width="50" height="30" rx="4" fill="#111827" />
-      <path
-        d="M28 42c7-10 15-13 23-12 7 1 13 5 18 10-7 5-14 8-22 8-8 0-14-2-19-6z"
-        fill="#c8d4e3"
-      />
-      <rect x="77" y="30" width="14" height="22" rx="4" fill="#dbe7f4" />
-      <rect x="90" y="26" width="10" height="26" rx="4" fill="#e8eff8" />
-      <rect x="79" y="36" width="8" height="3" rx="1.5" fill="#aac0d9" />
-    </svg>
-  );
-}
-
-function NetworkVisual() {
-  return (
-    <div className="absolute inset-0">
-      <svg viewBox="0 0 600 340" className="absolute inset-0 h-full w-full" fill="none" aria-hidden="true">
-        <path d="M0 260c60-20 120-18 180 0s120 26 180 8 120-22 240 2" stroke="#d9e3ef" strokeWidth="2" />
-        <path d="M30 225l90-34 88 29 96-50 102 23 99-42 78 34" stroke="#bdd0e4" strokeWidth="2.2" />
-        <circle cx="120" cy="191" r="4" fill="#9db4ce" />
-        <circle cx="208" cy="220" r="4" fill="#9db4ce" />
-        <circle cx="304" cy="170" r="4" fill="#9db4ce" />
-        <circle cx="406" cy="193" r="4" fill="#9db4ce" />
-        <circle cx="505" cy="151" r="4" fill="#9db4ce" />
-
-        <rect x="62" y="118" width="150" height="110" rx="22" fill="white" stroke="#d8e1eb" />
-        <rect x="80" y="138" width="114" height="12" rx="6" fill="#edf3fa" />
-        <rect x="80" y="158" width="82" height="9" rx="4.5" fill="#d8e4f1" />
-        <rect x="80" y="172" width="98" height="9" rx="4.5" fill="#d8e4f1" />
-        <circle cx="137" cy="204" r="22" fill="#dbe7f4" />
-        <circle cx="108" cy="196" r="10" fill="#c4d6ea" />
-        <circle cx="167" cy="189" r="8" fill="#c4d6ea" />
-
-        <rect x="424" y="106" width="84" height="84" rx="24" fill="white" stroke="#d8e1eb" />
-        <circle cx="466" cy="148" r="18" fill="#d6e3f1" />
-        <path d="M458 148h16M466 140v16" stroke="#6c88aa" strokeWidth="3" strokeLinecap="round" />
-      </svg>
+      <h3 className="mt-6 text-xl font-semibold text-[#30486f]">{title}</h3>
+      <p className="mt-3 text-sm leading-relaxed text-[#65758f]">{text}</p>
     </div>
   );
 }
 
-function PetWorldVisual() {
+function BottomItem({
+  title,
+}: {
+  title: string;
+}) {
   return (
-    <div className="absolute inset-0">
-      <svg viewBox="0 0 600 340" className="absolute inset-0 h-full w-full" fill="none" aria-hidden="true">
-        <path d="M0 270c80-18 150-24 230-4s150 26 230 4 100-22 140-14" stroke="#dde7f1" strokeWidth="2" />
-      </svg>
-
-      <rect x="74" y="228" width="96" height="42" rx="12" fill="#d9e4f0" className="absolute" />
-      <rect x="165" y="198" width="78" height="78" rx="20" fill="#7589a2" className="absolute" />
-      <rect x="142" y="182" width="50" height="16" rx="8" fill="#879ab1" className="absolute" />
-
-      <svg viewBox="0 0 240 240" className="absolute right-[10%] bottom-[2%] h-[220px] w-[220px]" fill="none" aria-hidden="true">
-        <path
-          d="M92 30l18 16 18-14c20 7 35 22 46 43 12 24 14 53 8 81-5 21-15 39-30 55H76c-12-18-18-37-18-58 0-26 10-50 25-68 3-4 6-8 9-10z"
-          stroke="#8aa1bb"
-          strokeWidth="3"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <path d="M84 74l26 16 29-15m-54 49l25-26 28 28m-68 33l42-30 54 35" stroke="#c3d0df" strokeWidth="2.2" />
-        <circle cx="84" cy="74" r="3.2" fill="#9fb2c8" />
-        <circle cx="110" cy="90" r="3.2" fill="#9fb2c8" />
-        <circle cx="139" cy="75" r="3.2" fill="#9fb2c8" />
-        <circle cx="110" cy="124" r="3.2" fill="#9fb2c8" />
-        <circle cx="138" cy="126" r="3.2" fill="#9fb2c8" />
-        <circle cx="86" cy="159" r="3.2" fill="#9fb2c8" />
-      </svg>
+    <div className="flex items-center justify-center px-3 text-center md:text-left">
+      <span className="text-[15px] font-medium text-[#4a6182]">{title}</span>
     </div>
-  );
-}
-
-function ShieldIcon() {
-  return (
-    <svg width="36" height="36" viewBox="0 0 54 54" fill="none" aria-hidden="true">
-      <circle cx="27" cy="27" r="27" fill="#EEF4FD" />
-      <path
-        d="M27 12l12 5v8c0 8.5-5.5 14.5-12 17-6.5-2.5-12-8.5-12-17v-8l12-5z"
-        fill="#6396DB"
-      />
-      <path
-        d="M27 21l2.5 5.3 5.8.8-4.2 4 1 5.7-5.1-2.7-5.1 2.7 1-5.7-4.2-4 5.8-.8L27 21z"
-        fill="white"
-      />
-    </svg>
-  );
-}
-
-function PawSmall() {
-  return (
-    <svg width="36" height="36" viewBox="0 0 54 54" fill="none" aria-hidden="true">
-      <circle cx="27" cy="27" r="27" fill="#EEF4FD" />
-      <circle cx="19" cy="18" r="5" fill="#6C9FE1" />
-      <circle cx="35" cy="18" r="5" fill="#6C9FE1" />
-      <circle cx="15" cy="28" r="4.5" fill="#F2B24C" />
-      <circle cx="39" cy="28" r="4.5" fill="#F2B24C" />
-      <path d="M27 23c-5.8 0-10 5.1-10 9.2 0 4.2 3.5 6.8 10 6.8s10-2.6 10-6.8c0-4.1-4.2-9.2-10-9.2z" fill="#6C9FE1" />
-    </svg>
-  );
-}
-
-function HeartPin() {
-  return (
-    <svg width="36" height="36" viewBox="0 0 54 54" fill="none" aria-hidden="true">
-      <circle cx="27" cy="27" r="27" fill="#EEF4FD" />
-      <path
-        d="M27 41c7-8 12-13 12-19a7 7 0 0 0-12-4 7 7 0 0 0-12 4c0 6 5 11 12 19z"
-        fill="#7ea6dd"
-      />
-      <circle cx="37.5" cy="37.5" r="6" fill="#2f69c7" />
-    </svg>
-  );
-}
-
-function LostIcon() {
-  return (
-    <svg width="30" height="30" viewBox="0 0 48 48" fill="none" aria-hidden="true">
-      <circle cx="24" cy="24" r="20" fill="#fff1e6" />
-      <path d="M24 10c6 0 11 5 11 11 0 7-7 13-11 17-4-4-11-10-11-17 0-6 5-11 11-11z" fill="#ef7a2f" />
-      <circle cx="24" cy="21" r="4.5" fill="white" />
-    </svg>
-  );
-}
-
-function FoundIcon() {
-  return (
-    <svg width="30" height="30" viewBox="0 0 48 48" fill="none" aria-hidden="true">
-      <circle cx="24" cy="24" r="20" fill="#eaf2ff" />
-      <path d="M16 24l5 5 11-12" stroke="#2f69c7" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx="24" cy="24" r="13" stroke="#2f69c7" strokeWidth="3" />
-    </svg>
-  );
-}
-
-function HappyEndIcon() {
-  return (
-    <svg width="30" height="30" viewBox="0 0 48 48" fill="none" aria-hidden="true">
-      <circle cx="24" cy="24" r="20" fill="#edf9f0" />
-      <path
-        d="M24 35c7-8 11-12 11-18a6 6 0 0 0-11-3 6 6 0 0 0-11 3c0 6 4 10 11 18z"
-        fill="#4aa05c"
-      />
-    </svg>
   );
 }
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-[#f5f5f4] text-zinc-900">
-      <div className="mx-auto max-w-[1220px] px-4 py-7 md:py-10">
-        <CardShell className="overflow-hidden">
-          <header className="border-b border-[#e1e7ee] bg-white">
-            <div className="flex flex-wrap items-center justify-between gap-6 px-7 py-5 md:px-9">
-              <Link href="/" className="flex items-center gap-4">
+    <div className="min-h-screen bg-[#f3f4f6] text-zinc-900">
+      <div className="mx-auto max-w-[1260px] px-4 py-7 md:py-10">
+        <MainShell>
+          <header className="border-b border-[#e3e9f0] bg-white">
+            <div className="flex flex-wrap items-center justify-between gap-6 px-7 py-5 md:px-10">
+              <Link href="/" className="flex items-center">
                 <Image
-                  src="/logo-main.png"
+                  src="/home/logo-header.png"
                   alt="UNIMALIA"
-                  width={170}
-                  height={48}
-                  className="h-10 w-auto"
+                  width={240}
+                  height={64}
+                  className="h-11 w-auto"
                   priority
                 />
               </Link>
 
               <nav className="hidden items-center gap-8 lg:flex">
-                <Link href="/identita" className="text-[15px] font-medium text-[#4a5f82] hover:text-[#30486f]">
-                  Identità
-                </Link>
-                <Link href="/professionisti/dashboard" className="text-[15px] font-medium text-[#4a5f82] hover:text-[#30486f]">
-                  Area clinica
-                </Link>
-                <Link href="/servizi" className="text-[15px] font-medium text-[#4a5f82] hover:text-[#30486f]">
-                  Professionisti
-                </Link>
-                <Link href="/smarrimenti" className="text-[15px] font-medium text-[#4a5f82] hover:text-[#30486f]">
-                  Smarrimenti
-                </Link>
-                <Link href="/prezzi" className="text-[15px] font-medium text-[#4a5f82] hover:text-[#30486f]">
-                  Prezzi
-                </Link>
+                <NavLink href="/identita">Identità</NavLink>
+                <NavLink href="/professionisti/dashboard">Area clinica</NavLink>
+                <NavLink href="/servizi">Professionisti</NavLink>
+                <NavLink href="/smarrimenti">Smarrimenti</NavLink>
+                <NavLink href="/risorse">Risorse</NavLink>
               </nav>
 
               <div className="flex items-center gap-3">
@@ -588,125 +416,204 @@ export default function HomePage() {
           </header>
 
           <section className="relative overflow-hidden bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)]">
-            <div className="grid min-h-[380px] grid-cols-1 md:grid-cols-[1.08fr_0.92fr]">
-              <div className="flex flex-col justify-center px-8 py-10 md:px-10 lg:px-14">
-                <h1 className="max-w-[620px] text-[38px] font-semibold tracking-[-0.04em] text-[#30486f] md:text-[54px]">
-                  L’infrastruttura digitale per il mondo animale.
-                </h1>
-
-                <p className="mt-5 max-w-[560px] text-[18px] leading-relaxed text-[#667691] md:text-[22px]">
-                  Identità animale, dati clinici, continuità assistenziale, smarrimenti e
-                  connessione tra professionisti.
+            <div className="grid min-h-[560px] grid-cols-1 md:grid-cols-[0.96fr_1.04fr]">
+              <div className="flex flex-col justify-center px-8 py-12 md:px-10 lg:px-14">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#7a879b]">
+                  Building the Digital Infrastructure of Veterinary Care
                 </p>
 
-                <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                <h1 className="mt-6 max-w-[660px] text-[40px] font-semibold leading-[1.02] tracking-[-0.05em] text-[#30486f] md:text-[62px]">
+                  L’infrastruttura digitale che mancava al mondo veterinario
+                </h1>
+
+                <p className="mt-6 max-w-[580px] text-[18px] leading-relaxed text-[#65758f] md:text-[22px]">
+                  Identità animale, dati clinici, smarrimenti, consulti e continuità tra
+                  professionisti in un’unica piattaforma più chiara, più forte, più utile.
+                </p>
+
+                <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                   <PrimaryButton href="/identita">Scopri la piattaforma</PrimaryButton>
                   <SecondaryButton href="/smarrimenti/nuovo">Segnala smarrimento</SecondaryButton>
                 </div>
+
+                <div className="mt-10 grid gap-4 sm:grid-cols-3">
+                  <HeroStat
+                    value="1 base unica"
+                    text="Per identità animale, storico, accessi e strumenti chiave."
+                  />
+                  <HeroStat
+                    value="+ continuità"
+                    text="Tra proprietario, clinica, veterinari e rete professionale."
+                  />
+                  <HeroStat
+                    value="+ rapidità"
+                    text="Nei momenti in cui serve agire subito e con ordine."
+                  />
+                </div>
               </div>
 
-              <div className="relative min-h-[300px] overflow-hidden bg-[linear-gradient(180deg,#ffffff_0%,#f5f9ff_100%)]">
-                <HeroAnimalOutline />
+              <div className="relative min-h-[380px] overflow-hidden bg-[linear-gradient(180deg,#ffffff_0%,#f7faff_100%)]">
+                <div className="relative h-full min-h-[380px] w-full">
+                  <Image
+                    src="/home/hero-animals.png"
+                    alt="Hero UNIMALIA con cane, gatto e identità digitale"
+                    fill
+                    priority
+                    className="object-cover object-center"
+                    sizes="(max-width: 768px) 100vw, 900px"
+                  />
+                </div>
               </div>
             </div>
           </section>
 
-          <section className="border-t border-[#e1e7ee] bg-white px-7 py-10 md:px-9 md:py-12">
-            <div className="grid gap-8 md:grid-cols-3">
-              <TopCard
+          <SectionDivider />
+
+          <section className="bg-white px-7 py-10 md:px-10 md:py-12">
+            <div className="grid gap-10 md:grid-cols-3 md:gap-0">
+              <FeatureImageCard
                 title="Identità Digitale"
-                text="Componenti integrati e generabili per dare all’animale una base digitale chiara, riutilizzabile e controllabile."
-                icon={<IdentityIcon />}
+                text="Componenti integrali e generabili."
+                imageSrc="/home/feature-identity.png"
+                imageAlt="Visual identità digitale UNIMALIA"
+                bordered
               />
-              <TopCard
+              <FeatureImageCard
                 title="Cartella Clinica Condivisa"
-                text="Processi chiari, accessi controllati e continuità informativa tra proprietario, clinica e professionisti autorizzati."
-                icon={<ClinicIcon />}
+                text="Processi chiari e verificabili."
+                imageSrc="/home/feature-clinic.png"
+                imageAlt="Visual cartella clinica condivisa UNIMALIA"
+                bordered
               />
-              <TopCard
+              <FeatureImageCard
                 title="Imaging Diagnostico"
-                text="Dai dati alle decisioni concrete, con una struttura predisposta per referti, imaging e collaborazione clinica."
-                icon={<ImagingIcon />}
+                text="Dai dati alle decisioni concrete."
+                imageSrc="/home/feature-imaging.png"
+                imageAlt="Visual imaging diagnostico UNIMALIA"
               />
             </div>
           </section>
 
-          <section className="border-t border-[#e1e7ee] bg-white px-7 py-10 md:px-9 md:py-12">
-            <div className="grid gap-8 md:grid-cols-2">
-              <SplitFeature
-                title="Connetti Veterinari e Cliniche"
-                text="Un ecosistema progettato per unire dati, accessi e continuità operativa tra professionisti, strutture e consulti."
-                bullets={[
-                  "Accessi clinici controllati",
-                  "Consulti tra cliniche e veterinari",
-                  "Condivisione referti ed eventi",
-                ]}
-                visual={<NetworkVisual />}
-              />
+          <SectionDivider />
 
-              <SplitFeature
+          <section className="bg-white px-7 md:px-10">
+            <div className="grid gap-0 md:grid-cols-2">
+              <SplitImageFeature
+                title="Connetti Veterinari e Cliniche"
+                text="Un ecosistema progettato per unire professionisti, strutture, accessi e continuità operativa."
+                imageSrc="/home/network-vets.png"
+                imageAlt="Visual rete di veterinari e cliniche"
+                bordered
+              />
+              <SplitImageFeature
                 title="Gestisci tutto il tuo mondo Pet"
-                text="UNIMALIA non è solo area clinica: è anche identità animale, servizi, storico e strumenti utili per il proprietario."
-                bullets={[
-                  "Tutti i dati in un’unica piattaforma",
-                  "Connessione con servizi e professionisti",
-                  "Base ordinata prima, durante e dopo l’emergenza",
-                ]}
-                visual={<PetWorldVisual />}
+                text="Tutti i dati del tuo animale in un’unica piattaforma, dal profilo all’emergenza fino alla continuità futura."
+                imageSrc="/home/pet-world.png"
+                imageAlt="Visual mondo pet UNIMALIA"
                 reverse
               />
             </div>
           </section>
 
-          <section className="border-t border-[#e1e7ee] bg-[#fbfcfe] px-7 py-10 md:px-9 md:py-12">
-            <div className="grid gap-6 md:grid-cols-4">
-              <div className="flex items-center justify-center gap-3 text-center md:text-left">
-                <ShieldIcon />
-                <div>
-                  <p className="text-[16px] font-semibold text-[#35527f]">Accesso Sicuro</p>
-                </div>
-              </div>
+          <SectionDivider />
 
-              <div className="flex items-center justify-center gap-3 text-center md:text-left">
-                <ClinicIcon />
-                <div>
-                  <p className="text-[16px] font-semibold text-[#35527f]">Referti Condivisi</p>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-center gap-3 text-center md:text-left">
-                <PawSmall />
-                <div>
-                  <p className="text-[16px] font-semibold text-[#35527f]">Interoperabilità</p>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-center gap-3 text-center md:text-left">
-                <HeartPin />
-                <div>
-                  <p className="text-[16px] font-semibold text-[#35527f]">Trova il tuo Pet</p>
-                </div>
-              </div>
+          <section className="bg-white px-7 py-6 md:px-10 md:py-7">
+            <div className="grid gap-5 md:grid-cols-4">
+              <BottomItem title="Accesso Sicuro" />
+              <BottomItem title="Referti Condivisi" />
+              <BottomItem title="Interoperabilità" />
+              <BottomItem title="Trova il tuo Pet" />
             </div>
           </section>
-        </CardShell>
+        </MainShell>
 
-        <Section className="pt-14 md:pt-18">
-          <SectionTitle
-            title="Una piattaforma completa, non solo clinica"
-            text="Questa versione mantiene la pulizia del mockup ma si allarga al resto dell’ecosistema UNIMALIA: proprietari, smarrimenti, professionisti e continuità tra mondi diversi."
+        <section className="py-14 sm:py-18">
+          <div className="grid gap-5 xl:grid-cols-3">
+            <QuickActionCard
+              number="1"
+              title="Crea l’identità animale"
+              text="Parti da una base chiara: dati essenziali, QR code e strumenti pronti all’uso."
+              href="/identita/nuovo"
+              cta="Inizia ora"
+            />
+            <QuickActionCard
+              number="2"
+              title="Hai perso un animale?"
+              text="Pubblica subito una segnalazione ordinata per muoverti in modo più rapido e concreto."
+              href="/smarrimenti/nuovo"
+              cta="Segnala smarrimento"
+            />
+            <QuickActionCard
+              number="3"
+              title="Hai trovato o avvistato un animale?"
+              text="Invia una segnalazione utile per facilitare il ricongiungimento e raccogliere informazioni."
+              href="/trovati/nuovo"
+              cta="Segnala ora"
+            />
+          </div>
+        </section>
+
+        <section className="py-10 sm:py-14">
+          <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
+            <div>
+              <SectionIntro
+                eyebrow="Perché nasce"
+                title="Quando le informazioni sono sparse, anche le cose semplici diventano più difficili."
+                description="Email, carta, messaggi, referti e dettagli salvati in posti diversi rallentano tutto. UNIMALIA nasce per creare una base unica più chiara, prima dell’emergenza, durante l’emergenza e anche dopo."
+              />
+            </div>
+
+            <div className="grid gap-4">
+              <HighlightBox text="✔ Dati essenziali più ordinati" />
+              <HighlightBox text="✔ Strumenti rapidi quando serve agire" />
+              <HighlightBox text="✔ Più chiarezza tra proprietari e professionisti" />
+              <HighlightBox text="✔ Meno dispersione, più continuità" />
+            </div>
+          </div>
+        </section>
+
+        <section className="py-14 sm:py-20">
+          <SectionIntro
+            eyebrow="Cosa puoi fare"
+            title="Le azioni principali sono subito chiare"
+            description="La homepage deve orientare in pochi secondi: cosa puoi fare, dove devi andare e perché conviene farlo da qui."
           />
-        </Section>
 
-        <Section className="pt-10">
-          <div className="grid gap-6 lg:grid-cols-3">
+          <div className="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+            <UseCaseCard
+              title="Crea l’identità dell’animale"
+              text="Raccogli i dati essenziali in una scheda digitale chiara, più semplice da consultare e riutilizzare."
+            />
+            <UseCaseCard
+              title="Pubblica uno smarrimento"
+              text="Centralizza subito le informazioni importanti e rendi la ricerca più ordinata."
+            />
+            <UseCaseCard
+              title="Segnala trovato o avvistato"
+              text="Aiuta a raccogliere segnalazioni utili sul territorio in modo più verificabile e leggibile."
+            />
+            <UseCaseCard
+              title="Collabora con professionisti"
+              text="Concedi accessi controllati e prepara una continuità migliore con veterinari e operatori del settore."
+            />
+          </div>
+        </section>
+
+        <section className="py-14 sm:py-20">
+          <SectionIntro
+            eyebrow="Per chi è"
+            title="Percorsi distinti, ruoli più chiari"
+            description="UNIMALIA funziona meglio quando ogni utente capisce subito il proprio spazio, il proprio ruolo e l’azione giusta da fare."
+          />
+
+          <div className="mt-10 grid gap-6 lg:grid-cols-3">
             <AudienceCard
               title="Per i proprietari"
-              text="Una base chiara per identità animale, accessi, storico e strumenti utili nei momenti più delicati."
+              text="Uno spazio più ordinato per gestire identità, accessi e momenti delicati senza perdere tempo."
               bullets={[
-                "Identità digitale dell’animale",
-                "Controllo accessi ai dati clinici",
-                "Storico più ordinato nel tempo",
+                "Crei l’identità digitale dell’animale e tieni i dati essenziali in un unico posto.",
+                "Decidi tu chi può accedere alle informazioni cliniche e per quanto tempo.",
+                "Hai strumenti rapidi per smarrimenti, segnalazioni e rientri con lieto fine.",
               ]}
               href="/identita"
               cta="Apri area identità"
@@ -714,94 +621,106 @@ export default function HomePage() {
 
             <AudienceCard
               title="Per i veterinari"
-              text="Un ambiente più strutturato per cartella clinica, consulti, referti, imaging e continuità assistenziale."
+              text="Un flusso più pulito per accedere ai dati autorizzati, lavorare sulla cartella clinica e gestire consulti."
               bullets={[
-                "Grant e accessi autorizzati",
-                "Cartella clinica condivisa",
-                "Consulti e interoperabilità",
+                "Richiedi accesso agli animali solo quando autorizzato dal proprietario.",
+                "Operi sulla cartella clinica con tracciabilità e ruoli più chiari.",
+                "Invii consulti e condividi eventi clinici in modo controllato.",
               ]}
               href="/professionisti/dashboard"
-              cta="Apri area clinica"
-              accent="blue"
+              cta="Apri area veterinari"
             />
 
             <AudienceCard
-              title="Per i professionisti pet"
-              text="Uno spazio coerente per toelettatori, pensioni, pet sitter, educatori e servizi non clinici."
+              title="Per altri professionisti"
+              text="Uno spazio pensato per crescere oltre l’area clinica, mantenendo funzioni e responsabilità ben distinte."
               bullets={[
-                "Storico servizi",
-                "Connessione col profilo animale",
-                "Collaborazione più ordinata con il resto dell’ecosistema",
+                "Toelettatori, pet sitter, pensioni e addestratori avranno strumenti dedicati al proprio lavoro.",
+                "Le attività non cliniche resteranno separate dalla cartella veterinaria.",
+                "L’obiettivo è favorire collaborazione, ordine e continuità tra servizi diversi.",
               ]}
               href="/servizi"
               cta="Scopri i servizi"
-              accent="green"
             />
           </div>
-        </Section>
+        </section>
 
-        <Section className="pt-14 md:pt-18">
-          <SectionTitle
-            title="Momenti concreti, azioni immediate"
-            text="UNIMALIA deve funzionare non solo come infrastruttura, ma anche come strumento pratico quando serve agire subito."
+        <section className="py-14 sm:py-20">
+          <SectionIntro
+            eyebrow="Come funziona"
+            title="Prima prepari una base chiara, poi reagisci meglio"
+            description="UNIMALIA deve essere utile prima dell’emergenza, durante l’emergenza e anche dopo."
           />
-        </Section>
 
-        <Section className="pt-10">
-          <div className="grid gap-6 md:grid-cols-3">
-            <ActionCard
-              title="Smarrimenti"
-              text="Pubblica rapidamente una segnalazione chiara, centralizzata e predisposta per favorire visibilità e rapidità."
-              href="/smarrimenti/nuovo"
-              cta="Segnala smarrimento"
-              accent="orange"
-              icon={<LostIcon />}
+          <div className="mt-10 grid gap-5 lg:grid-cols-4">
+            <TimelineStep
+              number="1"
+              title="Crea la scheda"
+              text="Inserisci i dati principali dell’animale e genera la sua identità digitale."
             />
-
-            <ActionCard
-              title="Trovati / Avvistati"
-              text="Raccogli segnalazioni utili sul territorio per migliorare il ricongiungimento tra animale e proprietario."
-              href="/trovati/nuovo"
-              cta="Segnala trovato o avvistato"
-              accent="blue"
-              icon={<FoundIcon />}
+            <TimelineStep
+              number="2"
+              title="Attiva strumenti e accessi"
+              text="Usa QR e codici, poi concedi ai professionisti solo gli accessi necessari."
             />
-
-            <ActionCard
-              title="Lieti Fine"
-              text="Chiudi correttamente il caso e mantieni uno storico più ordinato dei momenti importanti vissuti dall’animale."
-              href="/lieti-fine"
-              cta="Vai ai lieti fine"
-              accent="green"
-              icon={<HappyEndIcon />}
+            <TimelineStep
+              number="3"
+              title="Gestisci segnalazioni"
+              text="In caso di smarrimento, ritrovamento o avvistamento hai già una base più pronta e ordinata."
+            />
+            <TimelineStep
+              number="4"
+              title="Chiudi con lieto fine"
+              text="Quando il caso si risolve, le informazioni restano più chiare e utili anche dopo."
             />
           </div>
-        </Section>
+        </section>
 
-        <Section className="pt-14 md:pt-18">
-          <CardShell className="overflow-hidden bg-[linear-gradient(180deg,#ffffff_0%,#f7fbff_100%)] px-8 py-10 md:px-12 md:py-14">
-            <div className="grid gap-8 md:grid-cols-[1.08fr_0.92fr] md:items-center">
-              <div>
-                <h2 className="text-[34px] font-semibold tracking-[-0.04em] text-[#30486f] md:text-[46px]">
-                  Un’unica infrastruttura per il mondo animale.
+        <section className="py-14 sm:py-20">
+          <div className="overflow-hidden rounded-[2.5rem] border border-[#e3e9f0] bg-white shadow-[0_24px_80px_rgba(42,56,86,0.08)]">
+            <div className="grid gap-8 lg:grid-cols-[1.12fr_0.88fr]">
+              <div className="px-6 py-8 sm:px-8 sm:py-10 lg:px-10 lg:py-12">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#7a879b]">
+                  Chiusura
+                </p>
+                <h2 className="mt-4 max-w-3xl text-3xl font-semibold tracking-[-0.04em] text-[#30486f] sm:text-4xl lg:text-5xl">
+                  UNIMALIA rende più semplice proteggere l’animale nel momento in cui conta davvero.
                 </h2>
-                <p className="mt-5 max-w-[620px] text-[17px] leading-relaxed text-[#667691] md:text-[20px]">
-                  Identità digitale, dati clinici, smarrimenti, connessione tra professionisti,
-                  servizi e continuità nel tempo: meno dispersione, più chiarezza, più utilità.
+                <p className="mt-5 max-w-2xl text-base leading-relaxed text-[#65758f] sm:text-lg">
+                  Identità digitale, accessi clinici controllati, consulti, smarrimenti, animali
+                  trovati, avvistamenti e lieti fine: meno dispersione, più chiarezza, più fiducia.
                 </p>
 
-                <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                  <PrimaryButton href="/identita/nuovo">Inizia ora</PrimaryButton>
-                  <SecondaryButton href="/prezzi">Vedi prezzi</SecondaryButton>
+                <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                  <PrimaryButton href="/identita/nuovo">Crea identità animale</PrimaryButton>
+                  <SecondaryButton href="/smarrimenti/nuovo">Segnala smarrimento</SecondaryButton>
+                  <SecondaryButton href="/trovati/nuovo">Segnala trovato o avvistato</SecondaryButton>
+                </div>
+
+                <div className="mt-6">
+                  <Link
+                    href="/prezzi"
+                    className="text-sm text-[#65758f] transition hover:text-[#30486f]"
+                  >
+                    Prezzi
+                  </Link>
                 </div>
               </div>
 
-              <div className="relative min-h-[240px] overflow-hidden rounded-[24px] bg-[linear-gradient(180deg,#f8fbff_0%,#edf3fa_100%)]">
-                <HeroAnimalOutline />
+              <div className="relative min-h-[320px] bg-[linear-gradient(180deg,#f9fbff_0%,#eef4fb_100%)]">
+                <div className="relative h-full min-h-[320px] w-full">
+                  <Image
+                    src="/home/hero-animals.png"
+                    alt="Visual finale homepage UNIMALIA"
+                    fill
+                    className="object-cover object-center"
+                    sizes="(max-width: 768px) 100vw, 700px"
+                  />
+                </div>
               </div>
             </div>
-          </CardShell>
-        </Section>
+          </div>
+        </section>
       </div>
     </div>
   );
