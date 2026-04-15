@@ -94,7 +94,7 @@ export default function AuthButtons({
             className={cx(
               subtleButton,
               firstButtonClass,
-              "border border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-50"
+              "border border-[#d7dfe9] bg-white text-[#31486f] hover:bg-[#f8fbff]"
             )}
           >
             Accedi
@@ -106,7 +106,7 @@ export default function AuthButtons({
             className={cx(
               subtleButton,
               secondButtonClass,
-              "bg-[#f1ede6] text-zinc-900 hover:bg-[#ebe5db]"
+              "bg-[linear-gradient(180deg,#2f69c7_0%,#2558ab_100%)] text-white shadow-[0_10px_20px_rgba(47,105,199,0.18)] hover:opacity-95"
             )}
           >
             Iscriviti
@@ -120,7 +120,7 @@ export default function AuthButtons({
             className={cx(
               subtleButton,
               firstButtonClass,
-              "border border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-50"
+              "border border-[#d7dfe9] bg-white text-[#31486f] hover:bg-[#f8fbff]"
             )}
           >
             Profilo
@@ -132,7 +132,7 @@ export default function AuthButtons({
             className={cx(
               subtleButton,
               secondButtonClass,
-              "bg-[#f1ede6] text-zinc-900 hover:bg-[#ebe5db]"
+              "bg-[#f4f7fb] text-[#30486f] hover:bg-[#eaf1f8]"
             )}
           >
             Esci

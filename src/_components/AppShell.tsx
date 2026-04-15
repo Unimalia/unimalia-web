@@ -32,17 +32,17 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-[#f6f1e8] text-zinc-900">
-      <header className="sticky top-0 z-50 border-b border-black/5 bg-[#f6f1e8]/88 backdrop-blur-xl">
+    <div className="min-h-screen bg-[#f3f4f6] text-zinc-900">
+      <header className="sticky top-0 z-50 border-b border-[#e3e9f0] bg-white/90 backdrop-blur-xl">
         <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
           <Link
             href="/"
             className="group flex min-w-0 items-center gap-4"
             aria-label="Vai alla home UNIMALIA"
           >
-            <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-[1.1rem] bg-white shadow-[0_8px_24px_rgba(0,0,0,0.06)] ring-1 ring-black/5 sm:h-14 sm:w-14">
+            <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-[1.1rem] bg-white shadow-[0_10px_24px_rgba(42,56,86,0.08)] ring-1 ring-[#e3e9f0] sm:h-14 sm:w-14">
               <Image
-                src="/logo-main.png"
+                src="/home/logo-app.png"
                 alt="UNIMALIA"
                 width={120}
                 height={110}
@@ -52,10 +52,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </div>
 
             <div className="min-w-0">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#6f7d91]">
                 UNIMALIA
               </p>
-              <p className="truncate text-sm font-medium text-zinc-800 sm:text-[15px]">
+              <p className="truncate text-sm font-medium text-[#30486f] sm:text-[15px]">
                 Identità animale, emergenza e continuità clinica
               </p>
             </div>
@@ -69,16 +69,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         {children}
       </main>
 
-      <footer className="mt-24 border-t border-black/5 bg-white">
+      <footer className="mt-24 border-t border-[#e3e9f0] bg-white">
         <div className="mx-auto grid w-full max-w-7xl gap-12 px-4 py-14 sm:px-6 lg:grid-cols-[1.3fr_0.7fr] lg:px-8">
           <div className="max-w-2xl">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#6f7d91]">
               UNIMALIA
             </p>
-            <h2 className="mt-4 text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl">
+            <h2 className="mt-4 text-2xl font-semibold tracking-tight text-[#30486f] sm:text-3xl">
               Un modo più chiaro per proteggere informazioni, accessi e momenti importanti.
             </h2>
-            <p className="mt-5 text-sm leading-relaxed text-zinc-600 sm:text-base">
+            <p className="mt-5 text-sm leading-relaxed text-[#5f708a] sm:text-base">
               UNIMALIA nasce come impresa responsabile: una parte dei ricavi verrà reinvestita nel
               progetto e una parte devolverà valore al mondo animale.
             </p>
@@ -87,17 +87,20 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <div className="grid gap-10 sm:grid-cols-2">
             <div>
               <p className="text-sm font-semibold text-zinc-900">Esplora</p>
-              <div className="mt-4 flex flex-col gap-3 text-sm text-zinc-600">
-                <Link className="transition hover:text-zinc-900" href="/smarrimenti">
+              <div className="mt-4 flex flex-col gap-3 text-sm text-[#5f708a]">
+                <Link className="transition hover:text-[#30486f]" href="/smarrimenti">
                   Smarrimenti
                 </Link>
-                <Link className="transition hover:text-zinc-900" href="/trovati">
+                <Link className="transition hover:text-[#30486f]" href="/trovati">
                   Trovati / Avvistati
                 </Link>
-                <Link className="transition hover:text-zinc-900" href="/identita">
+                <Link className="transition hover:text-[#30486f]" href="/lieti-fine">
+                  Lieti Fine
+                </Link>
+                <Link className="transition hover:text-[#30486f]" href="/identita">
                   Identità animale
                 </Link>
-                <Link className="transition hover:text-zinc-900" href="/professionisti/dashboard">
+                <Link className="transition hover:text-[#30486f]" href="/professionisti/dashboard">
                   Professionisti
                 </Link>
               </div>
@@ -105,14 +108,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
             <div>
               <p className="text-sm font-semibold text-zinc-900">Informazioni</p>
-              <div className="mt-4 flex flex-col gap-3 text-sm text-zinc-600">
-                <Link className="transition hover:text-zinc-900" href="/privacy">
+              <div className="mt-4 flex flex-col gap-3 text-sm text-[#5f708a]">
+                <Link className="transition hover:text-[#30486f]" href="/privacy">
                   Privacy
                 </Link>
-                <Link className="transition hover:text-zinc-900" href="/cookie">
+                <Link className="transition hover:text-[#30486f]" href="/cookie">
                   Cookie
                 </Link>
-                <Link className="transition hover:text-zinc-900" href="/termini">
+                <Link className="transition hover:text-[#30486f]" href="/termini">
                   Termini
                 </Link>
               </div>
@@ -120,8 +123,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
-        <div className="border-t border-zinc-100">
-          <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-4 py-5 text-xs text-zinc-500 sm:px-6 sm:flex-row sm:items-center sm:justify-between lg:px-8">
+        <div className="border-t border-[#eef2f7]">
+          <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-4 py-5 text-xs text-[#6f7d91] sm:px-6 sm:flex-row sm:items-center sm:justify-between lg:px-8">
             <p>© {new Date().getFullYear()} UNIMALIA</p>
             <p>Meno dispersione, più chiarezza, più continuità.</p>
           </div>
