@@ -124,7 +124,7 @@ function SectionIntro({
   return (
     <div className="max-w-3xl">
       {eyebrow ? (
-        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#7a879b]">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#6f7d91]">
           {eyebrow}
         </p>
       ) : null}
@@ -132,7 +132,7 @@ function SectionIntro({
         {title}
       </h2>
       {description ? (
-        <p className="mt-5 text-base leading-relaxed text-[#65758f] sm:text-lg">
+        <p className="mt-5 text-base leading-relaxed text-[#5f708a] sm:text-lg">
           {description}
         </p>
       ) : null}
@@ -150,7 +150,7 @@ function HeroStat({
   return (
     <div className="rounded-[22px] border border-[#e3e9f0] bg-white/85 p-4 shadow-[0_10px_24px_rgba(42,56,86,0.06)] backdrop-blur">
       <p className="text-[22px] font-semibold tracking-[-0.03em] text-[#30486f]">{value}</p>
-      <p className="mt-1 text-sm leading-relaxed text-[#65758f]">{text}</p>
+      <p className="mt-1 text-sm leading-relaxed text-[#5f708a]">{text}</p>
     </div>
   );
 }
@@ -175,9 +175,9 @@ function FeatureImageCard({
         bordered ? "md:border-r md:border-[#e5ebf1]" : "",
       ].join(" ")}
     >
-      <h3 className="text-[20px] font-semibold tracking-[-0.03em] text-[#30486f]">
+      <h2 className="text-[20px] font-semibold tracking-[-0.03em] text-[#30486f]">
         {title}
-      </h3>
+      </h2>
 
       <div className="relative mt-6 flex h-[180px] w-full items-center justify-center">
         <div className="relative h-full w-full max-w-[320px]">
@@ -191,7 +191,7 @@ function FeatureImageCard({
         </div>
       </div>
 
-      <p className="mt-4 max-w-[280px] text-[14px] leading-relaxed text-[#697992] md:text-[15px]">
+      <p className="mt-4 max-w-[280px] text-[14px] leading-relaxed text-[#5f708a] md:text-[15px]">
         {text}
       </p>
     </div>
@@ -223,10 +223,10 @@ function SplitImageFeature({
     >
       <div className="flex items-center px-8 py-8 md:px-10 md:py-10">
         <div className="max-w-[420px]">
-          <h3 className="text-[30px] font-semibold leading-[1.05] tracking-[-0.04em] text-[#30486f] md:text-[38px]">
+          <h2 className="text-[30px] font-semibold leading-[1.05] tracking-[-0.04em] text-[#30486f] md:text-[38px]">
             {title}
-          </h3>
-          <p className="mt-4 text-[16px] leading-relaxed text-[#677792] md:text-[18px]">
+          </h2>
+          <p className="mt-4 text-[16px] leading-relaxed text-[#5f708a] md:text-[18px]">
             {text}
           </p>
         </div>
@@ -266,7 +266,7 @@ function QuickActionCard({
       className="group block rounded-[2rem] border border-[#e3e9f0] bg-white p-7 shadow-[0_14px_40px_rgba(42,56,86,0.06)] transition hover:-translate-y-1 hover:shadow-[0_20px_50px_rgba(42,56,86,0.08)]"
     >
       <div className="flex items-center justify-between gap-4">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#7a879b]">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#6f7d91]">
           Azione {number}
         </p>
         <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-[#30486f] text-sm font-semibold text-white">
@@ -274,8 +274,8 @@ function QuickActionCard({
         </div>
       </div>
 
-      <h3 className="mt-8 text-2xl font-semibold tracking-tight text-[#30486f]">{title}</h3>
-      <p className="mt-4 text-sm leading-relaxed text-[#65758f] sm:text-base">{text}</p>
+      <h2 className="mt-8 text-2xl font-semibold tracking-tight text-[#30486f]">{title}</h2>
+      <p className="mt-4 text-sm leading-relaxed text-[#5f708a] sm:text-base">{text}</p>
       <div className="mt-8 text-sm font-semibold text-[#30486f] transition group-hover:text-[#2f69c7]">
         {cta} →
       </div>
@@ -304,10 +304,10 @@ function UseCaseCard({
 }) {
   return (
     <div className="rounded-[1.75rem] border border-[#e3e9f0] bg-white p-6 shadow-[0_14px_40px_rgba(42,56,86,0.06)]">
-      <h3 className="text-lg font-semibold tracking-tight text-[#30486f] sm:text-xl">
+      <h2 className="text-lg font-semibold tracking-tight text-[#30486f] sm:text-xl">
         {title}
-      </h3>
-      <p className="mt-3 text-sm leading-relaxed text-[#65758f] sm:text-base">{text}</p>
+      </h2>
+      <p className="mt-3 text-sm leading-relaxed text-[#5f708a] sm:text-base">{text}</p>
     </div>
   );
 }
@@ -327,8 +327,8 @@ function AudienceCard({
 }) {
   return (
     <div className="rounded-[2rem] border border-[#e3e9f0] bg-white p-7 shadow-[0_14px_40px_rgba(42,56,86,0.06)]">
-      <h3 className="text-2xl font-semibold tracking-tight text-[#30486f]">{title}</h3>
-      <p className="mt-4 text-sm leading-relaxed text-[#65758f] sm:text-base">{text}</p>
+      <h2 className="text-2xl font-semibold tracking-tight text-[#30486f]">{title}</h2>
+      <p className="mt-4 text-sm leading-relaxed text-[#5f708a] sm:text-base">{text}</p>
 
       <ul className="mt-6 space-y-3 text-sm leading-relaxed text-[#4f6078]">
         {bullets.map((bullet) => (
@@ -365,8 +365,8 @@ function TimelineStep({
       <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-[#30486f] text-sm font-semibold text-white">
         {number}
       </div>
-      <h3 className="mt-6 text-xl font-semibold text-[#30486f]">{title}</h3>
-      <p className="mt-3 text-sm leading-relaxed text-[#65758f]">{text}</p>
+      <h2 className="mt-6 text-xl font-semibold text-[#30486f]">{title}</h2>
+      <p className="mt-3 text-sm leading-relaxed text-[#5f708a]">{text}</p>
     </div>
   );
 }
@@ -385,7 +385,7 @@ function BottomItem({
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-[#f3f4f6] text-zinc-900">
+    <main className="min-h-screen bg-[#f3f4f6] text-zinc-900">
       <div className="mx-auto max-w-[1260px] px-4 py-7 md:py-10">
         <MainShell>
           <header className="border-b border-[#e3e9f0] bg-white">
@@ -401,7 +401,7 @@ export default function HomePage() {
                 />
               </Link>
 
-              <nav className="hidden items-center gap-8 lg:flex">
+              <nav className="hidden items-center gap-8 lg:flex" aria-label="Navigazione principale">
                 <NavLink href="/identita">Identità</NavLink>
                 <NavLink href="/professionisti/dashboard">Area clinica</NavLink>
                 <NavLink href="/servizi">Professionisti</NavLink>
@@ -410,7 +410,7 @@ export default function HomePage() {
               </nav>
 
               <div className="flex items-center gap-3">
-                <HeaderButton href="/professionisti/login">Contattaci</HeaderButton>
+                <HeaderButton href="/contatti">Contattaci</HeaderButton>
               </div>
             </div>
           </header>
@@ -418,7 +418,7 @@ export default function HomePage() {
           <section className="relative overflow-hidden bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)]">
             <div className="grid min-h-[560px] grid-cols-1 md:grid-cols-[0.96fr_1.04fr]">
               <div className="flex flex-col justify-center px-8 py-12 md:px-10 lg:px-14">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#7a879b]">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#6f7d91]">
                   Building the Digital Infrastructure of Veterinary Care
                 </p>
 
@@ -426,7 +426,7 @@ export default function HomePage() {
                   L’infrastruttura digitale che mancava al mondo veterinario
                 </h1>
 
-                <p className="mt-6 max-w-[580px] text-[18px] leading-relaxed text-[#65758f] md:text-[22px]">
+                <p className="mt-6 max-w-[580px] text-[18px] leading-relaxed text-[#5f708a] md:text-[22px]">
                   Identità animale, dati clinici, smarrimenti, consulti e continuità tra
                   professionisti in un’unica piattaforma più chiara, più forte, più utile.
                 </p>
@@ -680,13 +680,13 @@ export default function HomePage() {
           <div className="overflow-hidden rounded-[2.5rem] border border-[#e3e9f0] bg-white shadow-[0_24px_80px_rgba(42,56,86,0.08)]">
             <div className="grid gap-8 lg:grid-cols-[1.12fr_0.88fr]">
               <div className="px-6 py-8 sm:px-8 sm:py-10 lg:px-10 lg:py-12">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#7a879b]">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#6f7d91]">
                   Chiusura
                 </p>
                 <h2 className="mt-4 max-w-3xl text-3xl font-semibold tracking-[-0.04em] text-[#30486f] sm:text-4xl lg:text-5xl">
                   UNIMALIA rende più semplice proteggere l’animale nel momento in cui conta davvero.
                 </h2>
-                <p className="mt-5 max-w-2xl text-base leading-relaxed text-[#65758f] sm:text-lg">
+                <p className="mt-5 max-w-2xl text-base leading-relaxed text-[#5f708a] sm:text-lg">
                   Identità digitale, accessi clinici controllati, consulti, smarrimenti, animali
                   trovati, avvistamenti e lieti fine: meno dispersione, più chiarezza, più fiducia.
                 </p>
@@ -700,7 +700,7 @@ export default function HomePage() {
                 <div className="mt-6">
                   <Link
                     href="/prezzi"
-                    className="text-sm text-[#65758f] transition hover:text-[#30486f]"
+                    className="text-sm text-[#5f708a] transition hover:text-[#30486f]"
                   >
                     Prezzi
                   </Link>
@@ -722,6 +722,6 @@ export default function HomePage() {
           </div>
         </section>
       </div>
-    </div>
+    </main>
   );
 }
