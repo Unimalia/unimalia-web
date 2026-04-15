@@ -389,29 +389,37 @@ export default function HomePage() {
       <div className="mx-auto max-w-[1260px] px-4 py-7 md:py-10">
         <MainShell>
           <header className="border-b border-[#e3e9f0] bg-white">
-            <div className="flex flex-wrap items-center justify-between gap-6 px-7 py-5 md:px-10">
-              <Link href="/" className="flex items-center">
-                <Image
-                  src="/home/logo-header.png"
-                  alt="UNIMALIA"
-                  width={240}
-                  height={64}
-                  className="h-11 w-auto"
-                  priority
-                />
-              </Link>
+            <div className="flex flex-col gap-5 px-7 py-5 md:px-10">
+              <div className="flex flex-wrap items-center justify-between gap-6">
+                <Link href="/" className="flex items-center">
+                  <Image
+                    src="/home/logo-header.png"
+                    alt="UNIMALIA"
+                    width={240}
+                    height={64}
+                    className="h-11 w-auto"
+                    priority
+                  />
+                </Link>
 
-              <nav className="hidden items-center gap-8 lg:flex" aria-label="Navigazione principale">
-                <NavLink href="/identita">Identità</NavLink>
-                <NavLink href="/professionisti/dashboard">Area clinica</NavLink>
-                <NavLink href="/servizi">Professionisti</NavLink>
-                <NavLink href="/smarrimenti">Smarrimenti</NavLink>
-                <NavLink href="/risorse">Risorse</NavLink>
-              </nav>
-
-              <div className="flex items-center gap-3">
-                <HeaderButton href="/contatti">Contattaci</HeaderButton>
+                <div className="flex items-center gap-3">
+                  <HeaderButton href="/contatti">Contattaci</HeaderButton>
+                </div>
               </div>
+
+              <nav
+                className="flex flex-wrap items-center gap-x-6 gap-y-3"
+                aria-label="Navigazione principale"
+              >
+                <NavLink href="/smarrimenti">Smarrimenti</NavLink>
+                <NavLink href="/trovati">Trovati / Avvistati</NavLink>
+                <NavLink href="/lieti-fine">Lieti Fine</NavLink>
+                <NavLink href="/adozioni">Adozioni</NavLink>
+                <NavLink href="/servizi">Servizi</NavLink>
+                <NavLink href="/identita">Identità animale</NavLink>
+                <NavLink href="/professionisti">Area professionisti</NavLink>
+                <NavLink href="/profilo">Profilo</NavLink>
+              </nav>
             </div>
           </header>
 
