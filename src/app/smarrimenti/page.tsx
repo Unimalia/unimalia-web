@@ -127,11 +127,11 @@ export default function SmarrimentiPage() {
         boxed
         actions={<ButtonPrimary href="/smarrimenti/nuovo">Pubblica smarrimento</ButtonPrimary>}
       >
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-5 sm:grid-cols-2">
           {Array.from({ length: 6 }).map((_, i) => (
             <div
               key={i}
-              className="h-72 rounded-2xl border border-zinc-200 bg-white shadow-sm"
+              className="h-80 rounded-[2rem] border border-[#e3e9f0] bg-white shadow-[0_14px_40px_rgba(42,56,86,0.06)]"
             />
           ))}
         </div>
@@ -147,70 +147,82 @@ export default function SmarrimentiPage() {
       boxed={false}
       actions={<ButtonPrimary href="/smarrimenti/nuovo">Pubblica smarrimento</ButtonPrimary>}
     >
-      <Card>
-        <div className="space-y-4">
-          <p className="text-sm text-zinc-700">
-            Cerca per zona o provincia per trovare gli annunci attivi.
-          </p>
+      <div className="mb-6">
+        <Card>
+          <div className="rounded-[2rem] border border-[#e3e9f0] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-6 shadow-[0_14px_40px_rgba(42,56,86,0.05)]">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#6f7d91]">
+              Ricerca annunci
+            </p>
 
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div>
-              <label className="block text-sm font-semibold text-zinc-900">
-                Zona / Comune / Luogo
-              </label>
-              <input
-                className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900"
-                placeholder="Es. Firenze, Coverciano..."
-                value={locationFilter}
-                onChange={(e) => setLocationFilter(e.target.value)}
-              />
+            <h2 className="mt-2 text-xl font-semibold tracking-[-0.03em] text-[#30486f]">
+              Cerca per zona o provincia
+            </h2>
+
+            <p className="mt-2 text-sm leading-relaxed text-[#5f708a]">
+              Filtra gli annunci attivi per trovare più rapidamente i casi nella tua area.
+            </p>
+
+            <div className="mt-5 grid gap-3 sm:grid-cols-3">
+              <div>
+                <label className="block text-sm font-semibold text-zinc-900">
+                  Zona / Comune / Luogo
+                </label>
+                <input
+                  className="mt-1 w-full rounded-2xl border border-[#d7dfe9] bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-[#2f69c7]"
+                  placeholder="Es. Firenze, Coverciano..."
+                  value={locationFilter}
+                  onChange={(e) => setLocationFilter(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-zinc-900">Provincia</label>
+                <select
+                  className="mt-1 w-full rounded-2xl border border-[#d7dfe9] bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-[#2f69c7]"
+                  value={provinceFilter}
+                  onChange={(e) => setProvinceFilter(e.target.value)}
+                >
+                  <option value="">Tutte</option>
+                  {provinces.map((p) => (
+                    <option key={p} value={p}>
+                      {p}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex items-end">
+                <button
+                  type="button"
+                  onClick={resetFilters}
+                  className="w-full rounded-full border border-[#d7dfe9] bg-white px-4 py-3 text-sm font-semibold text-[#31486f] transition hover:bg-[#f8fbff]"
+                >
+                  Reset
+                </button>
+              </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-zinc-900">
-                Provincia
-              </label>
-              <select
-                className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900"
-                value={provinceFilter}
-                onChange={(e) => setProvinceFilter(e.target.value)}
-              >
-                <option value="">Tutte</option>
-                {provinces.map((p) => (
-                  <option key={p} value={p}>
-                    {p}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex items-end">
-              <button
-                type="button"
-                onClick={resetFilters}
-                className="w-full rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
-              >
-                Reset
-              </button>
-            </div>
+            <p className="mt-4 text-xs text-[#6f7d91]">
+              Risultati:{" "}
+              <span className="font-semibold text-[#30486f]">{filtered.length}</span>
+            </p>
           </div>
-
-          <p className="text-xs text-zinc-500">
-            Risultati: <span className="font-medium text-zinc-700">{filtered.length}</span>
-          </p>
-        </div>
-      </Card>
+        </Card>
+      </div>
 
       {filtered.length === 0 ? (
-        <div className="mt-6">
-          <Card>
-            <p className="text-sm text-zinc-700">
+        <Card>
+          <div className="rounded-[2rem] border border-[#e3e9f0] bg-white p-8 shadow-[0_14px_40px_rgba(42,56,86,0.05)]">
+            <h2 className="text-xl font-semibold tracking-[-0.03em] text-[#30486f]">
+              Nessun risultato
+            </h2>
+            <p className="mt-3 text-sm leading-relaxed text-[#5f708a]">
               Nessuno smarrimento corrisponde ai filtri selezionati.
             </p>
-          </Card>
-        </div>
+          </div>
+        </Card>
       ) : (
-        <div className="mt-6 grid gap-6 sm:grid-cols-2">
+        <div className="grid gap-6 sm:grid-cols-2">
           {filtered.map((item) => {
             const imgSrc =
               !imageErrors[item.id] &&
@@ -222,11 +234,11 @@ export default function SmarrimentiPage() {
             return (
               <div
                 key={item.id}
-                className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm"
+                className="overflow-hidden rounded-[2rem] border border-[#e3e9f0] bg-white shadow-[0_14px_40px_rgba(42,56,86,0.06)]"
               >
-                <div className="bg-zinc-100 p-3">
-                  <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white">
-                    <div className="relative h-48 w-full">
+                <div className="bg-[linear-gradient(180deg,#fff8f8_0%,#ffffff_100%)] p-3">
+                  <div className="overflow-hidden rounded-[1.3rem] border border-[#f0dede] bg-white">
+                    <div className="relative h-52 w-full">
                       <Image
                         src={imgSrc}
                         alt={safeCardTitle(item)}
@@ -243,7 +255,7 @@ export default function SmarrimentiPage() {
 
                 <div className="p-5">
                   <div className="flex items-start justify-between gap-3">
-                    <h2 className="text-lg font-semibold text-zinc-900">
+                    <h2 className="text-xl font-semibold tracking-[-0.02em] text-[#30486f]">
                       {safeCardTitle(item)}
                     </h2>
 
@@ -252,21 +264,21 @@ export default function SmarrimentiPage() {
                     </span>
                   </div>
 
-                  <p className="mt-1 text-sm text-zinc-600">
+                  <p className="mt-2 text-sm text-[#5f708a]">
                     {item.location_text || "Località non specificata"}{" "}
                     {item.province ? `(${item.province})` : ""} – {safeDate(item.event_date)}
                   </p>
 
                   {item.description ? (
-                    <p className="mt-3 line-clamp-3 text-sm text-zinc-700">
+                    <p className="mt-4 line-clamp-3 text-sm leading-relaxed text-[#5f708a]">
                       {item.description}
                     </p>
                   ) : null}
 
-                  <div className="mt-4 flex flex-wrap gap-2">
+                  <div className="mt-5 flex flex-wrap gap-2">
                     <Link
                       href={`/annuncio/${item.id}`}
-                      className="inline-flex items-center justify-center rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+                      className="inline-flex items-center justify-center rounded-full border border-[#d7dfe9] bg-white px-4 py-2.5 text-sm font-semibold text-[#31486f] transition hover:bg-[#f8fbff]"
                     >
                       Apri annuncio
                     </Link>
@@ -275,7 +287,7 @@ export default function SmarrimentiPage() {
                       href={mapsUrl(item)}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center justify-center rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800"
+                      className="inline-flex items-center justify-center rounded-full bg-[linear-gradient(180deg,#2f69c7_0%,#2558ab_100%)] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(47,105,199,0.22)] transition hover:scale-[1.01]"
                     >
                       Apri su Google Maps
                     </a>
