@@ -9,19 +9,31 @@ const SITE_URL = "https://unimalia.it";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
+
   title: {
     default: "UNIMALIA",
     template: "%s | UNIMALIA",
   },
+
   description:
     "UNIMALIA è la piattaforma per identità digitale animale, smarrimenti, accessi clinici controllati, consulti veterinari e ricerca di professionisti del settore animale.",
+
   alternates: {
     canonical: "/",
   },
+
   icons: {
-    icon: "/favicon-32.png",
+    icon: [
+      { url: "/favicon.ico" },
+      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+    ],
     apple: "/apple-touch-icon.png",
+    shortcut: "/favicon.ico",
   },
+
+  manifest: "/site.webmanifest",
+
   openGraph: {
     title: "UNIMALIA",
     description:
@@ -39,6 +51,7 @@ export const metadata: Metadata = {
     locale: "it_IT",
     type: "website",
   },
+
   twitter: {
     card: "summary_large_image",
     title: "UNIMALIA",
@@ -93,6 +106,7 @@ export default async function RootLayout({
           src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
           strategy="afterInteractive"
         />
+
         <Script id="google-analytics" nonce={nonce} strategy="afterInteractive">
           {`
             window.dataLayer = window.dataLayer || [];
