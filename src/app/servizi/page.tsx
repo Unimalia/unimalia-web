@@ -147,7 +147,7 @@ export default function ServiziPage() {
       setLoading(false);
     }
 
-    loadAll();
+    void loadAll();
     return () => {
       alive = false;
     };
@@ -234,218 +234,228 @@ export default function ServiziPage() {
   }
 
   return (
-    <main>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Servizi</h1>
-          <p className="mt-3 max-w-2xl text-zinc-700">
-            Cerca veterinari, toelettatori, pensioni, pet sitter e altri servizi vicino a te.
-          </p>
-        </div>
+    <main className="min-h-screen bg-[#f3f4f6] text-zinc-900">
+      <div className="mx-auto max-w-[1260px] px-4 py-8 sm:py-10">
+        <section className="overflow-hidden rounded-[2.5rem] border border-[#dde4ec] bg-white shadow-[0_24px_60px_rgba(42,56,86,0.10)]">
+          <div className="grid gap-0 lg:grid-cols-[1.02fr_0.98fr]">
+            <div className="px-6 py-10 sm:px-8 lg:px-10 lg:py-12">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#6f7d91]">
+                Rete professionisti
+              </p>
 
-        <Link href="/" className="text-sm font-medium text-zinc-600 hover:underline">
-          ← Home
-        </Link>
-      </div>
+              <h1 className="mt-4 max-w-3xl text-4xl font-semibold tracking-[-0.05em] text-[#30486f] sm:text-5xl lg:text-6xl">
+                Trova il professionista giusto per il tuo animale
+              </h1>
 
-      <div className="mt-8 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-xs font-semibold tracking-wide text-zinc-500">PROFESSIONISTI</p>
-            <h2 className="mt-1 text-xl font-semibold text-zinc-900">
-              Trova il professionista giusto per categoria
-            </h2>
-          </div>
+              <p className="mt-5 max-w-2xl text-base leading-relaxed text-[#5f708a] sm:text-lg">
+                Veterinari, toelettatori, pensioni, pet sitter, addestratori e altri servizi
+                in un’unica ricerca più ordinata, filtrabile e chiara.
+              </p>
 
-          <p className="text-sm text-zinc-500">
-            Seleziona una categoria per vedere subito i professionisti registrati.
-          </p>
-        </div>
-
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {MACRO_CATEGORIES.filter((c) => c.key !== "").map((c) => (
-            <button
-              key={c.key}
-              type="button"
-              onClick={() => selectMacroCategory(c.key)}
-              className="rounded-2xl border border-zinc-200 bg-white px-4 py-4 text-left transition hover:border-zinc-300 hover:bg-zinc-50"
-            >
-              <p className="text-sm font-semibold text-zinc-900">{c.label}</p>
-              <p className="mt-1 text-xs text-zinc-500">Apri categoria</p>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="mt-6 flex flex-wrap gap-2">
-        {MACRO_CATEGORIES.map((c) => {
-          const active = macro === c.key;
-          return (
-            <button
-              key={c.key}
-              type="button"
-              onClick={() => {
-                setMacro(c.key);
-                setSelectedTagId("");
-              }}
-              className={[
-                "rounded-full px-4 py-2 text-sm font-semibold transition",
-                active
-                  ? "bg-black text-white"
-                  : "border border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-50",
-              ].join(" ")}
-            >
-              {c.label}
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="mt-6 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-        <div className="grid gap-3 sm:grid-cols-3">
-          <div>
-            <label className="block text-sm font-medium text-zinc-900">Città</label>
-            <input
-              className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
-              placeholder="Es. Firenze"
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-            />
-          </div>
-
-          <div className="sm:col-span-2" ref={sugBoxRef}>
-            <label className="block text-sm font-medium text-zinc-900">
-              Cerca (es. “tac”, “ecografia”, “ricovero”)
-            </label>
-            <div className="relative">
-              <input
-                className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
-                placeholder="Scrivi un servizio…"
-                value={q}
-                onChange={(e) => {
-                  setQ(e.target.value);
-                  setOpenSug(true);
-                  setSelectedTagId("");
-                }}
-                onFocus={() => setOpenSug(true)}
-              />
-
-              {openSug && suggestions.length > 0 && (
-                <div className="absolute z-40 mt-2 w-full overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg">
-                  {suggestions.map((t) => (
-                    <button
-                      key={t.id}
-                      type="button"
-                      onClick={() => selectSuggestion(t)}
-                      className="flex w-full items-center justify-between px-4 py-3 text-left text-sm hover:bg-zinc-50"
-                    >
-                      <span className="font-medium text-zinc-900">{t.label}</span>
-                      <span className="text-xs text-zinc-500">{macroLabel(t.macro)}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
+              <div className="mt-8 flex flex-wrap gap-2">
+                {MACRO_CATEGORIES.filter((c) => c.key !== "").map((c) => (
+                  <button
+                    key={c.key}
+                    type="button"
+                    onClick={() => selectMacroCategory(c.key)}
+                    className="rounded-full border border-[#d7dfe9] bg-white px-4 py-2 text-sm font-semibold text-[#31486f] transition hover:bg-[#f8fbff]"
+                  >
+                    {c.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {selectedTagId && (
-              <p className="mt-2 text-xs text-zinc-500">
-                Filtro attivo: <span className="font-semibold text-zinc-700">{q}</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedTagId("");
-                    setQ("");
-                  }}
-                  className="ml-2 hover:underline"
-                >
-                  rimuovi
-                </button>
-              </p>
-            )}
-          </div>
-
-          <div className="sm:col-span-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xs text-zinc-500">
-              Risultati: <span className="font-medium text-zinc-700">{filtered.length}</span>
-            </p>
-
-            <button
-              type="button"
-              onClick={resetFilters}
-              className="rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
-            >
-              Reset filtri
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div ref={resultsRef} className="mt-8">
-        {loading ? (
-          <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-            <p className="text-sm text-zinc-700">Caricamento…</p>
-          </div>
-        ) : error ? (
-          <div className="rounded-2xl border border-red-200 bg-white p-6 text-sm text-red-700 shadow-sm">
-            {error}
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-            <p className="text-sm text-zinc-700">
-              Nessun risultato. Prova a cambiare città, macro-categoria o ricerca.
-            </p>
-          </div>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {filtered.map((p) => {
-              const top = proTopTags(p.id);
-
-              return (
-                <Link
-                  key={p.id}
-                  href={`/servizi/${p.id}`}
-                  className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm transition hover:border-zinc-300"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-lg font-semibold">{p.display_name}</p>
-                      <p className="mt-1 text-sm text-zinc-600">{macroLabel(p.category)}</p>
-                    </div>
-                    <span className="text-xs text-zinc-500">
-                      {p.city}
-                      {p.province ? ` (${p.province})` : ""}
-                    </span>
+            <div className="bg-[linear-gradient(180deg,#f8fbff_0%,#eef4fb_100%)] px-6 py-10 sm:px-8 lg:px-10 lg:py-12">
+              <div className="rounded-[2rem] border border-[#e3e9f0] bg-white p-5 shadow-[0_14px_40px_rgba(42,56,86,0.06)]">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#6f7d91]">
+                      Ricerca
+                    </p>
+                    <h2 className="mt-1 text-xl font-semibold text-[#30486f]">
+                      Filtra per città, categoria o servizio
+                    </h2>
                   </div>
 
-                  <div className="mt-3">
-                    <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-                      {verificationBadgeLabel(p)}
-                    </span>
+                  <p className="text-sm text-[#6f7d91]">
+                    Risultati:{" "}
+                    <span className="font-semibold text-[#30486f]">{filtered.length}</span>
+                  </p>
+                </div>
+
+                <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="block text-sm font-semibold text-zinc-900">Città</label>
+                    <input
+                      className="mt-1 w-full rounded-2xl border border-[#d7dfe9] bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-[#2f69c7]"
+                      placeholder="Es. Firenze"
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                    />
                   </div>
 
-                  {p.description ? (
-                    <p className="mt-3 line-clamp-3 text-sm text-zinc-700">{p.description}</p>
-                  ) : (
-                    <p className="mt-3 text-sm text-zinc-500">Scheda in aggiornamento.</p>
-                  )}
-
-                  {top.length > 0 && (
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      {top.map((t) => (
-                        <span
-                          key={t.id}
-                          className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-semibold text-zinc-700"
-                        >
-                          {t.label}
-                        </span>
+                  <div>
+                    <label className="block text-sm font-semibold text-zinc-900">
+                      Macro-categoria
+                    </label>
+                    <select
+                      className="mt-1 w-full rounded-2xl border border-[#d7dfe9] bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-[#2f69c7]"
+                      value={macro}
+                      onChange={(e) => {
+                        setMacro(e.target.value);
+                        setSelectedTagId("");
+                      }}
+                    >
+                      {MACRO_CATEGORIES.map((c) => (
+                        <option key={c.key || "all"} value={c.key}>
+                          {c.label}
+                        </option>
                       ))}
+                    </select>
+                  </div>
+
+                  <div className="sm:col-span-2" ref={sugBoxRef}>
+                    <label className="block text-sm font-semibold text-zinc-900">
+                      Cerca un servizio
+                    </label>
+                    <div className="relative">
+                      <input
+                        className="mt-1 w-full rounded-2xl border border-[#d7dfe9] bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-[#2f69c7]"
+                        placeholder="Es. tac, ecografia, ricovero…"
+                        value={q}
+                        onChange={(e) => {
+                          setQ(e.target.value);
+                          setOpenSug(true);
+                          setSelectedTagId("");
+                        }}
+                        onFocus={() => setOpenSug(true)}
+                      />
+
+                      {openSug && suggestions.length > 0 && (
+                        <div className="absolute z-40 mt-2 w-full overflow-hidden rounded-[1.2rem] border border-[#e3e9f0] bg-white shadow-[0_18px_40px_rgba(42,56,86,0.12)]">
+                          {suggestions.map((t) => (
+                            <button
+                              key={t.id}
+                              type="button"
+                              onClick={() => selectSuggestion(t)}
+                              className="flex w-full items-center justify-between px-4 py-3 text-left text-sm transition hover:bg-[#f8fbff]"
+                            >
+                              <span className="font-medium text-zinc-900">{t.label}</span>
+                              <span className="text-xs text-[#6f7d91]">{macroLabel(t.macro)}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </Link>
-              );
-            })}
+
+                    {selectedTagId && (
+                      <p className="mt-2 text-xs text-[#6f7d91]">
+                        Filtro attivo:{" "}
+                        <span className="font-semibold text-[#30486f]">{q}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedTagId("");
+                            setQ("");
+                          }}
+                          className="ml-2 font-medium hover:underline"
+                        >
+                          rimuovi
+                        </button>
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="sm:col-span-2 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={resetFilters}
+                      className="rounded-full border border-[#d7dfe9] bg-white px-4 py-2.5 text-sm font-semibold text-[#31486f] transition hover:bg-[#f8fbff]"
+                    >
+                      Reset filtri
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-        )}
+        </section>
+
+        <div ref={resultsRef} className="mt-8">
+          {loading ? (
+            <div className="rounded-[2rem] border border-[#e3e9f0] bg-white p-6 shadow-[0_14px_40px_rgba(42,56,86,0.06)]">
+              <p className="text-sm text-[#5f708a]">Caricamento…</p>
+            </div>
+          ) : error ? (
+            <div className="rounded-[2rem] border border-red-200 bg-white p-6 text-sm text-red-700 shadow-[0_14px_40px_rgba(42,56,86,0.06)]">
+              {error}
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="rounded-[2rem] border border-[#e3e9f0] bg-white p-8 shadow-[0_14px_40px_rgba(42,56,86,0.06)]">
+              <h2 className="text-xl font-semibold tracking-[-0.03em] text-[#30486f]">
+                Nessun risultato
+              </h2>
+              <p className="mt-3 text-sm leading-relaxed text-[#5f708a]">
+                Prova a cambiare città, macro-categoria o ricerca.
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {filtered.map((p) => {
+                const top = proTopTags(p.id);
+
+                return (
+                  <Link
+                    key={p.id}
+                    href={`/servizi/${p.id}`}
+                    className="rounded-[2rem] border border-[#e3e9f0] bg-white p-5 shadow-[0_14px_40px_rgba(42,56,86,0.06)] transition hover:-translate-y-1 hover:shadow-[0_20px_50px_rgba(42,56,86,0.08)]"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <h2 className="text-xl font-semibold tracking-[-0.02em] text-[#30486f]">
+                          {p.display_name}
+                        </h2>
+                        <p className="mt-1 text-sm text-[#5f708a]">{macroLabel(p.category)}</p>
+                      </div>
+                      <span className="text-xs text-[#6f7d91]">
+                        {p.city}
+                        {p.province ? ` (${p.province})` : ""}
+                      </span>
+                    </div>
+
+                    <div className="mt-4">
+                      <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                        {verificationBadgeLabel(p)}
+                      </span>
+                    </div>
+
+                    {p.description ? (
+                      <p className="mt-4 line-clamp-3 text-sm leading-relaxed text-[#5f708a]">
+                        {p.description}
+                      </p>
+                    ) : (
+                      <p className="mt-4 text-sm text-[#6f7d91]">Scheda in aggiornamento.</p>
+                    )}
+
+                    {top.length > 0 && (
+                      <div className="mt-5 flex flex-wrap gap-2">
+                        {top.map((t) => (
+                          <span
+                            key={t.id}
+                            className="rounded-full bg-[#f4f7fb] px-3 py-1 text-xs font-semibold text-[#4f6078]"
+                          >
+                            {t.label}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
     </main>
   );
