@@ -177,7 +177,7 @@ function SplitFeature({
     <CardShell className="overflow-hidden">
       <div
         className={[
-          "grid min-h-[320px] grid-cols-1 md:grid-cols-2",
+          "grid min-h-[340px] grid-cols-1 md:grid-cols-2",
           reverse ? "md:[&>*:first-child]:order-2 md:[&>*:last-child]:order-1" : "",
         ].join(" ")}
       >
@@ -209,13 +209,22 @@ function AudienceCard({
   bullets,
   href,
   cta,
+  accent = "blue",
 }: {
   title: string;
   text: string;
   bullets: string[];
   href: string;
   cta: string;
+  accent?: "blue" | "green" | "orange";
 }) {
+  const dotClass =
+    accent === "green"
+      ? "bg-[#4aa05c]"
+      : accent === "orange"
+        ? "bg-[#ef7a2f]"
+        : "bg-[#2f69c7]";
+
   return (
     <CardShell className="h-full p-7">
       <h3 className="text-[28px] font-semibold tracking-[-0.03em] text-[#30486f]">{title}</h3>
@@ -224,7 +233,7 @@ function AudienceCard({
       <div className="mt-6 space-y-3">
         {bullets.map((bullet) => (
           <div key={bullet} className="flex items-start gap-3">
-            <span className="mt-2 h-2.5 w-2.5 rounded-full bg-[#2f69c7]" />
+            <span className={`mt-2 h-2.5 w-2.5 rounded-full ${dotClass}`} />
             <p className="text-[15px] font-medium text-[#395277]">{bullet}</p>
           </div>
         ))}
@@ -248,12 +257,14 @@ function ActionCard({
   href,
   cta,
   accent,
+  icon,
 }: {
   title: string;
   text: string;
   href: string;
   cta: string;
   accent: "blue" | "orange" | "green";
+  icon: React.ReactNode;
 }) {
   const accentClass =
     accent === "orange"
@@ -264,6 +275,9 @@ function ActionCard({
 
   return (
     <CardShell className={`h-full p-7 ${accentClass}`}>
+      <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-sm">
+        {icon}
+      </div>
       <h3 className="text-[26px] font-semibold tracking-[-0.03em] text-[#30486f]">{title}</h3>
       <p className="mt-4 text-[15px] leading-relaxed text-[#667691]">{text}</p>
 
@@ -282,62 +296,68 @@ function ActionCard({
 function HeroAnimalOutline() {
   return (
     <svg
-      viewBox="0 0 520 300"
+      viewBox="0 0 620 360"
       className="absolute inset-0 h-full w-full"
       fill="none"
       aria-hidden="true"
     >
+      <defs>
+        <linearGradient id="dogLine" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#a7b9cd" />
+          <stop offset="100%" stopColor="#7b91ad" />
+        </linearGradient>
+      </defs>
+
+      <circle cx="455" cy="88" r="22" fill="#f3f7fb" />
+      <circle cx="498" cy="112" r="16" fill="#f3f7fb" />
+      <circle cx="420" cy="124" r="14" fill="#f3f7fb" />
+      <circle cx="175" cy="280" r="10" fill="#eef4fa" />
+      <circle cx="224" cy="250" r="7" fill="#eef4fa" />
+      <circle cx="553" cy="212" r="11" fill="#eef4fa" />
+
       <path
-        d="M323 37c35 8 64 30 83 59 12 18 18 37 19 57l21 13c11 6 21 15 29 27 6 9 11 21 13 36l-16-4c-6-11-13-20-23-26l-24-14c-9 24-30 44-57 53-28 9-60 7-90-6l-52-22c-26-11-52-17-81-17h-56l2-16h54c33 0 63 7 92 19l52 22c26 11 53 13 76 6 34-11 55-40 51-74-3-25-17-49-38-66-19-16-44-27-71-31l-14-2 0-17z"
-        stroke="#8ea4be"
+        d="M325 54c44 9 83 36 108 71 16 22 25 46 27 71l23 14c14 8 26 19 35 35 7 12 12 25 14 42l-20-6c-7-13-16-24-29-32l-28-16c-11 30-36 56-69 67-33 11-71 8-108-8l-63-27c-31-13-61-20-95-20H74l3-20h63c38 0 74 8 108 22l62 26c31 13 63 15 92 6 42-13 67-49 62-91-3-30-20-59-46-79-23-18-52-31-84-36l-17-3 8-16z"
+        stroke="url(#dogLine)"
+        strokeWidth="3.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M321 58l-43-31 10 53"
+        stroke="#bdcad7"
         strokeWidth="3"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
       <path
-        d="M302 45l-34-25 8 43"
-        stroke="#b6c4d4"
+        d="M444 136l-25-31-11 43"
+        stroke="#bdcad7"
         strokeWidth="3"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
       <path
-        d="M418 116l-19-23-8 35"
-        stroke="#b6c4d4"
-        strokeWidth="3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <circle cx="355" cy="117" r="4" fill="#7f95af" />
-      <circle cx="405" cy="153" r="4" fill="#7f95af" />
-      <path
-        d="M357 131c11 7 23 8 37 3"
-        stroke="#7f95af"
-        strokeWidth="3"
+        d="M365 160c15 10 33 11 49 4"
+        stroke="#7d93af"
+        strokeWidth="3.2"
         strokeLinecap="round"
       />
-      <path
-        d="M224 202l30-24m29 42l20-28m48 38l10-31m62 19l-7-39"
-        stroke="#d1dae6"
-        strokeWidth="2"
-      />
-      <path
-        d="M260 165l47 26 45-13 50 20 53-4"
-        stroke="#c5d1df"
-        strokeWidth="2"
-      />
-      <path
-        d="M289 144l35 46m39-37l-11 38m53-33l-4 40"
-        stroke="#c5d1df"
-        strokeWidth="2"
-      />
-      <circle cx="289" cy="144" r="3" fill="#a5b6c8" />
-      <circle cx="307" cy="190" r="3" fill="#a5b6c8" />
-      <circle cx="352" cy="178" r="3" fill="#a5b6c8" />
-      <circle cx="402" cy="198" r="3" fill="#a5b6c8" />
-      <circle cx="455" cy="194" r="3" fill="#a5b6c8" />
-      <circle cx="363" cy="153" r="3" fill="#a5b6c8" />
-      <circle cx="416" cy="159" r="3" fill="#a5b6c8" />
+      <circle cx="368" cy="143" r="4.5" fill="#7d93af" />
+      <circle cx="432" cy="186" r="4.5" fill="#7d93af" />
+
+      <path d="M260 245l35-29m34 50l24-34m55 46l12-38m74 24l-9-48" stroke="#cdd8e4" strokeWidth="2.3" />
+      <path d="M300 200l55 32 52-15 58 23 61-5" stroke="#c3d0de" strokeWidth="2.3" />
+      <path d="M334 176l40 54m45-42l-14 45m61-40l-5 47" stroke="#c3d0de" strokeWidth="2.3" />
+
+      {[334, 355, 407, 465, 526, 419, 480].map((x, idx) => (
+        <circle
+          key={x}
+          cx={x}
+          cy={[176, 232, 217, 241, 236, 188, 193][idx]}
+          r="3.3"
+          fill="#9eb1c5"
+        />
+      ))}
     </svg>
   );
 }
@@ -395,29 +415,27 @@ function ImagingIcon() {
 function NetworkVisual() {
   return (
     <div className="absolute inset-0">
-      <svg viewBox="0 0 600 320" className="absolute inset-0 h-full w-full" fill="none" aria-hidden="true">
-        <path d="M0 250c60-20 120-18 180 0s120 26 180 8 120-22 240 2" stroke="#d9e3ef" strokeWidth="2" />
-        <path d="M30 220l80-30 70 24 90-46 95 20 90-38 65 28" stroke="#bdd0e4" strokeWidth="2" />
-        <path d="M110 190l72 24 88-46 95 20 90-38" stroke="#aec4dc" strokeWidth="2" />
-        <circle cx="110" cy="190" r="4" fill="#9db4ce" />
-        <circle cx="182" cy="214" r="4" fill="#9db4ce" />
-        <circle cx="270" cy="168" r="4" fill="#9db4ce" />
-        <circle cx="365" cy="188" r="4" fill="#9db4ce" />
-        <circle cx="455" cy="150" r="4" fill="#9db4ce" />
+      <svg viewBox="0 0 600 340" className="absolute inset-0 h-full w-full" fill="none" aria-hidden="true">
+        <path d="M0 260c60-20 120-18 180 0s120 26 180 8 120-22 240 2" stroke="#d9e3ef" strokeWidth="2" />
+        <path d="M30 225l90-34 88 29 96-50 102 23 99-42 78 34" stroke="#bdd0e4" strokeWidth="2.2" />
+        <circle cx="120" cy="191" r="4" fill="#9db4ce" />
+        <circle cx="208" cy="220" r="4" fill="#9db4ce" />
+        <circle cx="304" cy="170" r="4" fill="#9db4ce" />
+        <circle cx="406" cy="193" r="4" fill="#9db4ce" />
+        <circle cx="505" cy="151" r="4" fill="#9db4ce" />
+
+        <rect x="62" y="118" width="150" height="110" rx="22" fill="white" stroke="#d8e1eb" />
+        <rect x="80" y="138" width="114" height="12" rx="6" fill="#edf3fa" />
+        <rect x="80" y="158" width="82" height="9" rx="4.5" fill="#d8e4f1" />
+        <rect x="80" y="172" width="98" height="9" rx="4.5" fill="#d8e4f1" />
+        <circle cx="137" cy="204" r="22" fill="#dbe7f4" />
+        <circle cx="108" cy="196" r="10" fill="#c4d6ea" />
+        <circle cx="167" cy="189" r="8" fill="#c4d6ea" />
+
+        <rect x="424" y="106" width="84" height="84" rx="24" fill="white" stroke="#d8e1eb" />
+        <circle cx="466" cy="148" r="18" fill="#d6e3f1" />
+        <path d="M458 148h16M466 140v16" stroke="#6c88aa" strokeWidth="3" strokeLinecap="round" />
       </svg>
-
-      <div className="absolute left-[16%] top-[18%] h-[170px] w-[220px] rounded-[18px] bg-white shadow-[0_14px_28px_rgba(44,72,111,0.12)] ring-1 ring-[#d8e1eb]">
-        <div className="h-8 rounded-t-[18px] bg-[#eff5fb]" />
-        <div className="flex h-[calc(100%-32px)] items-center justify-center">
-          <div className="h-20 w-20 rounded-full bg-[#dbe7f4]" />
-          <div className="absolute left-[46px] top-[66px] h-12 w-12 rounded-full bg-[#c4d6ea]" />
-          <div className="absolute right-[46px] top-[74px] h-10 w-10 rounded-full bg-[#c4d6ea]" />
-        </div>
-      </div>
-
-      <div className="absolute right-[12%] top-[22%] flex h-[76px] w-[76px] items-center justify-center rounded-[18px] bg-white shadow-[0_12px_24px_rgba(44,72,111,0.12)] ring-1 ring-[#d8e1eb]">
-        <div className="h-10 w-10 rounded-full bg-[#d6e3f1]" />
-      </div>
     </div>
   );
 }
@@ -425,32 +443,105 @@ function NetworkVisual() {
 function PetWorldVisual() {
   return (
     <div className="absolute inset-0">
-      <svg viewBox="0 0 600 320" className="absolute inset-0 h-full w-full" fill="none" aria-hidden="true">
-        <path d="M0 260c80-18 150-24 230-4s150 26 230 4 100-22 140-14" stroke="#dde7f1" strokeWidth="2" />
+      <svg viewBox="0 0 600 340" className="absolute inset-0 h-full w-full" fill="none" aria-hidden="true">
+        <path d="M0 270c80-18 150-24 230-4s150 26 230 4 100-22 140-14" stroke="#dde7f1" strokeWidth="2" />
       </svg>
 
-      <div className="absolute left-[14%] bottom-[18%] h-[42px] w-[92px] rounded-[10px] bg-[#d9e4f0]" />
-      <div className="absolute left-[29%] bottom-[16%] h-[64px] w-[72px] rounded-t-[28px] rounded-b-[10px] bg-[#7589a2]" />
-      <div className="absolute left-[26%] bottom-[35%] h-[14px] w-[46px] rounded-full bg-[#879ab1]" />
+      <rect x="74" y="228" width="96" height="42" rx="12" fill="#d9e4f0" className="absolute" />
+      <rect x="165" y="198" width="78" height="78" rx="20" fill="#7589a2" className="absolute" />
+      <rect x="142" y="182" width="50" height="16" rx="8" fill="#879ab1" className="absolute" />
 
-      <svg viewBox="0 0 220 220" className="absolute right-[12%] bottom-[4%] h-[210px] w-[210px]" fill="none" aria-hidden="true">
+      <svg viewBox="0 0 240 240" className="absolute right-[10%] bottom-[2%] h-[220px] w-[220px]" fill="none" aria-hidden="true">
         <path
-          d="M86 26l22 18 22-16c18 6 32 21 40 40 10 24 10 50 6 75-4 25-14 46-28 61H55c-8-12-11-24-11-39 0-23 8-45 20-61 7-9 15-16 22-21z"
+          d="M92 30l18 16 18-14c20 7 35 22 46 43 12 24 14 53 8 81-5 21-15 39-30 55H76c-12-18-18-37-18-58 0-26 10-50 25-68 3-4 6-8 9-10z"
           stroke="#8aa1bb"
           strokeWidth="3"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
-        <path d="M74 70l34 19 34-19m-62 48l28-29 30 30m-74 34l46-34 58 36" stroke="#c3d0df" strokeWidth="2" />
-        <circle cx="80" cy="70" r="3" fill="#9fb2c8" />
-        <circle cx="108" cy="89" r="3" fill="#9fb2c8" />
-        <circle cx="142" cy="70" r="3" fill="#9fb2c8" />
-        <circle cx="108" cy="119" r="3" fill="#9fb2c8" />
-        <circle cx="138" cy="120" r="3" fill="#9fb2c8" />
-        <circle cx="82" cy="153" r="3" fill="#9fb2c8" />
-        <circle cx="128" cy="119" r="3" fill="#9fb2c8" />
+        <path d="M84 74l26 16 29-15m-54 49l25-26 28 28m-68 33l42-30 54 35" stroke="#c3d0df" strokeWidth="2.2" />
+        <circle cx="84" cy="74" r="3.2" fill="#9fb2c8" />
+        <circle cx="110" cy="90" r="3.2" fill="#9fb2c8" />
+        <circle cx="139" cy="75" r="3.2" fill="#9fb2c8" />
+        <circle cx="110" cy="124" r="3.2" fill="#9fb2c8" />
+        <circle cx="138" cy="126" r="3.2" fill="#9fb2c8" />
+        <circle cx="86" cy="159" r="3.2" fill="#9fb2c8" />
       </svg>
     </div>
+  );
+}
+
+function ShieldIcon() {
+  return (
+    <svg width="36" height="36" viewBox="0 0 54 54" fill="none" aria-hidden="true">
+      <circle cx="27" cy="27" r="27" fill="#EEF4FD" />
+      <path
+        d="M27 12l12 5v8c0 8.5-5.5 14.5-12 17-6.5-2.5-12-8.5-12-17v-8l12-5z"
+        fill="#6396DB"
+      />
+      <path
+        d="M27 21l2.5 5.3 5.8.8-4.2 4 1 5.7-5.1-2.7-5.1 2.7 1-5.7-4.2-4 5.8-.8L27 21z"
+        fill="white"
+      />
+    </svg>
+  );
+}
+
+function PawSmall() {
+  return (
+    <svg width="36" height="36" viewBox="0 0 54 54" fill="none" aria-hidden="true">
+      <circle cx="27" cy="27" r="27" fill="#EEF4FD" />
+      <circle cx="19" cy="18" r="5" fill="#6C9FE1" />
+      <circle cx="35" cy="18" r="5" fill="#6C9FE1" />
+      <circle cx="15" cy="28" r="4.5" fill="#F2B24C" />
+      <circle cx="39" cy="28" r="4.5" fill="#F2B24C" />
+      <path d="M27 23c-5.8 0-10 5.1-10 9.2 0 4.2 3.5 6.8 10 6.8s10-2.6 10-6.8c0-4.1-4.2-9.2-10-9.2z" fill="#6C9FE1" />
+    </svg>
+  );
+}
+
+function HeartPin() {
+  return (
+    <svg width="36" height="36" viewBox="0 0 54 54" fill="none" aria-hidden="true">
+      <circle cx="27" cy="27" r="27" fill="#EEF4FD" />
+      <path
+        d="M27 41c7-8 12-13 12-19a7 7 0 0 0-12-4 7 7 0 0 0-12 4c0 6 5 11 12 19z"
+        fill="#7ea6dd"
+      />
+      <circle cx="37.5" cy="37.5" r="6" fill="#2f69c7" />
+    </svg>
+  );
+}
+
+function LostIcon() {
+  return (
+    <svg width="30" height="30" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+      <circle cx="24" cy="24" r="20" fill="#fff1e6" />
+      <path d="M24 10c6 0 11 5 11 11 0 7-7 13-11 17-4-4-11-10-11-17 0-6 5-11 11-11z" fill="#ef7a2f" />
+      <circle cx="24" cy="21" r="4.5" fill="white" />
+    </svg>
+  );
+}
+
+function FoundIcon() {
+  return (
+    <svg width="30" height="30" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+      <circle cx="24" cy="24" r="20" fill="#eaf2ff" />
+      <path d="M16 24l5 5 11-12" stroke="#2f69c7" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="24" cy="24" r="13" stroke="#2f69c7" strokeWidth="3" />
+    </svg>
+  );
+}
+
+function HappyEndIcon() {
+  return (
+    <svg width="30" height="30" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+      <circle cx="24" cy="24" r="20" fill="#edf9f0" />
+      <path
+        d="M24 35c7-8 11-12 11-18a6 6 0 0 0-11-3 6 6 0 0 0-11 3c0 6 4 10 11 18z"
+        fill="#4aa05c"
+      />
+    </svg>
   );
 }
 
@@ -497,15 +588,15 @@ export default function HomePage() {
           </header>
 
           <section className="relative overflow-hidden bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)]">
-            <div className="grid min-h-[360px] grid-cols-1 md:grid-cols-[1.08fr_0.92fr]">
+            <div className="grid min-h-[380px] grid-cols-1 md:grid-cols-[1.08fr_0.92fr]">
               <div className="flex flex-col justify-center px-8 py-10 md:px-10 lg:px-14">
                 <h1 className="max-w-[620px] text-[38px] font-semibold tracking-[-0.04em] text-[#30486f] md:text-[54px]">
                   L’infrastruttura digitale per il mondo animale.
                 </h1>
 
                 <p className="mt-5 max-w-[560px] text-[18px] leading-relaxed text-[#667691] md:text-[22px]">
-                  Identità animale, Dati clinici, Continuità assistenziale, Smarrimenti e
-                  Connessione tra professionisti.
+                  Identità animale, dati clinici, continuità assistenziale, smarrimenti e
+                  connessione tra professionisti.
                 </p>
 
                 <div className="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -514,7 +605,7 @@ export default function HomePage() {
                 </div>
               </div>
 
-              <div className="relative min-h-[280px] overflow-hidden bg-[linear-gradient(180deg,#ffffff_0%,#f5f9ff_100%)]">
+              <div className="relative min-h-[300px] overflow-hidden bg-[linear-gradient(180deg,#ffffff_0%,#f5f9ff_100%)]">
                 <HeroAnimalOutline />
               </div>
             </div>
@@ -562,6 +653,7 @@ export default function HomePage() {
                   "Base ordinata prima, durante e dopo l’emergenza",
                 ]}
                 visual={<PetWorldVisual />}
+                reverse
               />
             </div>
           </section>
@@ -602,7 +694,7 @@ export default function HomePage() {
         <Section className="pt-14 md:pt-18">
           <SectionTitle
             title="Una piattaforma completa, non solo clinica"
-            text="Questa versione mantiene la solidità del mockup ma si allarga al resto dell’ecosistema UNIMALIA: proprietari, smarrimenti, professionisti e continuità tra mondi diversi."
+            text="Questa versione mantiene la pulizia del mockup ma si allarga al resto dell’ecosistema UNIMALIA: proprietari, smarrimenti, professionisti e continuità tra mondi diversi."
           />
         </Section>
 
@@ -630,6 +722,7 @@ export default function HomePage() {
               ]}
               href="/professionisti/dashboard"
               cta="Apri area clinica"
+              accent="blue"
             />
 
             <AudienceCard
@@ -642,6 +735,7 @@ export default function HomePage() {
               ]}
               href="/servizi"
               cta="Scopri i servizi"
+              accent="green"
             />
           </div>
         </Section>
@@ -661,6 +755,7 @@ export default function HomePage() {
               href="/smarrimenti/nuovo"
               cta="Segnala smarrimento"
               accent="orange"
+              icon={<LostIcon />}
             />
 
             <ActionCard
@@ -669,6 +764,7 @@ export default function HomePage() {
               href="/trovati/nuovo"
               cta="Segnala trovato o avvistato"
               accent="blue"
+              icon={<FoundIcon />}
             />
 
             <ActionCard
@@ -677,6 +773,7 @@ export default function HomePage() {
               href="/lieti-fine"
               cta="Vai ai lieti fine"
               accent="green"
+              icon={<HappyEndIcon />}
             />
           </div>
         </Section>
@@ -699,7 +796,7 @@ export default function HomePage() {
                 </div>
               </div>
 
-              <div className="relative min-h-[220px] overflow-hidden rounded-[24px] bg-[linear-gradient(180deg,#f8fbff_0%,#edf3fa_100%)]">
+              <div className="relative min-h-[240px] overflow-hidden rounded-[24px] bg-[linear-gradient(180deg,#f8fbff_0%,#edf3fa_100%)]">
                 <HeroAnimalOutline />
               </div>
             </div>
@@ -707,47 +804,5 @@ export default function HomePage() {
         </Section>
       </div>
     </div>
-  );
-}
-
-function ShieldIcon() {
-  return (
-    <svg width="36" height="36" viewBox="0 0 54 54" fill="none" aria-hidden="true">
-      <circle cx="27" cy="27" r="27" fill="#EEF4FD" />
-      <path
-        d="M27 12l12 5v8c0 8.5-5.5 14.5-12 17-6.5-2.5-12-8.5-12-17v-8l12-5z"
-        fill="#6396DB"
-      />
-      <path
-        d="M27 21l2.5 5.3 5.8.8-4.2 4 1 5.7-5.1-2.7-5.1 2.7 1-5.7-4.2-4 5.8-.8L27 21z"
-        fill="white"
-      />
-    </svg>
-  );
-}
-
-function PawSmall() {
-  return (
-    <svg width="36" height="36" viewBox="0 0 54 54" fill="none" aria-hidden="true">
-      <circle cx="27" cy="27" r="27" fill="#EEF4FD" />
-      <circle cx="19" cy="18" r="5" fill="#6C9FE1" />
-      <circle cx="35" cy="18" r="5" fill="#6C9FE1" />
-      <circle cx="15" cy="28" r="4.5" fill="#F2B24C" />
-      <circle cx="39" cy="28" r="4.5" fill="#F2B24C" />
-      <path d="M27 23c-5.8 0-10 5.1-10 9.2 0 4.2 3.5 6.8 10 6.8s10-2.6 10-6.8c0-4.1-4.2-9.2-10-9.2z" fill="#6C9FE1" />
-    </svg>
-  );
-}
-
-function HeartPin() {
-  return (
-    <svg width="36" height="36" viewBox="0 0 54 54" fill="none" aria-hidden="true">
-      <circle cx="27" cy="27" r="27" fill="#EEF4FD" />
-      <path
-        d="M27 41c7-8 12-13 12-19a7 7 0 0 0-12-4 7 7 0 0 0-12 4c0 6 5 11 12 19z"
-        fill="#7ea6dd"
-      />
-      <circle cx="37.5" cy="37.5" r="6" fill="#2f69c7" />
-    </svg>
   );
 }
