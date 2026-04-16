@@ -1,4 +1,3 @@
-// app/profilo/abbonamento/page.tsx
 import { AbbonamentoClient } from "./abbonamento-client";
 
 export const metadata = {
@@ -7,7 +6,7 @@ export const metadata = {
 
 export default function AbbonamentoPage() {
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-6">
+    <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
       <AbbonamentoClient />
     </div>
   );

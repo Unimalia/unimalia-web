@@ -9,16 +9,21 @@ export default async function OwnerAccessRequestsPage() {
 
   if (!flags.owner_access_requests_enabled || flags.emergency_mode || flags.maintenance_mode) {
     return (
-      <main className="mx-auto max-w-4xl p-6">
-        <div className="rounded-3xl border border-zinc-200 bg-white p-8 shadow-sm">
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900">Richieste accesso non disponibili</h1>
-          <p className="mt-3 text-sm leading-relaxed text-zinc-600">
-            Il flusso richieste accesso owner → professionisti è momentaneamente disattivato dalle impostazioni di sistema.
+      <main className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
+        <div className="rounded-[1.75rem] border border-[#e3e9f0] bg-white p-8 shadow-[0_10px_28px_rgba(42,56,86,0.05)]">
+          <h1 className="text-2xl font-semibold tracking-tight text-[#30486f]">
+            Richieste accesso non disponibili
+          </h1>
+
+          <p className="mt-3 text-sm leading-relaxed text-[#5f708a]">
+            Il flusso richieste accesso owner → professionisti è momentaneamente disattivato dalle
+            impostazioni di sistema.
           </p>
+
           <div className="mt-6">
             <Link
               href="/profilo"
-              className="inline-flex rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 shadow-sm hover:bg-zinc-50"
+              className="inline-flex items-center justify-center rounded-full border border-[#d7dfe9] bg-white px-5 py-3 text-sm font-semibold text-[#30486f] transition hover:bg-[#f8fbff]"
             >
               Torna al profilo
             </Link>
@@ -28,5 +33,9 @@ export default async function OwnerAccessRequestsPage() {
     );
   }
 
-  return <OwnerRequestsClient />;
+  return (
+    <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+      <OwnerRequestsClient />
+    </main>
+  );
 }

@@ -39,6 +39,22 @@ function getErrorMessage(error: unknown) {
   return "Errore";
 }
 
+function SectionCard({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <section
+      className={`rounded-[1.75rem] border border-[#e3e9f0] bg-white p-5 shadow-[0_10px_28px_rgba(42,56,86,0.05)] sm:p-6 ${className}`}
+    >
+      {children}
+    </section>
+  );
+}
+
 export default function OwnerRequestsClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -116,68 +132,78 @@ export default function OwnerRequestsClient() {
   }
 
   return (
-    <div className="space-y-5 p-4">
-      <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
+    <div className="space-y-6">
+      <SectionCard>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-zinc-900">Richieste di accesso</h1>
-            <p className="mt-2 text-sm text-zinc-600">
-              Qui puoi autorizzare o rifiutare le richieste dei professionisti.
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6f7d91]">
+              Area personale
+            </p>
+
+            <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-[#30486f] sm:text-4xl">
+              Richieste di accesso
+            </h1>
+
+            <p className="mt-3 text-sm leading-7 text-[#5f708a]">
+              Qui puoi autorizzare, rifiutare o revocare le richieste dei professionisti sui tuoi
+              animali.
             </p>
           </div>
 
           <button
-            className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50 disabled:opacity-60"
+            className="inline-flex items-center justify-center rounded-full border border-[#d7dfe9] bg-white px-4 py-2.5 text-sm font-semibold text-[#30486f] transition hover:bg-[#f8fbff] disabled:opacity-60"
             onClick={() => void load()}
             disabled={loading || isPending}
           >
             Aggiorna
           </button>
         </div>
-      </div>
+      </SectionCard>
 
       {error ? (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <div className="rounded-[1.25rem] border border-red-200 bg-red-50 p-4 text-sm text-red-700">
           {error}
         </div>
       ) : null}
 
       {loading ? (
-        <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-600 shadow-sm">
+        <div className="rounded-[1.25rem] border border-[#e3e9f0] bg-white p-4 text-sm text-[#5f708a] shadow-[0_10px_28px_rgba(42,56,86,0.05)]">
           Caricamento…
         </div>
       ) : null}
 
-      <section className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm space-y-4">
+      <SectionCard>
         <div>
-          <h2 className="text-base font-semibold text-zinc-900">In attesa</h2>
-          <p className="mt-1 text-sm text-zinc-600">
+          <h2 className="text-lg font-semibold text-[#30486f]">In attesa</h2>
+          <p className="mt-1 text-sm text-[#5f708a]">
             Approva l’accesso scegliendo la durata più adatta.
           </p>
         </div>
 
         {pending.length === 0 ? (
-          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600">
+          <div className="mt-5 rounded-[1.25rem] border border-[#e3e9f0] bg-[#fbfdff] p-4 text-sm text-[#5f708a]">
             Nessuna richiesta in attesa.
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="mt-5 space-y-4">
             {pending.map((r) => {
               const selectedDuration = durationByRequestId[r.id] ?? "7d";
 
               return (
                 <div
                   key={r.id}
-                  className="rounded-2xl border border-zinc-200 bg-white p-4 space-y-4"
+                  className="rounded-[1.5rem] border border-[#e3e9f0] bg-white p-4 shadow-[0_8px_22px_rgba(42,56,86,0.03)]"
                 >
                   <div className="text-sm">
-                    <div className="font-semibold text-zinc-900">
+                    <div className="font-semibold text-[#30486f]">
                       {r.animal_name ?? r.animal_id} • {r.organization_name ?? r.organization_id}
                     </div>
-                    <div className="mt-1 text-zinc-600">
+
+                    <div className="mt-1 text-[#5f708a]">
                       Richiesta del {formatDateTime(r.created_at)}
                     </div>
-                    <div className="mt-1 text-zinc-500">
+
+                    <div className="mt-1 text-[#6f7d91]">
                       Permessi richiesti:{" "}
                       {r.requested_scope?.length
                         ? r.requested_scope
@@ -188,12 +214,12 @@ export default function OwnerRequestsClient() {
                     </div>
                   </div>
 
-                  <div className="rounded-2xl bg-zinc-50 p-4">
-                    <label className="block text-sm font-medium text-zinc-900">
+                  <div className="mt-4 rounded-[1.25rem] border border-[#e3e9f0] bg-[#f8fbff] p-4">
+                    <label className="block text-sm font-semibold text-[#30486f]">
                       Durata autorizzazione
                     </label>
                     <select
-                      className="mt-2 w-full rounded-2xl border border-zinc-300 bg-white px-3 py-2 text-sm outline-none focus:border-zinc-900"
+                      className="mt-2 w-full rounded-[1.1rem] border border-[#d7dfe9] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#2f69c7] focus:ring-4 focus:ring-[#2f69c7]/10"
                       value={selectedDuration}
                       onChange={(e) =>
                         setDurationByRequestId((prev) => ({
@@ -210,16 +236,17 @@ export default function OwnerRequestsClient() {
                     </select>
                   </div>
 
-                  <div className="flex flex-wrap gap-3">
+                  <div className="mt-4 flex flex-wrap gap-3">
                     <button
-                      className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 disabled:opacity-60"
+                      className="inline-flex items-center justify-center rounded-full border border-[#d7dfe9] bg-white px-4 py-2.5 text-sm font-semibold text-[#30486f] disabled:opacity-60"
                       onClick={() => act(r.id, "reject")}
                       disabled={isPending}
                     >
                       Rifiuta
                     </button>
+
                     <button
-                      className="rounded-2xl bg-black px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                      className="inline-flex items-center justify-center rounded-full bg-[#30486f] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_14px_34px_rgba(48,72,111,0.18)] disabled:opacity-60"
                       onClick={() => act(r.id, "approve")}
                       disabled={isPending}
                     >
@@ -231,35 +258,35 @@ export default function OwnerRequestsClient() {
             })}
           </div>
         )}
-      </section>
+      </SectionCard>
 
-      <section className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm space-y-4">
+      <SectionCard>
         <div>
-          <h2 className="text-base font-semibold text-zinc-900">Storico</h2>
-          <p className="mt-1 text-sm text-zinc-600">
+          <h2 className="text-lg font-semibold text-[#30486f]">Storico</h2>
+          <p className="mt-1 text-sm text-[#5f708a]">
             Storico delle richieste già gestite.
           </p>
         </div>
 
         {history.length === 0 ? (
-          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600">
+          <div className="mt-5 rounded-[1.25rem] border border-[#e3e9f0] bg-[#fbfdff] p-4 text-sm text-[#5f708a]">
             Nessuno storico.
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="mt-5 space-y-4">
             {history.map((r) => (
               <div
                 key={r.id}
-                className="rounded-2xl border border-zinc-200 bg-white p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+                className="rounded-[1.5rem] border border-[#e3e9f0] bg-white p-4 shadow-[0_8px_22px_rgba(42,56,86,0.03)] sm:flex sm:items-center sm:justify-between"
               >
                 <div className="text-sm">
-                  <div className="font-semibold text-zinc-900">
+                  <div className="font-semibold text-[#30486f]">
                     {r.animal_name ?? r.animal_id} • {r.organization_name ?? r.organization_id}
                   </div>
-                  <div className="mt-1 text-zinc-600">
-                    Stato: {r.status}
-                  </div>
-                  <div className="mt-1 text-zinc-500">
+
+                  <div className="mt-1 text-[#5f708a]">Stato: {r.status}</div>
+
+                  <div className="mt-1 text-[#6f7d91]">
                     Data: {formatDateTime(r.created_at)}
                     {r.expires_at ? ` • Scade: ${formatDate(r.expires_at)}` : ""}
                   </div>
@@ -267,7 +294,7 @@ export default function OwnerRequestsClient() {
 
                 {r.status === "approved" ? (
                   <button
-                    className="rounded-2xl bg-red-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                    className="mt-4 inline-flex items-center justify-center rounded-full bg-red-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60 sm:mt-0"
                     onClick={() => act(r.id, "revoke")}
                     disabled={isPending}
                   >
@@ -278,7 +305,7 @@ export default function OwnerRequestsClient() {
             ))}
           </div>
         )}
-      </section>
+      </SectionCard>
     </div>
   );
 }
