@@ -173,7 +173,7 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      return NextResponse.json({ error: "Invito giÃ  utilizzato" }, { status: 409 });
+      return NextResponse.json({ error: "Invito già utilizzato" }, { status: 409 });
     }
 
     if (claim.expires_at && new Date(claim.expires_at).getTime() < Date.now()) {
@@ -182,7 +182,7 @@ export async function POST(req: NextRequest) {
 
     if (animal.owner_id && animal.owner_id !== user.id) {
       return NextResponse.json(
-        { error: "Animale giÃ  collegato a un altro proprietario" },
+        { error: "Animale già collegato a un altro proprietario" },
         { status: 409 }
       );
     }

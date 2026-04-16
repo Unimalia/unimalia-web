@@ -11,7 +11,7 @@ import {
 const pagePath = "/identita-animale/come-registrare-un-animale";
 const pageTitle = "Come registrare un animale";
 const pageDescription =
-  "Guida pratica su come registrare un animale con UNIMALIA, quali dati preparare e perchÃ© tutti gli animali possono avere unâ€™identitÃ  animale digitale anche senza microchip.";
+  "Guida pratica su come registrare un animale con UNIMALIA, quali dati preparare e perché tutti gli animali possono avere un’identità animale digitale anche senza microchip.";
 
 export const metadata: Metadata = buildIdentityPageMetadata({
   title: pageTitle,
@@ -26,24 +26,24 @@ const faqItems = [
       "Di solito servono nome, specie, eventuale razza, foto recente e tutte le informazioni utili per riconoscerlo e gestirlo meglio nel tempo.",
   },
   {
-    question: "Serve avere giÃ  il microchip?",
+    question: "Serve avere già il microchip?",
     answer:
-      "No. Tutti gli animali possono avere unâ€™identitÃ  animale digitale, anche senza microchip.",
+      "No. Tutti gli animali possono avere un’identità animale digitale, anche senza microchip.",
   },
   {
-    question: "Cosa succede se lâ€™animale non ha il microchip?",
+    question: "Cosa succede se l’animale non ha il microchip?",
     answer:
-      "Per gli animali senza microchip, UNIMALIA puÃ² assegnare unâ€™identitÃ  digitale con QR code e barcode, cosÃ¬ da creare un riferimento chiaro e sempre disponibile.",
+      "Per gli animali senza microchip, UNIMALIA può assegnare un’identità digitale con QR code e barcode, così da creare un riferimento chiaro e sempre disponibile.",
   },
   {
-    question: "Chi inserisce i dati sanitari piÃ¹ importanti?",
+    question: "Chi inserisce i dati sanitari più importanti?",
     answer:
-      "I dati piÃ¹ utili possono essere inseriti dal veterinario, soprattutto se fa parte della Rete UNIMALIA, cosÃ¬ da avere informazioni piÃ¹ affidabili e aggiornate.",
+      "I dati più utili possono essere inseriti dal veterinario, soprattutto se fa parte della Rete UNIMALIA, così da avere informazioni più affidabili e aggiornate.",
   },
   {
-    question: "PerchÃ© registrare un animale online?",
+    question: "Perché registrare un animale online?",
     answer:
-      "Per avere una base unica, piÃ¹ ordinata e aggiornabile, utile nella gestione quotidiana e in situazioni delicate come smarrimenti o necessitÃ  improvvise.",
+      "Per avere una base unica, più ordinata e aggiornabile, utile nella gestione quotidiana e in situazioni delicate come smarrimenti o necessità improvvise.",
   },
 ];
 
@@ -99,7 +99,7 @@ export default function ComeRegistrareAnimalePage() {
       <div className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
         <header className="rounded-[2rem] border border-zinc-200 bg-white p-8 shadow-sm sm:p-10">
           <span className="inline-flex items-center rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-semibold text-zinc-700">
-            Guida identitÃ  animale
+            Guida identità animale
           </span>
 
           <h1 className="mt-5 text-4xl font-bold tracking-tight text-zinc-900 sm:text-5xl">
@@ -108,28 +108,28 @@ export default function ComeRegistrareAnimalePage() {
 
           <p className="mt-5 max-w-3xl text-lg leading-relaxed text-zinc-600">
             Registrare un animale significa creare una base chiara e aggiornata delle
-            informazioni piÃ¹ utili. Con UNIMALIA tutti gli animali possono avere
-            unâ€™identitÃ  animale digitale, anche senza microchip, cosÃ¬ da avere un punto
-            unico piÃ¹ ordinato e sempre disponibile quando serve.
+            informazioni più utili. Con UNIMALIA tutti gli animali possono avere
+            un’identità animale digitale, anche senza microchip, così da avere un punto
+            unico più ordinato e sempre disponibile quando serve.
           </p>
         </header>
 
         <div className="mt-8 grid gap-6">
           <Section title="Tutti gli animali possono essere registrati">
             <p>
-              UNIMALIA non Ã¨ pensata solo per animali con microchip. Tutti gli animali
-              possono avere unâ€™identitÃ  animale digitale.
+              UNIMALIA non è pensata solo per animali con microchip. Tutti gli animali
+              possono avere un’identità animale digitale.
             </p>
             <p>
-              Per gli animali che non hanno microchip, UNIMALIA puÃ² assegnare
-              unâ€™identitÃ  digitale con QR code e barcode, cosÃ¬ da creare un riferimento
+              Per gli animali che non hanno microchip, UNIMALIA può assegnare
+              un’identità digitale con QR code e barcode, così da creare un riferimento
               chiaro, consultabile e sempre disponibile dal telefono.
             </p>
           </Section>
 
           <Section title="Quali dati preparare">
             <ul className="list-disc space-y-2 pl-6">
-              <li>nome dellâ€™animale</li>
+              <li>nome dell’animale</li>
               <li>specie</li>
               <li>eventuale razza</li>
               <li>foto recente</li>
@@ -138,34 +138,34 @@ export default function ComeRegistrareAnimalePage() {
             </ul>
           </Section>
 
-          <Section title="PerchÃ© conviene farlo prima che serva">
+          <Section title="Perché conviene farlo prima che serva">
             <p>
-              Preparare in anticipo una scheda ordinata rende piÃ¹ semplice gestire
-              situazioni quotidiane e momenti delicati, come smarrimenti, necessitÃ 
+              Preparare in anticipo una scheda ordinata rende più semplice gestire
+              situazioni quotidiane e momenti delicati, come smarrimenti, necessità
               improvvise o consultazioni rapide.
             </p>
             <p>
               Non solo in viaggio: anche durante una semplice passeggiata o quando sei
               fuori casa con il tuo animale, avere accesso rapido alle informazioni
-              importanti dal telefono puÃ² essere molto utile.
+              importanti dal telefono può essere molto utile.
             </p>
           </Section>
 
           <Section title="Il ruolo della Rete UNIMALIA">
             <p>
-              Se il veterinario fa parte della <strong>Rete UNIMALIA</strong>, puÃ² usare
+              Se il veterinario fa parte della <strong>Rete UNIMALIA</strong>, può usare
               questo sistema per inserire e condividere le informazioni utili in modo
-              piÃ¹ semplice e organizzato.
+              più semplice e organizzato.
             </p>
             <p>
-              Questo aiuta ad avere dati piÃ¹ affidabili e aggiornati, soprattutto per la
+              Questo aiuta ad avere dati più affidabili e aggiornati, soprattutto per la
               cartella clinica rapida e per i referti inviati tramite questo canale.
             </p>
           </Section>
 
           <Section title="Versione gratuita e Premium">
             <p>
-              Anche nella versione gratuita UNIMALIA puÃ² offrire una base utile, compresa
+              Anche nella versione gratuita UNIMALIA può offrire una base utile, compresa
               una cartella clinica rapida con le informazioni essenziali.
             </p>
             <p>
@@ -180,9 +180,9 @@ export default function ComeRegistrareAnimalePage() {
 
           <Section title="Come aiuta UNIMALIA">
             <p>
-              UNIMALIA permette di creare una base digitale unica, piÃ¹ chiara e piÃ¹
+              UNIMALIA permette di creare una base digitale unica, più chiara e più
               facile da aggiornare. Questo riduce la frammentazione delle informazioni e
-              rende piÃ¹ semplice consultarle o riutilizzarle quando serve davvero.
+              rende più semplice consultarle o riutilizzarle quando serve davvero.
             </p>
           </Section>
 
@@ -197,13 +197,13 @@ export default function ComeRegistrareAnimalePage() {
             </div>
           </Section>
 
-          <Section title="Passa allâ€™azione">
+          <Section title="Passa all’azione">
             <div className="flex flex-col gap-3 sm:flex-row">
               <Link
                 href="/identita/nuovo"
                 className="inline-flex items-center justify-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-800"
               >
-                Crea identitÃ  animale
+                Crea identità animale
               </Link>
               <Link
                 href="/identita-animale/microchip-vs-identita-digitale"

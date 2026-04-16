@@ -221,7 +221,7 @@ export function AdottaFilters({
 
       <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div>
-          <label className="text-xs font-medium text-zinc-700">CittÃ </label>
+          <label className="text-xs font-medium text-zinc-700">Città</label>
           <select
             value={current.city}
             onChange={(e) => setParam("city", e.target.value)}
@@ -261,7 +261,7 @@ export function AdottaFilters({
             {sheltersFiltered.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.name}
-                {s.city ? ` â€” ${s.city}` : ""}
+                {s.city ? ` — ${s.city}` : ""}
               </option>
             ))}
           </select>
@@ -349,15 +349,15 @@ export function AdottaFilters({
         </div>
 
         <div>
-          <label className="text-xs font-medium text-zinc-700">EtÃ </label>
+          <label className="text-xs font-medium text-zinc-700">Età</label>
           <select
             value={current.age}
             onChange={(e) => setParam("age", e.target.value)}
             className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm"
           >
             <option value="">Tutte</option>
-            <option value="0-2">0â€“2 anni</option>
-            <option value="3-6">3â€“6 anni</option>
+            <option value="0-2">0–2 anni</option>
+            <option value="3-6">3–6 anni</option>
             <option value="7+">7+ anni</option>
           </select>
         </div>
@@ -383,7 +383,7 @@ export function AdottaFilters({
             <FilterPill label="Urgente" value={current.urgent} onChange={(v) => setParam("urgent", v)} />
             <FilterPill label="Bisogni speciali" value={current.specialNeeds} onChange={(v) => setParam("specialNeeds", v)} />
             <FilterPill label="Solo con foto" value={current.hasPhoto} onChange={(v) => setParam("hasPhoto", v)} />
-            {isPending ? <span className="ml-1 text-xs text-zinc-500">Aggiornamentoâ€¦</span> : null}
+            {isPending ? <span className="ml-1 text-xs text-zinc-500">Aggiornamento…</span> : null}
           </div>
         </div>
       </div>

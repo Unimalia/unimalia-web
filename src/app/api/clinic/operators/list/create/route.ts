@@ -116,7 +116,7 @@ export async function POST(req: Request) {
 
   if (!actor.isMedicalDirector && !actor.canManageOperators) {
     return forbidden(
-      "Solo il direttore sanitario o un gestore autorizzato puÃ² creare operatori."
+      "Solo il direttore sanitario o un gestore autorizzato può creare operatori."
     );
   }
 
@@ -227,7 +227,7 @@ export async function POST(req: Request) {
         error:
           error instanceof Error
             ? error.message
-            : "Impossibile creare lâ€™operatore clinico.",
+            : "Impossibile creare l’operatore clinico.",
       },
       { status: 500 }
     );

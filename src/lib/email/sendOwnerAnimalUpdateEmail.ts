@@ -183,7 +183,7 @@ function renderMetaRows(meta: Record<string, unknown> | null | undefined) {
           ? String(value)
           : JSON.stringify(value);
 
-      return renderDetailRow(`Meta Â· ${key}`, printable);
+      return renderDetailRow(`Meta · ${key}`, printable);
     })
     .join("");
 }
@@ -213,7 +213,7 @@ function renderAttachments(attachments: SendOwnerAnimalUpdateEmailInput["attachm
         ${items}
       </ul>
       <p style="margin: 0; font-size: 12px; color: #666;">
-        Si consiglia di scaricare gli allegati appena possibile, perchÃ© potrebbero non essere disponibili in futuro.
+        Si consiglia di scaricare gli allegati appena possibile, perché potrebbero non essere disponibili in futuro.
       </p>
     </div>
   `;
@@ -298,7 +298,7 @@ export async function sendOwnerAnimalUpdateEmail(input: SendOwnerAnimalUpdateEma
     renderDetailRow("Evento", eventTitle),
     renderDetailRow("Data evento", formattedEventDate),
     renderDetailRow("Professionista", professionalLabel),
-    renderDetailRow("PrioritÃ ", priorityLabel(priority)),
+    renderDetailRow("Priorità", priorityLabel(priority)),
     renderDetailRow("Peso (kg)", weightKg),
     renderDetailRow("Inizio terapia", formattedTherapyStartDate),
     renderDetailRow("Fine terapia", formattedTherapyEndDate),
@@ -347,7 +347,7 @@ export async function sendOwnerAnimalUpdateEmail(input: SendOwnerAnimalUpdateEma
       <hr style="margin: 24px 0; border: 0; border-top: 1px solid #ddd;" />
 
       <p style="font-size: 12px; color: #666; margin: 0 0 8px 0;">
-        Questa Ã¨ una comunicazione di servizio relativa alla scheda sanitaria dellâ€™animale.
+        Questa è una comunicazione di servizio relativa alla scheda sanitaria dell’animale.
       </p>
 
       <p style="font-size: 12px; color: #666; margin: 0;">

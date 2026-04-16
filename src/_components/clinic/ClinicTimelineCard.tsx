@@ -59,12 +59,12 @@ export function ClinicTimelineCard({
 
   if (ev.source === "owner") {
     top = "Creato da proprietario";
-    if (ev.verified_at && ev.verified_by_label) badge = `âœ“ Validato da ${ev.verified_by_label}`;
-    else if (ev.verified_at) badge = "âœ“ Validato";
-    else badge = "â§— Da validare";
+    if (ev.verified_at && ev.verified_by_label) badge = `✓ Validato da ${ev.verified_by_label}`;
+    else if (ev.verified_at) badge = "✓ Validato";
+    else badge = "⧗ Da validare";
   } else {
     top = `Registrato da ${extractCreatedByMemberLabel(ev) || "professionista"}`;
-    badge = isVerified ? "âœ“ Validato" : "â§— Da rivalidare";
+    badge = isVerified ? "✓ Validato" : "⧗ Da rivalidare";
   }
 
   return (
@@ -88,7 +88,7 @@ export function ClinicTimelineCard({
 
             {weight !== null ? (
               <span className="ml-2 text-xs font-semibold text-zinc-700">
-                âš– {weight} kg
+                ⚖ {weight} kg
               </span>
             ) : null}
           </div>
@@ -101,19 +101,19 @@ export function ClinicTimelineCard({
 
           {ev.type === "blood_type" && bloodTypeLabel ? (
             <div className="mt-2 text-xs font-semibold text-rose-700">
-              ðŸ©¸ Gruppo sanguigno: {bloodTypeLabel}
+              🩸 Gruppo sanguigno: {bloodTypeLabel}
             </div>
           ) : null}
 
           {ev.type === "chronic_condition" && chronicDiagnosis ? (
             <div className="mt-2 text-xs font-semibold text-red-700">
-              ðŸ§¬ Patologia cronica: {chronicDiagnosis}
+              🧬 Patologia cronica: {chronicDiagnosis}
             </div>
           ) : null}
 
           {ev.type === "follow_up" && followUpType ? (
             <div className="mt-2 text-xs font-semibold text-blue-700">
-              ðŸ“… Ricontrollo: {followUpType}
+              📅 Ricontrollo: {followUpType}
               {followUpDate ? ` (${formatEventDateIT(followUpDate)})` : ""}
             </div>
           ) : null}

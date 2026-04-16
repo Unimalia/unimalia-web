@@ -9,12 +9,12 @@ export type OrgMembership = {
   isDefault?: boolean;
 };
 
-// Regole minime: attivo = puÃ² operare
+// Regole minime: attivo = può operare
 export function isActiveMember(m: OrgMembership) {
   return m.status === "active";
 }
 
-// Solo vet puÃ² validare (poi aggiungeremo â€œvet verificatoâ€)
+// Solo vet può validare (poi aggiungeremo “vet verificato”)
 export function canVerifyClinicEvents(m: OrgMembership) {
   return isActiveMember(m) && (m.memberRole === "vet" || m.memberRole === "org_owner");
 }

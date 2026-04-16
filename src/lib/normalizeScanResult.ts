@@ -13,17 +13,17 @@ export function normalizeScanResult(raw: string) {
 
   if (!value) return "";
 
-  // ðŸ”¹ Normalizza eventuale protocollo custom (es: unimalia://xxxx)
+  // 🔹 Normalizza eventuale protocollo custom (es: unimalia://xxxx)
   value = value.replace(/^unimalia:\/\//i, "");
 
-  // ðŸ”¹ Supporta prefisso UNIMALIA:XXXX oppure UNIMALIA-XXXX
+  // 🔹 Supporta prefisso UNIMALIA:XXXX oppure UNIMALIA-XXXX
   const unimaliaMatch = value.match(/^unimalia[:\-](.+)$/i);
   if (unimaliaMatch?.[1]) {
     return unimaliaMatch[1].trim();
   }
 
-  // ðŸ”¹ Se Ã¨ un URL e contiene UNIMALIA: come parametro, lo lascia intatto
-  // (sarÃ  gestito dallo scanner page)
+  // 🔹 Se è un URL e contiene UNIMALIA: come parametro, lo lascia intatto
+  // (sarà gestito dallo scanner page)
 
   return value;
 }

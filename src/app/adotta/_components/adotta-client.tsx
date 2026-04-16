@@ -363,17 +363,17 @@ export function AdottaClient() {
             <p className="text-sm font-semibold text-zinc-900">Area riservata alle associazioni</p>
             <p className="mt-2 text-sm leading-relaxed text-zinc-700">
               Le adozioni su UNIMALIA sono pensate per le associazioni e non per i privati.
-              Lâ€™obiettivo Ã¨ pubblicare animali adottabili in modo piÃ¹ ordinato, con filtri di
-              ricerca chiari e una base digitale giÃ  pronta.
+              L’obiettivo è pubblicare animali adottabili in modo più ordinato, con filtri di
+              ricerca chiari e una base digitale già pronta.
             </p>
           </div>
 
           <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-5">
-            <p className="text-sm font-semibold text-zinc-900">ContinuitÃ  dopo lâ€™adozione</p>
+            <p className="text-sm font-semibold text-zinc-900">Continuità dopo l’adozione</p>
             <p className="mt-2 text-sm leading-relaxed text-zinc-700">
-              Lâ€™associazione puÃ² creare gratuitamente lâ€™identitÃ  animale completa. Se il nuovo
+              L’associazione può creare gratuitamente l’identità animale completa. Se il nuovo
               proprietario decide di continuare a usare UNIMALIA in versione Premium entro 15 giorni
-              dal passaggio di proprietÃ , il primo anno da 6 euro viene riconosciuto allâ€™associazione.
+              dal passaggio di proprietà, il primo anno da 6 euro viene riconosciuto all’associazione.
             </p>
           </div>
         </div>
@@ -381,8 +381,8 @@ export function AdottaClient() {
         <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
           <p className="text-sm font-semibold text-emerald-900">Ricerca con filtri</p>
           <p className="mt-2 text-sm leading-relaxed text-emerald-800">
-            Dentro lâ€™area adozioni Ã¨ possibile cercare gli animali tramite filtri per specie,
-            cittÃ , struttura, razza, taglia, sesso, etÃ  e altre caratteristiche utili.
+            Dentro l’area adozioni è possibile cercare gli animali tramite filtri per specie,
+            città, struttura, razza, taglia, sesso, età e altre caratteristiche utili.
           </p>
         </div>
 
@@ -398,7 +398,7 @@ export function AdottaClient() {
             href="/identita"
             className="inline-flex items-center justify-center rounded-2xl border border-zinc-200 bg-white px-5 py-3 text-sm font-semibold text-zinc-900 shadow-sm hover:bg-zinc-50"
           >
-            Scopri identitÃ  animale
+            Scopri identità animale
           </Link>
         </div>
       </section>
@@ -409,7 +409,7 @@ export function AdottaClient() {
             Sezione adozioni non ancora collegata al database
           </p>
           <p className="mt-2 text-sm text-zinc-700">
-            La pagina Ã¨ pronta, ma nel database Supabase non risulta ancora disponibile la tabella{" "}
+            La pagina è pronta, ma nel database Supabase non risulta ancora disponibile la tabella{" "}
             <b>{ADOPTION_TABLE}</b>. Appena la colleghi, gli annunci compariranno qui.
           </p>
         </div>
@@ -417,7 +417,7 @@ export function AdottaClient() {
 
       {optionsLoading ? (
         <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-          <p className="text-sm text-zinc-700">Caricamento filtriâ€¦</p>
+          <p className="text-sm text-zinc-700">Caricamento filtri…</p>
         </div>
       ) : (
         <AdottaFilters

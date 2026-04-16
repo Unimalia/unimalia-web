@@ -57,7 +57,7 @@ const DICT = {
 };
 
 function listOrDash(items: string[]) {
-  return items.length > 0 ? items : ["â€”"];
+  return items.length > 0 ? items : ["—"];
 }
 
 function detectLanguage(acceptLanguage: string | null): EmergencyLang {
@@ -125,7 +125,7 @@ export default async function EmergencyPublicPage({ params }: PageProps) {
                   <p className="mt-1 text-sm text-zinc-600">
                     {data.settings.showSpecies ? data.animal.species : ""}
                     {data.settings.showSpecies && data.settings.showBreed && data.animal.breed
-                      ? " â€¢ "
+                      ? " • "
                       : ""}
                     {data.settings.showBreed ? data.animal.breed || "" : ""}
                   </p>
@@ -135,14 +135,14 @@ export default async function EmergencyPublicPage({ params }: PageProps) {
                   {data.settings.showColor ? (
                     <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3">
                       <div className="text-xs text-zinc-500">{t.color}</div>
-                      <div className="mt-1 font-semibold">{data.animal.color || "â€”"}</div>
+                      <div className="mt-1 font-semibold">{data.animal.color || "—"}</div>
                     </div>
                   ) : null}
 
                   {data.settings.showSize ? (
                     <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3">
                       <div className="text-xs text-zinc-500">{t.size}</div>
-                      <div className="mt-1 font-semibold">{data.animal.size || "â€”"}</div>
+                      <div className="mt-1 font-semibold">{data.animal.size || "—"}</div>
                     </div>
                   ) : null}
 
@@ -159,7 +159,7 @@ export default async function EmergencyPublicPage({ params }: PageProps) {
                     <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3">
                       <div className="text-xs text-zinc-500">{t.sterilized}</div>
                       <div className="mt-1 font-semibold">
-                        {data.clinical.sterilizationStatus || "â€”"}
+                        {data.clinical.sterilizationStatus || "—"}
                       </div>
                     </div>
                   ) : null}
@@ -168,7 +168,7 @@ export default async function EmergencyPublicPage({ params }: PageProps) {
                     <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3">
                       <div className="text-xs text-zinc-500">{t.ownerName}</div>
                       <div className="mt-1 font-semibold">
-                        {data.owner.fullName || "â€”"}
+                        {data.owner.fullName || "—"}
                       </div>
                     </div>
                   ) : null}
@@ -182,7 +182,7 @@ export default async function EmergencyPublicPage({ params }: PageProps) {
                             {data.owner.phone}
                           </a>
                         ) : (
-                          "â€”"
+                          "—"
                         )}
                       </div>
                     </div>
@@ -195,7 +195,7 @@ export default async function EmergencyPublicPage({ params }: PageProps) {
           {data.settings.showAllergies ? (
             <section className="rounded-3xl border border-red-200 bg-white p-5 shadow-sm">
               <h2 className="text-base font-semibold text-red-700">
-                âš ï¸ {t.allergies}
+                ⚠️ {t.allergies}
               </h2>
               <ul className="mt-3 space-y-2 text-sm text-zinc-800">
                 {allergies.map((item, index) => (
@@ -209,7 +209,7 @@ export default async function EmergencyPublicPage({ params }: PageProps) {
 
           {data.settings.showTherapies ? (
             <section className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
-              <h2 className="text-base font-semibold">ðŸ’Š {t.therapies}</h2>
+              <h2 className="text-base font-semibold">💊 {t.therapies}</h2>
               <ul className="mt-3 space-y-2 text-sm text-zinc-800">
                 {therapies.map((item, index) => (
                   <li key={index} className="rounded-xl bg-zinc-50 px-3 py-2">
@@ -222,7 +222,7 @@ export default async function EmergencyPublicPage({ params }: PageProps) {
 
           {data.settings.showChronicConditions ? (
             <section className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
-              <h2 className="text-base font-semibold">ðŸ©º {t.chronic}</h2>
+              <h2 className="text-base font-semibold">🩺 {t.chronic}</h2>
               <ul className="mt-3 space-y-2 text-sm text-zinc-800">
                 {chronic.map((item, index) => (
                   <li key={index} className="rounded-xl bg-zinc-50 px-3 py-2">

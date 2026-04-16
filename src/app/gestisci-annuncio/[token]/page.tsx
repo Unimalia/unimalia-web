@@ -33,7 +33,7 @@ function safeDate(value: string | null | undefined) {
 }
 
 function safeCardTitle(item: ManagedReport) {
-  if (item.animal_name && item.species) return `${item.animal_name} â€“ ${item.species}`;
+  if (item.animal_name && item.species) return `${item.animal_name} – ${item.species}`;
   if (item.animal_name) return item.animal_name;
   if (item.species) return item.species;
   if (item.title) return item.title;
@@ -115,7 +115,7 @@ export default async function GestisciAnnuncioPage({ params }: PageProps) {
             Link di gestione non valido
           </h1>
           <p className="mt-3 text-sm leading-6 text-zinc-600">
-            Questo link potrebbe essere scaduto, errato oppure non piÃ¹ disponibile.
+            Questo link potrebbe essere scaduto, errato oppure non più disponibile.
           </p>
 
           <div className="mt-6">
@@ -162,14 +162,14 @@ export default async function GestisciAnnuncioPage({ params }: PageProps) {
               Gestisci il tuo annuncio
             </h1>
             <p className="mt-2 text-sm text-zinc-600">
-              Questa pagina Ã¨ privata. Conservala: da qui puoi gestire lâ€™annuncio senza registrarti.
+              Questa pagina è privata. Conservala: da qui puoi gestire l’annuncio senza registrarti.
             </p>
           </div>
 
           <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
             <h2 className="text-lg font-semibold text-zinc-900">{safeCardTitle(report)}</h2>
             <p className="mt-2 text-sm text-zinc-700">
-              {[report.location_text, report.province, report.region].filter(Boolean).join(" â€¢ ") || "LocalitÃ  non disponibile"}
+              {[report.location_text, report.province, report.region].filter(Boolean).join(" • ") || "Località non disponibile"}
             </p>
             <p className="mt-1 text-sm text-zinc-500">Data evento: {safeDate(report.event_date)}</p>
             <p className="mt-2 text-sm text-zinc-500">

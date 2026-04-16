@@ -490,7 +490,7 @@ export async function createProfessionalConsult(input: {
   if (receiverError) throw new Error(receiverError.message);
   if (!receiver) throw new Error("Destinatario non trovato");
   if (!receiver.approved || !receiver.is_vet) {
-    throw new Error("Il destinatario non Ã¨ disponibile per i consulti veterinari");
+    throw new Error("Il destinatario non è disponibile per i consulti veterinari");
   }
 
   const { data: allEvents, error: eventsError } = await admin
@@ -519,7 +519,7 @@ export async function createProfessionalConsult(input: {
 
   const invalid = eventIds.find((id) => !allEventIds.includes(id));
   if (invalid) {
-    throw new Error("Uno o piÃ¹ eventi selezionati non appartengono all'animale");
+    throw new Error("Uno o più eventi selezionati non appartengono all'animale");
   }
 
   const expiresAt = input.priority === "emergency" ? hoursFromNow(24) : hoursFromNow(24 * 7);
@@ -975,8 +975,8 @@ export async function updateProfessionalConsult(input: {
   const senderName = ctx.professional.display_name?.trim() || "Professionista";
 
   if (input.action === "accept") {
-    if (!isReceiver) throw new Error("Solo il destinatario puÃ² accettare");
-    if (current.status !== "pending") throw new Error("Il consulto non Ã¨ piÃ¹ in attesa");
+    if (!isReceiver) throw new Error("Solo il destinatario può accettare");
+    if (current.status !== "pending") throw new Error("Il consulto non è più in attesa");
 
     const now = new Date().toISOString();
 
@@ -994,8 +994,8 @@ export async function updateProfessionalConsult(input: {
   }
 
   if (input.action === "reject") {
-    if (!isReceiver) throw new Error("Solo il destinatario puÃ² rifiutare");
-    if (current.status !== "pending") throw new Error("Il consulto non Ã¨ piÃ¹ in attesa");
+    if (!isReceiver) throw new Error("Solo il destinatario può rifiutare");
+    if (current.status !== "pending") throw new Error("Il consulto non è più in attesa");
 
     const now = new Date().toISOString();
 

@@ -340,7 +340,7 @@ export async function POST(req: Request) {
       const exists = await fileExists(path);
       if (!exists) {
         return NextResponse.json(
-          { error: "File non trovato su storage. Ripeti lâ€™upload." },
+          { error: "File non trovato su storage. Ripeti l’upload." },
           { status: 400 }
         );
       }

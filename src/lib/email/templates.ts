@@ -15,7 +15,7 @@ export function wrapEmailHtml(title: string, contentHtml: string) {
       <div style="font-size:14px;color:#222;">${contentHtml}</div>
       <hr style="border:none;border-top:1px solid #eee;margin:24px 0;" />
       <div style="font-size:12px;color:#666;">
-        UNIMALIA â€” ecosistema digitale per la protezione degli animali.<br/>
+        UNIMALIA — ecosistema digitale per la protezione degli animali.<br/>
         Se non hai richiesto tu questa email, puoi ignorarla.
       </div>
     </div>
@@ -48,14 +48,14 @@ export function reportPublishedEmail(params: {
   reportTitle: string;
 }) {
   const html = wrapEmailHtml(
-    "Il tuo annuncio Ã¨ online",
+    "Il tuo annuncio è online",
     `
-      <p>Il tuo annuncio Ã¨ stato pubblicato: <b>${escapeHtml(params.reportTitle)}</b>.</p>
+      <p>Il tuo annuncio è stato pubblicato: <b>${escapeHtml(params.reportTitle)}</b>.</p>
 
       <p><b>Link pubblico annuncio:</b></p>
       <p><a href="${params.reportUrl}">${escapeHtml(params.reportUrl)}</a></p>
 
-      <p style="margin-top:18px;"><b>Link privato per gestire lâ€™annuncio:</b></p>
+      <p style="margin-top:18px;"><b>Link privato per gestire l’annuncio:</b></p>
       <p><a href="${params.manageUrl}">${escapeHtml(params.manageUrl)}</a></p>
 
       <p style="margin-top:18px;">
@@ -64,11 +64,11 @@ export function reportPublishedEmail(params: {
       <ul style="padding-left:18px;">
         <li>copiare il link da condividere</li>
         <li>copiare un testo pronto per Facebook</li>
-        <li>segnare lâ€™annuncio come ritrovato</li>
+        <li>segnare l’annuncio come ritrovato</li>
       </ul>
     `
   );
-  return { subject: "Il tuo annuncio Ã¨ online âœ…", html };
+  return { subject: "Il tuo annuncio è online ✅", html };
 }
 
 export function protectedConversationEmail(params: {
@@ -119,7 +119,7 @@ export function newMessageRelayEmail(params: {
       <div style="padding:12px;border:1px solid #eee;border-radius:12px;background:#fafafa;margin:12px 0;">
         ${escapeHtml(params.message).replace(/\n/g, "<br/>")}
       </div>
-      <p>Apri lâ€™annuncio:</p>
+      <p>Apri l’annuncio:</p>
       <p><a href="${params.reportUrl}">${escapeHtml(params.reportUrl)}</a></p>
     `
   );
@@ -134,7 +134,7 @@ export function expiringSoonEmail(params: {
   const html = wrapEmailHtml(
     "Il tuo annuncio sta per scadere",
     `
-      <p><b>${escapeHtml(params.reportTitle)}</b> scadrÃ  tra <b>${params.daysLeft} giorni</b>.</p>
+      <p><b>${escapeHtml(params.reportTitle)}</b> scadrà tra <b>${params.daysLeft} giorni</b>.</p>
       <p>Vuoi mantenerlo attivo?</p>
       <p>
         <a href="${params.manageUrl}" style="display:inline-block;padding:10px 14px;border-radius:10px;text-decoration:none;background:#111;color:#fff;">
@@ -154,10 +154,10 @@ export function askIfFoundEmail(params: {
   const html = wrapEmailHtml(
     "Aggiornamento annuncio",
     `
-      <p>${escapeHtml(params.reportTitle)} Ã¨ stato risolto?</p>
+      <p>${escapeHtml(params.reportTitle)} è stato risolto?</p>
       <p>
         <a href="${params.closeFoundUrl}" style="display:inline-block;padding:10px 14px;border-radius:10px;text-decoration:none;background:#111;color:#fff;margin-right:8px;">
-          SÃ¬, ritrovato âœ…
+          Sì, ritrovato ✅
         </a>
         <a href="${params.keepActiveUrl}" style="display:inline-block;padding:10px 14px;border-radius:10px;text-decoration:none;background:#eee;color:#111;">
           No, ancora no
@@ -165,7 +165,7 @@ export function askIfFoundEmail(params: {
       </p>
     `
   );
-  return { subject: "Ãˆ stato ritrovato?", html };
+  return { subject: "È stato ritrovato?", html };
 }
 
 export function inviteToRegisterAfterFoundEmail(params: {
@@ -176,21 +176,21 @@ export function inviteToRegisterAfterFoundEmail(params: {
   const alreadyRegistered = params.alreadyRegistered === true;
 
   const title = alreadyRegistered
-    ? "Felici che sia andata bene â¤ï¸"
+    ? "Felici che sia andata bene ❤️"
     : "Proteggi il tuo animale per sempre";
 
   const introHtml = alreadyRegistered
     ? `
-      <p>Felici che sia andata bene â¤ï¸</p>
+      <p>Felici che sia andata bene ❤️</p>
       <p>
-        Il tuo annuncio si Ã¨ concluso positivamente. Se UNIMALIA ti Ã¨ stato utile e vuoi sostenere il progetto,
+        Il tuo annuncio si è concluso positivamente. Se UNIMALIA ti è stato utile e vuoi sostenere il progetto,
         puoi farlo in modo del tutto facoltativo.
       </p>
     `
     : `
-      <p>Felici che sia andata bene â¤ï¸</p>
+      <p>Felici che sia andata bene ❤️</p>
       <p>
-        Ora puoi registrarti e creare la scheda animale su UNIMALIA, cosÃ¬ in futuro avrai tutto piÃ¹ pronto in caso di emergenza.
+        Ora puoi registrarti e creare la scheda animale su UNIMALIA, così in futuro avrai tutto più pronto in caso di emergenza.
       </p>
     `;
 
@@ -228,8 +228,8 @@ export function inviteToRegisterAfterFoundEmail(params: {
 
   return {
     subject: alreadyRegistered
-      ? "UNIMALIA Â· Felici che sia andata bene â¤ï¸"
-      : "UNIMALIA Â· Dopo il lieto fine",
+      ? "UNIMALIA · Felici che sia andata bene ❤️"
+      : "UNIMALIA · Dopo il lieto fine",
     html,
   };
 }

@@ -259,7 +259,7 @@ export default function RequestAccessClient() {
             <h1 className="mt-2 text-2xl font-semibold text-zinc-900">Richiesta accesso</h1>
             <p className="mt-2 text-sm text-zinc-600">
               Se non hai ancora accesso a questo animale, la richiesta viene inviata al proprietario
-              per lâ€™approvazione.
+              per l’approvazione.
             </p>
           </div>
 
@@ -274,7 +274,7 @@ export default function RequestAccessClient() {
 
       {loading ? (
         <div className="rounded-3xl border border-zinc-200 bg-white p-5 text-sm text-zinc-600 shadow-sm">
-          Caricamento animaleâ€¦
+          Caricamento animale…
         </div>
       ) : null}
 
@@ -290,7 +290,7 @@ export default function RequestAccessClient() {
 
           <div className="mt-3 space-y-2">
             <div className="text-lg font-semibold text-zinc-900">
-              {animal.name || "Animale"} {animal.species ? `â€” ${animal.species}` : ""}
+              {animal.name || "Animale"} {animal.species ? `— ${animal.species}` : ""}
             </div>
 
             <div className="text-sm text-zinc-700">
@@ -367,7 +367,7 @@ export default function RequestAccessClient() {
                 <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
                   <div className="font-semibold">In attesa di approvazione</div>
                   <div className="mt-1">
-                    Il proprietario deve autorizzare lâ€™accesso. Questa pagina si aggiorna da sola.
+                    Il proprietario deve autorizzare l’accesso. Questa pagina si aggiorna da sola.
                   </div>
                   <div className="mt-2 text-xs opacity-80">Attesa attuale: {secondsWaiting}s</div>
                 </div>
@@ -376,18 +376,18 @@ export default function RequestAccessClient() {
               {status === "approved" && (
                 <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
                   <div className="font-semibold">Accesso approvato</div>
-                  <div className="mt-1">Sto aprendo automaticamente la scheda animaleâ€¦</div>
+                  <div className="mt-1">Sto aprendo automaticamente la scheda animale…</div>
                 </div>
               )}
 
               {status === "sending" && (
                 <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-700">
-                  Invio richiesta in corsoâ€¦
+                  Invio richiesta in corso…
                 </div>
               )}
 
               <div className="rounded-2xl bg-zinc-50 p-4 text-sm text-zinc-700">
-                Una volta approvato dal proprietario, lâ€™animale si aprirÃ  automaticamente.
+                Una volta approvato dal proprietario, l’animale si aprirà automaticamente.
               </div>
             </div>
           )}

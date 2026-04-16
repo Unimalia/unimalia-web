@@ -122,7 +122,7 @@ export default function NuovoSmarrimentoClient() {
       if (!alive) return;
 
       if (animalError || !animal) {
-        setResultMsg("Non sono riuscito a caricare i dati dellâ€™animale.");
+        setResultMsg("Non sono riuscito a caricare i dati dell’animale.");
         setPrefilling(false);
         return;
       }
@@ -135,7 +135,7 @@ export default function NuovoSmarrimentoClient() {
 
       setAnimalName(animal.name || "");
       setSpecies(normalizeSpecies(animal.species));
-      setDescription([animal.breed, animal.color, animal.size].filter(Boolean).join(" â€¢ "));
+      setDescription([animal.breed, animal.color, animal.size].filter(Boolean).join(" • "));
       setExistingPhotoUrl(animal.photo_url || null);
       setPhotoPreview(animal.photo_url || null);
       setContactEmail(user.email || "");
@@ -165,7 +165,7 @@ export default function NuovoSmarrimentoClient() {
 
     if (mime === "image/heic" || mime === "image/heif") {
       setResultMsg(
-        "La foto selezionata Ã¨ in formato HEIC/HEIF (tipico di iPhone). Al momento carica una foto JPG/PNG/WEBP."
+        "La foto selezionata è in formato HEIC/HEIF (tipico di iPhone). Al momento carica una foto JPG/PNG/WEBP."
       );
     }
 
@@ -176,7 +176,7 @@ export default function NuovoSmarrimentoClient() {
   async function uploadPhoto(): Promise<string> {
     if (!photo) {
       if (existingPhotoUrl) return existingPhotoUrl;
-      throw new Error("Carica una foto dellâ€™animale.");
+      throw new Error("Carica una foto dell’animale.");
     }
 
     if (!turnstileToken) {
@@ -187,7 +187,7 @@ export default function NuovoSmarrimentoClient() {
 
     if (mime === "image/heic" || mime === "image/heif") {
       throw new Error(
-        "La foto selezionata Ã¨ in formato HEIC/HEIF (tipico di iPhone). Al momento carica una foto JPG/PNG/WEBP."
+        "La foto selezionata è in formato HEIC/HEIF (tipico di iPhone). Al momento carica una foto JPG/PNG/WEBP."
       );
     }
 
@@ -224,12 +224,12 @@ export default function NuovoSmarrimentoClient() {
     setResultMsg(null);
 
     if (!animalName.trim()) {
-      setResultMsg("Inserisci il nome dellâ€™animale.");
+      setResultMsg("Inserisci il nome dell’animale.");
       return;
     }
 
     if (!photo && !existingPhotoUrl) {
-      setResultMsg("Carica una foto dellâ€™animale.");
+      setResultMsg("Carica una foto dell’animale.");
       return;
     }
 
@@ -244,7 +244,7 @@ export default function NuovoSmarrimentoClient() {
     }
 
     if (!consent) {
-      setResultMsg("Devi accettare lâ€™informativa per pubblicare lâ€™annuncio.");
+      setResultMsg("Devi accettare l’informativa per pubblicare l’annuncio.");
       return;
     }
 
@@ -318,7 +318,7 @@ export default function NuovoSmarrimentoClient() {
       }
 
       setResultMsg(
-        "âœ… Ti abbiamo inviato una email per verificare lâ€™annuncio. Apri la mail e conferma per metterlo online."
+        "✅ Ti abbiamo inviato una email per verificare l’annuncio. Apri la mail e conferma per metterlo online."
       );
 
       setAnimalName("");
@@ -363,8 +363,8 @@ export default function NuovoSmarrimentoClient() {
 
       <p className="mt-2 text-sm text-zinc-600">
         {ownerPrefillMode
-          ? "Abbiamo precompilato i dati dellâ€™animale registrato. Completa luogo e data dello smarrimento."
-          : "Inserisci i dati essenziali, carica una foto e conferma via email per pubblicare lâ€™annuncio."}
+          ? "Abbiamo precompilato i dati dell’animale registrato. Completa luogo e data dello smarrimento."
+          : "Inserisci i dati essenziali, carica una foto e conferma via email per pubblicare l’annuncio."}
       </p>
 
       <form onSubmit={onSubmit} className="mt-6 grid gap-4">
@@ -402,7 +402,7 @@ export default function NuovoSmarrimentoClient() {
           />
           <span className="text-xs font-normal text-zinc-500">
             {existingPhotoUrl
-              ? "Puoi tenere la foto giÃ  presente oppure sostituirla con una nuova."
+              ? "Puoi tenere la foto già presente oppure sostituirla con una nuova."
               : "Usa una foto JPG, PNG o WEBP. Su iPhone evita HEIC/HEIF."}
           </span>
         </label>
@@ -456,8 +456,8 @@ export default function NuovoSmarrimentoClient() {
               <span className="font-semibold">Luogo:</span> {locationText || "non selezionato"}
             </div>
             <div className="mt-1">
-              <span className="font-semibold">Provincia:</span> {province || "â€”"}{" "}
-              <span className="ml-3 font-semibold">Regione:</span> {region || "â€”"}
+              <span className="font-semibold">Provincia:</span> {province || "—"}{" "}
+              <span className="ml-3 font-semibold">Regione:</span> {region || "—"}
             </div>
             <div className="mt-1">
               <span className="font-semibold">Coordinate:</span>{" "}
@@ -501,7 +501,7 @@ export default function NuovoSmarrimentoClient() {
         </label>
 
         <label className="grid gap-2 text-sm font-semibold text-zinc-800">
-          ModalitÃ  contatto
+          Modalità contatto
           <select
             value={contactMode}
             onChange={(e) => setContactMode(e.target.value as ContactMode)}
@@ -520,7 +520,7 @@ export default function NuovoSmarrimentoClient() {
             className="mt-1"
           />
           <span>
-            Accetto informativa privacy e autorizzo la pubblicazione dellâ€™annuncio secondo le
+            Accetto informativa privacy e autorizzo la pubblicazione dell’annuncio secondo le
             opzioni selezionate.
           </span>
         </label>

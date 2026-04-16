@@ -34,7 +34,7 @@ export default async function MessaggiProtettiPage({ params }: PageProps) {
             Conversazione non disponibile
           </h1>
           <p className="mt-3 text-sm leading-6 text-zinc-600">
-            Questo link potrebbe essere errato, scaduto oppure non piÃ¹ disponibile.
+            Questo link potrebbe essere errato, scaduto oppure non più disponibile.
           </p>
         </div>
       </main>

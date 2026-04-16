@@ -266,7 +266,7 @@ export async function POST(req: Request) {
     new Date(`${therapyEndDate}T00:00:00.000Z`).getTime() <
       new Date(`${therapyStartDate}T00:00:00.000Z`).getTime()
   ) {
-    return badRequest("therapyEndDate non puÃ² essere precedente a therapyStartDate");
+    return badRequest("therapyEndDate non può essere precedente a therapyStartDate");
   }
 
   const priority: EventPriority | null =
@@ -404,7 +404,7 @@ export async function POST(req: Request) {
         animalId: animalRow.id,
         animalName: animalRow.name ?? "Animale",
         eventType: `${type || "Evento clinico"} aggiornato`,
-        shortDescription: description || title || "Un evento clinico Ã¨ stato aggiornato",
+        shortDescription: description || title || "Un evento clinico è stato aggiornato",
       });
     }
   } catch (notificationError) {

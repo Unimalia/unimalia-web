@@ -25,12 +25,12 @@ const navItems: NavItem[] = [
   {
     href: "/superadmin/sistema",
     label: "Sistema",
-    description: "Flag di sistema, manutenzione, modalitÃ  emergenza.",
+    description: "Flag di sistema, manutenzione, modalità emergenza.",
   },
   {
     href: "/superadmin/audit",
-    label: "Registro attivitÃ ",
-    description: "Storico attivitÃ  e azioni superadmin.",
+    label: "Registro attività",
+    description: "Storico attività e azioni superadmin.",
   },
   {
     href: "/superadmin/checklist",

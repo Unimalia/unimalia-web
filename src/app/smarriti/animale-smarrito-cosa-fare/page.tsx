@@ -15,17 +15,17 @@ const faqItems = [
   {
     question: "Cosa fare subito se un animale si smarrisce?",
     answer:
-      "Bisogna tornare subito nellâ€™ultima zona vista, cercare con metodo, preparare una segnalazione chiara con foto e dati utili, e aggiornare rapidamente le informazioni raccolte.",
+      "Bisogna tornare subito nell’ultima zona vista, cercare con metodo, preparare una segnalazione chiara con foto e dati utili, e aggiornare rapidamente le informazioni raccolte.",
   },
   {
     question: "Il microchip basta da solo?",
     answer:
-      "Il microchip Ã¨ essenziale per lâ€™identificazione ufficiale, ma non sostituisce una segnalazione chiara, aggiornata e facilmente consultabile.",
+      "Il microchip è essenziale per l’identificazione ufficiale, ma non sostituisce una segnalazione chiara, aggiornata e facilmente consultabile.",
   },
   {
-    question: "A cosa serve lâ€™identitÃ  digitale animale in caso di smarrimento?",
+    question: "A cosa serve l’identità digitale animale in caso di smarrimento?",
     answer:
-      "Serve a raccogliere e organizzare in modo piÃ¹ accessibile le informazioni utili sullâ€™animale, facilitando gestione pratica, aggiornamenti e consultazione.",
+      "Serve a raccogliere e organizzare in modo più accessibile le informazioni utili sull’animale, facilitando gestione pratica, aggiornamenti e consultazione.",
   },
   {
     question: "UNIMALIA sostituisce i canali ufficiali?",
@@ -138,15 +138,15 @@ export default function AnimaleSmarritoCosaFarePage() {
           <p className="mt-5 max-w-3xl text-lg leading-relaxed text-zinc-600">
             Quando un animale si smarrisce, le prime ore contano molto. Muoversi in
             modo rapido ma ordinato, raccogliere bene le informazioni e pubblicare una
-            segnalazione chiara aumenta le possibilitÃ  di ritrovamento. UNIMALIA aiuta
-            a gestire in modo piÃ¹ semplice identitÃ  digitale animale, smarrimenti e dati
+            segnalazione chiara aumenta le possibilità di ritrovamento. UNIMALIA aiuta
+            a gestire in modo più semplice identità digitale animale, smarrimenti e dati
             utili da consultare rapidamente.
           </p>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             <CtaButton href="/smarrimenti/nuovo">Pubblica smarrimento</CtaButton>
             <CtaButton href="/identita/nuovo" variant="secondary">
-              Crea identitÃ  animale
+              Crea identità animale
             </CtaButton>
           </div>
         </header>
@@ -154,8 +154,8 @@ export default function AnimaleSmarritoCosaFarePage() {
         <div className="mt-8 grid gap-6">
           <Section title="Cosa fare subito quando un animale si smarrisce">
             <p>
-              La prima azione utile Ã¨ tornare immediatamente nel punto esatto in cui
-              lâ€™animale Ã¨ stato visto per lâ€™ultima volta. Molti animali spaventati non
+              La prima azione utile è tornare immediatamente nel punto esatto in cui
+              l’animale è stato visto per l’ultima volta. Molti animali spaventati non
               vanno lontano nelle prime fasi: si nascondono, si fermano in zone
               tranquille o provano a tornare su percorsi abituali.
             </p>
@@ -172,18 +172,18 @@ export default function AnimaleSmarritoCosaFarePage() {
             <ul className="mt-4 list-disc space-y-2 pl-6 text-zinc-700">
               <li>quando un animale si smarrisce, le prime ore sono decisive</li>
               <li>serve una ricerca ordinata, non casuale</li>
-              <li>una segnalazione chiara aumenta le possibilitÃ  di ritrovamento</li>
+              <li>una segnalazione chiara aumenta le possibilità di ritrovamento</li>
               <li>UNIMALIA aiuta a creare una scheda completa e pronta da condividere</li>
               <li>UNIMALIA riduce la frammentazione degli smarrimenti online</li>
             </ul>
           </section>
 
-          <Section title="I 7 passaggi piÃ¹ utili">
+          <Section title="I 7 passaggi più utili">
             <ol className="space-y-4">
               <li>
-                <strong>1. Torna nellâ€™ultima zona vista.</strong> Controlla strade
+                <strong>1. Torna nell’ultima zona vista.</strong> Controlla strade
                 laterali, aree verdi, parcheggi, cortili, portoni e punti in cui
-                lâ€™animale potrebbe essersi nascosto.
+                l’animale potrebbe essersi nascosto.
               </li>
               <li>
                 <strong>2. Cerca con metodo, non in modo casuale.</strong> Meglio una
@@ -196,16 +196,16 @@ export default function AnimaleSmarritoCosaFarePage() {
               </li>
               <li>
                 <strong>4. Prepara una segnalazione chiara.</strong> Una scheda
-                confusa, senza foto o senza posizione precisa, Ã¨ molto meno efficace.
+                confusa, senza foto o senza posizione precisa, è molto meno efficace.
               </li>
               <li>
                 <strong>5. Pubblica e aggiorna la segnalazione.</strong> I dati devono
                 restare coerenti, leggibili e aggiornati se arrivano nuovi avvistamenti.
               </li>
               <li>
-                <strong>6. Verifica quali dati identificativi hai giÃ  pronti.</strong>{" "}
+                <strong>6. Verifica quali dati identificativi hai già pronti.</strong>{" "}
                 Microchip, foto, nome, segni distintivi e recapiti aiutano a reagire
-                piÃ¹ velocemente.
+                più velocemente.
               </li>
               <li>
                 <strong>7. Chiudi o aggiorna il caso appena cambia la situazione.</strong>{" "}
@@ -224,18 +224,18 @@ export default function AnimaleSmarritoCosaFarePage() {
             </p>
             <p>
               UNIMALIA nasce anche per ridurre questa frammentazione: puoi creare qui
-              una scheda di smarrimento completa, ordinata e giÃ  pronta da usare come
+              una scheda di smarrimento completa, ordinata e già pronta da usare come
               base per tutte le altre pubblicazioni.
             </p>
             <p>
               In pratica, compili una volta sola le informazioni essenziali e poi puoi
-              copiarle e riutilizzarle dove vuoi. In questo senso UNIMALIA puÃ² diventare
+              copiarle e riutilizzarle dove vuoi. In questo senso UNIMALIA può diventare
               un vero ponte tra i diversi canali online e un punto unico di riferimento
               per gestire meglio il caso.
             </p>
             <p>
-              Questo significa meno confusione, meno duplicazioni e una gestione piÃ¹
-              efficace delle informazioni proprio nel momento in cui ogni dettaglio puÃ²
+              Questo significa meno confusione, meno duplicazioni e una gestione più
+              efficace delle informazioni proprio nel momento in cui ogni dettaglio può
               fare la differenza.
             </p>
           </Section>
@@ -246,30 +246,30 @@ export default function AnimaleSmarritoCosaFarePage() {
               nella parte pratica e digitale della gestione delle informazioni.
             </p>
             <ul className="list-disc space-y-2 pl-6">
-              <li>puoi creare lâ€™identitÃ  digitale animale</li>
+              <li>puoi creare l’identità digitale animale</li>
               <li>puoi raccogliere i dati essenziali in una scheda ordinata</li>
-              <li>puoi pubblicare uno smarrimento in modo piÃ¹ chiaro</li>
-              <li>puoi aggiornare piÃ¹ facilmente lo stato del caso</li>
+              <li>puoi pubblicare uno smarrimento in modo più chiaro</li>
+              <li>puoi aggiornare più facilmente lo stato del caso</li>
               <li>puoi usare la scheda come base pronta da condividere altrove</li>
               <li>
-                puoi rendere piÃ¹ immediata la consultazione delle informazioni utili
+                puoi rendere più immediata la consultazione delle informazioni utili
               </li>
             </ul>
           </Section>
 
-          <Section title="Microchip e identitÃ  digitale: differenza reale">
+          <Section title="Microchip e identità digitale: differenza reale">
             <p>
-              Il microchip Ã¨ il riferimento ufficiale di identificazione dellâ€™animale.
-              Lâ€™identitÃ  digitale animale non lo sostituisce.
+              Il microchip è il riferimento ufficiale di identificazione dell’animale.
+              L’identità digitale animale non lo sostituisce.
             </p>
             <p>
-              Lâ€™identitÃ  digitale serve invece a raccogliere, organizzare e rendere piÃ¹
+              L’identità digitale serve invece a raccogliere, organizzare e rendere più
               accessibili online le informazioni utili: dati essenziali, note pratiche,
               collegamenti rapidi e aggiornamenti.
             </p>
             <p>
-              In pratica, il microchip identifica formalmente; lâ€™identitÃ  digitale aiuta
-              nella gestione pratica delle informazioni e nella rapiditÃ  dâ€™azione.
+              In pratica, il microchip identifica formalmente; l’identità digitale aiuta
+              nella gestione pratica delle informazioni e nella rapidità d’azione.
             </p>
           </Section>
 
@@ -279,7 +279,7 @@ export default function AnimaleSmarritoCosaFarePage() {
               <li>pubblicare foto vecchie o poco leggibili</li>
               <li>indicare una zona troppo vaga</li>
               <li>lasciare un contatto non aggiornato o difficile da raggiungere</li>
-              <li>non aggiornare la segnalazione quando arrivano novitÃ </li>
+              <li>non aggiornare la segnalazione quando arrivano novità</li>
             </ul>
           </Section>
 
@@ -313,10 +313,10 @@ export default function AnimaleSmarritoCosaFarePage() {
                 className="rounded-2xl border border-zinc-200 bg-zinc-50 p-5 transition hover:bg-zinc-100"
               >
                 <p className="text-lg font-semibold text-zinc-900">
-                  Cosâ€™Ã¨ lâ€™identitÃ  animale digitale
+                  Cos’è l’identità animale digitale
                 </p>
                 <p className="mt-2 text-sm text-zinc-600">
-                  Guida dedicata al significato e allâ€™utilitÃ  dellâ€™identitÃ  digitale animale.
+                  Guida dedicata al significato e all’utilità dell’identità digitale animale.
                 </p>
               </Link>
             </div>

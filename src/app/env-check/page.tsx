@@ -23,12 +23,12 @@ export default function EnvCheckPage({
 }: {
   searchParams: Record<string, string | string[] | undefined>;
 }) {
-  // ðŸ”’ Hard gate
+  // 🔒 Hard gate
   if (!isAuthorized(searchParams)) {
     notFound();
   }
 
-  // âœ… Mostriamo solo il minimo indispensabile
+  // ✅ Mostriamo solo il minimo indispensabile
   const data = {
     VERCEL_ENV: process.env.VERCEL_ENV ?? null,
     VERCEL_GIT_COMMIT_REF: process.env.VERCEL_GIT_COMMIT_REF ?? null,

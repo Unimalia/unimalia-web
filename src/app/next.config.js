@@ -6,7 +6,7 @@ const nextConfig = {
       {
         source: "/(.*)",
         headers: [
-          // HSTS (attivalo SOLO se sei sempre in HTTPS: su Vercel sÃ¬)
+          // HSTS (attivalo SOLO se sei sempre in HTTPS: su Vercel sì)
           {
             key: "Strict-Transport-Security",
             value: "max-age=31536000; includeSubDomains; preload",
@@ -27,7 +27,7 @@ const nextConfig = {
           // Cross-Origin Resource Policy (buona coppia con COOP)
           { key: "Cross-Origin-Resource-Policy", value: "same-site" },
 
-          // Permissions Policy (stringa â€œsafe defaultâ€)
+          // Permissions Policy (stringa “safe default”)
           {
             key: "Permissions-Policy",
             value:

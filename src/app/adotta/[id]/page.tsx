@@ -82,7 +82,7 @@ function sizeLabel(size: string | null) {
 }
 
 function ageLabel(ageMonths: number | null) {
-  if (ageMonths == null) return "EtÃ  non indicata";
+  if (ageMonths == null) return "Età non indicata";
   if (ageMonths < 12) return `${ageMonths} mesi`;
   const years = Math.floor(ageMonths / 12);
   const remainingMonths = ageMonths % 12;
@@ -179,7 +179,7 @@ export default async function AdottaDetailPage({
   return (
     <PageShell
       title={title}
-      subtitle="Scheda pubblica dellâ€™animale in adozione."
+      subtitle="Scheda pubblica dell’animale in adozione."
       boxed
       backFallbackHref="/adotta"
     >
@@ -233,12 +233,12 @@ export default async function AdottaDetailPage({
               </h1>
 
               <p className="mt-3 text-sm leading-relaxed text-zinc-600">
-                {placeLabel || "LocalitÃ  non indicata"}
-                {shelter?.name ? ` Â· ${shelter.name}` : ""}
+                {placeLabel || "Località non indicata"}
+                {shelter?.name ? ` · ${shelter.name}` : ""}
               </p>
 
               <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                <InfoCard label="EtÃ " value={ageLabel(animal.age_months)} />
+                <InfoCard label="Età" value={ageLabel(animal.age_months)} />
                 <InfoCard label="Sesso" value={sexLabel(animal.sex)} />
                 <InfoCard label="Taglia" value={sizeLabel(animal.size)} />
                 <InfoCard
@@ -280,7 +280,7 @@ export default async function AdottaDetailPage({
         </section>
 
         <section className="rounded-3xl border border-zinc-200 bg-zinc-50 p-6 shadow-sm">
-          <h2 className="text-xl font-bold text-zinc-900">Come funziona lâ€™adozione su UNIMALIA</h2>
+          <h2 className="text-xl font-bold text-zinc-900">Come funziona l’adozione su UNIMALIA</h2>
 
           <div className="mt-4 space-y-3 text-sm leading-relaxed text-zinc-700">
             <p>
@@ -288,12 +288,12 @@ export default async function AdottaDetailPage({
               privati.
             </p>
             <p>
-              Lâ€™associazione puÃ² creare gratuitamente lâ€™identitÃ  animale completa e, se il nuovo
+              L’associazione può creare gratuitamente l’identità animale completa e, se il nuovo
               proprietario decide di continuare a usare UNIMALIA in versione Premium entro 15 giorni
-              dal passaggio di proprietÃ , il primo anno da 6 euro viene riconosciuto allâ€™associazione.
+              dal passaggio di proprietà, il primo anno da 6 euro viene riconosciuto all’associazione.
             </p>
             <p>
-              Questo aiuta a dare continuitÃ  allâ€™animale anche dopo lâ€™adozione, mantenendo piÃ¹
+              Questo aiuta a dare continuità all’animale anche dopo l’adozione, mantenendo più
               ordinate le informazioni utili nel tempo.
             </p>
           </div>

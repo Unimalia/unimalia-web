@@ -42,13 +42,13 @@ type FormState = {
 function statusLabel(status: string) {
   switch (status) {
     case "lost":
-      return "ðŸ”´ Smarrito";
+      return "🔴 Smarrito";
     case "found":
-      return "ðŸ”µ Ritrovato";
+      return "🔵 Ritrovato";
     case "home":
     case "safe":
     default:
-      return "ðŸŸ¢ A casa";
+      return "🟢 A casa";
   }
 }
 
@@ -88,7 +88,7 @@ export default function ProAnimalHistoryPage() {
 
   const pageSubtitle = useMemo(() => {
     if (!animal) return "Timeline non clinica";
-    return `${animal.name}${animal.breed ? ` Â· ${animal.breed}` : ""} Â· ${statusLabel(animal.status)}`;
+    return `${animal.name}${animal.breed ? ` · ${animal.breed}` : ""} · ${statusLabel(animal.status)}`;
   }, [animal]);
 
   async function loadAll() {
@@ -195,7 +195,7 @@ export default function ProAnimalHistoryPage() {
       const json = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        setSaveError(json?.error || "Impossibile salvare lâ€™evento.");
+        setSaveError(json?.error || "Impossibile salvare l’evento.");
         setSaving(false);
         return;
       }
@@ -225,7 +225,7 @@ export default function ProAnimalHistoryPage() {
     return (
       <div className="mx-auto max-w-6xl p-6">
         <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <p className="text-sm text-zinc-600">Caricamento storia animaleâ€¦</p>
+          <p className="text-sm text-zinc-600">Caricamento storia animale…</p>
         </div>
       </div>
     );
@@ -238,7 +238,7 @@ export default function ProAnimalHistoryPage() {
           href="/professionisti/animali"
           className="inline-flex items-center text-sm font-semibold text-zinc-700 hover:text-zinc-900"
         >
-          â† Torna agli animali
+          ← Torna agli animali
         </Link>
 
         <div className="rounded-3xl border border-red-200 bg-white p-6 shadow-sm">
@@ -282,8 +282,8 @@ export default function ProAnimalHistoryPage() {
         <div>
           <h2 className="text-lg font-semibold text-zinc-900">Nuovo evento</h2>
           <p className="mt-2 text-sm text-zinc-600">
-            Registra servizi, attivitÃ  o note non cliniche. I remind clinici arrivano qui
-            automaticamente dal ramo veterinario quando verrÃ  collegato.
+            Registra servizi, attività o note non cliniche. I remind clinici arrivano qui
+            automaticamente dal ramo veterinario quando verrà collegato.
           </p>
         </div>
 
@@ -354,7 +354,7 @@ export default function ProAnimalHistoryPage() {
 
           <div>
             <label className="mb-1 block text-sm font-medium text-zinc-700">
-              Prossima attivitÃ  / promemoria
+              Prossima attività / promemoria
             </label>
             <input
               type="datetime-local"
@@ -380,7 +380,7 @@ export default function ProAnimalHistoryPage() {
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-zinc-700">VisibilitÃ </label>
+            <label className="mb-1 block text-sm font-medium text-zinc-700">Visibilità</label>
             <select
               value={form.visibility}
               onChange={(e) =>
@@ -399,7 +399,7 @@ export default function ProAnimalHistoryPage() {
               value={form.description}
               onChange={(e) => updateForm("description", e.target.value)}
               rows={5}
-              placeholder="Note operative, attivitÃ  svolte, osservazioni pratiche, prossimi passi..."
+              placeholder="Note operative, attività svolte, osservazioni pratiche, prossimi passi..."
               className="w-full rounded-xl border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
             />
           </div>
@@ -436,7 +436,7 @@ export default function ProAnimalHistoryPage() {
         <div>
           <h2 className="text-lg font-semibold text-zinc-900">Timeline</h2>
           <p className="mt-2 text-sm text-zinc-600">
-            Cronologia pratica dellâ€™animale, separata dalla cartella clinica.
+            Cronologia pratica dell’animale, separata dalla cartella clinica.
           </p>
         </div>
 
@@ -480,7 +480,7 @@ export default function ProAnimalHistoryPage() {
                     <h3 className="mt-3 text-base font-semibold text-zinc-900">{event.title}</h3>
 
                     <p className="mt-1 text-sm text-zinc-600">
-                      {event.event_type} Â· {formatHistoryDateTime(event.event_date)}
+                      {event.event_type} · {formatHistoryDateTime(event.event_date)}
                     </p>
 
                     {event.description ? (
@@ -497,7 +497,7 @@ export default function ProAnimalHistoryPage() {
                   <div className="shrink-0 text-xs text-zinc-500">
                     {event.next_action_date ? (
                       <div>
-                        Prossima attivitÃ :
+                        Prossima attività:
                         <div className="mt-1 font-semibold text-zinc-700">
                           {formatHistoryDateTime(event.next_action_date)}
                         </div>

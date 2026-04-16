@@ -153,7 +153,7 @@ function matchesSearch(value: string | null, q: string) {
 
 function getDisplayName(p: Professional) {
   const fullName = [p.first_name, p.last_name].filter(Boolean).join(" ").trim();
-  return p.display_name || fullName || p.business_name || p.email || "â€”";
+  return p.display_name || fullName || p.business_name || p.email || "—";
 }
 
 export default async function SuperAdminProfessionistiPage({
@@ -241,7 +241,7 @@ export default async function SuperAdminProfessionistiPage({
             Professionisti registrati
           </h1>
           <p className="mt-4 text-base leading-relaxed text-zinc-600">
-            Filtra rapidamente i profili e accedi al dettaglio completo per revisione, visibilitÃ  e verifica.
+            Filtra rapidamente i profili e accedi al dettaglio completo per revisione, visibilità e verifica.
           </p>
 
           {error ? (
@@ -261,7 +261,7 @@ export default async function SuperAdminProfessionistiPage({
         <StatCard
           title="Approvati"
           value={String(approvedCount)}
-          description="Profili giÃ  approvati."
+          description="Profili già approvati."
         />
         <StatCard
           title="Da verificare"
@@ -282,7 +282,7 @@ export default async function SuperAdminProfessionistiPage({
               type="text"
               name="q"
               defaultValue={resolved?.q || ""}
-              placeholder="Cerca per nome, email, cittÃ , provincia o categoria"
+              placeholder="Cerca per nome, email, città, provincia o categoria"
               className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 outline-none placeholder:text-zinc-400 focus:border-zinc-400"
             />
 
@@ -351,11 +351,11 @@ export default async function SuperAdminProfessionistiPage({
                 <th className="px-4 py-3">Professionista</th>
                 <th className="px-4 py-3">Categoria</th>
                 <th className="px-4 py-3">Contatti</th>
-                <th className="px-4 py-3">LocalitÃ </th>
+                <th className="px-4 py-3">Località</th>
                 <th className="px-4 py-3">Revisione</th>
                 <th className="px-4 py-3">Ruolo</th>
                 <th className="px-4 py-3">Verifica</th>
-                <th className="px-4 py-3">VisibilitÃ </th>
+                <th className="px-4 py-3">Visibilità</th>
                 <th className="px-4 py-3">Azioni rapide</th>
                 <th className="px-4 py-3">Dettaglio</th>
               </tr>
@@ -383,12 +383,12 @@ export default async function SuperAdminProfessionistiPage({
                         <div className="mt-1 text-xs text-zinc-500">{p.id}</div>
                       </td>
 
-                      <td className="px-4 py-4 text-sm text-zinc-600">{p.category || "â€”"}</td>
+                      <td className="px-4 py-4 text-sm text-zinc-600">{p.category || "—"}</td>
 
-                      <td className="px-4 py-4 text-sm text-zinc-600">{p.email || "â€”"}</td>
+                      <td className="px-4 py-4 text-sm text-zinc-600">{p.email || "—"}</td>
 
                       <td className="px-4 py-4 text-sm text-zinc-600">
-                        {[p.city, p.province].filter(Boolean).join(" Â· ") || "â€”"}
+                        {[p.city, p.province].filter(Boolean).join(" · ") || "—"}
                       </td>
 
                       <td className="px-4 py-4 text-sm">
@@ -411,7 +411,7 @@ export default async function SuperAdminProfessionistiPage({
 
                       <td className="px-4 py-4 text-sm">
                         <div className="flex flex-col gap-2">
-                          <Badge>{p.verification_status || "â€”"}</Badge>
+                          <Badge>{p.verification_status || "—"}</Badge>
                           {p.verification_level ? <Badge>{p.verification_level}</Badge> : null}
                         </div>
                       </td>

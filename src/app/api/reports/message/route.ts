@@ -47,7 +47,7 @@ export async function POST(req: Request) {
 
     if (report.status !== "active") {
       return NextResponse.json(
-        { error: "Questo annuncio non Ã¨ piÃ¹ attivo." },
+        { error: "Questo annuncio non è più attivo." },
         { status: 400 }
       );
     }

@@ -20,7 +20,7 @@ export default async function OwnerAnimalPage({
             href="/identita"
             className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
           >
-            Vai alle identitÃ 
+            Vai alle identità
           </Link>
         </div>
       </div>

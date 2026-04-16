@@ -23,7 +23,7 @@ type Animal = {
 };
 
 function formatAge(ageMonths: number | null) {
-  if (ageMonths == null) return "EtÃ  non indicata";
+  if (ageMonths == null) return "Età non indicata";
   if (ageMonths < 12) return `${ageMonths} mesi`;
   const years = Math.floor(ageMonths / 12);
   return years === 1 ? "1 anno" : `${years} anni`;
@@ -62,7 +62,7 @@ export function AdottaResults({
   if (loading) {
     return (
       <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-        <p className="text-sm text-zinc-700">Caricamento risultatiâ€¦</p>
+        <p className="text-sm text-zinc-700">Caricamento risultati…</p>
       </div>
     );
   }
@@ -116,7 +116,7 @@ export function AdottaResults({
                       ) : null}
                     </p>
                     <p className="mt-1 text-sm text-zinc-600">
-                      {a.city ? a.city : "CittÃ  non indicata"}
+                      {a.city ? a.city : "Città non indicata"}
                       {a.province ? ` (${a.province})` : ""}
                     </p>
                   </div>

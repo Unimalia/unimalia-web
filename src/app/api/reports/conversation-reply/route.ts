@@ -71,7 +71,7 @@ export async function POST(req: Request) {
 
     if (!report || report.status !== "active") {
       return NextResponse.json(
-        { error: "Lâ€™annuncio non Ã¨ piÃ¹ attivo. La conversazione Ã¨ chiusa." },
+        { error: "L’annuncio non è più attivo. La conversazione è chiusa." },
         { status: 400 }
       );
     }

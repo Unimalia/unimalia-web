@@ -17,7 +17,7 @@ type Animal = {
   chip_number: string | null;
   microchip_verified: boolean;
 
-  // âœ… nuovi (se hai fatto SQL A)
+  // ✅ nuovi (se hai fatto SQL A)
   microchip_verified_at?: string | null;
   microchip_verified_by?: string | null;
   microchip_verified_by_label?: string | null;
@@ -116,7 +116,7 @@ export default function ProVerifyPage() {
     [animalId]
   );
 
-  // âœ… Gate: solo vet
+  // ✅ Gate: solo vet
   useEffect(() => {
     let alive = true;
 
@@ -272,9 +272,9 @@ export default function ProVerifyPage() {
       return;
     }
 
-    // âœ… scrive anche â€œchiâ€ (se colonne presenti)
+    // ✅ scrive anche “chi” (se colonne presenti)
     const now = new Date().toISOString();
-    const verifierLabel = "Veterinario"; // poi: "Clinica X" o "Clinica X â€” Dott. Y"
+    const verifierLabel = "Veterinario"; // poi: "Clinica X" o "Clinica X — Dott. Y"
 
     const { error } = await supabase
       .from("animals")
@@ -333,7 +333,7 @@ export default function ProVerifyPage() {
         return;
       }
 
-      // âœ… refresh lista eventi e pulisci selezione
+      // ✅ refresh lista eventi e pulisci selezione
       await loadEvents();
       setSelected({});
     } catch (e: unknown) {
@@ -349,7 +349,7 @@ export default function ProVerifyPage() {
     return (
       <div className="max-w-3xl mx-auto p-6">
         <div className="rounded-3xl border bg-white p-6">
-          <div className="text-sm text-zinc-600">Verifica accessoâ€¦</div>
+          <div className="text-sm text-zinc-600">Verifica accesso…</div>
         </div>
       </div>
     );
@@ -360,7 +360,7 @@ export default function ProVerifyPage() {
       <div className="max-w-3xl mx-auto p-6 space-y-4">
         <div className="text-sm">
           <Link href="/professionisti" className="font-semibold text-zinc-700 hover:text-zinc-900">
-            â† Portale
+            ← Portale
           </Link>
         </div>
 
@@ -374,7 +374,7 @@ export default function ProVerifyPage() {
         <div className="rounded-3xl border border-red-200 bg-white p-6 shadow-sm">
           <h1 className="text-xl font-semibold text-zinc-900">Accesso non autorizzato</h1>
           <p className="mt-2 text-sm text-zinc-700">
-            Questa sezione Ã¨ riservata ai veterinari autorizzati.
+            Questa sezione è riservata ai veterinari autorizzati.
           </p>
 
           <div className="mt-4">
@@ -396,7 +396,7 @@ export default function ProVerifyPage() {
         <div>
           <h1 className="text-2xl font-semibold">Validazione (vet)</h1>
           <p className="text-sm text-zinc-600">
-            Microchip + validazione eventi clinici inseriti dallâ€™owner.
+            Microchip + validazione eventi clinici inseriti dall’owner.
           </p>
         </div>
 
@@ -425,7 +425,7 @@ export default function ProVerifyPage() {
       {/* MICROCHIP */}
       <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
         {loadingAnimal ? (
-          <div className="text-sm text-zinc-600">Caricamento animaleâ€¦</div>
+          <div className="text-sm text-zinc-600">Caricamento animale…</div>
         ) : !animal ? (
           <div className="text-sm text-zinc-700">Animale non disponibile.</div>
         ) : (
@@ -434,7 +434,7 @@ export default function ProVerifyPage() {
               <div className="text-lg font-semibold text-zinc-900">{animal.name}</div>
               <div className="text-sm text-zinc-600">
                 {animal.species}
-                {animal.breed ? ` â€¢ ${animal.breed}` : ""}
+                {animal.breed ? ` • ${animal.breed}` : ""}
               </div>
             </div>
 
@@ -443,15 +443,15 @@ export default function ProVerifyPage() {
               <div className="mt-1 text-sm font-semibold text-zinc-900">
                 {animal.chip_number
                   ? normalizeChip(animal.chip_number)
-                  : "â€” (nessun microchip registrato)"}
+                  : "— (nessun microchip registrato)"}
               </div>
 
               <div className="mt-2 text-xs text-zinc-600">
                 Stato:{" "}
                 {animal.microchip_verified ? (
-                  <span className="font-semibold text-emerald-700">Verificato âœ…</span>
+                  <span className="font-semibold text-emerald-700">Verificato ✅</span>
                 ) : (
-                  <span className="font-semibold text-amber-700">Da verificare â³</span>
+                  <span className="font-semibold text-amber-700">Da verificare ⏳</span>
                 )}
               </div>
 
@@ -473,9 +473,9 @@ export default function ProVerifyPage() {
                 className="rounded-2xl bg-black px-5 py-3 text-sm font-semibold text-white hover:bg-zinc-900 disabled:opacity-60"
               >
                 {savingChip
-                  ? "Salvataggioâ€¦"
+                  ? "Salvataggio…"
                   : animal.microchip_verified
-                    ? "GiÃ  verificato"
+                    ? "Già verificato"
                     : "Segna come verificato"}
               </button>
 
@@ -516,7 +516,7 @@ export default function ProVerifyPage() {
         </div>
 
         {loadingEvents ? (
-          <div className="text-sm text-zinc-600">Caricamento eventiâ€¦</div>
+          <div className="text-sm text-zinc-600">Caricamento eventi…</div>
         ) : pendingEvents.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-zinc-200 p-6 text-sm text-zinc-600">
             Nessun evento da validare.
@@ -530,7 +530,7 @@ export default function ProVerifyPage() {
                 disabled={validating || selectedIds.length === 0}
                 className="rounded-2xl bg-black px-5 py-3 text-sm font-semibold text-white hover:bg-zinc-900 disabled:opacity-60"
               >
-                {validating ? "Validazioneâ€¦" : "Valida selezionati"}
+                {validating ? "Validazione…" : "Valida selezionati"}
               </button>
 
               <button
@@ -539,7 +539,7 @@ export default function ProVerifyPage() {
                 disabled={validating || allPendingIds.length === 0}
                 className="rounded-2xl border border-zinc-200 bg-white px-5 py-3 text-sm font-semibold text-zinc-800 hover:bg-zinc-50 disabled:opacity-60"
               >
-                {validating ? "Validazioneâ€¦" : "Valida tutto"}
+                {validating ? "Validazione…" : "Valida tutto"}
               </button>
 
               <button
@@ -587,7 +587,7 @@ export default function ProVerifyPage() {
                     <div className="mt-1 text-sm font-semibold text-zinc-900">
                       {typeLabel(ev.type)}
                       <span className="ml-2 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700">
-                        â³ Da validare
+                        ⏳ Da validare
                       </span>
                     </div>
 
@@ -604,7 +604,7 @@ export default function ProVerifyPage() {
         )}
 
         <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-700">
-          Nota: ogni evento validato mostrerÃ  â€œValidato da Clinica/Veterinarioâ€ e sarÃ  tracciabile.
+          Nota: ogni evento validato mostrerà “Validato da Clinica/Veterinario” e sarà tracciabile.
         </div>
       </div>
     </div>

@@ -23,7 +23,7 @@ function buildMessage(params: {
     parts.push(`Dettaglio: ${shortDescription}`);
   }
 
-  return parts.join(" â€¢ ");
+  return parts.join(" • ");
 }
 
 export async function createClinicalEventOwnerNotification(

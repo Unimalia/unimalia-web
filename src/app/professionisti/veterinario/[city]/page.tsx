@@ -101,7 +101,7 @@ export default async function VeterinarioCityPage({ params }: PageProps) {
           <p className="mt-4 text-lg text-zinc-600">
             Se stai cercando un veterinario a {city.name}, UNIMALIA ti aiuta a
             orientarti tra i professionisti del settore animale e a gestire in modo
-            piÃ¹ semplice le informazioni legate al tuo animale.
+            più semplice le informazioni legate al tuo animale.
           </p>
 
           <div className="mt-6 flex gap-3 flex-wrap">
@@ -116,7 +116,7 @@ export default async function VeterinarioCityPage({ params }: PageProps) {
               href="/identita/nuovo"
               className="border px-5 py-3 rounded-xl font-semibold"
             >
-              Crea identitÃ  animale
+              Crea identità animale
             </Link>
           </div>
         </header>
@@ -125,9 +125,9 @@ export default async function VeterinarioCityPage({ params }: PageProps) {
         <div className="mt-8 grid gap-6">
           <Section title={`Come trovare un veterinario a ${city.name}`}>
             <p>
-              Quando cerchi un veterinario a {city.name}, Ã¨ importante valutare
-              diversi aspetti: disponibilitÃ , tipologia di struttura, esperienza e
-              possibilitÃ  di gestire in modo ordinato le informazioni dellâ€™animale.
+              Quando cerchi un veterinario a {city.name}, è importante valutare
+              diversi aspetti: disponibilità, tipologia di struttura, esperienza e
+              possibilità di gestire in modo ordinato le informazioni dell’animale.
             </p>
 
             <p>
@@ -138,15 +138,15 @@ export default async function VeterinarioCityPage({ params }: PageProps) {
 
           <Section title="Cosa offre UNIMALIA">
             <ul className="list-disc pl-6 space-y-2">
-              <li>gestione identitÃ  digitale animale</li>
+              <li>gestione identità digitale animale</li>
               <li>accesso controllato ai dati</li>
               <li>supporto nella gestione clinica</li>
-              <li>organizzazione piÃ¹ chiara delle informazioni</li>
+              <li>organizzazione più chiara delle informazioni</li>
               <li>riduzione della frammentazione tra strumenti diversi</li>
             </ul>
           </Section>
 
-          <Section title="PerchÃ© Ã¨ importante centralizzare le informazioni">
+          <Section title="Perché è importante centralizzare le informazioni">
             <p>
               Spesso i dati di un animale sono sparsi tra documenti, chat,
               appuntamenti e appunti personali. Questo crea confusione e perdita di
@@ -177,7 +177,7 @@ export default async function VeterinarioCityPage({ params }: PageProps) {
                 <h3 className="font-semibold">
                   UNIMALIA sostituisce il veterinario?
                 </h3>
-                <p>No, Ã¨ uno strumento di supporto e gestione.</p>
+                <p>No, è uno strumento di supporto e gestione.</p>
               </div>
 
               <div>
@@ -185,7 +185,7 @@ export default async function VeterinarioCityPage({ params }: PageProps) {
                   Posso usare UNIMALIA con il mio veterinario?
                 </h3>
                 <p>
-                  SÃ¬, la piattaforma Ã¨ pensata anche per facilitare la collaborazione.
+                  Sì, la piattaforma è pensata anche per facilitare la collaborazione.
                 </p>
               </div>
             </div>
@@ -197,8 +197,8 @@ export default async function VeterinarioCityPage({ params }: PageProps) {
             </p>
 
             <p>
-              â€¢ Professionisti: professionisti@unimalia.it <br />
-              â€¢ Utenti: info@unimalia.it
+              • Professionisti: professionisti@unimalia.it <br />
+              • Utenti: info@unimalia.it
             </p>
           </Section>
         </div>

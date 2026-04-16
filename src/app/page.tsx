@@ -5,14 +5,14 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "UNIMALIA | Infrastruttura digitale per il mondo animale",
   description:
-    "UNIMALIA unisce identitÃ  animale, dati clinici, smarrimenti, ritrovamenti e connessione tra proprietari, veterinari e professionisti del mondo pet.",
+    "UNIMALIA unisce identità animale, dati clinici, smarrimenti, ritrovamenti e connessione tra proprietari, veterinari e professionisti del mondo pet.",
   alternates: {
     canonical: "https://unimalia.it/",
   },
   openGraph: {
     title: "UNIMALIA | Infrastruttura digitale per il mondo animale",
     description:
-      "IdentitÃ  animale, cartella clinica condivisa, smarrimenti, ritrovamenti e continuitÃ  tra professionisti in un unico ecosistema digitale.",
+      "Identità animale, cartella clinica condivisa, smarrimenti, ritrovamenti e continuità tra professionisti in un unico ecosistema digitale.",
     url: "https://unimalia.it/",
     siteName: "UNIMALIA",
     images: ["/home/logo-app.png"],
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "UNIMALIA | Infrastruttura digitale per il mondo animale",
     description:
-      "IdentitÃ  animale, cartella clinica condivisa, smarrimenti, ritrovamenti e continuitÃ  tra professionisti in un unico ecosistema digitale.",
+      "Identità animale, cartella clinica condivisa, smarrimenti, ritrovamenti e continuità tra professionisti in un unico ecosistema digitale.",
     images: ["/home/logo-app.png"],
   },
 };
@@ -124,7 +124,7 @@ function SectionIntro({
   return (
     <div className="max-w-3xl">
       {eyebrow ? (
-        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#55657d]">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#6f7d91]">
           {eyebrow}
         </p>
       ) : null}
@@ -266,7 +266,7 @@ function QuickActionCard({
       className="group block rounded-[2rem] border border-[#e3e9f0] bg-white p-7 shadow-[0_14px_40px_rgba(42,56,86,0.06)] transition hover:-translate-y-1 hover:shadow-[0_20px_50px_rgba(42,56,86,0.08)]"
     >
       <div className="flex items-center justify-between gap-4">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#55657d]">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#6f7d91]">
           Azione {number}
         </p>
         <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-[#30486f] text-sm font-semibold text-white">
@@ -277,7 +277,7 @@ function QuickActionCard({
       <h2 className="mt-8 text-2xl font-semibold tracking-tight text-[#30486f]">{title}</h2>
       <p className="mt-4 text-sm leading-relaxed text-[#5f708a] sm:text-base">{text}</p>
       <div className="mt-8 text-sm font-semibold text-[#30486f] transition group-hover:text-[#2f69c7]">
-        {cta} â†’
+        {cta} →
       </div>
     </Link>
   );
@@ -344,7 +344,7 @@ function AudienceCard({
           href={href}
           className="inline-flex items-center text-sm font-semibold text-[#30486f] transition hover:text-[#2f69c7]"
         >
-          {cta} â†’
+          {cta} →
         </Link>
       </div>
     </div>
@@ -416,7 +416,7 @@ export default function HomePage() {
                 <NavLink href="/lieti-fine">Lieti Fine</NavLink>
                 <NavLink href="/adotta">Adozioni</NavLink>
                 <NavLink href="/servizi">Servizi</NavLink>
-                <NavLink href="/identita">IdentitÃ  animale</NavLink>
+                <NavLink href="/identita">Identità animale</NavLink>
                 <NavLink href="/professionisti">Area professionisti</NavLink>
                 <NavLink href="/profilo">Profilo</NavLink>
               </nav>
@@ -426,17 +426,17 @@ export default function HomePage() {
           <section className="relative overflow-hidden bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)]">
             <div className="grid min-h-[560px] grid-cols-1 md:grid-cols-[0.96fr_1.04fr]">
               <div className="flex flex-col justify-center px-8 py-12 md:px-10 lg:px-14">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#55657d]">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#6f7d91]">
                   Building the Digital Infrastructure of Veterinary Care
                 </p>
 
                 <h1 className="mt-6 max-w-[660px] text-[40px] font-semibold leading-[1.02] tracking-[-0.05em] text-[#30486f] md:text-[62px]">
-                  Lâ€™infrastruttura digitale che mancava al mondo veterinario
+                  L’infrastruttura digitale che mancava al mondo veterinario
                 </h1>
 
                 <p className="mt-6 max-w-[580px] text-[18px] leading-relaxed text-[#5f708a] md:text-[22px]">
-                  IdentitÃ  animale, dati clinici, smarrimenti, consulti e continuitÃ  tra
-                  professionisti in unâ€™unica piattaforma piÃ¹ chiara, piÃ¹ forte, piÃ¹ utile.
+                  Identità animale, dati clinici, smarrimenti, consulti e continuità tra
+                  professionisti in un’unica piattaforma più chiara, più forte, più utile.
                 </p>
 
                 <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
@@ -447,14 +447,14 @@ export default function HomePage() {
                 <div className="mt-10 grid gap-4 sm:grid-cols-3">
                   <HeroStat
                     value="1 base unica"
-                    text="Per identitÃ  animale, storico, accessi e strumenti chiave."
+                    text="Per identità animale, storico, accessi e strumenti chiave."
                   />
                   <HeroStat
-                    value="+ continuitÃ "
+                    value="+ continuità"
                     text="Tra proprietario, clinica, veterinari e rete professionale."
                   />
                   <HeroStat
-                    value="+ rapiditÃ "
+                    value="+ rapidità"
                     text="Nei momenti in cui serve agire subito e con ordine."
                   />
                 </div>
@@ -464,7 +464,7 @@ export default function HomePage() {
                 <div className="relative h-full min-h-[380px] w-full">
                   <Image
                     src="/home/hero-animals.png"
-                    alt="Hero UNIMALIA con cane, gatto e identitÃ  digitale"
+                    alt="Hero UNIMALIA con cane, gatto e identità digitale"
                     fill
                     priority
                     className="object-cover object-center"
@@ -480,10 +480,10 @@ export default function HomePage() {
           <section className="bg-white px-7 py-10 md:px-10 md:py-12">
             <div className="grid gap-10 md:grid-cols-3 md:gap-0">
               <FeatureImageCard
-                title="IdentitÃ  Digitale"
+                title="Identità Digitale"
                 text="Componenti integrali e generabili."
                 imageSrc="/home/feature-identity.png"
-                imageAlt="Visual identitÃ  digitale UNIMALIA"
+                imageAlt="Visual identità digitale UNIMALIA"
                 bordered
               />
               <FeatureImageCard
@@ -508,14 +508,14 @@ export default function HomePage() {
             <div className="grid gap-0 md:grid-cols-2">
               <SplitImageFeature
                 title="Connetti Veterinari e Cliniche"
-                text="Un ecosistema progettato per unire professionisti, strutture, accessi e continuitÃ  operativa."
+                text="Un ecosistema progettato per unire professionisti, strutture, accessi e continuità operativa."
                 imageSrc="/home/network-vets.png"
                 imageAlt="Visual rete di veterinari e cliniche"
                 bordered
               />
               <SplitImageFeature
                 title="Gestisci tutto il tuo mondo Pet"
-                text="Tutti i dati del tuo animale in unâ€™unica piattaforma, dal profilo allâ€™emergenza fino alla continuitÃ  futura."
+                text="Tutti i dati del tuo animale in un’unica piattaforma, dal profilo all’emergenza fino alla continuità futura."
                 imageSrc="/home/pet-world.png"
                 imageAlt="Visual mondo pet UNIMALIA"
                 reverse
@@ -529,7 +529,7 @@ export default function HomePage() {
             <div className="grid gap-5 md:grid-cols-4">
               <BottomItem title="Accesso Sicuro" />
               <BottomItem title="Referti Condivisi" />
-              <BottomItem title="InteroperabilitÃ " />
+              <BottomItem title="Interoperabilità" />
               <BottomItem title="Trova il tuo Pet" />
             </div>
           </section>
@@ -539,15 +539,15 @@ export default function HomePage() {
           <div className="grid gap-5 xl:grid-cols-3">
             <QuickActionCard
               number="1"
-              title="Crea lâ€™identitÃ  animale"
-              text="Parti da una base chiara: dati essenziali, QR code e strumenti pronti allâ€™uso."
+              title="Crea l’identità animale"
+              text="Parti da una base chiara: dati essenziali, QR code e strumenti pronti all’uso."
               href="/identita/nuovo"
               cta="Inizia ora"
             />
             <QuickActionCard
               number="2"
               title="Hai perso un animale?"
-              text="Pubblica subito una segnalazione ordinata per muoverti in modo piÃ¹ rapido e concreto."
+              text="Pubblica subito una segnalazione ordinata per muoverti in modo più rapido e concreto."
               href="/smarrimenti/nuovo"
               cta="Segnala smarrimento"
             />
@@ -565,17 +565,17 @@ export default function HomePage() {
           <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
             <div>
               <SectionIntro
-                eyebrow="PerchÃ© nasce"
-                title="Quando le informazioni sono sparse, anche le cose semplici diventano piÃ¹ difficili."
-                description="Email, carta, messaggi, referti e dettagli salvati in posti diversi rallentano tutto. UNIMALIA nasce per creare una base unica piÃ¹ chiara, prima dellâ€™emergenza, durante lâ€™emergenza e anche dopo."
+                eyebrow="Perché nasce"
+                title="Quando le informazioni sono sparse, anche le cose semplici diventano più difficili."
+                description="Email, carta, messaggi, referti e dettagli salvati in posti diversi rallentano tutto. UNIMALIA nasce per creare una base unica più chiara, prima dell’emergenza, durante l’emergenza e anche dopo."
               />
             </div>
 
             <div className="grid gap-4">
-              <HighlightBox text="âœ” Dati essenziali piÃ¹ ordinati" />
-              <HighlightBox text="âœ” Strumenti rapidi quando serve agire" />
-              <HighlightBox text="âœ” PiÃ¹ chiarezza tra proprietari e professionisti" />
-              <HighlightBox text="âœ” Meno dispersione, piÃ¹ continuitÃ " />
+              <HighlightBox text="✔ Dati essenziali più ordinati" />
+              <HighlightBox text="✔ Strumenti rapidi quando serve agire" />
+              <HighlightBox text="✔ Più chiarezza tra proprietari e professionisti" />
+              <HighlightBox text="✔ Meno dispersione, più continuità" />
             </div>
           </div>
         </section>
@@ -584,55 +584,55 @@ export default function HomePage() {
           <SectionIntro
             eyebrow="Cosa puoi fare"
             title="Le azioni principali sono subito chiare"
-            description="La homepage deve orientare in pochi secondi: cosa puoi fare, dove devi andare e perchÃ© conviene farlo da qui."
+            description="La homepage deve orientare in pochi secondi: cosa puoi fare, dove devi andare e perché conviene farlo da qui."
           />
 
           <div className="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
             <UseCaseCard
-              title="Crea lâ€™identitÃ  dellâ€™animale"
-              text="Raccogli i dati essenziali in una scheda digitale chiara, piÃ¹ semplice da consultare e riutilizzare."
+              title="Crea l’identità dell’animale"
+              text="Raccogli i dati essenziali in una scheda digitale chiara, più semplice da consultare e riutilizzare."
             />
             <UseCaseCard
               title="Pubblica uno smarrimento"
-              text="Centralizza subito le informazioni importanti e rendi la ricerca piÃ¹ ordinata."
+              text="Centralizza subito le informazioni importanti e rendi la ricerca più ordinata."
             />
             <UseCaseCard
               title="Segnala trovato o avvistato"
-              text="Aiuta a raccogliere segnalazioni utili sul territorio in modo piÃ¹ verificabile e leggibile."
+              text="Aiuta a raccogliere segnalazioni utili sul territorio in modo più verificabile e leggibile."
             />
             <UseCaseCard
               title="Collabora con professionisti"
-              text="Concedi accessi controllati e prepara una continuitÃ  migliore con veterinari e operatori del settore."
+              text="Concedi accessi controllati e prepara una continuità migliore con veterinari e operatori del settore."
             />
           </div>
         </section>
 
         <section className="py-14 sm:py-20">
           <SectionIntro
-            eyebrow="Per chi Ã¨"
-            title="Percorsi distinti, ruoli piÃ¹ chiari"
-            description="UNIMALIA funziona meglio quando ogni utente capisce subito il proprio spazio, il proprio ruolo e lâ€™azione giusta da fare."
+            eyebrow="Per chi è"
+            title="Percorsi distinti, ruoli più chiari"
+            description="UNIMALIA funziona meglio quando ogni utente capisce subito il proprio spazio, il proprio ruolo e l’azione giusta da fare."
           />
 
           <div className="mt-10 grid gap-6 lg:grid-cols-3">
             <AudienceCard
               title="Per i proprietari"
-              text="Uno spazio piÃ¹ ordinato per gestire identitÃ , accessi e momenti delicati senza perdere tempo."
+              text="Uno spazio più ordinato per gestire identità, accessi e momenti delicati senza perdere tempo."
               bullets={[
-                "Crei lâ€™identitÃ  digitale dellâ€™animale e tieni i dati essenziali in un unico posto.",
-                "Decidi tu chi puÃ² accedere alle informazioni cliniche e per quanto tempo.",
+                "Crei l’identità digitale dell’animale e tieni i dati essenziali in un unico posto.",
+                "Decidi tu chi può accedere alle informazioni cliniche e per quanto tempo.",
                 "Hai strumenti rapidi per smarrimenti, segnalazioni e rientri con lieto fine.",
               ]}
               href="/identita"
-              cta="Apri area identitÃ "
+              cta="Apri area identità"
             />
 
             <AudienceCard
               title="Per i veterinari"
-              text="Un flusso piÃ¹ pulito per accedere ai dati autorizzati, lavorare sulla cartella clinica e gestire consulti."
+              text="Un flusso più pulito per accedere ai dati autorizzati, lavorare sulla cartella clinica e gestire consulti."
               bullets={[
                 "Richiedi accesso agli animali solo quando autorizzato dal proprietario.",
-                "Operi sulla cartella clinica con tracciabilitÃ  e ruoli piÃ¹ chiari.",
+                "Operi sulla cartella clinica con tracciabilità e ruoli più chiari.",
                 "Invii consulti e condividi eventi clinici in modo controllato.",
               ]}
               href="/professionisti/dashboard"
@@ -641,11 +641,11 @@ export default function HomePage() {
 
             <AudienceCard
               title="Per altri professionisti"
-              text="Uno spazio pensato per crescere oltre lâ€™area clinica, mantenendo funzioni e responsabilitÃ  ben distinte."
+              text="Uno spazio pensato per crescere oltre l’area clinica, mantenendo funzioni e responsabilità ben distinte."
               bullets={[
                 "Toelettatori, pet sitter, pensioni e addestratori avranno strumenti dedicati al proprio lavoro.",
-                "Le attivitÃ  non cliniche resteranno separate dalla cartella veterinaria.",
-                "Lâ€™obiettivo Ã¨ favorire collaborazione, ordine e continuitÃ  tra servizi diversi.",
+                "Le attività non cliniche resteranno separate dalla cartella veterinaria.",
+                "L’obiettivo è favorire collaborazione, ordine e continuità tra servizi diversi.",
               ]}
               href="/servizi"
               cta="Scopri i servizi"
@@ -657,14 +657,14 @@ export default function HomePage() {
           <SectionIntro
             eyebrow="Come funziona"
             title="Prima prepari una base chiara, poi reagisci meglio"
-            description="UNIMALIA deve essere utile prima dellâ€™emergenza, durante lâ€™emergenza e anche dopo."
+            description="UNIMALIA deve essere utile prima dell’emergenza, durante l’emergenza e anche dopo."
           />
 
           <div className="mt-10 grid gap-5 lg:grid-cols-4">
             <TimelineStep
               number="1"
               title="Crea la scheda"
-              text="Inserisci i dati principali dellâ€™animale e genera la sua identitÃ  digitale."
+              text="Inserisci i dati principali dell’animale e genera la sua identità digitale."
             />
             <TimelineStep
               number="2"
@@ -674,12 +674,12 @@ export default function HomePage() {
             <TimelineStep
               number="3"
               title="Gestisci segnalazioni"
-              text="In caso di smarrimento, ritrovamento o avvistamento hai giÃ  una base piÃ¹ pronta e ordinata."
+              text="In caso di smarrimento, ritrovamento o avvistamento hai già una base più pronta e ordinata."
             />
             <TimelineStep
               number="4"
               title="Chiudi con lieto fine"
-              text="Quando il caso si risolve, le informazioni restano piÃ¹ chiare e utili anche dopo."
+              text="Quando il caso si risolve, le informazioni restano più chiare e utili anche dopo."
             />
           </div>
         </section>
@@ -688,19 +688,19 @@ export default function HomePage() {
           <div className="overflow-hidden rounded-[2.5rem] border border-[#e3e9f0] bg-white shadow-[0_24px_80px_rgba(42,56,86,0.08)]">
             <div className="grid gap-8 lg:grid-cols-[1.12fr_0.88fr]">
               <div className="px-6 py-8 sm:px-8 sm:py-10 lg:px-10 lg:py-12">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#55657d]">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#6f7d91]">
                   Chiusura
                 </p>
                 <h2 className="mt-4 max-w-3xl text-3xl font-semibold tracking-[-0.04em] text-[#30486f] sm:text-4xl lg:text-5xl">
-                  UNIMALIA rende piÃ¹ semplice proteggere lâ€™animale nel momento in cui conta davvero.
+                  UNIMALIA rende più semplice proteggere l’animale nel momento in cui conta davvero.
                 </h2>
                 <p className="mt-5 max-w-2xl text-base leading-relaxed text-[#5f708a] sm:text-lg">
-                  IdentitÃ  digitale, accessi clinici controllati, consulti, smarrimenti, animali
-                  trovati, avvistamenti e lieti fine: meno dispersione, piÃ¹ chiarezza, piÃ¹ fiducia.
+                  Identità digitale, accessi clinici controllati, consulti, smarrimenti, animali
+                  trovati, avvistamenti e lieti fine: meno dispersione, più chiarezza, più fiducia.
                 </p>
 
                 <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-                  <PrimaryButton href="/identita/nuovo">Crea identitÃ  animale</PrimaryButton>
+                  <PrimaryButton href="/identita/nuovo">Crea identità animale</PrimaryButton>
                   <SecondaryButton href="/smarrimenti/nuovo">Segnala smarrimento</SecondaryButton>
                   <SecondaryButton href="/trovati/nuovo">Segnala trovato o avvistato</SecondaryButton>
                 </div>

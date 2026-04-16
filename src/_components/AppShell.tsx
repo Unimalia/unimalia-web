@@ -13,7 +13,7 @@ const nav: NavItem[] = [
   { href: "/lieti-fine", label: "Lieti Fine" },
   { href: "/adotta", label: "Adozioni" },
   { href: "/servizi", label: "Servizi" },
-  { href: "/identita", label: "IdentitÃ  animale" },
+  { href: "/identita", label: "Identità animale" },
 ];
 
 const proHref = "/professionisti/dashboard";
@@ -52,11 +52,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </div>
 
             <div className="min-w-0">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#55657d]">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#6f7d91]">
                 UNIMALIA
               </p>
               <p className="truncate text-sm font-medium text-[#30486f] sm:text-[15px]">
-                IdentitÃ  animale, emergenza e continuitÃ  clinica
+                Identità animale, emergenza e continuità clinica
               </p>
             </div>
           </Link>
@@ -72,15 +72,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <footer className="mt-24 border-t border-[#e3e9f0] bg-white">
         <div className="mx-auto grid w-full max-w-7xl gap-12 px-4 py-14 sm:px-6 lg:grid-cols-[1.3fr_0.7fr] lg:px-8">
           <div className="max-w-2xl">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#55657d]">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#6f7d91]">
               UNIMALIA
             </p>
             <h2 className="mt-4 text-2xl font-semibold tracking-tight text-[#30486f] sm:text-3xl">
-              Un modo piÃ¹ chiaro per proteggere informazioni, accessi e momenti importanti.
+              Un modo più chiaro per proteggere informazioni, accessi e momenti importanti.
             </h2>
             <p className="mt-5 text-sm leading-relaxed text-[#5f708a] sm:text-base">
-              UNIMALIA nasce come impresa responsabile: una parte dei ricavi verrÃ  reinvestita nel
-              progetto e una parte devolverÃ  valore al mondo animale.
+              UNIMALIA nasce come impresa responsabile: una parte dei ricavi verrà reinvestita nel
+              progetto e una parte devolverà valore al mondo animale.
             </p>
           </div>
 
@@ -98,7 +98,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   Lieti Fine
                 </Link>
                 <Link className="transition hover:text-[#30486f]" href="/identita">
-                  IdentitÃ  animale
+                  Identità animale
                 </Link>
                 <Link className="transition hover:text-[#30486f]" href="/professionisti/dashboard">
                   Professionisti
@@ -124,9 +124,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </div>
 
         <div className="border-t border-[#eef2f7]">
-          <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-4 py-5 text-xs text-[#55657d] sm:px-6 sm:flex-row sm:items-center sm:justify-between lg:px-8">
-            <p>Â© {new Date().getFullYear()} UNIMALIA</p>
-            <p>Meno dispersione, piÃ¹ chiarezza, piÃ¹ continuitÃ .</p>
+          <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-4 py-5 text-xs text-[#6f7d91] sm:px-6 sm:flex-row sm:items-center sm:justify-between lg:px-8">
+            <p>© {new Date().getFullYear()} UNIMALIA</p>
+            <p>Meno dispersione, più chiarezza, più continuità.</p>
           </div>
         </div>
       </footer>

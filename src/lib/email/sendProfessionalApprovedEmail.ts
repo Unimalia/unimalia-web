@@ -39,7 +39,7 @@ function categoryLabel(category?: string | null, isVet?: boolean) {
     case "pet_detective":
       return "Pet Detective";
     case "ponte_arcobaleno":
-      return "Ponte dellâ€™Arcobaleno";
+      return "Ponte dell’Arcobaleno";
     case "veterinari":
       return "Veterinario";
     case "altro":
@@ -97,14 +97,14 @@ export async function sendProfessionalApprovedEmail({
                 </p>
 
                 <p style="margin:12px 0 0 0;font-size:16px;line-height:26px;color:#52525b;">
-                  il tuo profilo <strong>${escapeHtml(roleLabel)}</strong> su UNIMALIA Ã¨ stato verificato e approvato.
+                  il tuo profilo <strong>${escapeHtml(roleLabel)}</strong> su UNIMALIA è stato verificato e approvato.
                 </p>
 
                 ${
                   safeBusiness
                     ? `
                 <p style="margin:12px 0 0 0;font-size:16px;line-height:26px;color:#52525b;">
-                  Struttura / attivitÃ : <strong>${safeBusiness}</strong>
+                  Struttura / attività: <strong>${safeBusiness}</strong>
                 </p>
                 `
                     : ""
@@ -136,7 +136,7 @@ export async function sendProfessionalApprovedEmail({
                   <div style="font-size:14px;line-height:24px;color:#3f3f46;">
                     <div><strong>Profilo:</strong> ${escapeHtml(roleLabel)}</div>
                     <div><strong>Stato:</strong> Verificato UNIMALIA</div>
-                    ${safeBusiness ? `<div><strong>AttivitÃ :</strong> ${safeBusiness}</div>` : ""}
+                    ${safeBusiness ? `<div><strong>Attività:</strong> ${safeBusiness}</div>` : ""}
                   </div>
                 </div>
               </td>
@@ -155,7 +155,7 @@ export async function sendProfessionalApprovedEmail({
               <td style="padding:24px 32px 32px 32px;">
                 <p style="margin:0;font-size:12px;line-height:20px;color:#71717a;">
                   UNIMALIA<br />
-                  IdentitÃ  animale digitale, accessi clinici controllati, consulti e smarrimenti.
+                  Identità animale digitale, accessi clinici controllati, consulti e smarrimenti.
                 </p>
               </td>
             </tr>
@@ -172,8 +172,8 @@ export async function sendProfessionalApprovedEmail({
     "",
     `Ciao ${displayName || "Professionista"},`,
     "",
-    `Il tuo profilo ${roleLabel} su UNIMALIA Ã¨ stato verificato e approvato.`,
-    safeBusiness ? `Struttura / attivitÃ : ${businessName}` : "",
+    `Il tuo profilo ${roleLabel} su UNIMALIA è stato verificato e approvato.`,
+    safeBusiness ? `Struttura / attività: ${businessName}` : "",
     "Stato: Verificato UNIMALIA",
     "",
     "Da questo momento puoi accedere al Portale Professionisti e utilizzare le funzioni abilitate per il tuo profilo.",

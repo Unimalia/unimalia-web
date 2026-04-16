@@ -42,7 +42,7 @@ function pickProvince(components?: google.maps.GeocoderAddressComponent[] | null
   const prov = components.find((c) => c.types?.includes("administrative_area_level_2"));
   const short = (prov?.short_name || "").trim().toUpperCase();
   if (short.length === 2) return short;
-  // fallback: prova a estrarre 2 lettere se arriva in modo â€œstranoâ€
+  // fallback: prova a estrarre 2 lettere se arriva in modo “strano”
   if (short.length > 2) return short.slice(0, 2);
   return null;
 }
@@ -138,7 +138,7 @@ export default function LocationPicker({ apiKey, value, onChange, onAddress, cla
         const input = inputRef.current;
         if (input) {
           const ac = new google.maps.places.Autocomplete(input, {
-            // fondamentale: address_components per cittÃ /prov
+            // fondamentale: address_components per città/prov
             fields: ["geometry", "formatted_address", "address_components", "name"],
             // tieni l'autocomplete in Italia
             componentRestrictions: { country: "it" },
@@ -160,7 +160,7 @@ export default function LocationPicker({ apiKey, value, onChange, onAddress, cla
 
             onChange({ lat, lng });
 
-            // âœ… autofill cittÃ /provincia
+            // ✅ autofill città/provincia
             if (onAddress) {
               const components = place.address_components ?? null;
               const city = pickCity(components);
@@ -187,7 +187,7 @@ export default function LocationPicker({ apiKey, value, onChange, onAddress, cla
     };
   }, [apiKey, defaultCenter, onChange, onAddress, value.lat, value.lng]);
 
-  // quando value cambia dallâ€™esterno, aggiorna pin + centro
+  // quando value cambia dall’esterno, aggiorna pin + centro
   useEffect(() => {
     const map = mapRef.current;
     const marker = markerRef.current;

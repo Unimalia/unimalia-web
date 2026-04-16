@@ -71,7 +71,7 @@ export async function requireClinicOperatorSession(
   if (!session) {
     return {
       ok: false,
-      reason: "Nessun operatore attivo su questa postazione. Attiva lâ€™operatore con PIN.",
+      reason: "Nessun operatore attivo su questa postazione. Attiva l’operatore con PIN.",
       status: 403,
     };
   }

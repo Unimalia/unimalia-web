@@ -85,7 +85,7 @@ function StatCard({
 }
 
 function formatDateTime(value: string | null) {
-  if (!value) return "â€”";
+  if (!value) return "—";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleString("it-IT");
@@ -112,12 +112,12 @@ function buildHref({
 
 function extractIp(meta: Record<string, unknown> | null) {
   const value = meta?.ip;
-  return typeof value === "string" && value.trim() ? value : "â€”";
+  return typeof value === "string" && value.trim() ? value : "—";
 }
 
 function extractUserAgent(meta: Record<string, unknown> | null) {
   const value = meta?.user_agent;
-  return typeof value === "string" && value.trim() ? value : "â€”";
+  return typeof value === "string" && value.trim() ? value : "—";
 }
 
 function stringifyMeta(meta: Record<string, unknown> | null) {
@@ -182,12 +182,12 @@ export default async function SuperAdminAuditPage({
       <section className="rounded-[2rem] border border-zinc-200 bg-white p-7 shadow-sm">
         <div className="max-w-4xl">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge tone="info">Registro attivitÃ </Badge>
+            <Badge tone="info">Registro attività</Badge>
             <Badge>Ultimi 100 eventi</Badge>
           </div>
 
           <h1 className="mt-4 text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl">
-            AttivitÃ  superadmin
+            Attività superadmin
           </h1>
 
           <p className="mt-4 text-base leading-relaxed text-zinc-600">
@@ -197,7 +197,7 @@ export default async function SuperAdminAuditPage({
 
           {error ? (
             <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-              Errore caricamento registro attivitÃ : {error.message}
+              Errore caricamento registro attività: {error.message}
             </div>
           ) : null}
         </div>
@@ -335,11 +335,11 @@ export default async function SuperAdminAuditPage({
 
                     <td className="px-4 py-4 text-sm text-zinc-600">
                       <div className="font-medium text-zinc-900">{row.target_type}</div>
-                      <div className="mt-1 text-xs text-zinc-500">{row.target_id || "â€”"}</div>
+                      <div className="mt-1 text-xs text-zinc-500">{row.target_id || "—"}</div>
                     </td>
 
                     <td className="px-4 py-4 text-sm text-zinc-600">
-                      <div>{row.admin_id || "â€”"}</div>
+                      <div>{row.admin_id || "—"}</div>
                     </td>
 
                     <td className="px-4 py-4 text-sm text-zinc-600">{extractIp(row.meta_json)}</td>

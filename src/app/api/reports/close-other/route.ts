@@ -37,7 +37,7 @@ export async function POST(req: Request) {
 
     if (report.type !== "lost") {
       return NextResponse.json(
-        { error: "Questa azione Ã¨ disponibile solo per gli smarrimenti." },
+        { error: "Questa azione è disponibile solo per gli smarrimenti." },
         { status: 400 }
       );
     }
@@ -48,7 +48,7 @@ export async function POST(req: Request) {
 
     if (report.status !== "active") {
       return NextResponse.json(
-        { error: "Questo annuncio non Ã¨ piÃ¹ in uno stato aggiornabile da questa pagina." },
+        { error: "Questo annuncio non è più in uno stato aggiornabile da questa pagina." },
         { status: 400 }
       );
     }

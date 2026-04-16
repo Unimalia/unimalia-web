@@ -80,7 +80,7 @@ export default function EmergencyQrPanel({ animalId }: Props) {
   }
 
   if (loading) {
-    return <p className="text-sm text-zinc-600">Caricamento profilo emergenzaâ€¦</p>;
+    return <p className="text-sm text-zinc-600">Caricamento profilo emergenza…</p>;
   }
 
   if (!profile) {
@@ -95,7 +95,7 @@ export default function EmergencyQrPanel({ animalId }: Props) {
 
         <p className="mt-1 text-sm text-zinc-600">
           Questa scheda viene mostrata quando qualcuno scansiona il QR
-          dellâ€™animale senza essere autenticato su UNIMALIA.
+          dell’animale senza essere autenticato su UNIMALIA.
         </p>
 
         <label className="mt-4 flex items-center gap-3 text-sm">

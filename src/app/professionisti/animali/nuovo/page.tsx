@@ -129,7 +129,7 @@ export default function NuovoAnimalePage() {
                     {animal.name} - {animal.species}
                   </p>
                   <p className="text-sm text-gray-500">
-                    Microchip: {animal.chip_number || "â€”"}
+                    Microchip: {animal.chip_number || "—"}
                   </p>
 
                   <button

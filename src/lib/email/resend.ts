@@ -47,8 +47,8 @@ export async function sendReportCreatedEmail({
 
   const subject =
     type === "lost"
-      ? "UNIMALIA Â· Smarrimento pubblicato correttamente"
-      : "UNIMALIA Â· Segnalazione pubblicata correttamente";
+      ? "UNIMALIA · Smarrimento pubblicato correttamente"
+      : "UNIMALIA · Segnalazione pubblicata correttamente";
 
   const html = `
     <div style="font-family: Arial, Helvetica, sans-serif; color: #18181b; line-height: 1.6;">
@@ -63,7 +63,7 @@ export async function sendReportCreatedEmail({
       </p>
 
       <p style="margin: 0 0 20px;">
-        Puoi aprire direttamente lâ€™annuncio da qui:
+        Puoi aprire direttamente l’annuncio da qui:
       </p>
 
       <p style="margin: 0 0 24px;">
@@ -85,7 +85,7 @@ export async function sendReportCreatedEmail({
               <p style="margin: 0;">
                 Se ${escapeHtml(
                   displayName
-                )} verrÃ  ritrovato, potrai aggiornare lo stato dellâ€™annuncio. In seguito potremo anche invitarti a creare la scheda animale su UNIMALIA, cosÃ¬ avrai tutto piÃ¹ pronto in caso di emergenza.
+                )} verrà ritrovato, potrai aggiornare lo stato dell’annuncio. In seguito potremo anche invitarti a creare la scheda animale su UNIMALIA, così avrai tutto più pronto in caso di emergenza.
               </p>
             </div>
           `
@@ -93,7 +93,7 @@ export async function sendReportCreatedEmail({
       }
 
       <p style="margin: 24px 0 0; color: #52525b; font-size: 14px;">
-        Questa Ã¨ una email automatica di servizio inviata da UNIMALIA.
+        Questa è una email automatica di servizio inviata da UNIMALIA.
       </p>
     </div>
   `;
@@ -107,7 +107,7 @@ export async function sendReportCreatedEmail({
     `Apri annuncio: ${reportUrl}`,
     "",
     type === "lost"
-      ? `Se ${displayName} verrÃ  ritrovato, potrai aggiornare lo stato dellâ€™annuncio. In seguito potremo anche invitarti a creare la scheda animale su UNIMALIA.`
+      ? `Se ${displayName} verrà ritrovato, potrai aggiornare lo stato dell’annuncio. In seguito potremo anche invitarti a creare la scheda animale su UNIMALIA.`
       : "",
   ]
     .filter(Boolean)

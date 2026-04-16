@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "UNIMALIA",
     short_name: "UNIMALIA",
-    description: "Un ecosistema digitale per proteggere la vita dellâ€™animale.",
+    description: "Un ecosistema digitale per proteggere la vita dell’animale.",
     start_url: "/",
     display: "standalone",
     background_color: "#ffffff",

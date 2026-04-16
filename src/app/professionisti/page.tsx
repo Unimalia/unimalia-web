@@ -50,7 +50,7 @@ function categoryLabel(category: string | null, isVet: boolean) {
     case "pet_detective":
       return "Pet Detective";
     case "ponte_arcobaleno":
-      return "Ponte dellâ€™Arcobaleno";
+      return "Ponte dell’Arcobaleno";
     case "altro":
       return "Altro";
     default:
@@ -102,7 +102,7 @@ export default async function ProDashboardPage({
         <section className="overflow-hidden rounded-[2.5rem] border border-[#dde4ec] bg-white shadow-[0_24px_60px_rgba(42,56,86,0.10)]">
           <div className="grid gap-0 lg:grid-cols-[1.08fr_0.92fr]">
             <div className="px-6 py-10 sm:px-8 lg:px-10 lg:py-12">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#55657d]">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#6f7d91]">
                 Portale professionisti
               </p>
 
@@ -118,14 +118,14 @@ export default async function ProDashboardPage({
 
               {displayName ? (
                 <div className="mt-6 inline-flex items-center rounded-full border border-[#d7dfe9] bg-[#f8fbff] px-4 py-2 text-sm font-medium text-[#4f6078]">
-                  {displayName} â€¢ {roleLabel}
+                  {displayName} • {roleLabel}
                 </div>
               ) : null}
             </div>
 
             <div className="bg-[linear-gradient(180deg,#f8fbff_0%,#eef4fb_100%)] px-6 py-10 sm:px-8 lg:px-10 lg:py-12">
               <div className="rounded-[2rem] border border-[#e3e9f0] bg-white p-6 shadow-[0_14px_40px_rgba(42,56,86,0.06)]">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#55657d]">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#6f7d91]">
                   Stato area
                 </p>
 
@@ -136,7 +136,7 @@ export default async function ProDashboardPage({
                 <p className="mt-3 text-sm leading-relaxed text-[#5f708a]">
                   {isVet
                     ? "Area dedicata a veterinari e strutture cliniche con accesso a strumenti riservati, organizzazione operativa e flussi professionali strutturati."
-                    : "Area dedicata ai professionisti non clinici, separata dalla cartella veterinaria e pensata per attivitÃ  pratiche, storico e continuitÃ  operativa."}
+                    : "Area dedicata ai professionisti non clinici, separata dalla cartella veterinaria e pensata per attività pratiche, storico e continuità operativa."}
                 </p>
 
                 <div className="mt-5 flex flex-wrap gap-2">
@@ -168,10 +168,10 @@ export default async function ProDashboardPage({
               Profilo in verifica
             </p>
             <h2 className="mt-2 text-lg font-semibold text-zinc-900">
-              La scheda professionista Ã¨ stata salvata correttamente
+              La scheda professionista è stata salvata correttamente
             </h2>
             <p className="mt-2 text-sm leading-relaxed text-amber-900/80">
-              Il profilo sarÃ  verificato entro 24/48 ore prima dellâ€™abilitazione completa delle
+              Il profilo sarà verificato entro 24/48 ore prima dell’abilitazione completa delle
               funzioni riservate.
             </p>
           </div>
@@ -182,7 +182,7 @@ export default async function ProDashboardPage({
             <div className="rounded-[2rem] border border-[#e3e9f0] bg-white p-6 shadow-[0_14px_40px_rgba(42,56,86,0.06)]">
               <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                 <div className="max-w-3xl">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#55657d]">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#6f7d91]">
                     REV / VetInfo
                   </p>
                   <h2 className="mt-2 text-xl font-semibold tracking-[-0.03em] text-[#30486f]">
@@ -190,7 +190,7 @@ export default async function ProDashboardPage({
                   </h2>
                   <p className="mt-3 text-sm leading-6 text-[#5f708a]">
                     Area preparata per il nuovo flusso REV personale del veterinario. Il
-                    collegamento reale SPID/CAS verrÃ  attivato appena saranno confermati i dati
+                    collegamento reale SPID/CAS verrà attivato appena saranno confermati i dati
                     definitivi.
                   </p>
                 </div>
@@ -218,7 +218,7 @@ export default async function ProDashboardPage({
                 </Link>
 
                 <span className="inline-flex items-center justify-center rounded-full border border-[#d7dfe9] bg-[#f8fbff] px-5 py-3 text-sm font-semibold text-[#4f6078]">
-                  Nuova prescrizione â€¢ in preparazione
+                  Nuova prescrizione • in preparazione
                 </span>
               </div>
             </div>
@@ -229,14 +229,14 @@ export default async function ProDashboardPage({
 
         {!isVet ? (
           <div className="mt-6 rounded-[2rem] border border-[#e3e9f0] bg-white p-6 shadow-[0_14px_40px_rgba(42,56,86,0.06)]">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#55657d]">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#6f7d91]">
               Area non clinica
             </p>
             <h2 className="mt-2 text-xl font-semibold tracking-[-0.03em] text-[#30486f]">
               Dashboard professionista non clinico
             </h2>
             <p className="mt-3 text-sm leading-relaxed text-[#5f708a]">
-              Questa dashboard Ã¨ dedicata a professionisti come addestratori, toelettatori, pet
+              Questa dashboard è dedicata a professionisti come addestratori, toelettatori, pet
               sitter, pensioni, pet detective e altri operatori non veterinari.
             </p>
             <p className="mt-2 text-sm leading-relaxed text-[#5f708a]">
@@ -292,7 +292,7 @@ export default async function ProDashboardPage({
                 <CardLink
                   href="/professionisti/animali"
                   title="Storia animale"
-                  desc="Timeline non clinica dedicata alle attivitÃ  del professionista: sessioni, trattamenti, note operative e promemoria futuri."
+                  desc="Timeline non clinica dedicata alle attività del professionista: sessioni, trattamenti, note operative e promemoria futuri."
                 />
 
                 <CardLink
@@ -303,8 +303,8 @@ export default async function ProDashboardPage({
 
                 <CardLink
                   href="/professionisti/animali"
-                  title="AttivitÃ  e progressi"
-                  desc="Sezione futura per registrare lavori svolti, aggiornamenti, esercizi consigliati e prossime attivitÃ ."
+                  title="Attività e progressi"
+                  desc="Sezione futura per registrare lavori svolti, aggiornamenti, esercizi consigliati e prossime attività."
                   right="In arrivo"
                 />
               </>

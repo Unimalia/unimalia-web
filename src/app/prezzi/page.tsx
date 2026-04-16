@@ -1,7 +1,7 @@
 export const metadata = {
-  title: "Prezzi UNIMALIA â€“ Piano Free e Premium",
+  title: "Prezzi UNIMALIA – Piano Free e Premium",
   description:
-    "Scopri le funzionalitÃ  gratuite e Premium di UNIMALIA: identitÃ  animale digitale, cartella clinica, referti e molto altro.",
+    "Scopri le funzionalità gratuite e Premium di UNIMALIA: identità animale digitale, cartella clinica, referti e molto altro.",
 };
 
 export default function PrezziPage() {
@@ -12,7 +12,7 @@ export default function PrezziPage() {
       </h1>
 
       <p className="mt-4 text-zinc-700">
-        UNIMALIA Ã¨ progettato per essere utile fin da subito, anche senza abbonamento.
+        UNIMALIA è progettato per essere utile fin da subito, anche senza abbonamento.
       </p>
 
       {/* BLOCCO FREE */}
@@ -22,21 +22,21 @@ export default function PrezziPage() {
         </h2>
 
         <ul className="mt-4 list-disc space-y-2 pl-6 text-zinc-700">
-          <li>IdentitÃ  animale digitale per tutti gli animali</li>
+          <li>Identità animale digitale per tutti gli animali</li>
           <li>Cartella clinica rapida con dati essenziali</li>
           <li>Referti ricevuti via email (se il veterinario usa UNIMALIA)</li>
-          <li>Accesso rapido alle informazioni in caso di necessitÃ </li>
+          <li>Accesso rapido alle informazioni in caso di necessità</li>
         </ul>
 
         <p className="mt-4 text-sm text-zinc-600">
-          I dati essenziali possono essere inseriti dal veterinario, cosÃ¬ da avere informazioni affidabili e sempre aggiornate.
+          I dati essenziali possono essere inseriti dal veterinario, così da avere informazioni affidabili e sempre aggiornate.
         </p>
       </section>
 
       {/* BLOCCO PREMIUM */}
       <section className="mt-6 rounded-2xl border border-zinc-900 bg-zinc-900 p-6 text-white shadow-sm">
         <h2 className="text-xl font-semibold">
-          Versione Premium â€“ 6â‚¬ / anno
+          Versione Premium – 6€ / anno
         </h2>
 
         <p className="mt-2 text-zinc-300">
@@ -48,7 +48,7 @@ export default function PrezziPage() {
           <li>Archivio organizzato di referti ed eventi</li>
           <li>Storico sempre accessibile</li>
           <li>Promemoria automatici (vaccini, controlli, trattamenti)</li>
-          <li>Gestione piÃ¹ completa e ordinata nel tempo</li>
+          <li>Gestione più completa e ordinata nel tempo</li>
         </ul>
       </section>
 
@@ -59,7 +59,7 @@ export default function PrezziPage() {
         </h2>
 
         <p className="mt-3 text-zinc-700">
-          Non solo in viaggio: anche durante una semplice passeggiata, avere accesso rapido alle informazioni del tuo animale puÃ² essere utile in caso di imprevisti.
+          Non solo in viaggio: anche durante una semplice passeggiata, avere accesso rapido alle informazioni del tuo animale può essere utile in caso di imprevisti.
         </p>
 
         <p className="mt-2 text-zinc-700">
@@ -86,7 +86,7 @@ export default function PrezziPage() {
         </p>
 
         <p className="text-sm text-zinc-600">
-          Se non utilizza ancora la piattaforma, puÃ² contattarci per maggiori informazioni: professionisti@unimalia.it
+          Se non utilizza ancora la piattaforma, può contattarci per maggiori informazioni: professionisti@unimalia.it
         </p>
       </section>
     </main>

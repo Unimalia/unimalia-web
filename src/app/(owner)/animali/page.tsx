@@ -59,7 +59,7 @@ export default async function OwnerAnimaliPage() {
               <li key={a.id} className="rounded-2xl border p-4 flex items-center justify-between">
                 <div className="space-y-1">
                   <div className="font-medium">{a.name ?? "Animale"}</div>
-                  <div className="text-sm opacity-70">Chip: {a.chip_code ?? "â€”"}</div>
+                  <div className="text-sm opacity-70">Chip: {a.chip_code ?? "—"}</div>
                 </div>
 
                 <div className="flex items-center gap-3">

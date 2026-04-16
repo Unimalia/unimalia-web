@@ -285,7 +285,7 @@ export default function ScannerPage() {
       const accessJson = await accessRes.json().catch(() => ({}));
 
       if (accessRes.ok) {
-        showBanner({ kind: "success", text: "Accesso disponibile. Apro la scheda animaleâ€¦" }, 900);
+        showBanner({ kind: "success", text: "Accesso disponibile. Apro la scheda animale…" }, 900);
         safePush(`/professionisti/animali/${encodeURIComponent(resolvedAnimalId)}`);
         return;
       }
@@ -305,7 +305,7 @@ export default function ScannerPage() {
         showBanner(
           {
             kind: "info",
-            text: "Animale esistente trovato, ma accesso clinico non attivo. Apro richiesta accessoâ€¦",
+            text: "Animale esistente trovato, ma accesso clinico non attivo. Apro richiesta accesso…",
           },
           1200
         );
@@ -356,7 +356,7 @@ export default function ScannerPage() {
 
       if (busy) return;
       setBusy(true);
-      showBanner({ kind: "info", text: "Elaborazione in corsoâ€¦" }, 0);
+      showBanner({ kind: "info", text: "Elaborazione in corso…" }, 0);
 
       try {
         const ex = extractFromScan(normalized);
@@ -374,7 +374,7 @@ export default function ScannerPage() {
 
           if (!lookup.found || !lookup.animalId) {
             showBanner(
-              { kind: "info", text: "Microchip non trovato. Apro gestione manualeâ€¦" },
+              { kind: "info", text: "Microchip non trovato. Apro gestione manuale…" },
               1500
             );
 
@@ -391,7 +391,7 @@ export default function ScannerPage() {
           }
 
           showBanner(
-            { kind: "success", text: "Animale esistente trovato. Verifico accessoâ€¦" },
+            { kind: "success", text: "Animale esistente trovato. Verifico accesso…" },
             1200
           );
 
@@ -402,7 +402,7 @@ export default function ScannerPage() {
         }
 
         if (ex.kind === "animalId") {
-          showBanner({ kind: "success", text: "Codice riconosciuto. Risolvo animaleâ€¦" }, 1200);
+          showBanner({ kind: "success", text: "Codice riconosciuto. Risolvo animale…" }, 1200);
 
           const lookup = await resolveAnimalForProfessional(String(ex.animalId ?? normalized ?? raw ?? ""));
 
@@ -431,7 +431,7 @@ export default function ScannerPage() {
 
         if (ex.kind === "q") {
           showBanner(
-            { kind: "success", text: "Codice UNIMALIA riconosciuto. Risolvo animaleâ€¦" },
+            { kind: "success", text: "Codice UNIMALIA riconosciuto. Risolvo animale…" },
             1200
           );
 
@@ -461,7 +461,7 @@ export default function ScannerPage() {
         }
 
         if (ex.kind === "publicToken") {
-          showBanner({ kind: "success", text: "Link UNIMALIA riconosciuto. Aperturaâ€¦" }, 1500);
+          showBanner({ kind: "success", text: "Link UNIMALIA riconosciuto. Apertura…" }, 1500);
           void logScan({
             raw,
             normalized,
@@ -506,7 +506,7 @@ export default function ScannerPage() {
             </h1>
             <p className="mt-2 max-w-2xl text-sm text-zinc-600">
               Usa la fotocamera del telefono, la webcam del computer oppure inserisci il codice
-              manualmente. Se hai giÃ  accesso, la scheda si apre subito. Se manca autorizzazione,
+              manualmente. Se hai già accesso, la scheda si apre subito. Se manca autorizzazione,
               parte la richiesta al proprietario.
             </p>
           </div>
@@ -584,8 +584,8 @@ export default function ScannerPage() {
         <ModeButton
           active={mode === "camera"}
           title="Fotocamera / webcam"
-          description="La modalitÃ  piÃ¹ rapida per QR UNIMALIA e codici visibili."
-          icon="ðŸ“·"
+          description="La modalità più rapida per QR UNIMALIA e codici visibili."
+          icon="📷"
           onClick={openCameraMode}
           disabled={busy}
         />
@@ -593,7 +593,7 @@ export default function ScannerPage() {
           active={mode === "codice"}
           title="Codice / lettore"
           description="Incolla il codice o usa un lettore USB collegato."
-          icon="âŒ¨ï¸"
+          icon="⌨️"
           onClick={openCodeMode}
           disabled={busy}
         />
@@ -610,7 +610,7 @@ export default function ScannerPage() {
         <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
           <div className="text-sm font-semibold text-zinc-900">2. Verifica accesso</div>
           <div className="mt-1 text-xs text-zinc-600">
-            Se lâ€™animale Ã¨ giÃ  autorizzato, entri subito nella scheda.
+            Se l’animale è già autorizzato, entri subito nella scheda.
           </div>
         </div>
 
@@ -698,7 +698,7 @@ export default function ScannerPage() {
           <div className="border-t border-zinc-200 pt-5">
             <h3 className="text-sm font-semibold text-zinc-900">Oppure usa il lettore USB</h3>
             <p className="mt-1 text-sm text-zinc-600">
-              Se il lettore Ã¨ collegato, acquisisci qui il codice senza cambiare pagina.
+              Se il lettore è collegato, acquisisci qui il codice senza cambiare pagina.
             </p>
 
             <div className="mt-4">
@@ -708,7 +708,7 @@ export default function ScannerPage() {
 
           <div className="rounded-2xl bg-zinc-50 p-4 text-xs text-zinc-600">
             Se il microchip non viene trovato, si apre la gestione manuale per creare o associare
-            lâ€™animale.
+            l’animale.
           </div>
         </div>
       )}

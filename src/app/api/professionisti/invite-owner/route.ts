@@ -128,7 +128,7 @@ export async function POST(req: NextRequest) {
 
     if (animal.owner_id) {
       return NextResponse.json(
-        { error: "Questo animale ha giÃ  un proprietario collegato" },
+        { error: "Questo animale ha già un proprietario collegato" },
         { status: 409 }
       );
     }

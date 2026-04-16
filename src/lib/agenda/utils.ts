@@ -7,11 +7,11 @@ import {
 } from "@/lib/agenda/types";
 
 export const DAY_LABELS: { key: keyof VetSchedule; label: string }[] = [
-  { key: "monday", label: "LunedÃ¬" },
-  { key: "tuesday", label: "MartedÃ¬" },
-  { key: "wednesday", label: "MercoledÃ¬" },
-  { key: "thursday", label: "GiovedÃ¬" },
-  { key: "friday", label: "VenerdÃ¬" },
+  { key: "monday", label: "Lunedì" },
+  { key: "tuesday", label: "Martedì" },
+  { key: "wednesday", label: "Mercoledì" },
+  { key: "thursday", label: "Giovedì" },
+  { key: "friday", label: "Venerdì" },
   { key: "saturday", label: "Sabato" },
   { key: "sunday", label: "Domenica" },
 ];

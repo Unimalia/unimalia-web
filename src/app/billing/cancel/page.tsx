@@ -3,9 +3,9 @@ import Link from "next/link";
 export default function BillingSuccessPage() {
   return (
     <main className="mx-auto max-w-3xl px-4 py-10">
-      <h1 className="text-3xl font-bold tracking-tight">Pagamento completato âœ…</h1>
+      <h1 className="text-3xl font-bold tracking-tight">Pagamento completato ✅</h1>
       <p className="mt-3 text-zinc-700">
-        Grazie! Il tuo abbonamento verrÃ  attivato automaticamente entro pochi secondi.
+        Grazie! Il tuo abbonamento verrà attivato automaticamente entro pochi secondi.
       </p>
       <p className="mt-3 text-zinc-700">
         Se non vedi subito le modifiche, aggiorna la pagina o esci e rientra.

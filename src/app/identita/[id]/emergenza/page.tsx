@@ -329,7 +329,7 @@ export default function AnimalEmergencyPage() {
 
   async function handleGenerateQr() {
     const confirmed = window.confirm(
-      "Generando un nuovo QR emergenza, il precedente verrÃ  disattivato.\n\nSe hai giÃ  stampato una medaglietta, dovrai sostituirla.\n\nI dati dellâ€™animale invece restano sempre aggiornati automaticamente.\n\nVuoi continuare?"
+      "Generando un nuovo QR emergenza, il precedente verrà disattivato.\n\nSe hai già stampato una medaglietta, dovrai sostituirla.\n\nI dati dell’animale invece restano sempre aggiornati automaticamente.\n\nVuoi continuare?"
     );
 
     if (!confirmed || !animalId) return;
@@ -367,10 +367,10 @@ export default function AnimalEmergencyPage() {
     return (
       <PageShell
         title="QR emergenza / medaglietta"
-        subtitle="Caricamentoâ€¦"
+        subtitle="Caricamento…"
         backFallbackHref={animalId ? `/identita/${animalId}` : "/identita"}
       >
-        <div className="text-sm text-zinc-600">Sto caricando i dati emergenzaâ€¦</div>
+        <div className="text-sm text-zinc-600">Sto caricando i dati emergenza…</div>
       </PageShell>
     );
   }
@@ -390,7 +390,7 @@ export default function AnimalEmergencyPage() {
     fields.show_breed ? animal.breed || "" : "",
   ]
     .filter(Boolean)
-    .join(" â€¢ ");
+    .join(" • ");
 
   const hasQr = !!qrUrl;
 
@@ -408,7 +408,7 @@ export default function AnimalEmergencyPage() {
             disabled={savingSettings}
             className="inline-flex items-center justify-center rounded-xl bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-900 disabled:opacity-60"
           >
-            {savingSettings ? "Salvataggioâ€¦" : "Salva impostazioni"}
+            {savingSettings ? "Salvataggio…" : "Salva impostazioni"}
           </button>
         </>
       }
@@ -417,7 +417,7 @@ export default function AnimalEmergencyPage() {
         <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
           <h2 className="text-base font-semibold text-zinc-900">Dati visibili</h2>
           <p className="mt-1 text-sm text-zinc-600">
-            Scegli cosa sarÃ  visibile nella scheda pubblica del QR emergenza.
+            Scegli cosa sarà visibile nella scheda pubblica del QR emergenza.
           </p>
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -495,7 +495,7 @@ export default function AnimalEmergencyPage() {
                     <div className="rounded-xl border border-zinc-200 bg-white p-3">
                       <div className="text-xs text-zinc-500">Colore</div>
                       <div className="mt-1 text-sm font-semibold text-zinc-900">
-                        {animal.color || "â€”"}
+                        {animal.color || "—"}
                       </div>
                     </div>
                   ) : null}
@@ -504,7 +504,7 @@ export default function AnimalEmergencyPage() {
                     <div className="rounded-xl border border-zinc-200 bg-white p-3">
                       <div className="text-xs text-zinc-500">Taglia</div>
                       <div className="mt-1 text-sm font-semibold text-zinc-900">
-                        {animal.size || "â€”"}
+                        {animal.size || "—"}
                       </div>
                     </div>
                   ) : null}
@@ -513,7 +513,7 @@ export default function AnimalEmergencyPage() {
                     <div className="rounded-xl border border-zinc-200 bg-white p-3">
                       <div className="text-xs text-zinc-500">Gruppo sanguigno</div>
                       <div className="mt-1 text-sm font-semibold text-zinc-900">
-                        {quick.bloodType || "â€”"}
+                        {quick.bloodType || "—"}
                       </div>
                     </div>
                   ) : null}
@@ -522,7 +522,7 @@ export default function AnimalEmergencyPage() {
                     <div className="rounded-xl border border-zinc-200 bg-white p-3">
                       <div className="text-xs text-zinc-500">Sterilizzato / castrato</div>
                       <div className="mt-1 text-sm font-semibold text-zinc-900">
-                        {quick.sterilizationStatus || "â€”"}
+                        {quick.sterilizationStatus || "—"}
                       </div>
                     </div>
                   ) : null}
@@ -530,36 +530,36 @@ export default function AnimalEmergencyPage() {
 
                 {fields.show_allergies ? (
                   <div className="rounded-xl border border-red-200 bg-red-50 p-3">
-                    <div className="text-xs font-semibold text-red-700">âš ï¸ Allergie</div>
+                    <div className="text-xs font-semibold text-red-700">⚠️ Allergie</div>
                     <div className="mt-1 text-sm font-medium text-zinc-900">
-                      {quick.allergies.length > 0 ? quick.allergies.join(", ") : "â€”"}
+                      {quick.allergies.length > 0 ? quick.allergies.join(", ") : "—"}
                     </div>
                   </div>
                 ) : null}
 
                 {fields.show_therapies ? (
                   <div className="rounded-xl border border-zinc-200 bg-white p-3">
-                    <div className="text-xs font-semibold text-zinc-500">ðŸ’Š Terapie attive</div>
+                    <div className="text-xs font-semibold text-zinc-500">💊 Terapie attive</div>
                     <div className="mt-1 text-sm font-medium text-zinc-900">
-                      {quick.activeTherapies.length > 0 ? quick.activeTherapies.join(", ") : "â€”"}
+                      {quick.activeTherapies.length > 0 ? quick.activeTherapies.join(", ") : "—"}
                     </div>
                   </div>
                 ) : null}
 
                 {fields.show_chronic_conditions ? (
                   <div className="rounded-xl border border-zinc-200 bg-white p-3">
-                    <div className="text-xs font-semibold text-zinc-500">ðŸ©º Patologie croniche</div>
+                    <div className="text-xs font-semibold text-zinc-500">🩺 Patologie croniche</div>
                     <div className="mt-1 text-sm font-medium text-zinc-900">
                       {quick.chronicPathologies.length > 0
                         ? quick.chronicPathologies.join(", ")
-                        : "â€”"}
+                        : "—"}
                     </div>
                   </div>
                 ) : null}
 
                 {fields.emergency_notes.trim() ? (
                   <div className="rounded-xl border border-zinc-200 bg-white p-3">
-                    <div className="text-xs font-semibold text-zinc-500">ðŸ“ Note emergenza</div>
+                    <div className="text-xs font-semibold text-zinc-500">📝 Note emergenza</div>
                     <div className="mt-1 text-sm font-medium text-zinc-900">
                       {fields.emergency_notes.trim()}
                     </div>
@@ -578,7 +578,7 @@ export default function AnimalEmergencyPage() {
                   {hasQr ? "QR emergenza attivo" : "QR emergenza"}
                 </h2>
                 <p className="mt-1 text-sm text-zinc-600">
-                  Questo QR Ã¨ distinto da QR e barcode UNIMALIA giÃ  presenti nella scheda animale.
+                  Questo QR è distinto da QR e barcode UNIMALIA già presenti nella scheda animale.
                 </p>
               </div>
 
@@ -587,29 +587,29 @@ export default function AnimalEmergencyPage() {
                   <div>
                     <h3 className="font-semibold text-zinc-900">Ordina medaglietta</h3>
                     <p className="mt-1 text-xs text-zinc-600">
-                      Medaglietta resistente pronta allâ€™uso, giÃ  configurata con il QR emergenza.
+                      Medaglietta resistente pronta all’uso, già configurata con il QR emergenza.
                     </p>
                   </div>
 
-                  <div className="text-sm font-semibold text-zinc-900">â‚¬19,99</div>
+                  <div className="text-sm font-semibold text-zinc-900">€19,99</div>
                 </div>
 
                 <ul className="mt-4 space-y-1 text-sm">
-                  <li>â€¢ Dimensione consigliata: <b>2,5 â€“ 3 cm</b></li>
-                  <li>â€¢ Dimensione minima: <b>2 cm</b></li>
-                  <li>â€¢ Colore QR: <b>nero su fondo bianco</b></li>
-                  <li>â€¢ Mantieni un bordo bianco attorno al QR</li>
-                  <li>â€¢ Evita superfici lucide o riflettenti</li>
+                  <li>• Dimensione consigliata: <b>2,5 – 3 cm</b></li>
+                  <li>• Dimensione minima: <b>2 cm</b></li>
+                  <li>• Colore QR: <b>nero su fondo bianco</b></li>
+                  <li>• Mantieni un bordo bianco attorno al QR</li>
+                  <li>• Evita superfici lucide o riflettenti</li>
                 </ul>
 
                 <p className="mt-3 text-xs text-zinc-500">
-                  I dati dellâ€™animale si aggiornano automaticamente. Non serve ristampare il QR
+                  I dati dell’animale si aggiornano automaticamente. Non serve ristampare il QR
                   se cambiano allergie, terapie o altri dati.
                 </p>
 
                 <p className="mt-2 text-xs font-medium text-amber-700">
-                  Se crei un nuovo QR code, quello precedente smetterÃ  di funzionare e lâ€™eventuale
-                  medaglietta andrÃ  ristampata.
+                  Se crei un nuovo QR code, quello precedente smetterà di funzionare e l’eventuale
+                  medaglietta andrà ristampata.
                 </p>
 
                 <div className="mt-4">
@@ -692,9 +692,9 @@ export default function AnimalEmergencyPage() {
                 className="inline-flex w-full items-center justify-center rounded-xl bg-black px-4 py-3 text-sm font-semibold text-white hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {loadingExistingQr
-                  ? "Caricamento QRâ€¦"
+                  ? "Caricamento QR…"
                   : generating
-                    ? "Creazione in corsoâ€¦"
+                    ? "Creazione in corso…"
                     : hasQr
                       ? "Crea nuovo QR code"
                       : "Crea QR emergenza"}

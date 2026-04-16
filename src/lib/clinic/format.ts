@@ -1,5 +1,5 @@
 export function formatEventDateIT(dateStr?: string | null) {
-  if (!dateStr) return "â€”";
+  if (!dateStr) return "—";
 
   const s = String(dateStr).trim();
 
@@ -21,7 +21,7 @@ export function formatEventDateIT(dateStr?: string | null) {
 }
 
 export function formatInsertedAtIT(iso?: string | null) {
-  if (!iso) return "â€”";
+  if (!iso) return "—";
   return new Date(iso).toLocaleString("it-IT", {
     year: "numeric",
     month: "2-digit",

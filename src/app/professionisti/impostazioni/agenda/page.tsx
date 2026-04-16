@@ -340,7 +340,7 @@ export default function AgendaSettingsPage() {
         <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-sm font-semibold uppercase tracking-wide text-emerald-700">
-              UNIMALIA Â· Gestione agenda
+              UNIMALIA · Gestione agenda
             </p>
             <h1 className="mt-1 text-3xl font-bold text-neutral-900">
               Turni, stanze e prestazioni
@@ -509,7 +509,7 @@ export default function AgendaSettingsPage() {
           <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <h2 className="text-lg font-bold text-neutral-900">
-                Turni veterinari Â· tabella compatta
+                Turni veterinari · tabella compatta
               </h2>
               <p className="mt-1 text-sm text-neutral-600">
                 Pensata per strutture grandi. Una riga per veterinario, colonne lun-dom.
@@ -817,9 +817,9 @@ export default function AgendaSettingsPage() {
 
                         <div className="text-sm text-neutral-700">
                           {item.enabled
-                            ? `${item.start} - ${item.end} Â· pausa ${item.breakStart} - ${item.breakEnd}`
+                            ? `${item.start} - ${item.end} · pausa ${item.breakStart} - ${item.breakEnd}`
                             : "Assente / giorno chiuso"}
-                          {item.reason ? ` Â· ${item.reason}` : ""}
+                          {item.reason ? ` · ${item.reason}` : ""}
                         </div>
 
                         <div className="text-sm text-neutral-500">

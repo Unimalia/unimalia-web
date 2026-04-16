@@ -5,7 +5,7 @@ export default function NotFound() {
     <main className="max-w-3xl">
       <h1 className="text-3xl font-bold tracking-tight">Pagina non trovata</h1>
       <p className="mt-3 text-zinc-700">
-        Il link potrebbe essere errato oppure la pagina non esiste piÃ¹.
+        Il link potrebbe essere errato oppure la pagina non esiste più.
       </p>
       <div className="mt-6 flex gap-2">
         <Link

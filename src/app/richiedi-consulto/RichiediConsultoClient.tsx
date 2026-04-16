@@ -64,7 +64,7 @@ export default function RichiediConsultoClient() {
       return;
     }
 
-    setResult("Richiesta inviata âœ… (stato: In attesa)");
+    setResult("Richiesta inviata ✅ (stato: In attesa)");
     setMessage("");
     setEmergencyCode("");
   }
@@ -75,14 +75,14 @@ export default function RichiediConsultoClient() {
         <h1 className="text-2xl font-semibold text-zinc-900">Richiedi consulto</h1>
         <p className="mt-2 text-sm text-zinc-600">
           La richiesta arriva al professionista in <span className="font-semibold">/professionisti/richieste</span>.
-          Se hai un <span className="font-semibold">codice EMERGENZA</span>, passa i blocchi e viene mostrata per prima (resta â€œIn attesaâ€).
+          Se hai un <span className="font-semibold">codice EMERGENZA</span>, passa i blocchi e viene mostrata per prima (resta “In attesa”).
         </p>
 
         <div className="mt-6 grid gap-3">
           <input
             value={professionalId}
             onChange={(e) => setProfessionalId(e.target.value)}
-            placeholder="ID professionista (per ora manuale) â€” es. uuid"
+            placeholder="ID professionista (per ora manuale) — es. uuid"
             className="h-11 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm outline-none focus:border-zinc-400"
           />
 
@@ -133,7 +133,7 @@ export default function RichiediConsultoClient() {
             onClick={onSend}
             className="mt-2 inline-flex h-11 items-center justify-center rounded-2xl bg-black px-5 text-sm font-semibold text-white disabled:opacity-50"
           >
-            {sending ? "Invioâ€¦" : "Invia richiesta"}
+            {sending ? "Invio…" : "Invia richiesta"}
           </button>
 
           {result ? (

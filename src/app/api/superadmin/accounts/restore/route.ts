@@ -112,7 +112,7 @@ export async function POST(req: Request) {
 
   if (profile?.is_deleted === true) {
     return NextResponse.json(
-      { error: "Questo account risulta eliminato definitivamente e non Ã¨ recuperabile." },
+      { error: "Questo account risulta eliminato definitivamente e non è recuperabile." },
       { status: 409 }
     );
   }

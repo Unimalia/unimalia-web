@@ -26,7 +26,7 @@ function isMeaningfulScan(text: string): boolean {
   // troppo corto (tipico falso positivo da schermo / riflessi)
   if (t.length < 3) return false;
 
-  // se non contiene alcun carattere alfanumerico -> Ã¨ rumore
+  // se non contiene alcun carattere alfanumerico -> è rumore
   if (!/[a-zA-Z0-9]/.test(t)) return false;
 
   // casi estremi tipo "---" "..." "__" ecc.
@@ -109,7 +109,7 @@ export default function CameraScanner({ onScan, disabled = false }: Props) {
         setLastText(text);
         console.log("SCAN:", text);
 
-        // se ZXing sta â€œagganciandoâ€ rumore (es: "-"), NON avviare flussi
+        // se ZXing sta “agganciando” rumore (es: "-"), NON avviare flussi
         if (!isMeaningfulScan(text)) {
           showHint("Codice non leggibile. Prova ad aumentare dimensione/contrasto del QR.");
           return;
@@ -150,7 +150,7 @@ export default function CameraScanner({ onScan, disabled = false }: Props) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-3">
-        <div className="text-sm font-medium">ðŸ“· Fotocamera</div>
+        <div className="text-sm font-medium">📷 Fotocamera</div>
         <div className="text-xs opacity-70">
           {status === "running" ? "attiva" : status === "starting" ? "avvio..." : ""}
         </div>
@@ -197,15 +197,15 @@ export default function CameraScanner({ onScan, disabled = false }: Props) {
         <div className="font-semibold">Consigli per QR da schermo</div>
         <ul className="mt-2 list-disc space-y-1 pl-4 opacity-80">
           <li>Aumenta la dimensione del QR (zoom).</li>
-          <li>Alza la luminositÃ  dello schermo.</li>
-          <li>Distanza consigliata 20â€“30 cm.</li>
-          <li>Inclina leggermente il telefono per ridurre moirÃ©/riflessi.</li>
+          <li>Alza la luminosità dello schermo.</li>
+          <li>Distanza consigliata 20–30 cm.</li>
+          <li>Inclina leggermente il telefono per ridurre moiré/riflessi.</li>
         </ul>
       </div>
 
       <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-700">
         <div className="font-semibold">Debug</div>
-        <div className="mt-1 break-all opacity-80">Ultimo scan: {lastText ? lastText : "â€”"}</div>
+        <div className="mt-1 break-all opacity-80">Ultimo scan: {lastText ? lastText : "—"}</div>
       </div>
     </div>
   );

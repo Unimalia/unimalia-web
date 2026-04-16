@@ -115,7 +115,7 @@ export default function NuovoAnimaleProfessionistaPage() {
       </div>
 
       <p className="text-sm text-zinc-700">
-        Prima verifichiamo se esiste giÃ  una scheda coerente. Se non troviamo nulla,
+        Prima verifichiamo se esiste già una scheda coerente. Se non troviamo nulla,
         potrai creare una nuova scheda animale.
       </p>
 
@@ -177,13 +177,13 @@ export default function NuovoAnimaleProfessionistaPage() {
             </div>
 
             <p className="mt-2 text-xs text-zinc-500">
-              Il microchip Ã¨ facoltativo in questa fase. Se presente, viene usato come match forte.
+              Il microchip è facoltativo in questa fase. Se presente, viene usato come match forte.
             </p>
           </div>
         </div>
 
         <div className="rounded-xl border bg-zinc-50 p-4 text-sm text-zinc-700">
-          Il sistema controlla prima se esiste giÃ  una scheda compatibile.
+          Il sistema controlla prima se esiste già una scheda compatibile.
           <br />- se trova una scheda coerente, puoi usarla subito
           <br />- se non trova nulla, puoi creare una nuova scheda
         </div>
@@ -226,10 +226,10 @@ export default function NuovoAnimaleProfessionistaPage() {
               <div className="rounded-xl border bg-zinc-50 p-4 text-sm text-zinc-700">
                 <div className="font-medium text-zinc-900">Animale trovato tramite microchip</div>
                 <div className="mt-2">
-                  {result.animal.name ?? "Animale"} Â· {result.animal.species ?? "Specie non indicata"}
+                  {result.animal.name ?? "Animale"} · {result.animal.species ?? "Specie non indicata"}
                 </div>
                 <div className="mt-1 text-xs text-zinc-500">
-                  Microchip: {result.animal.microchip ?? "â€”"}
+                  Microchip: {result.animal.microchip ?? "—"}
                 </div>
               </div>
 
@@ -256,7 +256,7 @@ export default function NuovoAnimaleProfessionistaPage() {
           {Array.isArray(result.candidates) && result.candidates.length > 0 ? (
             <div className="space-y-3">
               <div className="rounded-xl border bg-zinc-50 p-4 text-sm text-zinc-700">
-                Abbiamo trovato una o piÃ¹ schede compatibili. Scegli quella corretta oppure crea
+                Abbiamo trovato una o più schede compatibili. Scegli quella corretta oppure crea
                 una nuova scheda.
               </div>
 
@@ -264,11 +264,11 @@ export default function NuovoAnimaleProfessionistaPage() {
                 {result.candidates.map((animal: any) => (
                   <div key={animal.id} className="rounded-xl border p-4">
                     <div className="font-medium text-zinc-900">
-                      {animal.name ?? "Animale"} Â· {animal.species ?? "Specie non indicata"}
+                      {animal.name ?? "Animale"} · {animal.species ?? "Specie non indicata"}
                     </div>
 
                     <div className="mt-1 text-sm text-zinc-600">
-                      Microchip: {animal.microchip ?? "â€”"}
+                      Microchip: {animal.microchip ?? "—"}
                     </div>
 
                     <div className="mt-1 text-xs text-zinc-500">

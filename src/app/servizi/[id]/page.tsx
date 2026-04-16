@@ -48,7 +48,7 @@ function macroLabel(key: string) {
     case "pet_detective":
       return "Pet Detective";
     case "ponte_arcobaleno":
-      return "Ponte dellâ€™Arcobaleno";
+      return "Ponte dell’Arcobaleno";
     case "altro":
     default:
       return "Altro";
@@ -69,7 +69,7 @@ function badgeInfo(pro: Professional) {
       return {
         label: "Verifica rifiutata",
         className: "bg-red-50 text-red-700",
-        title: "La verifica della scheda Ã¨ stata rifiutata",
+        title: "La verifica della scheda è stata rifiutata",
       };
     }
 
@@ -83,7 +83,7 @@ function badgeInfo(pro: Professional) {
   if (pro.verification_level === "business") {
     if (pro.verification_status === "verified" && pro.public_visible) {
       return {
-        label: "AttivitÃ  verificata",
+        label: "Attività verificata",
         className: "bg-emerald-50 text-emerald-700",
         title: "Scheda business verificata e visibile pubblicamente",
       };
@@ -93,12 +93,12 @@ function badgeInfo(pro: Professional) {
       return {
         label: "Verifica rifiutata",
         className: "bg-red-50 text-red-700",
-        title: "La verifica della scheda Ã¨ stata rifiutata",
+        title: "La verifica della scheda è stata rifiutata",
       };
     }
 
     return {
-      label: "AttivitÃ  in verifica",
+      label: "Attività in verifica",
       className: "bg-amber-50 text-amber-700",
       title: "Scheda in verifica, non ancora pubblica",
     };
@@ -116,7 +116,7 @@ function badgeInfo(pro: Professional) {
     return {
       label: "Verifica rifiutata",
       className: "bg-red-50 text-red-700",
-      title: "La verifica della scheda Ã¨ stata rifiutata",
+      title: "La verifica della scheda è stata rifiutata",
     };
   }
 
@@ -273,7 +273,7 @@ export default function ServizioDettaglioPage() {
     }
 
     if (pro.owner_id && user.id === pro.owner_id) {
-      setInfo("Questa Ã¨ la tua scheda: non puoi inviare richieste a te stesso.");
+      setInfo("Questa è la tua scheda: non puoi inviare richieste a te stesso.");
       return;
     }
 
@@ -289,7 +289,7 @@ export default function ServizioDettaglioPage() {
 
     const text = msg.trim();
     if (text.length < 5) {
-      setInfo("Scrivi un messaggio un poâ€™ piÃ¹ completo (minimo 5 caratteri).");
+      setInfo("Scrivi un messaggio un po’ più completo (minimo 5 caratteri).");
       return;
     }
 
@@ -307,9 +307,9 @@ export default function ServizioDettaglioPage() {
 
       setLastSentAt(Date.now());
       setMsg("");
-      setInfo("Messaggio inviato âœ…");
+      setInfo("Messaggio inviato ✅");
     } catch {
-      setInfo("Errore nellâ€™invio. Riprova.");
+      setInfo("Errore nell’invio. Riprova.");
     } finally {
       setSending(false);
     }
@@ -319,7 +319,7 @@ export default function ServizioDettaglioPage() {
     return (
       <main>
         <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <p className="text-sm text-zinc-700">Caricamentoâ€¦</p>
+          <p className="text-sm text-zinc-700">Caricamento…</p>
         </div>
       </main>
     );
@@ -333,7 +333,7 @@ export default function ServizioDettaglioPage() {
           onClick={() => router.push(backHref)}
           className="inline-flex w-fit items-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
         >
-          â† Indietro
+          ← Indietro
         </button>
 
         <div className="mt-6 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
@@ -356,7 +356,7 @@ export default function ServizioDettaglioPage() {
           onClick={() => router.push(backHref)}
           className="inline-flex w-fit items-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
         >
-          â† Indietro
+          ← Indietro
         </button>
 
         <Link href="/servizi" className="text-sm font-medium text-zinc-600 hover:underline">
@@ -369,7 +369,7 @@ export default function ServizioDettaglioPage() {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">{pro.display_name}</h1>
             <p className="mt-2 text-zinc-700">
-              {macroLabel(pro.category)} â€¢ {pro.city} {pro.province ? `(${pro.province})` : ""}
+              {macroLabel(pro.category)} • {pro.city} {pro.province ? `(${pro.province})` : ""}
             </p>
           </div>
 
@@ -416,14 +416,14 @@ export default function ServizioDettaglioPage() {
             ) : (
               <>
                 <p className="mt-3 text-sm text-zinc-700">
-                  Invia una richiesta. Il professionista la riceverÃ  nel suo portale.
+                  Invia una richiesta. Il professionista la riceverà nel suo portale.
                 </p>
 
                 <label className="mt-4 block text-sm font-medium">Messaggio</label>
                 <textarea
                   className="mt-2 w-full rounded-lg border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
                   rows={5}
-                  placeholder="Es. Vorrei info suâ€¦ disponibilitÃ â€¦ prezziâ€¦"
+                  placeholder="Es. Vorrei info su… disponibilità… prezzi…"
                   value={msg}
                   onChange={(e) => setMsg(e.target.value)}
                 />

@@ -33,7 +33,7 @@ export async function createServerSupabaseClient() {
           }
         } catch {
           // In alcuni contesti server di Next.js il set dei cookie
-          // puÃ² non essere consentito. Manteniamo il comportamento
+          // può non essere consentito. Manteniamo il comportamento
           // conservativo per non rompere i flussi esistenti.
         }
       },
@@ -42,13 +42,13 @@ export async function createServerSupabaseClient() {
 }
 
 /**
- * Alias compatibilitÃ 
+ * Alias compatibilità
  */
 export const createClient = createServerSupabaseClient;
 
 /**
  * Admin Supabase client (SERVICE ROLE)
- * âš ï¸ Bypassa RLS: usarlo solo lato server in flussi controllati.
+ * ⚠️ Bypassa RLS: usarlo solo lato server in flussi controllati.
  */
 export function supabaseAdmin() {
   if (adminClient) return adminClient;

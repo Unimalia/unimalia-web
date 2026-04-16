@@ -96,13 +96,13 @@ type ClinicEventRow = {
 function statusLabel(status: string) {
   switch (status) {
     case "lost":
-      return "ðŸ”´ Smarrito";
+      return "🔴 Smarrito";
     case "found":
-      return "ðŸ”µ Ritrovato";
+      return "🔵 Ritrovato";
     case "home":
     case "safe":
     default:
-      return "ðŸŸ¢ A casa";
+      return "🟢 A casa";
   }
 }
 
@@ -146,7 +146,7 @@ function ownerConnectionLabel(animal: Animal) {
   return "Proprietario non collegato";
 }
 
-function displayList(items: string[] | undefined, fallback = "â€”") {
+function displayList(items: string[] | undefined, fallback = "—") {
   if (!items || items.length === 0) return fallback;
   return items;
 }
@@ -288,7 +288,7 @@ export default function ProAnimalPage() {
     const who = (animal.microchip_verified_by_label || "").trim() || "Veterinario";
     const when = animal.microchip_verified_at ? formatDateIT(animal.microchip_verified_at) : null;
 
-    return when ? `${who} â€¢ ${when}` : who;
+    return when ? `${who} • ${when}` : who;
   }, [
     animal?.microchip_verified,
     animal?.microchip_verified_by_label,
@@ -308,7 +308,7 @@ export default function ProAnimalPage() {
   if (loading) {
     return (
       <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <div className="text-sm text-zinc-600">Caricamento schedaâ€¦</div>
+        <div className="text-sm text-zinc-600">Caricamento scheda…</div>
       </div>
     );
   }
@@ -321,7 +321,7 @@ export default function ProAnimalPage() {
             href="/professionisti/animali"
             className="font-semibold text-zinc-700 hover:text-zinc-900"
           >
-            â† Scanner
+            ← Scanner
           </Link>
         </div>
 
@@ -347,11 +347,11 @@ export default function ProAnimalPage() {
 
             <p className="mt-1 text-sm text-zinc-600">
               {animal.species}
-              {animal.breed ? ` â€¢ ${animal.breed}` : ""} â€¢ {statusLabel(animal.status)}
+              {animal.breed ? ` • ${animal.breed}` : ""} • {statusLabel(animal.status)}
             </p>
 
             <p className="mt-2 text-xs text-zinc-500">
-              ID: <span className="font-mono">{animal.id}</span> â€¢ Creato il{" "}
+              ID: <span className="font-mono">{animal.id}</span> • Creato il{" "}
               {new Date(animal.created_at).toLocaleDateString("it-IT")}
             </p>
           </div>
@@ -398,7 +398,7 @@ export default function ProAnimalPage() {
                   href={`/identita/nuovo?animalId=${encodeURIComponent(animal.id)}`}
                   className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
                 >
-                  Crea identitÃ  dalla cartella
+                  Crea identità dalla cartella
                 </Link>
               </>
             ) : null}
@@ -406,7 +406,7 @@ export default function ProAnimalPage() {
             {isVet ? (
               animal.microchip_verified ? (
                 <span className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">
-                  Microchip verificato âœ…
+                  Microchip verificato ✅
                 </span>
               ) : (
                 <Link
@@ -418,7 +418,7 @@ export default function ProAnimalPage() {
               )
             ) : (
               <span className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-2 text-sm font-semibold text-zinc-600">
-                Solo vet puÃ² verificare
+                Solo vet può verificare
               </span>
             )}
           </div>
@@ -454,7 +454,7 @@ export default function ProAnimalPage() {
               <div className="mt-3">
                 <div className="font-semibold">Privacy</div>
                 <div className="mt-1 text-sm text-zinc-600">
-                  Le identitÃ  NON sono pubbliche. Questa scheda Ã¨ visibile solo a professionisti
+                  Le identità NON sono pubbliche. Questa scheda è visibile solo a professionisti
                   autorizzati e al proprietario.
                 </div>
               </div>
@@ -479,7 +479,7 @@ export default function ProAnimalPage() {
                         {visibleOwnerEmail}
                       </a>
                     ) : (
-                      <div className="text-zinc-600">â€”</div>
+                      <div className="text-zinc-600">—</div>
                     )}
                   </div>
 
@@ -493,7 +493,7 @@ export default function ProAnimalPage() {
                         {visibleOwnerPhone}
                       </a>
                     ) : (
-                      <div className="text-zinc-600">â€”</div>
+                      <div className="text-zinc-600">—</div>
                     )}
                   </div>
                 </div>
@@ -512,14 +512,14 @@ export default function ProAnimalPage() {
                     href={`/identita/nuovo?animalId=${animal.id}`}
                     className="rounded-xl bg-black px-4 py-2 text-white"
                   >
-                    Crea identitÃ  dalla cartella
+                    Crea identità dalla cartella
                   </Link>
                 </div>
               )}
             </div>
 
             <div className="lg:w-[320px] lg:pl-4">
-              <div className="font-semibold text-zinc-900">IdentitÃ </div>
+              <div className="font-semibold text-zinc-900">Identità</div>
 
               <dl className="mt-3 grid gap-2 text-sm">
                 <div className="flex justify-between gap-4">
@@ -534,30 +534,30 @@ export default function ProAnimalPage() {
 
                 <div className="flex justify-between gap-4">
                   <dt className="text-zinc-500">Razza</dt>
-                  <dd className="font-medium text-zinc-900">{animal.breed || "â€”"}</dd>
+                  <dd className="font-medium text-zinc-900">{animal.breed || "—"}</dd>
                 </div>
 
                 <div className="flex justify-between gap-4">
                   <dt className="text-zinc-500">Colore / segni</dt>
-                  <dd className="font-medium text-zinc-900">{animal.color || "â€”"}</dd>
+                  <dd className="font-medium text-zinc-900">{animal.color || "—"}</dd>
                 </div>
 
                 <div className="flex justify-between gap-4">
                   <dt className="text-zinc-500">Taglia</dt>
-                  <dd className="font-medium text-zinc-900">{animal.size || "â€”"}</dd>
+                  <dd className="font-medium text-zinc-900">{animal.size || "—"}</dd>
                 </div>
 
                 <div className="flex justify-between gap-4">
                   <dt className="text-zinc-500">Sesso</dt>
                   <dd className="font-medium text-zinc-900">
-                    {animal.sex === "M" ? "Maschio" : animal.sex === "F" ? "Femmina" : "â€”"}
+                    {animal.sex === "M" ? "Maschio" : animal.sex === "F" ? "Femmina" : "—"}
                   </dd>
                 </div>
 
                 <div className="flex justify-between gap-4">
                   <dt className="text-zinc-500">Sterilizzato</dt>
                   <dd className="font-medium text-zinc-900">
-                    {animal.sterilized === true ? "SÃ¬" : animal.sterilized === false ? "No" : "â€”"}
+                    {animal.sterilized === true ? "Sì" : animal.sterilized === false ? "No" : "—"}
                   </dd>
                 </div>
               </dl>
@@ -593,12 +593,12 @@ export default function ProAnimalPage() {
 
         <div className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50 p-3">
           <div className="text-sm font-semibold text-zinc-900">
-            EtÃ : {rapidClinicalState.age} | Peso: {rapidClinicalState.weight}
+            Età: {rapidClinicalState.age} | Peso: {rapidClinicalState.weight}
           </div>
           <div className="mt-2 text-sm text-zinc-600">
             {isVet
               ? "Sintesi rapida della cartella clinica veterinaria."
-              : "Per i professionisti non clinici la sezione operativa principale Ã¨ Storia animale."}
+              : "Per i professionisti non clinici la sezione operativa principale è Storia animale."}
           </div>
         </div>
 
@@ -685,28 +685,28 @@ export default function ProAnimalPage() {
           <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
             <div className="text-xs text-zinc-500">Ricontrolli programmati</div>
             <div className="mt-1 font-semibold text-zinc-900">
-              {isVet ? rapidClinicalState.nextRecall || "â€”" : "Riservato ai vet"}
+              {isVet ? rapidClinicalState.nextRecall || "—" : "Riservato ai vet"}
             </div>
           </div>
 
           <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
             <div className="text-xs text-zinc-500">Ultima visita</div>
             <div className="mt-1 font-semibold text-zinc-900">
-              {isVet ? rapidClinicalState.latestVisit || "â€”" : "Riservato ai vet"}
+              {isVet ? rapidClinicalState.latestVisit || "—" : "Riservato ai vet"}
             </div>
           </div>
 
           <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
             <div className="text-xs text-zinc-500">Ultima vaccinazione</div>
             <div className="mt-1 font-semibold text-zinc-900">
-              {isVet ? rapidClinicalState.latestVaccination || "â€”" : "Riservato ai vet"}
+              {isVet ? rapidClinicalState.latestVaccination || "—" : "Riservato ai vet"}
             </div>
           </div>
 
           <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
             <div className="text-xs text-zinc-500">Vaccinazioni scadute / in scadenza</div>
             <div className="mt-1 font-semibold text-zinc-900">
-              {isVet ? rapidClinicalState.vaccinationExpiry || "â€”" : "Riservato ai vet"}
+              {isVet ? rapidClinicalState.vaccinationExpiry || "—" : "Riservato ai vet"}
             </div>
           </div>
         </div>
@@ -733,15 +733,15 @@ export default function ProAnimalPage() {
           <div className="text-xs text-zinc-500">Numero</div>
 
           <div className="mt-1 text-sm font-semibold text-zinc-900">
-            {animal.chip_number ? normalizeChip(animal.chip_number) : "â€” (non presente)"}
+            {animal.chip_number ? normalizeChip(animal.chip_number) : "— (non presente)"}
           </div>
 
           <div className="mt-2 text-xs text-zinc-600">
             Stato:{" "}
             {animal.microchip_verified ? (
-              <span className="font-semibold text-emerald-700">Verificato âœ…</span>
+              <span className="font-semibold text-emerald-700">Verificato ✅</span>
             ) : (
-              <span className="font-semibold text-amber-700">Da verificare â³</span>
+              <span className="font-semibold text-amber-700">Da verificare ⏳</span>
             )}
           </div>
 

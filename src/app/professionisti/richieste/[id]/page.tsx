@@ -74,7 +74,7 @@ function normalizeDate(value?: string | null) {
 
 function formatDate(value?: string | null) {
   const date = normalizeDate(value);
-  if (!date) return "â€”";
+  if (!date) return "—";
 
   return new Intl.DateTimeFormat("it-IT", {
     day: "2-digit",
@@ -85,7 +85,7 @@ function formatDate(value?: string | null) {
 
 function formatDateTime(value?: string | null) {
   const date = normalizeDate(value);
-  if (!date) return "â€”";
+  if (!date) return "—";
 
   return new Intl.DateTimeFormat("it-IT", {
     day: "2-digit",
@@ -500,10 +500,10 @@ export default function ProfessionistiRichiestaDettaglioPage() {
   const rapidClinicalState = useMemo(() => {
     if (data?.quickSummary) {
       return {
-        age: data.quickSummary.age || "â€”",
-        weight: data.quickSummary.weight || "â€”",
+        age: data.quickSummary.age || "—",
+        weight: data.quickSummary.weight || "—",
         bloodType: data.quickSummary.bloodType || "Non rilevato",
-        sterilizationStatus: data.quickSummary.sterilizationStatus || "â€”",
+        sterilizationStatus: data.quickSummary.sterilizationStatus || "—",
         allergies: Array.isArray(data.quickSummary.allergies)
           ? data.quickSummary.allergies.slice(0, 3)
           : [],
@@ -661,10 +661,10 @@ export default function ProfessionistiRichiestaDettaglioPage() {
       extractText(latestVisitData?.bloodType);
 
     return {
-      age: animalAge || "â€”",
-      weight: animalWeight || "â€”",
+      age: animalAge || "—",
+      weight: animalWeight || "—",
       bloodType: bloodType || "Non rilevato",
-      sterilizationStatus: "â€”",
+      sterilizationStatus: "—",
       allergies: allergies.slice(0, 3),
       activeTherapies: activeTherapies.slice(0, 3),
       lastTherapies,
@@ -866,7 +866,7 @@ export default function ProfessionistiRichiestaDettaglioPage() {
         onClick={() => router.push("/professionisti/richieste")}
         className="mb-4 rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800"
       >
-        â† Torna ai consulti
+        ← Torna ai consulti
       </button>
 
       <section className="overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm">
@@ -896,7 +896,7 @@ export default function ProfessionistiRichiestaDettaglioPage() {
               </div>
 
               <h1 className="mt-4 text-2xl font-semibold tracking-tight text-zinc-900 md:text-3xl">
-                {data.consult.animal_name} <span className="text-zinc-400">â€¢</span>{" "}
+                {data.consult.animal_name} <span className="text-zinc-400">•</span>{" "}
                 <span className="text-zinc-700">{data.consult.subject}</span>
               </h1>
 
@@ -906,7 +906,7 @@ export default function ProfessionistiRichiestaDettaglioPage() {
               </p>
 
               <p className="mt-2 text-sm text-zinc-500">
-                Creato il {new Date(data.consult.created_at).toLocaleString("it-IT")} Â· Scade il{" "}
+                Creato il {new Date(data.consult.created_at).toLocaleString("it-IT")} · Scade il{" "}
                 {new Date(data.consult.expires_at).toLocaleString("it-IT")}
               </p>
             </div>
@@ -919,11 +919,11 @@ export default function ProfessionistiRichiestaDettaglioPage() {
               Animale
             </div>
             <div className="mt-2 text-base font-semibold text-zinc-900">
-              {animal?.name || data.consult.animal_name || "â€”"}
+              {animal?.name || data.consult.animal_name || "—"}
             </div>
             <div className="mt-1 text-sm text-zinc-600">
-              {animal?.species || data.animal?.species || "â€”"}
-              {animal?.breed || data.animal?.breed ? ` â€¢ ${animal?.breed || data.animal?.breed}` : ""}
+              {animal?.species || data.animal?.species || "—"}
+              {animal?.breed || data.animal?.breed ? ` • ${animal?.breed || data.animal?.breed}` : ""}
             </div>
           </div>
 
@@ -947,7 +947,7 @@ export default function ProfessionistiRichiestaDettaglioPage() {
               {animal?.owner_name || data.animal?.owner_name || "Non disponibile"}
             </div>
             <div className="mt-1 text-sm text-zinc-600">
-              {animal?.owner_email || data.animal?.owner_email || "â€”"}
+              {animal?.owner_email || data.animal?.owner_email || "—"}
             </div>
           </div>
         </div>
@@ -966,11 +966,11 @@ export default function ProfessionistiRichiestaDettaglioPage() {
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
             <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
-              EtÃ  / Peso
+              Età / Peso
             </div>
             <div className="mt-2 space-y-1 text-sm text-slate-800">
               <div>
-                <span className="font-medium">EtÃ :</span> {rapidClinicalState.age}
+                <span className="font-medium">Età:</span> {rapidClinicalState.age}
               </div>
               <div>
                 <span className="font-medium">Peso:</span> {rapidClinicalState.weight}
@@ -995,7 +995,7 @@ export default function ProfessionistiRichiestaDettaglioPage() {
                   const normalized = getRapidItemDisplay(item);
                   return (
                     <div key={index}>
-                      {normalized.eventDate ? `${formatDate(normalized.eventDate)} Â· ` : ""}
+                      {normalized.eventDate ? `${formatDate(normalized.eventDate)} · ` : ""}
                       {normalized.text || "Allergia registrata"}
                     </div>
                   );
@@ -1016,7 +1016,7 @@ export default function ProfessionistiRichiestaDettaglioPage() {
                   const normalized = getRapidItemDisplay(item);
                   return (
                     <div key={index}>
-                      {normalized.eventDate ? `${formatDate(normalized.eventDate)} Â· ` : ""}
+                      {normalized.eventDate ? `${formatDate(normalized.eventDate)} · ` : ""}
                       {normalized.text || "Terapia attiva"}
                     </div>
                   );
@@ -1037,7 +1037,7 @@ export default function ProfessionistiRichiestaDettaglioPage() {
                   const normalized = getRapidItemDisplay(item);
                   return (
                     <div key={index}>
-                      {normalized.eventDate ? `${formatDate(normalized.eventDate)} Â· ` : ""}
+                      {normalized.eventDate ? `${formatDate(normalized.eventDate)} · ` : ""}
                       {normalized.text || "Terapia"}
                     </div>
                   );
@@ -1058,7 +1058,7 @@ export default function ProfessionistiRichiestaDettaglioPage() {
                   const normalized = getRapidItemDisplay(item);
                   return (
                     <div key={index}>
-                      {normalized.eventDate ? `${formatDate(normalized.eventDate)} Â· ` : ""}
+                      {normalized.eventDate ? `${formatDate(normalized.eventDate)} · ` : ""}
                       {normalized.text || "Patologia cronica"}
                     </div>
                   );
@@ -1253,7 +1253,7 @@ export default function ProfessionistiRichiestaDettaglioPage() {
                         )}
                       </div>
 
-                      <div className="shrink-0 text-sm font-medium text-slate-600">Apri â†’</div>
+                      <div className="shrink-0 text-sm font-medium text-slate-600">Apri →</div>
                     </div>
                   </button>
                 );
@@ -1440,7 +1440,7 @@ export default function ProfessionistiRichiestaDettaglioPage() {
                 <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Meta</div>
                 <div className="mt-3 space-y-2 text-sm text-slate-700">
                   <div>
-                    <span className="font-medium">Titolo:</span> {selectedEvent?.title || "â€”"}
+                    <span className="font-medium">Titolo:</span> {selectedEvent?.title || "—"}
                   </div>
                   <div>
                     <span className="font-medium">Data:</span>{" "}
@@ -1467,7 +1467,7 @@ export default function ProfessionistiRichiestaDettaglioPage() {
                             selectedEvent?.weight ||
                             selectedPayload?.weight ||
                             selectedData?.weight
-                        ) || "â€”"
+                        ) || "—"
                       );
                     })()}
                   </div>
@@ -1524,7 +1524,7 @@ export default function ProfessionistiRichiestaDettaglioPage() {
             <div className="mt-6 rounded-2xl border border-zinc-200 bg-white p-4">
               <label className="block">
                 <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-zinc-700">
-                  Aggiungi allegati allâ€™evento
+                  Aggiungi allegati all’evento
                 </span>
 
                 <input
@@ -1541,7 +1541,7 @@ export default function ProfessionistiRichiestaDettaglioPage() {
               </label>
 
               {uploadingFiles ? (
-                <div className="mt-2 text-xs text-zinc-500">Caricamento allegatiâ€¦</div>
+                <div className="mt-2 text-xs text-zinc-500">Caricamento allegati…</div>
               ) : null}
             </div>
           </div>

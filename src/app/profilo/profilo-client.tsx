@@ -161,7 +161,7 @@ export function ProfiloClient() {
       return;
     }
 
-    setSuccessMsg("Salvato âœ…");
+    setSuccessMsg("Salvato ✅");
     setSaving(false);
 
     if (returnTo) {
@@ -220,7 +220,7 @@ export function ProfiloClient() {
       };
 
       if (!res.ok || !json?.ok) {
-        setDeleteErrorMsg(json?.error || "Errore durante lâ€™eliminazione definitiva account.");
+        setDeleteErrorMsg(json?.error || "Errore durante l’eliminazione definitiva account.");
         setHardDeleting(false);
         return;
       }
@@ -230,7 +230,7 @@ export function ProfiloClient() {
       router.replace("/login?account=eliminato");
       router.refresh();
     } catch {
-      setDeleteErrorMsg("Errore di rete durante lâ€™eliminazione definitiva account.");
+      setDeleteErrorMsg("Errore di rete durante l’eliminazione definitiva account.");
       setHardDeleting(false);
     }
   }
@@ -238,7 +238,7 @@ export function ProfiloClient() {
   if (loading) {
     return (
       <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-        <p className="text-sm text-zinc-700">Caricamentoâ€¦</p>
+        <p className="text-sm text-zinc-700">Caricamento…</p>
       </div>
     );
   }
@@ -247,7 +247,7 @@ export function ProfiloClient() {
     return (
       <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
         <p className="text-sm text-zinc-700">
-          Devi effettuare lâ€™accesso per vedere il profilo.
+          Devi effettuare l’accesso per vedere il profilo.
         </p>
         <div className="mt-4">
           <Link
@@ -265,7 +265,7 @@ export function ProfiloClient() {
     <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
       <div className="flex flex-col gap-1">
         <p className="text-sm font-medium text-zinc-900">Email</p>
-        <p className="text-sm text-zinc-700">{user.email ?? "â€”"}</p>
+        <p className="text-sm text-zinc-700">{user.email ?? "—"}</p>
       </div>
 
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -290,14 +290,14 @@ export function ProfiloClient() {
         </div>
 
         <div className="sm:col-span-2">
-          <label className="text-sm font-medium text-zinc-900">CittÃ </label>
+          <label className="text-sm font-medium text-zinc-900">Città</label>
           <input
             value={city}
             onChange={(e) => setCity(e.target.value)}
             className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm"
             placeholder="Es. Firenze"
           />
-          <p className="mt-1 text-xs text-zinc-500">Obbligatorio per creare unâ€™identitÃ  animale.</p>
+          <p className="mt-1 text-xs text-zinc-500">Obbligatorio per creare un’identità animale.</p>
         </div>
 
         <div className="sm:col-span-2">
@@ -332,7 +332,7 @@ export function ProfiloClient() {
 
       {successMsg ? (
         <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
-          {successMsg} {isPending ? "â€¦" : ""}
+          {successMsg} {isPending ? "…" : ""}
         </div>
       ) : null}
 
@@ -343,7 +343,7 @@ export function ProfiloClient() {
           disabled={saving}
           className="inline-flex items-center justify-center rounded-xl bg-zinc-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-zinc-800 disabled:opacity-60"
         >
-          {saving ? "Salvataggioâ€¦" : "Salva"}
+          {saving ? "Salvataggio…" : "Salva"}
         </button>
 
         <Link
@@ -367,7 +367,7 @@ export function ProfiloClient() {
         <div className="flex flex-col gap-1">
           <h2 className="text-sm font-semibold text-red-900">Disattiva account</h2>
           <p className="text-sm text-red-800">
-            Il tuo account verrÃ  archiviato e lâ€™accesso sarÃ  bloccato. I dati resteranno
+            Il tuo account verrà archiviato e l’accesso sarà bloccato. I dati resteranno
             conservati per un eventuale recupero successivo.
           </p>
         </div>
@@ -398,7 +398,7 @@ export function ProfiloClient() {
               Confermi di voler disattivare il tuo account?
             </p>
             <p className="mt-1 text-sm text-red-800">
-              Dopo la conferma verrai disconnesso. Lâ€™account resterÃ  archiviato e potrÃ  essere
+              Dopo la conferma verrai disconnesso. L’account resterà archiviato e potrà essere
               recuperato in seguito.
             </p>
 
@@ -409,7 +409,7 @@ export function ProfiloClient() {
                 disabled={softDeleting || hardDeleting}
                 className="inline-flex items-center justify-center rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-red-700 disabled:opacity-60"
               >
-                {softDeleting ? "Disattivazioneâ€¦" : "Conferma disattivazione"}
+                {softDeleting ? "Disattivazione…" : "Conferma disattivazione"}
               </button>
 
               <button
@@ -432,7 +432,7 @@ export function ProfiloClient() {
         <div className="flex flex-col gap-1">
           <h2 className="text-sm font-semibold text-rose-900">Elimina definitivamente account</h2>
           <p className="text-sm text-rose-800">
-            Questa operazione Ã¨ irreversibile. I dati personali del tuo account e dellâ€™eventuale
+            Questa operazione è irreversibile. I dati personali del tuo account e dell’eventuale
             profilo professionale collegato verranno anonimizzati.
           </p>
         </div>
@@ -467,7 +467,7 @@ export function ProfiloClient() {
                 disabled={softDeleting || hardDeleting}
                 className="inline-flex items-center justify-center rounded-xl bg-rose-700 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-rose-800 disabled:opacity-60"
               >
-                {hardDeleting ? "Eliminazioneâ€¦" : "Conferma eliminazione definitiva"}
+                {hardDeleting ? "Eliminazione…" : "Conferma eliminazione definitiva"}
               </button>
 
               <button

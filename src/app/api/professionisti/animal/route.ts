@@ -511,7 +511,7 @@ async function sendOwnerNoticeEmail(params: {
         <p><a href="${animalLink}">${animalLink}</a></p>
         <hr style="margin: 24px 0; border: 0; border-top: 1px solid #ddd;" />
         <p style="font-size: 12px; color: #666;">
-          Se ritieni che questo collegamento non sia corretto, contatta lâ€™assistenza o la struttura che ha effettuato lâ€™inserimento.
+          Se ritieni che questo collegamento non sia corretto, contatta l’assistenza o la struttura che ha effettuato l’inserimento.
         </p>
       </div>
     `,
@@ -691,7 +691,7 @@ async function findAnimalByChip(chipNumber: string) {
   const rows = result.data ?? [];
 
   if (rows.length > 1) {
-    throw new Error("Conflitto dati: esistono piÃ¹ animali con questo microchip.");
+    throw new Error("Conflitto dati: esistono più animali con questo microchip.");
   }
 
   return rows[0] ?? null;
@@ -726,7 +726,7 @@ async function findAnimalByPendingOwnerEmailAndCoreData(params: {
   });
 
   if (rows.length > 1) {
-    throw new Error("Conflitto dati: esistono piÃ¹ animali compatibili con questa email owner.");
+    throw new Error("Conflitto dati: esistono più animali compatibili con questa email owner.");
   }
 
   return rows[0] ?? null;

@@ -577,7 +577,7 @@ export async function runImagingIngest(
     const { file } = await loadImagingFile(eventId, fileId);
 
     if (!isDicomFile(file)) {
-      throw new Error("Il file non Ã¨ un DICOM.");
+      throw new Error("Il file non è un DICOM.");
     }
 
     const currentStatus = normalizeImagingFileStatus(file);
