@@ -59,6 +59,14 @@ function verificationBadgeLabel(p: Professional) {
   return "Profilo base verificato";
 }
 
+function SectionBadge({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="inline-flex items-center rounded-full border border-[#dbe5ef] bg-[#f5f9fd] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#5f708a]">
+      {children}
+    </span>
+  );
+}
+
 export default function ServiziPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -234,35 +242,42 @@ export default function ServiziPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f3f4f6] text-zinc-900">
+    <main className="min-h-screen bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_38%,#f6f9fc_100%)] text-zinc-900">
       <div className="mx-auto max-w-[1260px] px-4 py-8 sm:py-10">
-        <section className="overflow-hidden rounded-[2.5rem] border border-[#dde4ec] bg-white shadow-[0_24px_60px_rgba(42,56,86,0.10)]">
+        <section className="overflow-hidden rounded-[2.6rem] border border-[#dde4ec] bg-white shadow-[0_24px_60px_rgba(42,56,86,0.10)]">
           <div className="grid gap-0 lg:grid-cols-[1.02fr_0.98fr]">
             <div className="px-6 py-10 sm:px-8 lg:px-10 lg:py-12">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#6f7d91]">
-                Rete professionisti
-              </p>
+              <SectionBadge>Rete professionisti</SectionBadge>
 
-              <h1 className="mt-4 max-w-3xl text-4xl font-semibold tracking-[-0.05em] text-[#30486f] sm:text-5xl lg:text-6xl">
+              <h1 className="mt-5 max-w-3xl text-4xl font-semibold tracking-[-0.05em] text-[#30486f] sm:text-5xl lg:text-6xl">
                 Trova il professionista giusto per il tuo animale
               </h1>
 
               <p className="mt-5 max-w-2xl text-base leading-relaxed text-[#5f708a] sm:text-lg">
-                Veterinari, toelettatori, pensioni, pet sitter, addestratori e altri servizi
-                in un’unica ricerca più ordinata, filtrabile e chiara.
+                Veterinari, toelettatori, pensioni, pet sitter, addestratori e altri servizi in
+                un’unica ricerca più ordinata, filtrabile e chiara.
               </p>
 
               <div className="mt-8 flex flex-wrap gap-2">
-                {MACRO_CATEGORIES.filter((c) => c.key !== "").map((c) => (
-                  <button
-                    key={c.key}
-                    type="button"
-                    onClick={() => selectMacroCategory(c.key)}
-                    className="rounded-full border border-[#d7dfe9] bg-white px-4 py-2 text-sm font-semibold text-[#31486f] transition hover:bg-[#f8fbff]"
-                  >
-                    {c.label}
-                  </button>
-                ))}
+                {MACRO_CATEGORIES
+                  .filter((c) => c.key !== "")
+                  .map((c) => {
+                    const active = macro === c.key;
+                    return (
+                      <button
+                        key={c.key}
+                        type="button"
+                        onClick={() => selectMacroCategory(c.key)}
+                        className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                          active
+                            ? "border border-[#30486f] bg-[#30486f] text-white shadow-[0_10px_22px_rgba(48,72,111,0.16)]"
+                            : "border border-[#d7dfe9] bg-white text-[#31486f] hover:bg-[#f8fbff]"
+                        }`}
+                      >
+                        {c.label}
+                      </button>
+                    );
+                  })}
               </div>
             </div>
 
@@ -286,9 +301,9 @@ export default function ServiziPage() {
 
                 <div className="mt-5 grid gap-3 sm:grid-cols-2">
                   <div>
-                    <label className="block text-sm font-semibold text-zinc-900">Città</label>
+                    <label className="block text-sm font-semibold text-[#30486f]">Città</label>
                     <input
-                      className="mt-1 w-full rounded-2xl border border-[#d7dfe9] bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-[#2f69c7]"
+                      className="mt-2 w-full rounded-[1.2rem] border border-[#d7dfe9] bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition placeholder:text-[#7a8799] focus:border-[#2f69c7] focus:ring-4 focus:ring-[#2f69c7]/10"
                       placeholder="Es. Firenze"
                       value={city}
                       onChange={(e) => setCity(e.target.value)}
@@ -296,11 +311,11 @@ export default function ServiziPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-zinc-900">
+                    <label className="block text-sm font-semibold text-[#30486f]">
                       Macro-categoria
                     </label>
                     <select
-                      className="mt-1 w-full rounded-2xl border border-[#d7dfe9] bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-[#2f69c7]"
+                      className="mt-2 w-full rounded-[1.2rem] border border-[#d7dfe9] bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-[#2f69c7] focus:ring-4 focus:ring-[#2f69c7]/10"
                       value={macro}
                       onChange={(e) => {
                         setMacro(e.target.value);
@@ -316,12 +331,12 @@ export default function ServiziPage() {
                   </div>
 
                   <div className="sm:col-span-2" ref={sugBoxRef}>
-                    <label className="block text-sm font-semibold text-zinc-900">
+                    <label className="block text-sm font-semibold text-[#30486f]">
                       Cerca un servizio
                     </label>
                     <div className="relative">
                       <input
-                        className="mt-1 w-full rounded-2xl border border-[#d7dfe9] bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-[#2f69c7]"
+                        className="mt-2 w-full rounded-[1.2rem] border border-[#d7dfe9] bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition placeholder:text-[#7a8799] focus:border-[#2f69c7] focus:ring-4 focus:ring-[#2f69c7]/10"
                         placeholder="Es. tac, ecografia, ricovero…"
                         value={q}
                         onChange={(e) => {
@@ -401,59 +416,78 @@ export default function ServiziPage() {
               </p>
             </div>
           ) : (
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {filtered.map((p) => {
-                const top = proTopTags(p.id);
+            <>
+              <div className="mb-4 flex items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-2xl font-semibold tracking-[-0.03em] text-[#30486f]">
+                    Professionisti disponibili
+                  </h2>
+                  <p className="mt-1 text-sm text-[#5f708a]">
+                    Schede verificate e visibili pubblicamente nella Rete UNIMALIA.
+                  </p>
+                </div>
+              </div>
 
-                return (
-                  <Link
-                    key={p.id}
-                    href={`/servizi/${p.id}`}
-                    className="rounded-[2rem] border border-[#e3e9f0] bg-white p-5 shadow-[0_14px_40px_rgba(42,56,86,0.06)] transition hover:-translate-y-1 hover:shadow-[0_20px_50px_rgba(42,56,86,0.08)]"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <h2 className="text-xl font-semibold tracking-[-0.02em] text-[#30486f]">
-                          {p.display_name}
-                        </h2>
-                        <p className="mt-1 text-sm text-[#5f708a]">{macroLabel(p.category)}</p>
+              <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                {filtered.map((p) => {
+                  const top = proTopTags(p.id);
+
+                  return (
+                    <Link
+                      key={p.id}
+                      href={`/servizi/${p.id}`}
+                      className="group rounded-[2rem] border border-[#e3e9f0] bg-white p-5 shadow-[0_14px_40px_rgba(42,56,86,0.06)] transition hover:-translate-y-1 hover:shadow-[0_20px_50px_rgba(42,56,86,0.08)]"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <h2 className="text-xl font-semibold tracking-[-0.02em] text-[#30486f] transition group-hover:text-[#243750]">
+                            {p.display_name}
+                          </h2>
+                          <p className="mt-1 text-sm text-[#5f708a]">{macroLabel(p.category)}</p>
+                        </div>
+
+                        <span className="shrink-0 text-xs text-[#6f7d91]">
+                          {p.city}
+                          {p.province ? ` (${p.province})` : ""}
+                        </span>
                       </div>
-                      <span className="text-xs text-[#6f7d91]">
-                        {p.city}
-                        {p.province ? ` (${p.province})` : ""}
-                      </span>
-                    </div>
 
-                    <div className="mt-4">
-                      <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-                        {verificationBadgeLabel(p)}
-                      </span>
-                    </div>
-
-                    {p.description ? (
-                      <p className="mt-4 line-clamp-3 text-sm leading-relaxed text-[#5f708a]">
-                        {p.description}
-                      </p>
-                    ) : (
-                      <p className="mt-4 text-sm text-[#6f7d91]">Scheda in aggiornamento.</p>
-                    )}
-
-                    {top.length > 0 && (
-                      <div className="mt-5 flex flex-wrap gap-2">
-                        {top.map((t) => (
-                          <span
-                            key={t.id}
-                            className="rounded-full bg-[#f4f7fb] px-3 py-1 text-xs font-semibold text-[#4f6078]"
-                          >
-                            {t.label}
-                          </span>
-                        ))}
+                      <div className="mt-4">
+                        <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                          {verificationBadgeLabel(p)}
+                        </span>
                       </div>
-                    )}
-                  </Link>
-                );
-              })}
-            </div>
+
+                      {p.description ? (
+                        <p className="mt-4 line-clamp-3 text-sm leading-relaxed text-[#5f708a]">
+                          {p.description}
+                        </p>
+                      ) : (
+                        <p className="mt-4 text-sm text-[#6f7d91]">Scheda in aggiornamento.</p>
+                      )}
+
+                      {top.length > 0 && (
+                        <div className="mt-5 flex flex-wrap gap-2">
+                          {top.map((t) => (
+                            <span
+                              key={t.id}
+                              className="rounded-full bg-[#f4f7fb] px-3 py-1 text-xs font-semibold text-[#4f6078]"
+                            >
+                              {t.label}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="mt-6 inline-flex items-center text-sm font-semibold text-[#30486f]">
+                        Apri scheda
+                        <span className="ml-2 transition group-hover:translate-x-1">→</span>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            </>
           )}
         </div>
       </div>
