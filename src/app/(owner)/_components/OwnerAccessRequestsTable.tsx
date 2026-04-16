@@ -39,6 +39,15 @@ function getErrorMessage(error: unknown) {
   return "Errore";
 }
 
+function normalizeRequestedScope(scope?: string[] | null) {
+  if (!scope?.length) return "accesso base";
+
+  return scope
+    .filter((x) => x === "read" || x === "write")
+    .map((x) => (x === "read" ? "lettura" : "modifica"))
+    .join(", ");
+}
+
 export default function OwnerAccessRequestsTable({ animalId }: { animalId?: string }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -111,17 +120,19 @@ export default function OwnerAccessRequestsTable({ animalId }: { animalId?: stri
   }
 
   return (
-    <section className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm space-y-5">
+    <section className="rounded-[1.75rem] border border-[#e3e9f0] bg-white p-5 shadow-[0_10px_28px_rgba(42,56,86,0.05)] sm:p-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <div className="text-base font-semibold text-zinc-900">Richieste di accesso</div>
-          <div className="mt-1 text-sm text-zinc-600">
+          <div className="text-lg font-semibold tracking-[-0.02em] text-[#30486f]">
+            Richieste di accesso
+          </div>
+          <div className="mt-1 text-sm leading-7 text-[#5f708a]">
             Gestisci le autorizzazioni dei professionisti per questo animale.
           </div>
         </div>
 
         <button
-          className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50 disabled:opacity-60"
+          className="inline-flex items-center justify-center rounded-full border border-[#d7dfe9] bg-white px-4 py-2.5 text-sm font-semibold text-[#30486f] transition hover:bg-[#f8fbff] disabled:opacity-60"
           onClick={() => void load()}
           disabled={loading || isPending}
         >
@@ -130,127 +141,137 @@ export default function OwnerAccessRequestsTable({ animalId }: { animalId?: stri
       </div>
 
       {err ? (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <div className="mt-5 rounded-[1.1rem] border border-red-200 bg-red-50 p-4 text-sm text-red-700">
           {err}
         </div>
       ) : null}
 
       {loading ? (
-        <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600">
+        <div className="mt-5 rounded-[1.25rem] border border-[#e3e9f0] bg-[#fbfdff] p-4 text-sm text-[#5f708a]">
           Caricamento…
         </div>
       ) : null}
 
-      <div className="space-y-3">
-        <div className="text-sm font-semibold text-zinc-900">In attesa</div>
+      <div className="mt-6 space-y-6">
+        <div className="space-y-3">
+          <div className="text-sm font-semibold text-[#30486f]">In attesa</div>
 
-        {pending.length === 0 ? (
-          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600">
-            Nessuna richiesta in attesa.
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {pending.map((r) => {
-              const selectedDuration = durationByRequestId[r.id] ?? "7d";
+          {pending.length === 0 ? (
+            <div className="rounded-[1.25rem] border border-[#e3e9f0] bg-[#fbfdff] p-4 text-sm text-[#5f708a]">
+              Nessuna richiesta in attesa.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {pending.map((r) => {
+                const selectedDuration = durationByRequestId[r.id] ?? "7d";
 
-              return (
-                <div key={r.id} className="rounded-2xl border border-zinc-200 bg-white p-4 space-y-4">
+                return (
+                  <div
+                    key={r.id}
+                    className="rounded-[1.5rem] border border-[#e3e9f0] bg-white p-4 shadow-[0_8px_22px_rgba(42,56,86,0.03)]"
+                  >
+                    <div className="text-sm">
+                      <div className="font-semibold text-[#30486f]">
+                        {r.animal_name ?? r.animal_id} • {r.organization_name ?? r.organization_id}
+                      </div>
+
+                      <div className="mt-1 text-[#5f708a]">
+                        Richiesta del {formatDateTime(r.created_at)}
+                      </div>
+
+                      <div className="mt-1 text-[#6f7d91]">
+                        Permessi richiesti: {normalizeRequestedScope(r.requested_scope)}
+                      </div>
+                    </div>
+
+                    <div className="mt-4 rounded-[1.25rem] border border-[#e3e9f0] bg-[#f8fbff] p-4">
+                      <label className="block text-sm font-semibold text-[#30486f]">
+                        Durata autorizzazione
+                      </label>
+
+                      <select
+                        className="mt-2 w-full rounded-[1.1rem] border border-[#d7dfe9] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#2f69c7] focus:ring-4 focus:ring-[#2f69c7]/10"
+                        value={selectedDuration}
+                        onChange={(e) =>
+                          setDurationByRequestId((prev) => ({
+                            ...prev,
+                            [r.id]: e.target.value as Duration,
+                          }))
+                        }
+                        disabled={isPending}
+                      >
+                        <option value="24h">{labelDuration("24h")}</option>
+                        <option value="7d">{labelDuration("7d")}</option>
+                        <option value="6m">{labelDuration("6m")}</option>
+                        <option value="forever">{labelDuration("forever")}</option>
+                      </select>
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap gap-3">
+                      <button
+                        className="inline-flex items-center justify-center rounded-full border border-[#d7dfe9] bg-white px-4 py-2.5 text-sm font-semibold text-[#30486f] disabled:opacity-60"
+                        onClick={() => act(r.id, "reject")}
+                        disabled={isPending}
+                      >
+                        Rifiuta
+                      </button>
+
+                      <button
+                        className="inline-flex items-center justify-center rounded-full bg-[#30486f] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_14px_34px_rgba(48,72,111,0.18)] disabled:opacity-60"
+                        onClick={() => act(r.id, "approve")}
+                        disabled={isPending}
+                      >
+                        Approva accesso
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-3">
+          <div className="text-sm font-semibold text-[#30486f]">Storico</div>
+
+          {history.length === 0 ? (
+            <div className="rounded-[1.25rem] border border-[#e3e9f0] bg-[#fbfdff] p-4 text-sm text-[#5f708a]">
+              Nessun elemento.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {history.map((r) => (
+                <div
+                  key={r.id}
+                  className="rounded-[1.5rem] border border-[#e3e9f0] bg-white p-4 shadow-[0_8px_22px_rgba(42,56,86,0.03)] sm:flex sm:items-center sm:justify-between"
+                >
                   <div className="text-sm">
-                    <div className="font-semibold text-zinc-900">
+                    <div className="font-semibold text-[#30486f]">
                       {r.animal_name ?? r.animal_id} • {r.organization_name ?? r.organization_id}
                     </div>
-                    <div className="mt-1 text-zinc-600">
-                      Richiesta del {formatDateTime(r.created_at)}
+
+                    <div className="mt-1 text-[#5f708a]">Stato: {r.status}</div>
+
+                    <div className="mt-1 text-[#6f7d91]">
+                      Data: {formatDateTime(r.created_at)}
+                      {r.expires_at ? ` • Scade: ${formatDate(r.expires_at)}` : ""}
                     </div>
-                    <div className="mt-1 text-zinc-500">
-                      Permessi richiesti:{" "}
-                      {r.requested_scope?.length ? r.requested_scope.join(", ") : "accesso base"}
-                    </div>
                   </div>
 
-                  <div className="rounded-2xl bg-zinc-50 p-4">
-                    <label className="block text-sm font-medium text-zinc-900">
-                      Durata autorizzazione
-                    </label>
-                    <select
-                      className="mt-2 w-full rounded-2xl border border-zinc-300 bg-white px-3 py-2 text-sm outline-none focus:border-zinc-900"
-                      value={selectedDuration}
-                      onChange={(e) =>
-                        setDurationByRequestId((prev) => ({
-                          ...prev,
-                          [r.id]: e.target.value as Duration,
-                        }))
-                      }
-                      disabled={isPending}
-                    >
-                      <option value="24h">{labelDuration("24h")}</option>
-                      <option value="7d">{labelDuration("7d")}</option>
-                      <option value="6m">{labelDuration("6m")}</option>
-                      <option value="forever">{labelDuration("forever")}</option>
-                    </select>
-                  </div>
-
-                  <div className="flex flex-wrap gap-3">
+                  {r.status === "approved" ? (
                     <button
-                      className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 disabled:opacity-60"
-                      onClick={() => act(r.id, "reject")}
+                      className="mt-4 inline-flex items-center justify-center rounded-full bg-red-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60 sm:mt-0"
+                      onClick={() => act(r.id, "revoke")}
                       disabled={isPending}
                     >
-                      Rifiuta
+                      Revoca accesso
                     </button>
-                    <button
-                      className="rounded-2xl bg-black px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
-                      onClick={() => act(r.id, "approve")}
-                      disabled={isPending}
-                    >
-                      Approva accesso
-                    </button>
-                  </div>
+                  ) : null}
                 </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      <div className="space-y-3">
-        <div className="text-sm font-semibold text-zinc-900">Storico</div>
-
-        {history.length === 0 ? (
-          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600">
-            Nessun elemento.
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {history.map((r) => (
-              <div
-                key={r.id}
-                className="rounded-2xl border border-zinc-200 bg-white p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
-              >
-                <div className="text-sm">
-                  <div className="font-semibold text-zinc-900">
-                    {r.animal_name ?? r.animal_id} • {r.organization_name ?? r.organization_id}
-                  </div>
-                  <div className="mt-1 text-zinc-600">Stato: {r.status}</div>
-                  <div className="mt-1 text-zinc-500">
-                    Data: {formatDateTime(r.created_at)}
-                    {r.expires_at ? ` • Scade: ${formatDate(r.expires_at)}` : ""}
-                  </div>
-                </div>
-
-                {r.status === "approved" ? (
-                  <button
-                    className="rounded-2xl bg-red-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
-                    onClick={() => act(r.id, "revoke")}
-                    disabled={isPending}
-                  >
-                    Revoca accesso
-                  </button>
-                ) : null}
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </section>
   );
