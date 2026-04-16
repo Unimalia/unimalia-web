@@ -113,6 +113,39 @@ function formatSterilizedLabel(value?: boolean | null) {
   return "—";
 }
 
+function Card({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <section
+      className={`rounded-[1.75rem] border border-[#e3e9f0] bg-white p-5 shadow-[0_10px_28px_rgba(42,56,86,0.05)] sm:p-6 ${className}`}
+    >
+      {children}
+    </section>
+  );
+}
+
+function InfoTile({
+  label,
+  value,
+}: {
+  label: string;
+  value: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-[1.25rem] border border-[#edf2f7] bg-[#fbfdff] px-4 py-4">
+      <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#6f7d91]">
+        {label}
+      </div>
+      <div className="mt-1 text-sm font-semibold text-[#30486f]">{value}</div>
+    </div>
+  );
+}
+
 export default function AnimalProfilePage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -304,25 +337,20 @@ export default function AnimalProfilePage() {
         <>
           <ButtonSecondary href={`/identita/${animal.id}/modifica`}>Modifica</ButtonSecondary>
           <ButtonSecondary href={`/identita/${animal.id}/stampa`}>Stampa</ButtonSecondary>
-
           <ButtonSecondary href={`/identita/${animal.id}/clinica`}>
             Scheda clinica rapida
           </ButtonSecondary>
-
           <ButtonSecondary href={premiumOk ? `/identita/${animal.id}/storia` : "/prezzi"}>
             Storia animale
           </ButtonSecondary>
-
           <ButtonSecondary
             href={`/smarrimenti/nuovo?animalId=${encodeURIComponent(animal.id)}`}
           >
             {isLost ? "Aggiorna annuncio smarrimento" : "Segnala come smarrito"}
           </ButtonSecondary>
-
           <ButtonSecondary href={`/identita/${animal.id}/emergenza`}>
             QR emergenza / medaglietta
           </ButtonSecondary>
-
           <ButtonSecondary
             href="#"
             onClick={() => {
@@ -331,14 +359,12 @@ export default function AnimalProfilePage() {
           >
             Condividi al professionista
           </ButtonSecondary>
-
           <Link
             href={`/profilo/richieste-accesso?animalId=${encodeURIComponent(id)}`}
             className="rounded-md border px-3 py-2 text-sm font-semibold hover:bg-neutral-50"
           >
             Gestisci accessi professionisti
           </Link>
-
           <ButtonPrimary href="/identita">Tutte le identità</ButtonPrimary>
         </>
       }
@@ -346,8 +372,8 @@ export default function AnimalProfilePage() {
       <OwnerGrantNotifier animalId={animal.id} />
 
       <div className="flex flex-col gap-6">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xs text-zinc-500">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs text-[#6f7d91]">
             Creato il {new Date(animal.created_at).toLocaleDateString("it-IT")}
           </p>
 
@@ -366,13 +392,13 @@ export default function AnimalProfilePage() {
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3">
-          <div className="flex flex-col gap-4 md:col-span-1">
-            <section className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-              <h2 className="text-base font-semibold text-zinc-900">Foto animale</h2>
+        <div className="grid gap-5 lg:grid-cols-[0.94fr_1.06fr]">
+          <div className="flex flex-col gap-5">
+            <Card>
+              <h2 className="text-base font-semibold text-[#30486f]">Foto animale</h2>
 
-              <div className="mt-4 overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-100 p-3">
-                <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white">
+              <div className="mt-4 overflow-hidden rounded-[1.5rem] border border-[#e3e9f0] bg-[#f7fafc] p-3">
+                <div className="overflow-hidden rounded-[1.1rem] border border-[#dfe6ee] bg-white">
                   <div className="relative h-72 w-full">
                     <Image
                       src={animal.photo_url || "/placeholder-animal.jpg"}
@@ -384,60 +410,98 @@ export default function AnimalProfilePage() {
                   </div>
                 </div>
               </div>
-            </section>
+            </Card>
 
-            <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+            <Card>
               <div className="flex items-start justify-between gap-4">
-                <h2 className="text-base font-semibold text-zinc-900">Identità</h2>
+                <h2 className="text-base font-semibold text-[#30486f]">Identità</h2>
 
                 <Link
                   href={`/identita/${animal.id}/modifica`}
-                  className="shrink-0 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+                  className="shrink-0 rounded-xl border border-[#d7dfe9] bg-white px-3 py-2 text-sm font-semibold text-[#30486f] hover:bg-[#f8fbff]"
                 >
                   Aggiorna dati
                 </Link>
               </div>
 
-              <dl className="mt-4 grid gap-3 text-sm">
+              <dl className="mt-5 grid gap-3 text-sm">
                 <div className="flex justify-between gap-4">
-                  <dt className="text-zinc-500">Nome</dt>
-                  <dd className="font-medium text-zinc-900">{animal.name}</dd>
+                  <dt className="text-[#6f7d91]">Nome</dt>
+                  <dd className="font-semibold text-[#30486f]">{animal.name}</dd>
                 </div>
 
                 <div className="flex justify-between gap-4">
-                  <dt className="text-zinc-500">Tipo</dt>
-                  <dd className="font-medium text-zinc-900">{animal.species}</dd>
+                  <dt className="text-[#6f7d91]">Tipo</dt>
+                  <dd className="font-semibold text-[#30486f]">{animal.species}</dd>
                 </div>
 
                 <div className="flex justify-between gap-4">
-                  <dt className="text-zinc-500">Razza</dt>
-                  <dd className="font-medium text-zinc-900">{animal.breed || "—"}</dd>
+                  <dt className="text-[#6f7d91]">Razza</dt>
+                  <dd className="font-semibold text-[#30486f]">{animal.breed || "—"}</dd>
                 </div>
 
                 <div className="flex justify-between gap-4">
-                  <dt className="text-zinc-500">Colore / segni</dt>
-                  <dd className="font-medium text-zinc-900">{animal.color || "—"}</dd>
+                  <dt className="text-[#6f7d91]">Colore / segni</dt>
+                  <dd className="font-semibold text-[#30486f]">{animal.color || "—"}</dd>
                 </div>
 
                 <div className="flex justify-between gap-4">
-                  <dt className="text-zinc-500">Taglia</dt>
-                  <dd className="font-medium text-zinc-900">{animal.size || "—"}</dd>
+                  <dt className="text-[#6f7d91]">Taglia</dt>
+                  <dd className="font-semibold text-[#30486f]">{animal.size || "—"}</dd>
                 </div>
 
                 <div className="flex justify-between gap-4">
-                  <dt className="text-zinc-500">Sterilizzato / castrato</dt>
-                  <dd className="font-medium text-zinc-900">
+                  <dt className="text-[#6f7d91]">Sterilizzato / castrato</dt>
+                  <dd className="font-semibold text-[#30486f]">
                     {formatSterilizedLabel(animal.sterilized)}
                   </dd>
                 </div>
               </dl>
-            </section>
+            </Card>
 
-            <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+            <Card>
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <h2 className="text-base font-semibold text-zinc-900">Scheda clinica rapida</h2>
-                  <p className="mt-1 text-sm text-zinc-600">
+                  <h2 className="text-base font-semibold text-[#30486f]">Codici</h2>
+                  <p className="mt-1 text-sm text-[#5f708a]">
+                    Da usare in emergenza o per verifica rapida.
+                  </p>
+                </div>
+
+                <div className="shrink-0">{codeStatusBadge}</div>
+              </div>
+
+              <div className="mt-4 rounded-[1.25rem] border border-[#edf2f7] bg-[#fbfdff] p-4">
+                <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#6f7d91]">
+                  Microchip / Codice
+                </div>
+                <div className="mt-1 text-sm font-semibold text-[#30486f]">
+                  {animal.chip_number ? normalizeChip(animal.chip_number) : barcodeValue}
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <AnimalCodes
+                  qrValue={qrValue}
+                  barcodeValue={barcodeValue}
+                  caption=""
+                  layout="stack"
+                />
+              </div>
+
+              <p className="mt-3 text-xs text-[#6f7d91]">
+                Nota: alcuni animali possono non avere microchip. In quel caso UNIMALIA usa un
+                codice interno.
+              </p>
+            </Card>
+          </div>
+
+          <div className="flex flex-col gap-5">
+            <Card>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-base font-semibold text-[#30486f]">Scheda clinica rapida</h2>
+                  <p className="mt-1 text-sm text-[#5f708a]">
                     Sintesi rapida gratuita con i dati essenziali del tuo animale.
                   </p>
                 </div>
@@ -447,17 +511,17 @@ export default function AnimalProfilePage() {
                 </span>
               </div>
 
-              <div className="mt-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-                <div className="text-sm font-semibold text-zinc-900">
+              <div className="mt-5 rounded-[1.5rem] border border-[#e3e9f0] bg-[#f8fbff] p-4">
+                <div className="text-sm font-semibold text-[#30486f]">
                   Età: {rapidClinicalState.age} | Peso: {rapidClinicalState.weight}
                 </div>
-                <div className="mt-2 text-sm text-zinc-600">
+                <div className="mt-2 text-sm leading-7 text-[#5f708a]">
                   Sintesi immediata dei dati clinici essenziali. Le modifiche professionali restano
                   gestite dai veterinari autorizzati.
                 </div>
 
                 {eventsLoading ? (
-                  <p className="mt-3 text-xs text-zinc-500">Caricamento dati clinici…</p>
+                  <p className="mt-3 text-xs text-[#6f7d91]">Caricamento dati clinici…</p>
                 ) : null}
 
                 {eventsError ? (
@@ -466,105 +530,75 @@ export default function AnimalProfilePage() {
               </div>
 
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-                  <div className="text-xs text-zinc-500">Gruppo sanguigno</div>
-                  <div className="mt-1 text-sm font-semibold text-zinc-900">
-                    {rapidClinicalState.bloodType || "—"}
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-                  <div className="text-xs text-zinc-500">Sterilizzato / castrato</div>
-                  <div className="mt-1 text-sm font-semibold text-zinc-900">
-                    {rapidClinicalState.sterilizationStatus || "—"}
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-                  <div className="text-xs text-zinc-500">Allergie</div>
-                  <div className="mt-1 text-sm font-semibold text-zinc-900">
-                    {rapidClinicalState.allergies.length > 0
+                <InfoTile label="Gruppo sanguigno" value={rapidClinicalState.bloodType || "—"} />
+                <InfoTile
+                  label="Sterilizzato / castrato"
+                  value={rapidClinicalState.sterilizationStatus || "—"}
+                />
+                <InfoTile
+                  label="Allergie"
+                  value={
+                    rapidClinicalState.allergies.length > 0
                       ? rapidClinicalState.allergies.join(", ")
-                      : "—"}
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-                  <div className="text-xs text-zinc-500">Terapie attive</div>
-                  <div className="mt-1 text-sm font-semibold text-zinc-900">
-                    {rapidClinicalState.activeTherapies.length > 0
+                      : "—"
+                  }
+                />
+                <InfoTile
+                  label="Terapie attive"
+                  value={
+                    rapidClinicalState.activeTherapies.length > 0
                       ? rapidClinicalState.activeTherapies.join(", ")
-                      : "—"}
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-                  <div className="text-xs text-zinc-500">Ultime terapie</div>
-                  <div className="mt-1 text-sm font-semibold text-zinc-900">
-                    {rapidClinicalState.lastTherapies.length > 0
+                      : "—"
+                  }
+                />
+                <InfoTile
+                  label="Ultime terapie"
+                  value={
+                    rapidClinicalState.lastTherapies.length > 0
                       ? rapidClinicalState.lastTherapies.join(", ")
-                      : "—"}
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-                  <div className="text-xs text-zinc-500">Patologie croniche</div>
-                  <div className="mt-1 text-sm font-semibold text-zinc-900">
-                    {rapidClinicalState.chronicPathologies.length > 0
+                      : "—"
+                  }
+                />
+                <InfoTile
+                  label="Patologie croniche"
+                  value={
+                    rapidClinicalState.chronicPathologies.length > 0
                       ? rapidClinicalState.chronicPathologies.join(", ")
-                      : "—"}
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-                  <div className="text-xs text-zinc-500">Ricontrolli programmati</div>
-                  <div className="mt-1 text-sm font-semibold text-zinc-900">
-                    {rapidClinicalState.nextRecall || "—"}
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-                  <div className="text-xs text-zinc-500">Ultima visita</div>
-                  <div className="mt-1 text-sm font-semibold text-zinc-900">
-                    {rapidClinicalState.latestVisit || "—"}
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-                  <div className="text-xs text-zinc-500">Ultima vaccinazione</div>
-                  <div className="mt-1 text-sm font-semibold text-zinc-900">
-                    {rapidClinicalState.latestVaccination || "—"}
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-                  <div className="text-xs text-zinc-500">Vaccinazioni scadute / in scadenza</div>
-                  <div className="mt-1 text-sm font-semibold text-zinc-900">
-                    {rapidClinicalState.vaccinationExpiry || "—"}
-                  </div>
-                </div>
+                      : "—"
+                  }
+                />
+                <InfoTile label="Ricontrolli programmati" value={rapidClinicalState.nextRecall || "—"} />
+                <InfoTile label="Ultima visita" value={rapidClinicalState.latestVisit || "—"} />
+                <InfoTile
+                  label="Ultima vaccinazione"
+                  value={rapidClinicalState.latestVaccination || "—"}
+                />
+                <InfoTile
+                  label="Vaccinazioni scadute / in scadenza"
+                  value={rapidClinicalState.vaccinationExpiry || "—"}
+                />
               </div>
 
               <div className="mt-4">
                 <Link
                   href={`/identita/${animal.id}/clinica`}
-                  className="inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+                  className="inline-flex items-center justify-center rounded-xl border border-[#d7dfe9] bg-white px-4 py-2 text-sm font-semibold text-[#30486f] hover:bg-[#f8fbff]"
                 >
                   Apri scheda clinica rapida
                 </Link>
               </div>
 
-              <p className="mt-3 text-xs text-zinc-500">
+              <p className="mt-3 text-xs text-[#6f7d91]">
                 Questa sezione è gratuita. La cartella clinica completa e la timeline avanzata
                 restano funzioni Premium.
               </p>
-            </section>
+            </Card>
 
-            <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+            <Card>
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <h2 className="text-base font-semibold text-zinc-900">Cartella clinica completa</h2>
-                  <p className="mt-1 text-sm text-zinc-600">
+                  <h2 className="text-base font-semibold text-[#30486f]">Cartella clinica completa</h2>
+                  <p className="mt-1 text-sm text-[#5f708a]">
                     Archivio completo, timeline organizzata e consultazione estesa.
                   </p>
                 </div>
@@ -585,17 +619,17 @@ export default function AnimalProfilePage() {
                 </Link>
               </div>
 
-              <p className="mt-3 text-xs text-zinc-500">
+              <p className="mt-3 text-xs text-[#6f7d91]">
                 La cartella clinica completa includerà una vista più estesa e organizzata dello
                 storico sanitario dell’animale.
               </p>
-            </section>
+            </Card>
 
-            <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+            <Card>
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <h2 className="text-base font-semibold text-zinc-900">Storia animale</h2>
-                  <p className="mt-1 text-sm text-zinc-600">
+                  <h2 className="text-base font-semibold text-[#30486f]">Storia animale</h2>
+                  <p className="mt-1 text-sm text-[#5f708a]">
                     Timeline non clinica: servizi, promemoria e attività dell’animale.
                   </p>
                 </div>
@@ -612,7 +646,7 @@ export default function AnimalProfilePage() {
                   href={premiumOk ? `/identita/${animal.id}/storia` : "/prezzi"}
                   className={`inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold ${
                     premiumOk
-                      ? "border border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-50"
+                      ? "border border-[#d7dfe9] bg-white text-[#30486f] hover:bg-[#f8fbff]"
                       : "border border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100"
                   }`}
                 >
@@ -620,59 +654,25 @@ export default function AnimalProfilePage() {
                 </Link>
               </div>
 
-              <p className="mt-3 text-xs text-zinc-500">
+              <p className="mt-3 text-xs text-[#6f7d91]">
                 La Storia animale raccoglierà eventi non clinici come servizi, attività e
                 promemoria. Le associazioni avranno accesso gratuito quando questa sezione sarà
                 attivata anche lato professionisti.
               </p>
-            </section>
+            </Card>
           </div>
-
-          <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm md:col-span-2">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <h2 className="text-base font-semibold text-zinc-900">Codici</h2>
-                <p className="mt-1 text-sm text-zinc-600">
-                  Da usare in emergenza o per verifica rapida.
-                </p>
-              </div>
-
-              <div className="shrink-0">{codeStatusBadge}</div>
-            </div>
-
-            <div className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4">
-              <div className="text-xs text-zinc-500">Microchip / Codice</div>
-              <div className="mt-1 text-sm font-semibold text-zinc-900">
-                {animal.chip_number ? normalizeChip(animal.chip_number) : barcodeValue}
-              </div>
-            </div>
-
-            <div className="mt-4">
-              <AnimalCodes
-                qrValue={qrValue}
-                barcodeValue={barcodeValue}
-                caption=""
-                layout="stack"
-              />
-            </div>
-
-            <p className="mt-3 text-xs text-zinc-500">
-              Nota: alcuni animali possono non avere microchip. In quel caso UNIMALIA usa un codice
-              interno.
-            </p>
-          </section>
         </div>
       </div>
 
       {shareOpen ? (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl">
+          <div className="w-full max-w-lg rounded-[1.75rem] border border-[#e3e9f0] bg-white p-5 shadow-xl sm:p-6">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <div className="text-base font-semibold text-zinc-900">
+                <div className="text-base font-semibold text-[#30486f]">
                   Condividi al professionista
                 </div>
-                <div className="mt-1 text-sm text-zinc-600">
+                <div className="mt-1 text-sm text-[#5f708a]">
                   Scegli come condividere questa identità con un veterinario.
                 </div>
               </div>
@@ -680,43 +680,43 @@ export default function AnimalProfilePage() {
               <button
                 type="button"
                 onClick={() => setShareOpen(false)}
-                className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+                className="rounded-xl border border-[#d7dfe9] bg-white px-3 py-2 text-sm font-semibold text-[#30486f] hover:bg-[#f8fbff]"
               >
                 Chiudi
               </button>
             </div>
 
-            <div className="mt-4 grid gap-2">
+            <div className="mt-5 grid gap-3">
               <button
                 type="button"
-                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-left text-sm font-semibold text-zinc-900"
+                className="w-full rounded-[1.25rem] border border-[#e3e9f0] bg-[#f8fbff] px-4 py-4 text-left text-sm font-semibold text-[#30486f]"
                 onClick={() => {
                   alert("Veterinario di fiducia: non ancora impostato.");
                   setShareOpen(false);
                 }}
               >
                 Veterinario di fiducia
-                <div className="mt-1 text-xs font-normal text-zinc-600">
+                <div className="mt-1 text-xs font-normal leading-6 text-[#5f708a]">
                   (In futuro: condivisione 1-click con il tuo vet.)
                 </div>
               </button>
 
               <button
                 type="button"
-                className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-left text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
+                className="w-full rounded-[1.25rem] border border-[#e3e9f0] bg-white px-4 py-4 text-left text-sm font-semibold text-[#30486f] hover:bg-[#f8fbff]"
                 onClick={() => {
                   alert("Altro veterinario: flusso in definizione (nome/codice accesso).");
                   setShareOpen(false);
                 }}
               >
                 Condividi ad altro veterinario
-                <div className="mt-1 text-xs font-normal text-zinc-600">
+                <div className="mt-1 text-xs font-normal leading-6 text-[#5f708a]">
                   (In futuro: ricerca per nome o codice di accesso.)
                 </div>
               </button>
             </div>
 
-            <div className="mt-4 text-xs text-zinc-500">
+            <div className="mt-4 text-xs text-[#6f7d91]">
               Nota: questo pulsante non apre il portale professionisti.
             </div>
           </div>
