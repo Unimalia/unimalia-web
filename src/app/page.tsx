@@ -440,7 +440,7 @@ export default function HomePage() {
                 </p>
 
                 <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-                  <PrimaryButton href="/identita">Scopri la piattaforma</PrimaryButton>
+                  <PrimaryButton href="/scopri-unimalia">Scopri UNIMALIA</PrimaryButton>
                   <SecondaryButton href="/smarrimenti/nuovo">Segnala smarrimento</SecondaryButton>
                 </div>
 
@@ -460,7 +460,11 @@ export default function HomePage() {
                 </div>
               </div>
 
-              <div className="relative min-h-[380px] overflow-hidden bg-[linear-gradient(180deg,#ffffff_0%,#f7faff_100%)]">
+              <Link
+                href="/scopri-unimalia"
+                className="relative block min-h-[380px] overflow-hidden bg-[linear-gradient(180deg,#ffffff_0%,#f7faff_100%)]"
+                aria-label="Scopri UNIMALIA"
+              >
                 <div className="relative h-full min-h-[380px] w-full">
                   <Image
                     src="/home/hero-animals.png"
@@ -471,7 +475,7 @@ export default function HomePage() {
                     sizes="(max-width: 768px) 100vw, 900px"
                   />
                 </div>
-              </div>
+              </Link>
             </div>
           </section>
 
