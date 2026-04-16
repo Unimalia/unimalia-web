@@ -217,31 +217,40 @@ export default async function AnnuncioPage({ params }: PageProps) {
 
   if (!report) {
     return (
-      <main className="mx-auto w-full max-w-3xl px-4 py-10">
-        <div className="rounded-3xl border border-zinc-200 bg-white p-8 shadow-sm">
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900">
-            Annuncio non disponibile
-          </h1>
-          <p className="mt-3 text-sm leading-6 text-zinc-600">
-            Questo annuncio potrebbe non essere più disponibile pubblicamente.
-          </p>
+      <main className="min-h-screen bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_42%,#f6f9fc_100%)]">
+        <section className="mx-auto w-full max-w-4xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
+          <div className="overflow-hidden rounded-[32px] border border-[#e3e9f0] bg-white/94 p-6 shadow-[0_24px_70px_rgba(48,72,111,0.08)] backdrop-blur sm:p-8 lg:p-10">
+            <div className="max-w-2xl">
+              <span className="inline-flex items-center rounded-full border border-[#dbe5ef] bg-[#f5f9fd] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#5f708a]">
+                Annuncio UNIMALIA
+              </span>
 
-          <div className="mt-6 flex flex-wrap gap-3">
-            <Link
-              href="/smarrimenti"
-              className="inline-flex items-center justify-center rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
-            >
-              Vai agli smarrimenti
-            </Link>
+              <h1 className="mt-5 text-3xl font-semibold tracking-tight text-[#30486f] sm:text-4xl">
+                Annuncio non disponibile
+              </h1>
 
-            <Link
-              href="/trovati"
-              className="inline-flex items-center justify-center rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800"
-            >
-              Vai a trovati / avvistati
-            </Link>
+              <p className="mt-4 text-sm leading-7 text-[#55657d] sm:text-base">
+                Questo annuncio potrebbe non essere più disponibile pubblicamente.
+              </p>
+
+              <div className="mt-8 flex flex-wrap gap-3">
+                <Link
+                  href="/smarrimenti"
+                  className="inline-flex items-center justify-center rounded-full border border-[#d7e0ea] bg-white px-5 py-3 text-sm font-semibold text-[#30486f] transition hover:bg-[#f8fbff]"
+                >
+                  Vai agli smarrimenti
+                </Link>
+
+                <Link
+                  href="/trovati"
+                  className="inline-flex items-center justify-center rounded-full bg-[#30486f] px-5 py-3 text-sm font-semibold text-white shadow-[0_14px_34px_rgba(48,72,111,0.18)] transition hover:bg-[#263b59]"
+                >
+                  Vai a trovati / avvistati
+                </Link>
+              </div>
+            </div>
           </div>
-        </div>
+        </section>
       </main>
     );
   }
@@ -258,164 +267,218 @@ export default async function AnnuncioPage({ params }: PageProps) {
   const isActive = reportStatus === "active";
 
   return (
-    <main className="mx-auto w-full max-w-4xl px-4 py-8">
-      <div className="mb-6">
-        <Link
-          href={backHrefByType(reportType)}
-          className="text-sm font-medium text-zinc-600 hover:text-zinc-900"
-        >
-          ← Torna a {backLabelByType(reportType)}
-        </Link>
-      </div>
-
-      <div className="overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm">
-        <div className="bg-zinc-100 p-4 sm:p-6">
-          <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white">
-            <div className="relative h-72 w-full sm:h-96">
-              <Image
-                src={mainPhoto}
-                alt={title}
-                fill
-                className="object-contain"
-                unoptimized
-              />
-            </div>
-          </div>
+    <main className="min-h-screen bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_42%,#f6f9fc_100%)]">
+      <section className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
+        <div className="mb-6">
+          <Link
+            href={backHrefByType(reportType)}
+            className="text-sm font-semibold text-[#5f708a] underline-offset-4 transition hover:text-[#30486f] hover:underline"
+          >
+            ← Torna a {backLabelByType(reportType)}
+          </Link>
         </div>
 
-        <div className="p-6 sm:p-8">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <div className="mb-3 flex flex-wrap gap-2">
-                <span className="inline-flex rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-semibold text-zinc-700">
-                  {formatTypeLabel(reportType)}
-                </span>
+        <div className="overflow-hidden rounded-[32px] border border-[#e3e9f0] bg-white/94 shadow-[0_24px_70px_rgba(48,72,111,0.08)] backdrop-blur">
+          <div className="grid gap-0 lg:grid-cols-[1.02fr_0.98fr]">
+            <div className="bg-[linear-gradient(180deg,#fffaf9_0%,#ffffff_100%)] p-4 sm:p-6 lg:p-8">
+              <div className="overflow-hidden rounded-[28px] border border-[#e7dfe1] bg-white">
+                <div className="relative h-80 w-full sm:h-[440px]">
+                  <Image
+                    src={mainPhoto}
+                    alt={title}
+                    fill
+                    className="object-contain"
+                    unoptimized
+                  />
+                </div>
+              </div>
+            </div>
 
-                <span
-                  className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-                    isActive
-                      ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
-                      : "border border-amber-200 bg-amber-50 text-amber-700"
-                  }`}
-                >
-                  {formatStatusLabel(reportType, reportStatus)}
-                </span>
+            <div className="p-6 sm:p-8 lg:p-10">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <div className="mb-4 flex flex-wrap gap-2">
+                    <span className="inline-flex rounded-full border border-[#dbe5ef] bg-[#f5f9fd] px-3 py-1 text-xs font-semibold text-[#5f708a]">
+                      {formatTypeLabel(reportType)}
+                    </span>
+
+                    <span
+                      className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
+                        isActive
+                          ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
+                          : "border border-amber-200 bg-amber-50 text-amber-700"
+                      }`}
+                    >
+                      {formatStatusLabel(reportType, reportStatus)}
+                    </span>
+                  </div>
+
+                  <h1 className="text-3xl font-semibold tracking-tight text-[#30486f] sm:text-4xl">
+                    {title}
+                  </h1>
+
+                  <p className="mt-3 text-sm leading-7 text-[#55657d]">
+                    {locationLabel(report) || "Località non disponibile"}
+                  </p>
+
+                  <p className="mt-1 text-sm leading-7 text-[#5f708a]">
+                    Data evento: {formatEventDate(report.event_date)}
+                  </p>
+                </div>
               </div>
 
-              <h1 className="text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl">
-                {title}
-              </h1>
-
-              <p className="mt-2 text-sm text-zinc-600">
-                {locationLabel(report) || "Località non disponibile"}
-              </p>
-
-              <p className="mt-1 text-sm text-zinc-500">
-                Data evento: {formatEventDate(report.event_date)}
-              </p>
-            </div>
-          </div>
-
-          {safeText(report.description) ? (
-            <div className="mt-6">
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
-                Descrizione
-              </h2>
-              <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-zinc-700">
-                {safeText(report.description)}
-              </p>
-            </div>
-          ) : null}
-
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-              <h3 className="text-sm font-semibold text-zinc-900">Posizione</h3>
-              <p className="mt-3 text-sm text-zinc-700">
-                {safeText(report.location_text) || "Località non specificata"}
-                {safeText(report.province) ? ` (${safeText(report.province)})` : ""}
-              </p>
-
-              {showEmbeddedMap ? (
-                <div className="mt-4 overflow-hidden rounded-xl border border-zinc-200 bg-white">
-                  <iframe
-                    title="Mappa posizione annuncio"
-                    src={getOsmEmbedUrl(report.lat as number, report.lng as number)}
-                    className="h-64 w-full border-0"
-                    loading="lazy"
-                  />
+              {safeText(report.description) ? (
+                <div className="mt-8 rounded-[24px] border border-[#e3e9f0] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-5">
+                  <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#5f708a]">
+                    Descrizione
+                  </h2>
+                  <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-[#55657d]">
+                    {safeText(report.description)}
+                  </p>
                 </div>
               ) : null}
 
-              {showMap ? (
-                <a
-                  href={mapsHref}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="mt-4 inline-flex items-center justify-center rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800"
-                >
-                  Apri su Google Maps
-                </a>
-              ) : (
-                <p className="mt-4 text-xs text-zinc-500">
-                  Mappa non disponibile per questo annuncio.
-                </p>
-              )}
-            </div>
+              <div className="mt-8 grid gap-4">
+                <div className="rounded-[24px] border border-[#e3e9f0] bg-white p-5 shadow-sm">
+                  <h3 className="text-lg font-semibold text-[#30486f]">Posizione</h3>
+                  <p className="mt-3 text-sm leading-7 text-[#55657d]">
+                    {safeText(report.location_text) || "Località non specificata"}
+                    {safeText(report.province) ? ` (${safeText(report.province)})` : ""}
+                  </p>
 
-            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-              <h3 className="text-sm font-semibold text-zinc-900">Link annuncio</h3>
-              <p className="mt-3 text-sm text-zinc-700">
-                Questo è il link pubblico dell’annuncio.
-              </p>
+                  {showEmbeddedMap ? (
+                    <div className="mt-4 overflow-hidden rounded-[20px] border border-[#dbe5ef] bg-white">
+                      <iframe
+                        title="Mappa posizione annuncio"
+                        src={getOsmEmbedUrl(report.lat as number, report.lng as number)}
+                        className="h-72 w-full border-0"
+                        loading="lazy"
+                      />
+                    </div>
+                  ) : null}
 
-              <div className="mt-4 flex flex-wrap gap-2">
-                <a
-                  href={reportUrl}
-                  className="inline-flex items-center justify-center rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-100"
-                >
-                  Apri link annuncio
-                </a>
+                  {showMap ? (
+                    <a
+                      href={mapsHref}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-4 inline-flex items-center justify-center rounded-full bg-[linear-gradient(180deg,#2f69c7_0%,#2558ab_100%)] px-5 py-3 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(47,105,199,0.22)] transition hover:scale-[1.01]"
+                    >
+                      Apri su Google Maps
+                    </a>
+                  ) : (
+                    <p className="mt-4 text-xs text-[#5f708a]">
+                      Mappa non disponibile per questo annuncio.
+                    </p>
+                  )}
+                </div>
+
+                <div className="rounded-[24px] border border-[#e3e9f0] bg-white p-5 shadow-sm">
+                  <h3 className="text-lg font-semibold text-[#30486f]">Link annuncio</h3>
+                  <p className="mt-3 text-sm leading-7 text-[#55657d]">
+                    Questo è il link pubblico dell’annuncio.
+                  </p>
+
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <a
+                      href={reportUrl}
+                      className="inline-flex items-center justify-center rounded-full border border-[#d7e0ea] bg-white px-5 py-3 text-sm font-semibold text-[#30486f] transition hover:bg-[#f8fbff]"
+                    >
+                      Apri link annuncio
+                    </a>
+                  </div>
+
+                  <p className="mt-3 text-xs leading-6 text-[#5f708a]">
+                    La condivisione guidata dal sito è riservata solo al proprietario dall’area
+                    privata di gestione.
+                  </p>
+                </div>
               </div>
 
-              <p className="mt-3 text-xs text-zinc-500">
-                La condivisione guidata dal sito è riservata solo al proprietario dall’area privata di gestione.
-              </p>
+              {safeText(report.public_phone) && isActive ? (
+                <div className="mt-8 rounded-[24px] border border-emerald-200 bg-emerald-50 p-5">
+                  <h3 className="text-lg font-semibold text-emerald-900">Contatto diretto</h3>
+                  <p className="mt-2 text-sm leading-7 text-emerald-800">
+                    Il segnalatore ha scelto di mostrare il telefono pubblicamente.
+                  </p>
+                  <p className="mt-3 text-base font-semibold text-emerald-900">
+                    {safeText(report.public_phone)}
+                  </p>
+                </div>
+              ) : null}
             </div>
           </div>
 
-          {safeText(report.public_phone) && isActive ? (
-            <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-              <h3 className="text-sm font-semibold text-emerald-900">Contatto diretto</h3>
-              <p className="mt-2 text-sm text-emerald-800">
-                Il segnalatore ha scelto di mostrare il telefono pubblicamente.
-              </p>
-              <p className="mt-3 text-sm font-semibold text-emerald-900">
-                {safeText(report.public_phone)}
-              </p>
-            </div>
-          ) : null}
+          <div className="border-t border-[#e3e9f0] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-6 sm:p-8 lg:p-10">
+            {isActive ? (
+              <div className="grid gap-6 lg:grid-cols-[1.02fr_0.98fr]">
+                <div className="rounded-[28px] border border-[#e3e9f0] bg-white p-6 shadow-[0_14px_34px_rgba(48,72,111,0.05)] sm:p-8">
+                  <h2 className="text-2xl font-semibold tracking-tight text-[#30486f]">
+                    Contatto protetto
+                  </h2>
+                  <p className="mt-3 text-sm leading-7 text-[#55657d]">
+                    Scrivi un messaggio senza mostrare pubblicamente l’email del segnalatore.
+                  </p>
 
-          {isActive ? (
-            <div className="mt-6 rounded-2xl border border-zinc-200 bg-white p-5">
-              <h2 className="text-lg font-semibold text-zinc-900">Contatto protetto</h2>
-              <p className="mt-2 text-sm text-zinc-600">
-                Scrivi un messaggio senza mostrare pubblicamente l’email del segnalatore.
-              </p>
+                  <div className="mt-5">
+                    <ContactProtectedForm reportId={report.id} />
+                  </div>
+                </div>
 
-              <div className="mt-4">
-                <ContactProtectedForm reportId={report.id} />
+                <div className="rounded-[30px] border border-[#dbe5ef] bg-[linear-gradient(135deg,#30486f_0%,#5f708a_100%)] p-6 text-white shadow-[0_22px_50px_rgba(48,72,111,0.18)] sm:p-8">
+                  <span className="inline-flex items-center rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-white/80">
+                    Messaggio protetto
+                  </span>
+
+                  <h3 className="mt-5 text-3xl font-semibold tracking-tight">
+                    Un modo più sicuro per aiutare
+                  </h3>
+
+                  <p className="mt-5 text-sm leading-8 text-white/85">
+                    Il sistema di contatto protetto permette di inviare informazioni utili senza
+                    esporre subito i recapiti privati del segnalatore.
+                  </p>
+
+                  <div className="mt-8 space-y-4">
+                    <div className="rounded-[24px] border border-white/12 bg-white/10 p-5">
+                      <h4 className="text-lg font-semibold">Più privacy</h4>
+                      <p className="mt-2 text-sm leading-7 text-white/80">
+                        L’email del segnalatore non viene mostrata pubblicamente nella pagina.
+                      </p>
+                    </div>
+
+                    <div className="rounded-[24px] border border-white/12 bg-white/10 p-5">
+                      <h4 className="text-lg font-semibold">Più ordine</h4>
+                      <p className="mt-2 text-sm leading-7 text-white/80">
+                        Il contatto avviene in modo più chiaro e utile per chi deve inviare una
+                        segnalazione concreta.
+                      </p>
+                    </div>
+
+                    <div className="rounded-[24px] border border-white/12 bg-white/10 p-5">
+                      <h4 className="text-lg font-semibold">Più affidabilità</h4>
+                      <p className="mt-2 text-sm leading-7 text-white/80">
+                        Un flusso più controllato aiuta a mantenere gli annunci più seri e più
+                        sicuri per tutti.
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5">
-              <h2 className="text-lg font-semibold text-amber-900">Annuncio chiuso</h2>
-              <p className="mt-2 text-sm text-amber-800">
-                Questo annuncio non è più attivo, quindi i contatti pubblici e il contatto protetto non sono più disponibili.
-              </p>
-            </div>
-          )}
+            ) : (
+              <div className="rounded-[28px] border border-amber-200 bg-amber-50 p-6 sm:p-8">
+                <h2 className="text-2xl font-semibold tracking-tight text-amber-900">
+                  Annuncio chiuso
+                </h2>
+                <p className="mt-3 text-sm leading-7 text-amber-800">
+                  Questo annuncio non è più attivo, quindi i contatti pubblici e il contatto
+                  protetto non sono più disponibili.
+                </p>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      </section>
     </main>
   );
 }

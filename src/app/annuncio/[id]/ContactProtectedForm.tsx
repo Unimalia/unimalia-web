@@ -75,9 +75,9 @@ export default function ContactProtectedForm({ reportId }: Props) {
   }
 
   return (
-    <form onSubmit={onSubmit} className="grid gap-4">
+    <form onSubmit={onSubmit} className="grid gap-5">
       <div className="hidden" aria-hidden="true">
-        <label className="grid gap-2 text-sm font-semibold text-zinc-800">
+        <label className="grid gap-2 text-sm font-semibold text-[#30486f]">
           Website
           <input
             type="text"
@@ -85,52 +85,55 @@ export default function ContactProtectedForm({ reportId }: Props) {
             autoComplete="off"
             value={honeypot}
             onChange={(e) => setHoneypot(e.target.value)}
-            className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm"
+            className="h-12 w-full rounded-[18px] border border-[#d7e0ea] bg-white px-4 text-sm"
           />
         </label>
       </div>
 
-      <label className="grid gap-2 text-sm font-semibold text-zinc-800">
-        La tua email
+      <label className="grid gap-2">
+        <span className="text-sm font-semibold text-[#30486f]">La tua email</span>
         <input
           type="email"
           value={senderEmail}
           onChange={(e) => setSenderEmail(e.target.value)}
           placeholder="nome@email.it"
-          className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm"
+          className="h-12 w-full rounded-[18px] border border-[#d7e0ea] bg-[#fcfdff] px-4 text-sm text-[#30486f] outline-none transition placeholder:text-[#7a8799] focus:border-[#5f708a] focus:bg-white focus:ring-4 focus:ring-[#30486f]/10"
           required
         />
       </label>
 
-      <label className="grid gap-2 text-sm font-semibold text-zinc-800">
-        Messaggio
+      <label className="grid gap-2">
+        <span className="text-sm font-semibold text-[#30486f]">Messaggio</span>
         <textarea
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           placeholder="Scrivi qui le informazioni utili da inviare al segnalatore..."
-          className="min-h-[140px] w-full rounded-xl border border-zinc-200 bg-white px-3 py-3 text-sm"
+          className="min-h-[150px] w-full rounded-[18px] border border-[#d7e0ea] bg-[#fcfdff] px-4 py-3 text-sm text-[#30486f] outline-none transition placeholder:text-[#7a8799] focus:border-[#5f708a] focus:bg-white focus:ring-4 focus:ring-[#30486f]/10"
           required
         />
       </label>
 
-      <p className="text-xs leading-5 text-zinc-500">
-        Il tuo messaggio verrà inoltrato al segnalatore senza mostrare pubblicamente il suo indirizzo email.
-      </p>
+      <div className="rounded-[20px] border border-[#e3e9f0] bg-[#f8fbff] p-4">
+        <p className="text-xs leading-6 text-[#5f708a]">
+          Il tuo messaggio verrà inoltrato al segnalatore senza mostrare pubblicamente il suo
+          indirizzo email.
+        </p>
+      </div>
 
       <button
         type="submit"
         disabled={loading}
-        className="h-11 rounded-xl bg-black text-sm font-semibold text-white disabled:opacity-60"
+        className="h-12 rounded-full bg-[#30486f] text-sm font-semibold text-white shadow-[0_14px_34px_rgba(48,72,111,0.18)] transition hover:bg-[#263b59] disabled:opacity-60"
       >
         {loading ? "Invio..." : "Invia messaggio"}
       </button>
 
       {resultMsg ? (
         <div
-          className={`rounded-xl border p-4 text-sm ${
+          className={`rounded-[20px] border p-4 text-sm leading-7 ${
             isError
               ? "border-red-200 bg-red-50 text-red-800"
-              : "border-zinc-200 bg-white text-zinc-800"
+              : "border-[#e3e9f0] bg-white text-[#30486f]"
           }`}
         >
           {resultMsg}
