@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { Turnstile } from "@marsidev/react-turnstile";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
@@ -56,6 +57,14 @@ function getErrorMessage(error: unknown, fallback: string) {
   if (error instanceof Error && error.message) return error.message;
   if (typeof error === "string" && error.trim()) return error;
   return fallback;
+}
+
+function FieldLabel({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return <span className="block text-sm font-semibold text-[#30486f]">{children}</span>;
 }
 
 export default function NuovoSmarrimentoClient() {
@@ -356,213 +365,308 @@ export default function NuovoSmarrimentoClient() {
           : "Invia e verifica email";
 
   return (
-    <div className="mx-auto w-full max-w-2xl px-4 py-8">
-      <h1 className="text-2xl font-extrabold text-zinc-900">
-        {ownerPrefillMode ? "Segnala come smarrito" : "Pubblica smarrimento"}
-      </h1>
+    <main className="min-h-screen bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_42%,#f6f9fc_100%)]">
+      <section className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
+        <div className="grid gap-6 lg:grid-cols-[1.02fr_0.98fr]">
+          <div className="rounded-[32px] border border-[#e3e9f0] bg-white/94 p-6 shadow-[0_24px_70px_rgba(48,72,111,0.08)] backdrop-blur sm:p-8 lg:p-10">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <span className="inline-flex w-fit items-center rounded-full border border-[#dbe5ef] bg-[#f5f9fd] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#5f708a]">
+                Smarrimenti UNIMALIA
+              </span>
 
-      <p className="mt-2 text-sm text-zinc-600">
-        {ownerPrefillMode
-          ? "Abbiamo precompilato i dati dell’animale registrato. Completa luogo e data dello smarrimento."
-          : "Inserisci i dati essenziali, carica una foto e conferma via email per pubblicare l’annuncio."}
-      </p>
-
-      <form onSubmit={onSubmit} className="mt-6 grid gap-4">
-        <label className="grid gap-2 text-sm font-semibold text-zinc-800">
-          Nome animale
-          <input
-            value={animalName}
-            onChange={(e) => setAnimalName(e.target.value)}
-            placeholder="Es. Leo"
-            className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm"
-            required
-          />
-        </label>
-
-        <label className="grid gap-2 text-sm font-semibold text-zinc-800">
-          Specie
-          <select
-            value={species}
-            onChange={(e) => setSpecies(e.target.value)}
-            className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm font-medium"
-          >
-            <option value="cane">Cane</option>
-            <option value="gatto">Gatto</option>
-            <option value="altro">Altro</option>
-          </select>
-        </label>
-
-        <label className="grid gap-2 text-sm font-semibold text-zinc-800">
-          Foto animale
-          <input
-            type="file"
-            accept="image/jpeg,image/png,image/webp,image/gif"
-            onChange={(e) => onPhotoChange(e.target.files?.[0] || null)}
-            className="block w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-100 file:px-3 file:py-2 file:text-sm file:font-medium"
-          />
-          <span className="text-xs font-normal text-zinc-500">
-            {existingPhotoUrl
-              ? "Puoi tenere la foto già presente oppure sostituirla con una nuova."
-              : "Usa una foto JPG, PNG o WEBP. Su iPhone evita HEIC/HEIF."}
-          </span>
-        </label>
-
-        {photoPreview ? (
-          <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-100 p-3">
-            <div className="relative h-64 w-full overflow-hidden rounded-xl border border-zinc-200 bg-white">
-              <Image
-                src={photoPreview}
-                alt="Anteprima foto animale"
-                fill
-                className="object-contain"
-                unoptimized
-              />
+              <Link
+                href="/smarrimenti"
+                className="text-sm font-semibold text-[#5f708a] underline-offset-4 transition hover:text-[#30486f] hover:underline"
+              >
+                ← Torna agli smarrimenti
+              </Link>
             </div>
-          </div>
-        ) : null}
 
-        <label className="grid gap-2 text-sm font-semibold text-zinc-800">
-          Data smarrimento
-          <input
-            type="date"
-            value={eventDate}
-            onChange={(e) => setEventDate(e.target.value)}
-            className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm"
-            required
-          />
-        </label>
+            <h1 className="mt-5 text-4xl font-semibold tracking-tight text-[#30486f] sm:text-5xl">
+              {ownerPrefillMode ? "Segnala come smarrito" : "Pubblica smarrimento"}
+            </h1>
 
-        <div className="rounded-xl border border-zinc-200 bg-white p-4">
-          <div className="text-sm font-semibold text-zinc-900">Posizione</div>
-          <p className="mt-1 text-xs text-zinc-600">
-            Cerca il luogo e, se serve, sposta il pin nel punto esatto.
-          </p>
-
-          <div className="mt-3">
-            <LocationPicker
-              apiKey={apiKey}
-              value={coords}
-              onChange={setCoords}
-              onAddress={(a: AddressPayload) => {
-                if (a.formattedAddress) setLocationText(a.formattedAddress);
-                if (a.province) setProvince(a.province);
-                if (a.region) setRegion(a.region);
-              }}
-            />
-          </div>
-
-          <div className="mt-3 rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-700">
-            <div>
-              <span className="font-semibold">Luogo:</span> {locationText || "non selezionato"}
-            </div>
-            <div className="mt-1">
-              <span className="font-semibold">Provincia:</span> {province || "—"}{" "}
-              <span className="ml-3 font-semibold">Regione:</span> {region || "—"}
-            </div>
-            <div className="mt-1">
-              <span className="font-semibold">Coordinate:</span>{" "}
-              {coords.lat != null && coords.lng != null
-                ? `${coords.lat}, ${coords.lng}`
-                : "non selezionate"}
-            </div>
-          </div>
-        </div>
-
-        <label className="grid gap-2 text-sm font-semibold text-zinc-800">
-          Descrizione (opzionale)
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Segni particolari, collare, ultime informazioni utili..."
-            className="min-h-[100px] w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm"
-          />
-        </label>
-
-        <label className="grid gap-2 text-sm font-semibold text-zinc-800">
-          Email
-          <input
-            type="email"
-            value={contactEmail}
-            onChange={(e) => setContactEmail(e.target.value)}
-            placeholder="tu@email.it"
-            className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm"
-            required
-          />
-        </label>
-
-        <label className="grid gap-2 text-sm font-semibold text-zinc-800">
-          Telefono (opzionale)
-          <input
-            value={contactPhone}
-            onChange={(e) => setContactPhone(e.target.value)}
-            placeholder="+39..."
-            className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm"
-          />
-        </label>
-
-        <label className="grid gap-2 text-sm font-semibold text-zinc-800">
-          Modalità contatto
-          <select
-            value={contactMode}
-            onChange={(e) => setContactMode(e.target.value as ContactMode)}
-            className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm font-medium"
-          >
-            <option value="protected">Contatto protetto (consigliato)</option>
-            <option value="phone_public">Mostra telefono pubblicamente</option>
-          </select>
-        </label>
-
-        <label className="flex items-start gap-3 rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-800">
-          <input
-            type="checkbox"
-            checked={consent}
-            onChange={(e) => setConsent(e.target.checked)}
-            className="mt-1"
-          />
-          <span>
-            Accetto informativa privacy e autorizzo la pubblicazione dell’annuncio secondo le
-            opzioni selezionate.
-          </span>
-        </label>
-
-        <div className="rounded-xl border border-zinc-200 bg-white p-4">
-          <p className="mb-3 text-sm font-semibold text-zinc-900">Controllo sicurezza</p>
-
-          {!turnstileSiteKey ? (
-            <p className="text-sm text-red-700">
-              Chiave Turnstile mancante. Controlla NEXT_PUBLIC_TURNSTILE_SITE_KEY.
+            <p className="mt-5 max-w-3xl text-sm leading-8 text-[#55657d] sm:text-base">
+              {ownerPrefillMode
+                ? "Abbiamo precompilato i dati dell’animale registrato. Completa luogo e data dello smarrimento per pubblicare rapidamente l’annuncio."
+                : "Inserisci i dati essenziali, aggiungi una foto recente e completa la verifica email per mettere online l’annuncio."}
             </p>
-          ) : (
-            <>
-              <Turnstile
-                siteKey={turnstileSiteKey}
-                onSuccess={(token) => setTurnstileToken(token)}
-                onExpire={() => setTurnstileToken(null)}
-                onError={() => setTurnstileToken(null)}
-              />
-              <p className="mt-3 text-xs text-zinc-600">
-                Stato sicurezza:{" "}
-                <span className="font-semibold">
-                  {turnstileToken ? "verificato" : "non verificato"}
+
+            <form onSubmit={onSubmit} className="mt-8 grid gap-5">
+              <div className="grid gap-5 sm:grid-cols-2">
+                <label className="grid gap-2">
+                  <FieldLabel>Nome animale</FieldLabel>
+                  <input
+                    value={animalName}
+                    onChange={(e) => setAnimalName(e.target.value)}
+                    placeholder="Es. Leo"
+                    className="h-12 w-full rounded-[18px] border border-[#d7e0ea] bg-[#fcfdff] px-4 text-sm text-[#30486f] outline-none transition placeholder:text-[#7a8799] focus:border-[#5f708a] focus:bg-white focus:ring-4 focus:ring-[#30486f]/10"
+                    required
+                  />
+                </label>
+
+                <label className="grid gap-2">
+                  <FieldLabel>Specie</FieldLabel>
+                  <select
+                    value={species}
+                    onChange={(e) => setSpecies(e.target.value)}
+                    className="h-12 w-full rounded-[18px] border border-[#d7e0ea] bg-[#fcfdff] px-4 text-sm font-medium text-[#30486f] outline-none transition focus:border-[#5f708a] focus:bg-white focus:ring-4 focus:ring-[#30486f]/10"
+                  >
+                    <option value="cane">Cane</option>
+                    <option value="gatto">Gatto</option>
+                    <option value="altro">Altro</option>
+                  </select>
+                </label>
+              </div>
+
+              <label className="grid gap-2">
+                <FieldLabel>Foto animale</FieldLabel>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  onChange={(e) => onPhotoChange(e.target.files?.[0] || null)}
+                  className="block w-full rounded-[18px] border border-[#d7e0ea] bg-[#fcfdff] px-4 py-3 text-sm text-[#30486f] file:mr-3 file:rounded-xl file:border-0 file:bg-[#eef3f8] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-[#30486f]"
+                />
+                <span className="text-xs leading-6 text-[#5f708a]">
+                  {existingPhotoUrl
+                    ? "Puoi tenere la foto già presente oppure sostituirla con una nuova."
+                    : "Usa una foto JPG, PNG o WEBP. Su iPhone evita HEIC/HEIF."}
                 </span>
-              </p>
-            </>
-          )}
-        </div>
+              </label>
 
-        <button
-          disabled={!canSubmit}
-          className="h-11 rounded-xl bg-black text-sm font-semibold text-white disabled:opacity-60"
-        >
-          {submitLabel}
-        </button>
+              {photoPreview ? (
+                <div className="overflow-hidden rounded-[24px] border border-[#e3e9f0] bg-[#f8fbff] p-3">
+                  <div className="relative h-72 w-full overflow-hidden rounded-[20px] border border-[#dbe5ef] bg-white">
+                    <Image
+                      src={photoPreview}
+                      alt="Anteprima foto animale"
+                      fill
+                      className="object-contain"
+                      unoptimized
+                    />
+                  </div>
+                </div>
+              ) : null}
 
-        {resultMsg ? (
-          <div className="rounded-xl border border-zinc-200 bg-white p-4 text-sm text-zinc-800">
-            {resultMsg}
+              <div className="grid gap-5 sm:grid-cols-2">
+                <label className="grid gap-2">
+                  <FieldLabel>Data smarrimento</FieldLabel>
+                  <input
+                    type="date"
+                    value={eventDate}
+                    onChange={(e) => setEventDate(e.target.value)}
+                    className="h-12 w-full rounded-[18px] border border-[#d7e0ea] bg-[#fcfdff] px-4 text-sm text-[#30486f] outline-none transition focus:border-[#5f708a] focus:bg-white focus:ring-4 focus:ring-[#30486f]/10"
+                    required
+                  />
+                </label>
+
+                <label className="grid gap-2">
+                  <FieldLabel>Modalità contatto</FieldLabel>
+                  <select
+                    value={contactMode}
+                    onChange={(e) => setContactMode(e.target.value as ContactMode)}
+                    className="h-12 w-full rounded-[18px] border border-[#d7e0ea] bg-[#fcfdff] px-4 text-sm font-medium text-[#30486f] outline-none transition focus:border-[#5f708a] focus:bg-white focus:ring-4 focus:ring-[#30486f]/10"
+                  >
+                    <option value="protected">Contatto protetto (consigliato)</option>
+                    <option value="phone_public">Mostra telefono pubblicamente</option>
+                  </select>
+                </label>
+              </div>
+
+              <label className="grid gap-2">
+                <FieldLabel>Descrizione (opzionale)</FieldLabel>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Segni particolari, collare, ultime informazioni utili..."
+                  className="min-h-[120px] w-full rounded-[18px] border border-[#d7e0ea] bg-[#fcfdff] px-4 py-3 text-sm text-[#30486f] outline-none transition placeholder:text-[#7a8799] focus:border-[#5f708a] focus:bg-white focus:ring-4 focus:ring-[#30486f]/10"
+                />
+              </label>
+
+              <div className="grid gap-5 sm:grid-cols-2">
+                <label className="grid gap-2">
+                  <FieldLabel>Email</FieldLabel>
+                  <input
+                    type="email"
+                    value={contactEmail}
+                    onChange={(e) => setContactEmail(e.target.value)}
+                    placeholder="tu@email.it"
+                    className="h-12 w-full rounded-[18px] border border-[#d7e0ea] bg-[#fcfdff] px-4 text-sm text-[#30486f] outline-none transition placeholder:text-[#7a8799] focus:border-[#5f708a] focus:bg-white focus:ring-4 focus:ring-[#30486f]/10"
+                    required
+                  />
+                </label>
+
+                <label className="grid gap-2">
+                  <FieldLabel>Telefono (opzionale)</FieldLabel>
+                  <input
+                    value={contactPhone}
+                    onChange={(e) => setContactPhone(e.target.value)}
+                    placeholder="+39..."
+                    className="h-12 w-full rounded-[18px] border border-[#d7e0ea] bg-[#fcfdff] px-4 text-sm text-[#30486f] outline-none transition placeholder:text-[#7a8799] focus:border-[#5f708a] focus:bg-white focus:ring-4 focus:ring-[#30486f]/10"
+                  />
+                </label>
+              </div>
+
+              <div className="rounded-[24px] border border-[#e3e9f0] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-5 shadow-sm">
+                <div className="text-sm font-semibold text-[#30486f]">Posizione</div>
+                <p className="mt-2 text-xs leading-6 text-[#5f708a]">
+                  Cerca il luogo e, se serve, sposta il pin nel punto esatto.
+                </p>
+
+                <div className="mt-4">
+                  <LocationPicker
+                    apiKey={apiKey}
+                    value={coords}
+                    onChange={setCoords}
+                    onAddress={(a: AddressPayload) => {
+                      if (a.formattedAddress) setLocationText(a.formattedAddress);
+                      if (a.province) setProvince(a.province);
+                      if (a.region) setRegion(a.region);
+                    }}
+                  />
+                </div>
+
+                <div className="mt-4 rounded-[20px] border border-[#dbe5ef] bg-white p-4 text-xs leading-6 text-[#55657d]">
+                  <div>
+                    <span className="font-semibold text-[#30486f]">Luogo:</span>{" "}
+                    {locationText || "non selezionato"}
+                  </div>
+                  <div className="mt-1">
+                    <span className="font-semibold text-[#30486f]">Provincia:</span>{" "}
+                    {province || "—"} <span className="ml-3 font-semibold text-[#30486f]">Regione:</span>{" "}
+                    {region || "—"}
+                  </div>
+                  <div className="mt-1">
+                    <span className="font-semibold text-[#30486f]">Coordinate:</span>{" "}
+                    {coords.lat != null && coords.lng != null
+                      ? `${coords.lat}, ${coords.lng}`
+                      : "non selezionate"}
+                  </div>
+                </div>
+              </div>
+
+              <label className="flex items-start gap-3 rounded-[20px] border border-[#e3e9f0] bg-[#f8fbff] p-4 text-sm leading-7 text-[#55657d]">
+                <input
+                  type="checkbox"
+                  checked={consent}
+                  onChange={(e) => setConsent(e.target.checked)}
+                  className="mt-1"
+                />
+                <span>
+                  Accetto informativa privacy e autorizzo la pubblicazione dell’annuncio secondo le
+                  opzioni selezionate.
+                </span>
+              </label>
+
+              <div className="rounded-[24px] border border-[#e3e9f0] bg-white p-5 shadow-sm">
+                <p className="text-sm font-semibold text-[#30486f]">Controllo sicurezza</p>
+
+                {!turnstileSiteKey ? (
+                  <p className="mt-3 text-sm text-red-700">
+                    Chiave Turnstile mancante. Controlla NEXT_PUBLIC_TURNSTILE_SITE_KEY.
+                  </p>
+                ) : (
+                  <>
+                    <div className="mt-4">
+                      <Turnstile
+                        siteKey={turnstileSiteKey}
+                        onSuccess={(token) => setTurnstileToken(token)}
+                        onExpire={() => setTurnstileToken(null)}
+                        onError={() => setTurnstileToken(null)}
+                      />
+                    </div>
+                    <p className="mt-3 text-xs leading-6 text-[#5f708a]">
+                      Stato sicurezza:{" "}
+                      <span className="font-semibold text-[#30486f]">
+                        {turnstileToken ? "verificato" : "non verificato"}
+                      </span>
+                    </p>
+                  </>
+                )}
+              </div>
+
+              <button
+                disabled={!canSubmit}
+                className="h-12 rounded-full bg-[#30486f] text-sm font-semibold text-white shadow-[0_14px_34px_rgba(48,72,111,0.18)] transition hover:bg-[#263b59] disabled:opacity-60"
+              >
+                {submitLabel}
+              </button>
+
+              {resultMsg ? (
+                <div className="rounded-[20px] border border-[#e3e9f0] bg-white p-4 text-sm leading-7 text-[#30486f]">
+                  {resultMsg}
+                </div>
+              ) : null}
+            </form>
           </div>
-        ) : null}
-      </form>
-    </div>
+
+          <div className="space-y-6">
+            <div className="rounded-[32px] border border-[#dbe5ef] bg-[linear-gradient(135deg,#30486f_0%,#5f708a_100%)] p-6 text-white shadow-[0_22px_50px_rgba(48,72,111,0.18)] sm:p-8 lg:p-10">
+              <span className="inline-flex items-center rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-white/80">
+                Pubblicazione guidata
+              </span>
+
+              <h2 className="mt-5 text-3xl font-semibold tracking-tight sm:text-4xl">
+                Più chiaro, più veloce, più utile per chi cerca davvero
+              </h2>
+
+              <p className="mt-5 text-sm leading-8 text-white/85 sm:text-base">
+                Un annuncio completo con foto, posizione precisa e recapiti corretti aiuta a rendere
+                la segnalazione più affidabile e più efficace.
+              </p>
+
+              <div className="mt-8 space-y-4">
+                <div className="rounded-[24px] border border-white/12 bg-white/10 p-5">
+                  <h3 className="text-lg font-semibold">Foto chiara</h3>
+                  <p className="mt-2 text-sm leading-7 text-white/80">
+                    Una foto recente aumenta molto le possibilità che qualcuno riconosca l’animale.
+                  </p>
+                </div>
+
+                <div className="rounded-[24px] border border-white/12 bg-white/10 p-5">
+                  <h3 className="text-lg font-semibold">Posizione precisa</h3>
+                  <p className="mt-2 text-sm leading-7 text-white/80">
+                    Cerca il luogo e, se serve, sposta il pin per indicare il punto più corretto.
+                  </p>
+                </div>
+
+                <div className="rounded-[24px] border border-white/12 bg-white/10 p-5">
+                  <h3 className="text-lg font-semibold">Verifica email</h3>
+                  <p className="mt-2 text-sm leading-7 text-white/80">
+                    L’annuncio viene confermato tramite email per ridurre abusi e mantenere la
+                    piattaforma più affidabile.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-[28px] border border-[#e3e9f0] bg-white p-6 shadow-[0_14px_34px_rgba(48,72,111,0.05)] sm:p-8">
+              <span className="inline-flex items-center rounded-full border border-[#dbe5ef] bg-[#f5f9fd] px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-[#5f708a]">
+                Suggerimenti utili
+              </span>
+
+              <h3 className="mt-4 text-2xl font-semibold tracking-tight text-[#30486f]">
+                Cosa scrivere nell’annuncio
+              </h3>
+
+              <ul className="mt-5 list-disc space-y-3 pl-6 text-sm leading-7 text-[#55657d] sm:text-base">
+                <li>zona precisa o ultimo avvistamento utile</li>
+                <li>collare, pettorina o segni riconoscibili</li>
+                <li>caratteristiche fisiche evidenti</li>
+                <li>eventuale comportamento dell’animale se spaventato</li>
+              </ul>
+            </div>
+
+            <div className="rounded-[28px] border border-[#e3e9f0] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-6 shadow-[0_14px_34px_rgba(48,72,111,0.05)] sm:p-8">
+              <h3 className="text-xl font-semibold text-[#30486f]">Pubblicazione gratuita</h3>
+              <p className="mt-3 text-sm leading-7 text-[#55657d]">
+                Gli smarrimenti su UNIMALIA restano gratuiti. L’obiettivo è aiutare i proprietari a
+                pubblicare rapidamente segnalazioni affidabili e facili da consultare.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
   );
 }
