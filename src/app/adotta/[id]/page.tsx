@@ -106,7 +106,7 @@ function CompatBadge({
   if (active !== true) return null;
 
   return (
-    <span className="inline-flex items-center rounded-full border border-[#d7dfe9] bg-white px-3 py-1 text-xs font-semibold text-[#4f6078]">
+    <span className="inline-flex items-center rounded-full border border-[#dbe5ef] bg-white px-3 py-1 text-xs font-semibold text-[#4f6078]">
       {label}
     </span>
   );
@@ -127,7 +127,9 @@ function StatusBadge({
         : "border-[#d7dfe9] bg-[#f8fbff] text-[#4f6078]";
 
   return (
-    <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${className}`}>
+    <span
+      className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${className}`}
+    >
       {children}
     </span>
   );
@@ -207,7 +209,7 @@ export default async function AdottaDetailPage({
       backFallbackHref="/adotta"
     >
       <div className="space-y-6">
-        <section className="overflow-hidden rounded-[2.3rem] border border-[#dde4ec] bg-white shadow-[0_24px_60px_rgba(42,56,86,0.08)]">
+        <section className="overflow-hidden rounded-[2.4rem] border border-[#dde4ec] bg-white shadow-[0_24px_60px_rgba(42,56,86,0.08)]">
           <div className="grid gap-0 lg:grid-cols-[1.06fr_0.94fr]">
             <div className="bg-[linear-gradient(180deg,#f8fbff_0%,#eef4fb_100%)]">
               <div className="aspect-[4/3] w-full">
@@ -227,20 +229,20 @@ export default async function AdottaDetailPage({
             </div>
 
             <div className="p-6 sm:p-8">
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="inline-flex items-center rounded-full border border-[#dbe5ef] bg-[#f5f9fd] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#5f708a]">
+                Adozioni UNIMALIA
+              </div>
+
+              <div className="mt-5 flex flex-wrap items-center gap-2">
                 <StatusBadge>{speciesLabel(animal.species)}</StatusBadge>
 
-                {animal.urgent ? (
-                  <StatusBadge tone="amber">Adozione urgente</StatusBadge>
-                ) : null}
+                {animal.urgent ? <StatusBadge tone="amber">Adozione urgente</StatusBadge> : null}
 
                 {animal.special_needs ? (
                   <StatusBadge tone="sky">Bisogni speciali</StatusBadge>
                 ) : null}
 
-                {animal.is_mixed ? (
-                  <StatusBadge>Meticcio</StatusBadge>
-                ) : null}
+                {animal.is_mixed ? <StatusBadge>Meticcio</StatusBadge> : null}
               </div>
 
               <h1 className="mt-5 text-3xl font-semibold tracking-[-0.04em] text-[#30486f] sm:text-4xl">
@@ -315,14 +317,30 @@ export default async function AdottaDetailPage({
             </p>
             <p>
               L’associazione può creare gratuitamente l’identità animale completa e, se il nuovo
-              proprietario decide di continuare a usare UNIMALIA in versione Premium entro 15 giorni
-              dal passaggio di proprietà, il primo anno da 6 euro viene riconosciuto all’associazione.
+              proprietario decide di continuare a usare UNIMALIA in versione Premium entro 15
+              giorni dal passaggio di proprietà, il primo anno da 6 euro viene riconosciuto
+              all’associazione.
             </p>
             <p>
               Questo aiuta a dare continuità all’animale anche dopo l’adozione, mantenendo più
               ordinate le informazioni utili nel tempo.
             </p>
           </div>
+        </section>
+
+        <section className="rounded-[2rem] border border-[#e3e9f0] bg-[linear-gradient(135deg,#30486f_0%,#5f708a_100%)] p-6 text-white shadow-[0_20px_46px_rgba(42,56,86,0.16)]">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/75">
+            Continuità dopo l’adozione
+          </p>
+
+          <h2 className="mt-3 text-2xl font-semibold tracking-[-0.03em]">
+            Non solo trovare casa: anche dare continuità all’animale
+          </h2>
+
+          <p className="mt-4 text-sm leading-relaxed text-white/85">
+            L’idea non è solo aiutare l’adozione, ma accompagnare l’animale anche dopo, con una
+            base digitale più ordinata per identità, informazioni utili e gestione futura.
+          </p>
         </section>
       </div>
     </PageShell>
