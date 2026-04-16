@@ -93,6 +93,31 @@ function isVetUser(
   );
 }
 
+function Badge({
+  children,
+  tone = "default",
+}: {
+  children: React.ReactNode;
+  tone?: "default" | "blue" | "emerald" | "amber";
+}) {
+  const toneClass =
+    tone === "blue"
+      ? "border-blue-200 bg-blue-50 text-blue-700"
+      : tone === "emerald"
+        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+        : tone === "amber"
+          ? "border-amber-200 bg-amber-50 text-amber-800"
+          : "border-[#d7dfe9] bg-[#f8fbff] text-[#4f6078]";
+
+  return (
+    <span
+      className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${toneClass}`}
+    >
+      {children}
+    </span>
+  );
+}
+
 export default function LoginClient() {
   const router = useRouter();
   const sp = useSearchParams();
@@ -228,7 +253,7 @@ export default function LoginClient() {
       setLoadingPage(false);
     }
 
-    init();
+    void init();
 
     const { data: sub } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === "SIGNED_IN" && session?.user?.id) {
@@ -392,10 +417,10 @@ export default function LoginClient() {
 
   if (loadingPage) {
     return (
-      <div className="min-h-screen bg-zinc-50 text-zinc-900">
+      <div className="min-h-screen bg-[#f3f4f6] text-zinc-900">
         <div className="mx-auto w-full max-w-6xl px-4 py-12">
-          <div className="rounded-[2rem] border border-zinc-200 bg-white p-8 shadow-sm">
-            <p className="text-sm text-zinc-700">Caricamento…</p>
+          <div className="rounded-[2rem] border border-[#e3e9f0] bg-white p-8 shadow-[0_24px_60px_rgba(42,56,86,0.08)]">
+            <p className="text-sm text-[#5f708a]">Caricamento…</p>
           </div>
         </div>
       </div>
@@ -403,48 +428,50 @@ export default function LoginClient() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 text-zinc-900">
+    <div className="min-h-screen bg-[#f3f4f6] text-zinc-900">
       <div className="mx-auto w-full max-w-6xl px-4 py-10 sm:py-14">
         <div className="mb-6">
-          <Link href="/" className="text-sm font-semibold text-zinc-700 hover:text-zinc-900">
+          <Link href="/" className="text-sm font-semibold text-[#5f708a] hover:text-[#30486f]">
             ← Sito pubblico
           </Link>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
-          <section className="rounded-[2rem] border border-zinc-200 bg-white p-8 shadow-sm sm:p-10">
-            <span className="inline-flex items-center rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-semibold text-zinc-700">
-              Rete UNIMALIA
-            </span>
+        <div className="grid gap-6 lg:grid-cols-[1.12fr_0.88fr]">
+          <section className="rounded-[2.5rem] border border-[#dde4ec] bg-white p-8 shadow-[0_24px_60px_rgba(42,56,86,0.10)] sm:p-10">
+            <Badge>Rete UNIMALIA</Badge>
 
-            <h1 className="mt-5 text-4xl font-bold tracking-tight text-zinc-900 sm:text-5xl">
+            <h1 className="mt-5 text-4xl font-semibold tracking-[-0.05em] text-[#30486f] sm:text-5xl">
               Portale Professionisti
             </h1>
 
-            <p className="mt-5 max-w-3xl text-lg leading-relaxed text-zinc-600">
+            <p className="mt-5 max-w-3xl text-lg leading-relaxed text-[#5f708a]">
               Piattaforma in cloud per professionisti del settore animale, progettata per gestire
-              animali, dati e collaborazioni in modo semplice e sicuro.
+              animali, dati e collaborazioni in modo semplice, serio e sicuro.
             </p>
 
-            <div className="mt-8 rounded-3xl border border-zinc-200 bg-zinc-50 p-6">
-              <p className="text-base font-semibold text-zinc-900">
-                Non sei ancora registrato e vuoi capire come funziona UNIMALIA?
+            <div className="mt-8 rounded-[2rem] border border-[#e3e9f0] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-6 shadow-[0_14px_40px_rgba(42,56,86,0.05)]">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#55657d]">
+                Prima di registrarti
               </p>
-              <p className="mt-2 text-sm leading-relaxed text-zinc-700">
-                Scopri i vantaggi della piattaforma in base al tuo profilo professionale.
+              <h2 className="mt-2 text-xl font-semibold tracking-[-0.03em] text-[#30486f]">
+                Scopri come funziona UNIMALIA per il tuo profilo professionale
+              </h2>
+              <p className="mt-3 text-sm leading-relaxed text-[#5f708a]">
+                Scegli il percorso più adatto e capisci subito quali vantaggi puoi ottenere dalla
+                piattaforma.
               </p>
 
               <div className="mt-5 grid gap-3 sm:grid-cols-2">
                 <Link
                   href="/rete/veterinari"
-                  className="inline-flex min-h-[56px] items-center justify-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-zinc-800"
+                  className="inline-flex min-h-[56px] items-center justify-center rounded-2xl bg-[linear-gradient(180deg,#2f69c7_0%,#2558ab_100%)] px-5 py-3 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(47,105,199,0.22)] transition hover:scale-[1.01]"
                 >
                   Scopri area veterinari
                 </Link>
 
                 <Link
                   href="/rete/professionisti"
-                  className="inline-flex min-h-[56px] items-center justify-center rounded-2xl border border-zinc-200 bg-white px-5 py-3 text-sm font-semibold text-zinc-900 transition hover:bg-zinc-100"
+                  className="inline-flex min-h-[56px] items-center justify-center rounded-2xl border border-[#d7dfe9] bg-white px-5 py-3 text-sm font-semibold text-[#31486f] transition hover:bg-[#f8fbff]"
                 >
                   Scopri area professionisti
                 </Link>
@@ -452,25 +479,25 @@ export default function LoginClient() {
             </div>
 
             <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              <div className="rounded-2xl border border-zinc-200 bg-white p-5">
-                <p className="text-sm font-semibold text-zinc-900">Veterinari</p>
-                <p className="mt-2 text-sm leading-relaxed text-zinc-600">
+              <div className="rounded-[1.75rem] border border-[#e3e9f0] bg-white p-5 shadow-[0_14px_40px_rgba(42,56,86,0.05)]">
+                <p className="text-sm font-semibold text-[#30486f]">Veterinari</p>
+                <p className="mt-2 text-sm leading-relaxed text-[#5f708a]">
                   Cartella sanitaria digitale, referti, consulti tra colleghi e gestione più
                   ordinata dei pazienti.
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-zinc-200 bg-white p-5">
-                <p className="text-sm font-semibold text-zinc-900">Altri professionisti</p>
-                <p className="mt-2 text-sm leading-relaxed text-zinc-600">
+              <div className="rounded-[1.75rem] border border-[#e3e9f0] bg-white p-5 shadow-[0_14px_40px_rgba(42,56,86,0.05)]">
+                <p className="text-sm font-semibold text-[#30486f]">Altri professionisti</p>
+                <p className="mt-2 text-sm leading-relaxed text-[#5f708a]">
                   Uno spazio in evoluzione per servizi e attività del settore animale, con
                   strumenti dedicati in crescita.
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-zinc-200 bg-white p-5 sm:col-span-2 xl:col-span-1">
-                <p className="text-sm font-semibold text-zinc-900">In evoluzione</p>
-                <p className="mt-2 text-sm leading-relaxed text-zinc-600">
+              <div className="rounded-[1.75rem] border border-[#e3e9f0] bg-white p-5 shadow-[0_14px_40px_rgba(42,56,86,0.05)] sm:col-span-2 xl:col-span-1">
+                <p className="text-sm font-semibold text-[#30486f]">In evoluzione</p>
+                <p className="mt-2 text-sm leading-relaxed text-[#5f708a]">
                   La piattaforma è progettata per integrare nel tempo funzioni sempre più
                   complete, incluse future prenotazioni online.
                 </p>
@@ -478,8 +505,8 @@ export default function LoginClient() {
             </div>
           </section>
 
-          <section className="rounded-[2rem] border border-zinc-200 bg-white p-8 shadow-sm sm:p-10">
-            <div className="flex gap-2">
+          <section className="rounded-[2.5rem] border border-[#dde4ec] bg-white p-8 shadow-[0_24px_60px_rgba(42,56,86,0.10)] sm:p-10">
+            <div className="flex gap-2 rounded-2xl bg-[#f4f7fb] p-1">
               <button
                 type="button"
                 onClick={() => {
@@ -489,8 +516,8 @@ export default function LoginClient() {
                 }}
                 className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
                   mode === "login"
-                    ? "bg-black text-white"
-                    : "border border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-50"
+                    ? "bg-[#30486f] text-white shadow-sm"
+                    : "text-[#5f708a] hover:bg-white hover:text-[#30486f]"
                 }`}
               >
                 Accedi
@@ -505,8 +532,8 @@ export default function LoginClient() {
                 }}
                 className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
                   mode === "signup"
-                    ? "bg-black text-white"
-                    : "border border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-50"
+                    ? "bg-[#30486f] text-white shadow-sm"
+                    : "text-[#5f708a] hover:bg-white hover:text-[#30486f]"
                 }`}
               >
                 Registrati
@@ -516,17 +543,18 @@ export default function LoginClient() {
             <form onSubmit={onSubmit} className="mt-6 space-y-4" autoComplete="on">
               {mode === "signup" && (
                 <div>
-                  <label className="text-xs font-semibold text-zinc-700">
+                  <label className="text-xs font-semibold uppercase tracking-[0.18em] text-[#55657d]">
                     Tipo di registrazione
                   </label>
+
                   <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
                     <button
                       type="button"
                       onClick={() => setProfessionalType("generic")}
-                      className={`rounded-2xl border px-4 py-3 text-left text-sm font-semibold ${
+                      className={`rounded-[1.4rem] border px-4 py-4 text-left text-sm font-semibold transition ${
                         professionalType === "generic"
-                          ? "border-zinc-900 bg-zinc-900 text-white"
-                          : "border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50"
+                          ? "border-[#30486f] bg-[#30486f] text-white"
+                          : "border-[#e3e9f0] bg-white text-[#30486f] hover:bg-[#f8fbff]"
                       }`}
                     >
                       Professionista
@@ -538,10 +566,10 @@ export default function LoginClient() {
                     <button
                       type="button"
                       onClick={() => setProfessionalType("veterinarian")}
-                      className={`rounded-2xl border px-4 py-3 text-left text-sm font-semibold ${
+                      className={`rounded-[1.4rem] border px-4 py-4 text-left text-sm font-semibold transition ${
                         professionalType === "veterinarian"
-                          ? "border-zinc-900 bg-zinc-900 text-white"
-                          : "border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50"
+                          ? "border-[#30486f] bg-[#30486f] text-white"
+                          : "border-[#e3e9f0] bg-white text-[#30486f] hover:bg-[#f8fbff]"
                       }`}
                     >
                       Veterinario
@@ -554,7 +582,7 @@ export default function LoginClient() {
               )}
 
               <div>
-                <label htmlFor="pro-email" className="text-xs font-semibold text-zinc-700">
+                <label htmlFor="pro-email" className="text-xs font-semibold uppercase tracking-[0.18em] text-[#55657d]">
                   Email
                 </label>
                 <input
@@ -562,7 +590,7 @@ export default function LoginClient() {
                   name="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="mt-1 h-12 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm outline-none focus:border-zinc-400"
+                  className="mt-1 h-12 w-full rounded-2xl border border-[#d7dfe9] bg-white px-4 text-sm text-zinc-900 outline-none transition focus:border-[#2f69c7]"
                   autoComplete="username"
                   autoCapitalize="none"
                   spellCheck={false}
@@ -573,7 +601,7 @@ export default function LoginClient() {
 
               {mode === "signup" && (
                 <div>
-                  <label htmlFor="pro-phone" className="text-xs font-semibold text-zinc-700">
+                  <label htmlFor="pro-phone" className="text-xs font-semibold uppercase tracking-[0.18em] text-[#55657d]">
                     Telefono
                   </label>
                   <input
@@ -581,7 +609,7 @@ export default function LoginClient() {
                     name="phone"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    className="mt-1 h-12 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm outline-none focus:border-zinc-400"
+                    className="mt-1 h-12 w-full rounded-2xl border border-[#d7dfe9] bg-white px-4 text-sm text-zinc-900 outline-none transition focus:border-[#2f69c7]"
                     autoComplete="tel"
                     autoCapitalize="none"
                     spellCheck={false}
@@ -593,7 +621,7 @@ export default function LoginClient() {
               )}
 
               <div>
-                <label htmlFor="pro-password" className="text-xs font-semibold text-zinc-700">
+                <label htmlFor="pro-password" className="text-xs font-semibold uppercase tracking-[0.18em] text-[#55657d]">
                   Password
                 </label>
                 <input
@@ -602,7 +630,7 @@ export default function LoginClient() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   type="password"
-                  className="mt-1 h-12 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm outline-none focus:border-zinc-400"
+                  className="mt-1 h-12 w-full rounded-2xl border border-[#d7dfe9] bg-white px-4 text-sm text-zinc-900 outline-none transition focus:border-[#2f69c7]"
                   autoComplete={mode === "login" ? "current-password" : "new-password"}
                   autoCapitalize="none"
                   spellCheck={false}
@@ -615,7 +643,7 @@ export default function LoginClient() {
                   <div>
                     <label
                       htmlFor="pro-confirm-password"
-                      className="text-xs font-semibold text-zinc-700"
+                      className="text-xs font-semibold uppercase tracking-[0.18em] text-[#55657d]"
                     >
                       Conferma password
                     </label>
@@ -625,7 +653,7 @@ export default function LoginClient() {
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       type="password"
-                      className="mt-1 h-12 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm outline-none focus:border-zinc-400"
+                      className="mt-1 h-12 w-full rounded-2xl border border-[#d7dfe9] bg-white px-4 text-sm text-zinc-900 outline-none transition focus:border-[#2f69c7]"
                       autoComplete="new-password"
                       autoCapitalize="none"
                       spellCheck={false}
@@ -634,9 +662,9 @@ export default function LoginClient() {
                   </div>
 
                   {password.length > 0 && (
-                    <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-800">
+                    <div className="rounded-[1.5rem] border border-[#e3e9f0] bg-[#f8fbff] p-4 text-sm text-[#30486f]">
                       <p className="font-semibold">Requisiti password</p>
-                      <ul className="mt-2 space-y-1">
+                      <ul className="mt-2 space-y-1 text-[#5f708a]">
                         <li>{password.length >= 12 ? "✅" : "•"} Almeno 12 caratteri</li>
                         <li>{/[a-z]/.test(password) ? "✅" : "•"} Almeno una minuscola</li>
                         <li>{/[A-Z]/.test(password) ? "✅" : "•"} Almeno una maiuscola</li>
@@ -649,13 +677,13 @@ export default function LoginClient() {
               )}
 
               {err ? (
-                <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-800">
+                <div className="rounded-[1.5rem] border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-800">
                   {err}
                 </div>
               ) : null}
 
               {msg ? (
-                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800">
+                <div className="rounded-[1.5rem] border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800">
                   {msg}
                 </div>
               ) : null}
@@ -663,7 +691,7 @@ export default function LoginClient() {
               <button
                 type="submit"
                 disabled={!canSubmit || loading}
-                className="inline-flex h-12 w-full items-center justify-center rounded-2xl bg-black px-5 text-sm font-semibold text-white disabled:opacity-50"
+                className="inline-flex h-12 w-full items-center justify-center rounded-2xl bg-[linear-gradient(180deg,#2f69c7_0%,#2558ab_100%)] px-5 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(47,105,199,0.22)] transition hover:scale-[1.01] disabled:opacity-50"
               >
                 {loading
                   ? mode === "login"
@@ -681,17 +709,26 @@ export default function LoginClient() {
                   type="button"
                   onClick={handleResetPassword}
                   disabled={loading}
-                  className="inline-flex h-12 w-full items-center justify-center rounded-2xl border border-zinc-200 bg-white px-5 text-sm font-semibold text-zinc-900 hover:bg-zinc-50 disabled:opacity-50"
+                  className="inline-flex h-12 w-full items-center justify-center rounded-2xl border border-[#d7dfe9] bg-white px-5 text-sm font-semibold text-[#31486f] transition hover:bg-[#f8fbff] disabled:opacity-50"
                 >
                   Password dimenticata
                 </button>
               ) : null}
 
-              <div className="text-xs text-zinc-500">
+              <div className="text-xs text-[#6f7d91]">
                 Dopo l’accesso verrai reindirizzato a:{" "}
-                <span className="font-semibold text-zinc-700">{next}</span>
+                <span className="font-semibold text-[#30486f]">{next}</span>
               </div>
             </form>
+
+            <div className="mt-6 border-t border-[#e9eef4] pt-6">
+              <div className="flex flex-wrap gap-2">
+                <Badge tone="blue">Cloud</Badge>
+                <Badge>Controllo accessi</Badge>
+                <Badge tone="emerald">Rete professionale</Badge>
+                <Badge tone="amber">In evoluzione</Badge>
+              </div>
+            </div>
           </section>
         </div>
       </div>
