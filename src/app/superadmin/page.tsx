@@ -93,7 +93,7 @@ function getDisplayName(p: ProfessionalRow) {
 }
 
 function formatDateTime(value: string | null) {
-  if (!value) return "—";
+  if (!value) return "â€”";
 
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
@@ -200,7 +200,7 @@ export default async function SuperAdminPage() {
         <StatCard
           title="Approvati"
           value={String(approvedProfessionals ?? 0)}
-          description="Profili già approvati."
+          description="Profili giÃ  approvati."
           href="/superadmin/professionisti?status=approved"
         />
         <StatCard
@@ -224,7 +224,7 @@ export default async function SuperAdminPage() {
         <StatCard
           title="Visibili pubblicamente"
           value={String(publicCount ?? 0)}
-          description="Profili attualmente visibili nell’area pubblica."
+          description="Profili attualmente visibili nellâ€™area pubblica."
           href="/superadmin/professionisti"
         />
       </section>
@@ -246,7 +246,7 @@ export default async function SuperAdminPage() {
                     <tr className="text-left text-xs font-semibold uppercase tracking-wide text-zinc-500">
                       <th className="px-4 py-3">Professionista</th>
                       <th className="px-4 py-3">Categoria</th>
-                      <th className="px-4 py-3">Località</th>
+                      <th className="px-4 py-3">LocalitÃ </th>
                       <th className="px-4 py-3">Stato</th>
                       <th className="px-4 py-3">Dettaglio</th>
                     </tr>
@@ -262,10 +262,10 @@ export default async function SuperAdminPage() {
                           </div>
                         </td>
 
-                        <td className="px-4 py-4 text-sm text-zinc-600">{p.category || "—"}</td>
+                        <td className="px-4 py-4 text-sm text-zinc-600">{p.category || "â€”"}</td>
 
                         <td className="px-4 py-4 text-sm text-zinc-600">
-                          {[p.city, p.province].filter(Boolean).join(" · ") || "—"}
+                          {[p.city, p.province].filter(Boolean).join(" Â· ") || "â€”"}
                         </td>
 
                         <td className="px-4 py-4">
@@ -302,7 +302,7 @@ export default async function SuperAdminPage() {
         </SectionCard>
 
         <SectionCard
-          title="Categorie più presenti"
+          title="Categorie piÃ¹ presenti"
           description="Distribuzione rapida dei profili per categoria."
         >
           {topCategories.length === 0 ? (
@@ -374,15 +374,15 @@ export default async function SuperAdminPage() {
         >
           <div className="space-y-3 text-sm text-zinc-600">
             <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3">
-              La console gestisce già la revisione dei professionisti, il ruolo veterinario, la
-              visibilità pubblica e la sincronizzazione degli accessi.
+              La console gestisce giÃ  la revisione dei professionisti, il ruolo veterinario, la
+              visibilitÃ  pubblica e la sincronizzazione degli accessi.
             </div>
             <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
-              È presente anche un blocco dedicato al recupero degli account archiviati e dei vecchi
+              Ãˆ presente anche un blocco dedicato al recupero degli account archiviati e dei vecchi
               utenti finiti nel precedente archivio Auth.
             </div>
             <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3">
-              La parte di hardening, registro attività, Cloudflare e protezione avanzata verrà poi
+              La parte di hardening, registro attivitÃ , Cloudflare e protezione avanzata verrÃ  poi
               portata nella chat sicurezza dedicata.
             </div>
           </div>

@@ -326,7 +326,7 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
       await setMyOperatorPin(currentUserClinicOperatorId, operatorPinForMe);
       setOperatorPinForMe("");
       setCurrentUserHasPin(true);
-      setOperatorInfo("PIN operatore salvato ✅");
+      setOperatorInfo("PIN operatore salvato âœ…");
       await refreshOperatorState();
     } catch (error) {
       setOperatorError(error instanceof Error ? error.message : "Errore salvataggio PIN.");
@@ -371,7 +371,7 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
       setOperatorSession(response.session);
       setOperatorPin("");
       setOperatorModalOpen(false);
-      setOperatorInfo("Operatore attivo aggiornato ✅");
+      setOperatorInfo("Operatore attivo aggiornato âœ…");
       await refreshOperatorState();
     } catch (error) {
       setOperatorError(error instanceof Error ? error.message : "Errore attivazione operatore.");
@@ -404,7 +404,7 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
       {
         href: "/professionisti/dashboard",
         label: "Dashboard",
-        description: "Panoramica operativa dell’area professionisti.",
+        description: "Panoramica operativa dellâ€™area professionisti.",
       },
       {
         href: "/professionisti/scansiona",
@@ -494,9 +494,9 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
 
         {operatorSession?.activeOperatorIsVeterinarian ? (
           <div className="mt-1 text-[11px] text-zinc-500">
-            FNOVI: {operatorSession.activeOperatorFnoviNumber || "—"}
+            FNOVI: {operatorSession.activeOperatorFnoviNumber || "â€”"}
             {operatorSession.activeOperatorFnoviProvince
-              ? ` • ${operatorSession.activeOperatorFnoviProvince}`
+              ? ` â€¢ ${operatorSession.activeOperatorFnoviProvince}`
               : ""}
           </div>
         ) : null}
@@ -625,7 +625,7 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
               onClick={() => setOpen(true)}
               aria-label="Apri menu professionisti"
             >
-              ☰
+              â˜°
             </button>
           </div>
         </div>
@@ -747,7 +747,7 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
             </h2>
 
             <p className="mt-2 text-sm leading-6 text-zinc-600">
-              Seleziona l’operatore della postazione e conferma con PIN numerico.
+              Seleziona lâ€™operatore della postazione e conferma con PIN numerico.
             </p>
 
             <div className="mt-4 space-y-4">
@@ -764,9 +764,9 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
                     .map((operator) => (
                       <option key={operator.clinicOperatorId} value={operator.clinicOperatorId}>
                         {operator.label}
-                        {operator.role ? ` • ${operator.role}` : ""}
+                        {operator.role ? ` â€¢ ${operator.role}` : ""}
                         {operator.isVet && operator.fnoviNumber
-                          ? ` • FNOVI ${operator.fnoviNumber}`
+                          ? ` â€¢ FNOVI ${operator.fnoviNumber}`
                           : ""}
                       </option>
                     ))}

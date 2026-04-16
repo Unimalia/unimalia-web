@@ -211,7 +211,7 @@ export default function IdentitaPage() {
       setAnimals((prev) => prev.filter((x) => x.id !== a.id));
     } catch (error: unknown) {
       console.error("DELETE ANIMAL EXCEPTION:", error);
-      setDeleteErr(getErrorMessage(error, "Errore durante l’eliminazione. Riprova."));
+      setDeleteErr(getErrorMessage(error, "Errore durante lâ€™eliminazione. Riprova."));
     } finally {
       setDeletingId(null);
     }
@@ -220,8 +220,8 @@ export default function IdentitaPage() {
   if (loading) {
     return (
       <PageShell
-        title="Identità animale"
-        subtitle="Caricamento…"
+        title="IdentitÃ  animale"
+        subtitle="Caricamentoâ€¦"
         backFallbackHref="/"
         boxed
         actions={<div className="h-10 w-36 rounded-full bg-zinc-200/70" />}
@@ -240,7 +240,7 @@ export default function IdentitaPage() {
 
   return (
     <PageShell
-      title="Identità animale"
+      title="IdentitÃ  animale"
       subtitle="Le schede dei tuoi animali. Apri una scheda per gestire dati, codici e stato."
       backFallbackHref="/"
       boxed={false}
@@ -259,12 +259,12 @@ export default function IdentitaPage() {
                     Completa il profilo proprietario
                   </h2>
                   <p className="mt-2 text-sm leading-relaxed text-amber-900/80">
-                    Inserisci nome e cognome, telefono e città per creare un’identità animale e
+                    Inserisci nome e cognome, telefono e cittÃ  per creare unâ€™identitÃ  animale e
                     usare tutte le funzioni in modo corretto.
                   </p>
                 </div>
                 <ButtonSecondary href="/profilo?returnTo=/identita">
-                  Vai al profilo →
+                  Vai al profilo â†’
                 </ButtonSecondary>
               </div>
             </div>
@@ -305,12 +305,12 @@ export default function IdentitaPage() {
                 </h2>
                 <p className="mt-3 text-sm leading-relaxed text-zinc-700">
                   Cartella clinica organizzata, storico sempre accessibile, promemoria,
-                  funzioni avanzate e più ordine in un unico posto.
+                  funzioni avanzate e piÃ¹ ordine in un unico posto.
                 </p>
                 <p className="mt-2 text-sm leading-relaxed text-zinc-700">
-                  <span className="font-semibold text-zinc-900">Solo 6€ all’anno</span>,
-                  meno di <span className="font-semibold text-zinc-900">0,50€ al mese</span>.
-                  Un piccolo contributo per avere molto di più e aiutare UNIMALIA a crescere
+                  <span className="font-semibold text-zinc-900">Solo 6â‚¬ allâ€™anno</span>,
+                  meno di <span className="font-semibold text-zinc-900">0,50â‚¬ al mese</span>.
+                  Un piccolo contributo per avere molto di piÃ¹ e aiutare UNIMALIA a crescere
                   e migliorare nel tempo.
                 </p>
               </div>
@@ -331,7 +331,7 @@ export default function IdentitaPage() {
               Nessun profilo animale
             </h2>
             <p className="mt-3 text-sm leading-relaxed text-[#5f708a]">
-              Crea la prima identità digitale del tuo animale per iniziare a raccogliere dati,
+              Crea la prima identitÃ  digitale del tuo animale per iniziare a raccogliere dati,
               codici e storico in un unico posto.
             </p>
             <div className="mt-6">
@@ -387,7 +387,7 @@ export default function IdentitaPage() {
                       </h2>
                       <p className="mt-1 text-sm text-[#5f708a]">
                         {a.species}
-                        {a.breed ? ` • ${a.breed}` : ""}
+                        {a.breed ? ` â€¢ ${a.breed}` : ""}
                       </p>
                     </div>
 
@@ -403,12 +403,12 @@ export default function IdentitaPage() {
 
                   <div className="mt-5 grid gap-2 text-sm">
                     <div className="flex items-center justify-between gap-3 rounded-xl bg-[#f8fbff] px-3 py-2">
-                      <span className="text-[#6f7d91]">Colore</span>
-                      <span className="font-medium text-zinc-900">{a.color || "—"}</span>
+                      <span className="text-[#55657d]">Colore</span>
+                      <span className="font-medium text-zinc-900">{a.color || "â€”"}</span>
                     </div>
                     <div className="flex items-center justify-between gap-3 rounded-xl bg-[#f8fbff] px-3 py-2">
-                      <span className="text-[#6f7d91]">Taglia</span>
-                      <span className="font-medium text-zinc-900">{a.size || "—"}</span>
+                      <span className="text-[#55657d]">Taglia</span>
+                      <span className="font-medium text-zinc-900">{a.size || "â€”"}</span>
                     </div>
                   </div>
 
@@ -432,7 +432,7 @@ export default function IdentitaPage() {
                       disabled={deletingId === a.id}
                       className="inline-flex items-center justify-center rounded-full border border-red-200 bg-white px-4 py-2.5 text-sm font-semibold text-red-700 transition hover:bg-red-50 disabled:opacity-60"
                     >
-                      {deletingId === a.id ? "Elimino…" : "Elimina"}
+                      {deletingId === a.id ? "Eliminoâ€¦" : "Elimina"}
                     </button>
                   </div>
                 </div>
@@ -445,7 +445,7 @@ export default function IdentitaPage() {
       <div className="mt-8">
         <Card>
           <div className="rounded-[2rem] border border-[#e3e9f0] bg-white p-6 text-sm shadow-[0_14px_40px_rgba(42,56,86,0.05)]">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#6f7d91]">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#55657d]">
               Funzioni avanzate
             </p>
 
@@ -459,12 +459,12 @@ export default function IdentitaPage() {
             </p>
 
             <p className="mt-2 leading-relaxed text-[#5f708a]">
-              Creare un account ti permette anche di gestire l’identità animale e accedere alle
+              Creare un account ti permette anche di gestire lâ€™identitÃ  animale e accedere alle
               funzioni complete della piattaforma.
             </p>
 
             <p className="mt-2 leading-relaxed text-[#5f708a]">
-              Anche nella versione gratuita è disponibile una cartella clinica rapida con i dati
+              Anche nella versione gratuita Ã¨ disponibile una cartella clinica rapida con i dati
               essenziali del tuo animale.
             </p>
 
@@ -478,12 +478,12 @@ export default function IdentitaPage() {
             </p>
 
             <p className="mt-2 leading-relaxed text-[#5f708a]">
-              I dati possono essere inseriti direttamente dal veterinario, così da avere
+              I dati possono essere inseriti direttamente dal veterinario, cosÃ¬ da avere
               informazioni affidabili e aggiornate.
             </p>
 
             <p className="mt-2 leading-relaxed text-[#5f708a]">
-              Se non utilizza ancora la piattaforma, può contattarci per maggiori informazioni:
+              Se non utilizza ancora la piattaforma, puÃ² contattarci per maggiori informazioni:
               <br />
               <span className="font-medium text-zinc-900">professionisti@unimalia.it</span>
             </p>
@@ -502,7 +502,7 @@ export default function IdentitaPage() {
           >
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#6f7d91]">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#55657d]">
                   Codici
                 </p>
                 <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-[#30486f]">
@@ -510,7 +510,7 @@ export default function IdentitaPage() {
                 </h2>
                 <p className="mt-1 text-sm text-[#5f708a]">
                   {selected.species}
-                  {selected.breed ? ` • ${selected.breed}` : ""}
+                  {selected.breed ? ` â€¢ ${selected.breed}` : ""}
                 </p>
               </div>
 
@@ -527,13 +527,13 @@ export default function IdentitaPage() {
               <AnimalCodes
                 qrValue={qrValue}
                 barcodeValue={getBarcodeValue(selected)}
-                caption="Stampa o mostra rapidamente in caso di necessità."
+                caption="Stampa o mostra rapidamente in caso di necessitÃ ."
               />
             </div>
 
             <div className="mt-6 flex flex-wrap gap-2">
-              <ButtonSecondary href={qrValue}>Pagina scansione →</ButtonSecondary>
-              <ButtonPrimary href={`/identita/${selected.id}`}>Apri scheda →</ButtonPrimary>
+              <ButtonSecondary href={qrValue}>Pagina scansione â†’</ButtonSecondary>
+              <ButtonPrimary href={`/identita/${selected.id}`}>Apri scheda â†’</ButtonPrimary>
             </div>
           </div>
         </div>

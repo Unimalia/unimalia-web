@@ -117,7 +117,7 @@ function Row({
   return (
     <div className="border-b border-zinc-100 py-3 last:border-b-0">
       <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{label}</div>
-      <div className="mt-1 text-sm text-zinc-900">{value || "—"}</div>
+      <div className="mt-1 text-sm text-zinc-900">{value || "â€”"}</div>
     </div>
   );
 }
@@ -164,7 +164,7 @@ function getDisplayName(p: Professional) {
 }
 
 function formatDateTime(value: string | null) {
-  if (!value) return "—";
+  if (!value) return "â€”";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleString("it-IT");
@@ -231,14 +231,14 @@ export default async function SuperAdminProfessionalDetailPage({
             </h1>
 
             <p className="mt-3 text-sm leading-relaxed text-zinc-600">
-              Da qui puoi gestire revisione, ruolo veterinario, visibilità pubblica e dati di verifica
+              Da qui puoi gestire revisione, ruolo veterinario, visibilitÃ  pubblica e dati di verifica
               del professionista selezionato.
             </p>
 
             <div className="mt-4 space-y-1 text-sm text-zinc-500">
               <div>ID profilo: {p.id}</div>
-              <div>Utente proprietario/Auth: {p.owner_id || "—"}</div>
-              <div>Creato il: {p.created_at ? new Date(p.created_at).toLocaleString("it-IT") : "—"}</div>
+              <div>Utente proprietario/Auth: {p.owner_id || "â€”"}</div>
+              <div>Creato il: {p.created_at ? new Date(p.created_at).toLocaleString("it-IT") : "â€”"}</div>
               <div>Archiviato il: {formatDateTime(p.archived_at)}</div>
             </div>
           </div>
@@ -248,7 +248,7 @@ export default async function SuperAdminProfessionalDetailPage({
               href="/superadmin/professionisti"
               className="rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 shadow-sm hover:bg-zinc-50"
             >
-              Torna all’elenco
+              Torna allâ€™elenco
             </Link>
 
             {p.owner_id && ownerProfileState?.is_archived === true && ownerProfileState?.is_deleted !== true ? (
@@ -340,12 +340,12 @@ export default async function SuperAdminProfessionalDetailPage({
           <div className="rounded-2xl border border-zinc-200 p-4">
             <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Ruolo veterinario</div>
             <div className="mt-2 text-sm font-semibold text-zinc-900">
-              {p.is_vet === true ? "Sì" : "No"}
+              {p.is_vet === true ? "SÃ¬" : "No"}
             </div>
           </div>
 
           <div className="rounded-2xl border border-zinc-200 p-4">
-            <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Visibilità</div>
+            <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">VisibilitÃ </div>
             <div className="mt-2 text-sm font-semibold text-zinc-900">
               {p.public_visible === true ? "Pubblico" : "Non pubblico"}
             </div>
@@ -353,7 +353,7 @@ export default async function SuperAdminProfessionalDetailPage({
 
           <div className="rounded-2xl border border-zinc-200 p-4">
             <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Stato verifica</div>
-            <div className="mt-2 text-sm font-semibold text-zinc-900">{p.verification_status || "—"}</div>
+            <div className="mt-2 text-sm font-semibold text-zinc-900">{p.verification_status || "â€”"}</div>
           </div>
         </div>
       </Section>
@@ -408,8 +408,8 @@ export default async function SuperAdminProfessionalDetailPage({
           </div>
 
           <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600">
-            <div>Verificato il: {p.verified_at ? new Date(p.verified_at).toLocaleString("it-IT") : "—"}</div>
-            <div className="mt-1">Verificato da: {p.verified_by_user_id || "—"}</div>
+            <div>Verificato il: {p.verified_at ? new Date(p.verified_at).toLocaleString("it-IT") : "â€”"}</div>
+            <div className="mt-1">Verificato da: {p.verified_by_user_id || "â€”"}</div>
           </div>
         </form>
       </Section>
@@ -424,10 +424,10 @@ export default async function SuperAdminProfessionalDetailPage({
           <Row label="Telefono" value={p.phone} />
           <Row label="Sito web" value={p.website} />
           <Row label="Descrizione" value={p.description} />
-          <Row label="Città" value={p.city} />
+          <Row label="CittÃ " value={p.city} />
           <Row label="Provincia" value={p.province} />
           <Row label="Indirizzo" value={p.address} />
-          <Row label="Persona giuridica / attività" value={p.is_business === true ? "Sì" : "No"} />
+          <Row label="Persona giuridica / attivitÃ " value={p.is_business === true ? "SÃ¬" : "No"} />
         </div>
       </Section>
 
@@ -440,7 +440,7 @@ export default async function SuperAdminProfessionalDetailPage({
           <Row label="PEC" value={p.pec} />
           <Row label="Codice SDI" value={p.sdi_code} />
           <Row label="Indirizzo di fatturazione" value={p.billing_address} />
-          <Row label="Città di fatturazione" value={p.billing_city} />
+          <Row label="CittÃ  di fatturazione" value={p.billing_city} />
           <Row label="Provincia di fatturazione" value={p.billing_province} />
           <Row label="CAP di fatturazione" value={p.billing_cap} />
         </div>
@@ -462,7 +462,7 @@ export default async function SuperAdminProfessionalDetailPage({
           <Row label="Stato abbonamento" value={p.subscription_status} />
           <Row
             label="Scadenza abbonamento"
-            value={p.subscription_expires_at ? new Date(p.subscription_expires_at).toLocaleString("it-IT") : "—"}
+            value={p.subscription_expires_at ? new Date(p.subscription_expires_at).toLocaleString("it-IT") : "â€”"}
           />
         </div>
       </Section>

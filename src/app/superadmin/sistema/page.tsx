@@ -98,7 +98,7 @@ function ToggleRow({
 }
 
 function formatDateTime(value: string | null) {
-  if (!value) return "—";
+  if (!value) return "â€”";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleString("it-IT");
@@ -122,17 +122,17 @@ export default async function SuperAdminSistemaPage() {
         <div className="max-w-4xl">
           <div className="flex flex-wrap items-center gap-2">
             <Badge tone="info">Controllo sistema</Badge>
-            {settings.emergency_mode ? <Badge tone="danger">Modalità emergenza attiva</Badge> : <Badge tone="success">Sistema normale</Badge>}
-            {settings.maintenance_mode ? <Badge tone="warning">Modalità manutenzione attiva</Badge> : null}
+            {settings.emergency_mode ? <Badge tone="danger">ModalitÃ  emergenza attiva</Badge> : <Badge tone="success">Sistema normale</Badge>}
+            {settings.maintenance_mode ? <Badge tone="warning">ModalitÃ  manutenzione attiva</Badge> : null}
           </div>
 
           <h1 className="mt-4 text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl">
-            Sistema, flag e modalità emergenza
+            Sistema, flag e modalitÃ  emergenza
           </h1>
 
           <p className="mt-4 text-base leading-relaxed text-zinc-600">
             Questa sezione governa i flag globali del sistema. Qui prepariamo la base funzionale per
-            modalità emergenza, manutenzione e controllo progressivo delle funzioni pubbliche e cliniche.
+            modalitÃ  emergenza, manutenzione e controllo progressivo delle funzioni pubbliche e cliniche.
           </p>
 
           {error ? (
@@ -151,7 +151,7 @@ export default async function SuperAdminSistemaPage() {
 
       <Section
         title="Flag globali core"
-        description="Qui controlli lo stato operativo generale di UNIMALIA. Per ora è una base funzionale; l’hardening e l’enforcement profondo saranno rifiniti nella chat sicurezza."
+        description="Qui controlli lo stato operativo generale di UNIMALIA. Per ora Ã¨ una base funzionale; lâ€™hardening e lâ€™enforcement profondo saranno rifiniti nella chat sicurezza."
       >
         <form action="/api/superadmin/system/update" method="post" className="space-y-4">
           <input type="hidden" name="redirectTo" value="/superadmin/sistema" />
@@ -159,16 +159,16 @@ export default async function SuperAdminSistemaPage() {
           <div className="grid gap-4">
             <ToggleRow
               name="emergency_mode"
-              label="Modalità emergenza"
-              description="Modalità protetta del sistema. Base per mantenere operative le aree cliniche mentre il resto viene limitato in caso di attacco o traffico anomalo."
+              label="ModalitÃ  emergenza"
+              description="ModalitÃ  protetta del sistema. Base per mantenere operative le aree cliniche mentre il resto viene limitato in caso di attacco o traffico anomalo."
               checked={settings.emergency_mode === true}
               danger
             />
 
             <ToggleRow
               name="maintenance_mode"
-              label="Modalità manutenzione"
-              description="Modalità manutenzione generale. Utile per bloccare temporaneamente funzioni durante operazioni controllate."
+              label="ModalitÃ  manutenzione"
+              description="ModalitÃ  manutenzione generale. Utile per bloccare temporaneamente funzioni durante operazioni controllate."
               checked={settings.maintenance_mode === true}
             />
 
@@ -189,7 +189,7 @@ export default async function SuperAdminSistemaPage() {
             <ToggleRow
               name="lost_found_enabled"
               label="Smarrimenti e ritrovamenti"
-              description="Controlla la disponibilità dei flussi pubblici legati a smarrimenti e ritrovamenti."
+              description="Controlla la disponibilitÃ  dei flussi pubblici legati a smarrimenti e ritrovamenti."
               checked={settings.lost_found_enabled !== false}
             />
 
@@ -203,13 +203,13 @@ export default async function SuperAdminSistemaPage() {
             <ToggleRow
               name="consults_enabled"
               label="Consulti tra professionisti"
-              description="Controlla il modulo consulti professionista → professionista."
+              description="Controlla il modulo consulti professionista â†’ professionista."
               checked={settings.consults_enabled !== false}
             />
 
             <ToggleRow
               name="owner_access_requests_enabled"
-              label="Richieste accesso owner → professionisti"
+              label="Richieste accesso owner â†’ professionisti"
               description="Controlla il flusso di richieste accesso agli animali."
               checked={settings.owner_access_requests_enabled !== false}
             />
@@ -232,7 +232,7 @@ export default async function SuperAdminSistemaPage() {
           description="Lettura rapida dei flag principali."
         >
           <div className="flex flex-wrap gap-2">
-            {settings.emergency_mode ? <Badge tone="danger">Modalità emergenza: ON</Badge> : <Badge tone="success">Modalità emergenza: OFF</Badge>}
+            {settings.emergency_mode ? <Badge tone="danger">ModalitÃ  emergenza: ON</Badge> : <Badge tone="success">ModalitÃ  emergenza: OFF</Badge>}
             {settings.maintenance_mode ? <Badge tone="warning">Manutenzione: ON</Badge> : <Badge tone="success">Manutenzione: OFF</Badge>}
             {settings.public_registration_enabled !== false ? <Badge tone="success">Registrazione pubblica: ON</Badge> : <Badge tone="danger">Registrazione pubblica: OFF</Badge>}
             {settings.professional_registration_enabled !== false ? <Badge tone="success">Registrazione professionisti: ON</Badge> : <Badge tone="danger">Registrazione professionisti: OFF</Badge>}
@@ -248,21 +248,21 @@ export default async function SuperAdminSistemaPage() {
           description="Informazioni utili per audit interno e tracciamento operativo."
         >
           <div className="space-y-2 text-sm text-zinc-600">
-            <div>Chiave record: {row?.key || "—"}</div>
+            <div>Chiave record: {row?.key || "â€”"}</div>
             <div>Ultimo aggiornamento: {formatDateTime(row?.updated_at || null)}</div>
-            <div>Ultimo aggiornato da: {row?.updated_by || "—"}</div>
-            <div>Descrizione: {row?.description || "—"}</div>
+            <div>Ultimo aggiornato da: {row?.updated_by || "â€”"}</div>
+            <div>Descrizione: {row?.description || "â€”"}</div>
           </div>
         </Section>
       </div>
 
       <Section
         title="Uso previsto"
-        description="Questa è la base funzionale. La chat sicurezza si occuperà poi di enforcement globale, protezione route, Cloudflare, registro attività e hardening delle azioni critiche."
+        description="Questa Ã¨ la base funzionale. La chat sicurezza si occuperÃ  poi di enforcement globale, protezione route, Cloudflare, registro attivitÃ  e hardening delle azioni critiche."
       >
         <div className="space-y-3 text-sm text-zinc-600">
           <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3">
-            <strong>Modalità emergenza</strong> sarà il punto di attivazione rapido durante incidenti,
+            <strong>ModalitÃ  emergenza</strong> sarÃ  il punto di attivazione rapido durante incidenti,
             mantenendo operative le aree cliniche e limitando le superfici pubbliche.
           </div>
           <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3">
@@ -270,7 +270,7 @@ export default async function SuperAdminSistemaPage() {
             toccare direttamente il codice applicativo.
           </div>
           <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3">
-            Il prossimo step sensato sarà collegare questi flag alle route e ai moduli reali del sistema.
+            Il prossimo step sensato sarÃ  collegare questi flag alle route e ai moduli reali del sistema.
           </div>
         </div>
       </Section>

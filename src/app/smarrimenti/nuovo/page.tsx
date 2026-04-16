@@ -13,7 +13,7 @@ export default async function NuovoSmarrimentoPage() {
         <div className="rounded-3xl border border-zinc-200 bg-white p-8 shadow-sm">
           <h1 className="text-2xl font-bold tracking-tight text-zinc-900">Funzione temporaneamente non disponibile</h1>
           <p className="mt-3 text-sm leading-relaxed text-zinc-600">
-            La pubblicazione di nuovi annunci di smarrimento è momentaneamente disattivata dalle impostazioni di sistema.
+            La pubblicazione di nuovi annunci di smarrimento Ã¨ momentaneamente disattivata dalle impostazioni di sistema.
           </p>
           <div className="mt-6">
             <Link

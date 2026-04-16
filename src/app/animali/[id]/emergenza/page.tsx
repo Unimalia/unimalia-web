@@ -25,7 +25,7 @@ export default async function AnimalEmergencyPage({ params }: PageProps) {
           Emergency QR
         </h1>
         <p className="mt-2 text-sm text-neutral-600">
-          Configura la scheda emergenza pubblica e genera il QR dell’animale.
+          Configura la scheda emergenza pubblica e genera il QR dellâ€™animale.
         </p>
       </div>
 

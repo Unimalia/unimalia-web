@@ -102,14 +102,14 @@ async function decideRedirect(
 
   if (row?.is_deleted) {
     await supabase.auth.signOut();
-    setMsg?.("Questo account è stato eliminato definitivamente e non può più essere utilizzato.");
+    setMsg?.("Questo account Ã¨ stato eliminato definitivamente e non puÃ² piÃ¹ essere utilizzato.");
     router.replace("/login?account=eliminato");
     return;
   }
 
   if (row?.is_archived) {
     await supabase.auth.signOut();
-    setMsg?.("Questo account è attualmente disattivato.");
+    setMsg?.("Questo account Ã¨ attualmente disattivato.");
     router.replace("/login?account=disattivato");
     return;
   }
@@ -156,9 +156,9 @@ export default function LoginClient() {
     const accountState = searchParams.get("account");
 
     if (accountState === "disattivato") {
-      setMsg("Il tuo account è stato disattivato correttamente.");
+      setMsg("Il tuo account Ã¨ stato disattivato correttamente.");
     } else if (accountState === "eliminato") {
-      setMsg("Il tuo account è stato eliminato definitivamente.");
+      setMsg("Il tuo account Ã¨ stato eliminato definitivamente.");
     }
   }, [searchParams]);
 
@@ -215,7 +215,7 @@ export default function LoginClient() {
       }
 
       if ((city || "").trim().length < 2) {
-        setMsg("Inserisci la città.");
+        setMsg("Inserisci la cittÃ .");
         return;
       }
 
@@ -277,7 +277,7 @@ export default function LoginClient() {
             m.includes("user already registered")
           ) {
             setMsg(
-              "Questa email risulta già registrata. Usa “Accedi” oppure “Password dimenticata”."
+              "Questa email risulta giÃ  registrata. Usa â€œAccediâ€ oppure â€œPassword dimenticataâ€."
             );
             setMode("login");
             return;
@@ -291,7 +291,7 @@ export default function LoginClient() {
 
         if (!data.user) {
           setMsg(
-            "Registrazione quasi completata ✅ Controlla la tua email e clicca il link di conferma. Ti riporteremo su UNIMALIA per completare l’accesso."
+            "Registrazione quasi completata âœ… Controlla la tua email e clicca il link di conferma. Ti riporteremo su UNIMALIA per completare lâ€™accesso."
           );
           setMode("login");
           return;
@@ -353,7 +353,7 @@ export default function LoginClient() {
 
     const emailValue = email.trim().toLowerCase();
     if (!emailValue) {
-      setMsg("Scrivi prima la tua email, poi clicca “Password dimenticata”.");
+      setMsg("Scrivi prima la tua email, poi clicca â€œPassword dimenticataâ€.");
       return;
     }
 
@@ -369,7 +369,7 @@ export default function LoginClient() {
         return;
       }
 
-      setMsg("Ok ✅ Se l’email è corretta, riceverai un link per reimpostare la password.");
+      setMsg("Ok âœ… Se lâ€™email Ã¨ corretta, riceverai un link per reimpostare la password.");
     } catch (err: unknown) {
       console.error("RESET ERROR:", err);
       const message =
@@ -390,7 +390,7 @@ export default function LoginClient() {
     return (
       <main className="max-w-md">
         <h1 className="text-3xl font-bold tracking-tight">Login</h1>
-        <p className="mt-4 text-zinc-700">Caricamento…</p>
+        <p className="mt-4 text-zinc-700">Caricamentoâ€¦</p>
       </main>
     );
   }
@@ -402,7 +402,7 @@ export default function LoginClient() {
           {mode === "login" ? "Accedi" : "Crea account"}
         </h1>
         <Link href="/" className="text-sm text-zinc-600 hover:underline">
-          ← Home
+          â† Home
         </Link>
       </div>
 
@@ -411,8 +411,8 @@ export default function LoginClient() {
         registrazione.
         <br />
         <span className="text-zinc-600">
-          Creare un account ti permette di gestire l’identità animale e accedere alle funzioni
-          complete della piattaforma. Il telefono è richiesto da ora in poi in fase di registrazione.
+          Creare un account ti permette di gestire lâ€™identitÃ  animale e accedere alle funzioni
+          complete della piattaforma. Il telefono Ã¨ richiesto da ora in poi in fase di registrazione.
         </span>
       </p>
 
@@ -473,7 +473,7 @@ export default function LoginClient() {
 
               <div>
                 <label htmlFor="city" className="block text-sm font-medium">
-                  Città
+                  CittÃ 
                 </label>
                 <input
                   id="city"
@@ -593,11 +593,11 @@ export default function LoginClient() {
             <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-800">
               <p className="font-medium">Requisiti password</p>
               <ul className="mt-2 space-y-1">
-                <li>{password.length >= 12 ? "✅" : "•"} Almeno 12 caratteri</li>
-                <li>{/[a-z]/.test(password) ? "✅" : "•"} Almeno una minuscola</li>
-                <li>{/[A-Z]/.test(password) ? "✅" : "•"} Almeno una maiuscola</li>
-                <li>{/[0-9]/.test(password) ? "✅" : "•"} Almeno un numero</li>
-                <li>{/[^A-Za-z0-9]/.test(password) ? "✅" : "•"} Almeno un simbolo</li>
+                <li>{password.length >= 12 ? "âœ…" : "â€¢"} Almeno 12 caratteri</li>
+                <li>{/[a-z]/.test(password) ? "âœ…" : "â€¢"} Almeno una minuscola</li>
+                <li>{/[A-Z]/.test(password) ? "âœ…" : "â€¢"} Almeno una maiuscola</li>
+                <li>{/[0-9]/.test(password) ? "âœ…" : "â€¢"} Almeno un numero</li>
+                <li>{/[^A-Za-z0-9]/.test(password) ? "âœ…" : "â€¢"} Almeno un simbolo</li>
               </ul>
             </div>
           )}

@@ -77,7 +77,7 @@ async function compressImageToJpeg(file: File, maxSide = 2200, quality = 0.92): 
     const img = await new Promise<HTMLImageElement>((resolve, reject) => {
       const el = new window.Image();
       el.onload = () => resolve(el);
-      el.onerror = () => reject(new Error("Impossibile leggere l’immagine selezionata."));
+      el.onerror = () => reject(new Error("Impossibile leggere lâ€™immagine selezionata."));
       el.src = blobUrl;
     });
 
@@ -368,9 +368,9 @@ function NuovoProfiloAnimalePageInner() {
     return (
       <main className="max-w-2xl">
         <h1 className="text-3xl font-bold tracking-tight">
-          {animalId ? "Completa identità animale" : "Crea profilo animale"}
+          {animalId ? "Completa identitÃ  animale" : "Crea profilo animale"}
         </h1>
-        <p className="mt-4 text-zinc-700">Controllo profilo in corso…</p>
+        <p className="mt-4 text-zinc-700">Controllo profilo in corsoâ€¦</p>
       </main>
     );
   }
@@ -386,7 +386,7 @@ function NuovoProfiloAnimalePageInner() {
     if (file.size > 20 * 1024 * 1024) return setError("Immagine troppo grande (max 20MB).");
 
     setUploading(true);
-    setNotice("Caricamento foto in corso…");
+    setNotice("Caricamento foto in corsoâ€¦");
 
     try {
       const { data: authData } = await supabase.auth.getUser();
@@ -439,10 +439,10 @@ function NuovoProfiloAnimalePageInner() {
       setPhotoUrl(publicUrl);
       setPreviewError(false);
       setNotice(
-        wasAlreadySet ? "Foto aggiornata correttamente ✅" : "Foto caricata correttamente ✅"
+        wasAlreadySet ? "Foto aggiornata correttamente âœ…" : "Foto caricata correttamente âœ…"
       );
     } catch (error: unknown) {
-      setError(getErrorMessage(error, "Errore durante l’upload foto."));
+      setError(getErrorMessage(error, "Errore durante lâ€™upload foto."));
       setNotice(null);
     } finally {
       setUploading(false);
@@ -554,10 +554,10 @@ function NuovoProfiloAnimalePageInner() {
     <main className="max-w-2xl">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight">
-          {animalId ? "Completa identità animale" : "Crea profilo animale"}
+          {animalId ? "Completa identitÃ  animale" : "Crea profilo animale"}
         </h1>
         <Link href={backHref} className="text-sm text-zinc-600 hover:underline">
-          ← Torna
+          â† Torna
         </Link>
       </div>
 
@@ -624,7 +624,7 @@ function NuovoProfiloAnimalePageInner() {
             </label>
             <p className="mt-1 text-xs text-zinc-500">
               Facoltativa. Se non conosci la data esatta, puoi inserirne una indicativa e spuntare
-              “presunta”.
+              â€œpresuntaâ€.
             </p>
           </div>
         </div>
@@ -635,7 +635,7 @@ function NuovoProfiloAnimalePageInner() {
           <div className="mt-2 flex gap-4 text-sm">
             <label>
               <input type="radio" checked={hasChip === "yes"} onChange={() => setHasChip("yes")} />{" "}
-              Sì
+              SÃ¬
             </label>
             <label>
               <input type="radio" checked={hasChip === "no"} onChange={() => setHasChip("no")} />{" "}
@@ -664,7 +664,7 @@ function NuovoProfiloAnimalePageInner() {
                 }
                 className="rounded-lg border border-zinc-300 px-3 py-2 text-sm hover:bg-zinc-50"
               >
-                📷 Scansiona microchip
+                ðŸ“· Scansiona microchip
               </button>
 
               <p className="text-xs text-zinc-500">
@@ -693,7 +693,7 @@ function NuovoProfiloAnimalePageInner() {
               onClick={openFilePicker}
               className="rounded-lg bg-black px-4 py-2 text-white hover:bg-zinc-900"
             >
-              {uploading ? "Caricamento…" : photoUrl ? "Modifica foto" : "Carica foto"}
+              {uploading ? "Caricamentoâ€¦" : photoUrl ? "Modifica foto" : "Carica foto"}
             </button>
 
             {selectedFileName ? (
@@ -721,7 +721,7 @@ function NuovoProfiloAnimalePageInner() {
           {notice ? <p className="text-xs text-emerald-700">{notice}</p> : null}
 
           <p className="text-xs text-zinc-500">
-            La foto è facoltativa. Puoi aggiungerla anche più avanti dalla scheda animale.
+            La foto Ã¨ facoltativa. Puoi aggiungerla anche piÃ¹ avanti dalla scheda animale.
           </p>
         </div>
 
@@ -737,7 +737,7 @@ function NuovoProfiloAnimalePageInner() {
             disabled={saving}
             className="rounded-lg bg-black px-5 py-3 text-white"
           >
-            {saving ? "Salvataggio…" : animalId ? "Completa identità" : "Crea profilo"}
+            {saving ? "Salvataggioâ€¦" : animalId ? "Completa identitÃ " : "Crea profilo"}
           </button>
         </div>
       </form>
@@ -751,7 +751,7 @@ export default function NuovoProfiloAnimalePage() {
       fallback={
         <main className="max-w-2xl">
           <h1 className="text-3xl font-bold tracking-tight">Crea profilo animale</h1>
-          <p className="mt-4 text-zinc-700">Caricamento…</p>
+          <p className="mt-4 text-zinc-700">Caricamentoâ€¦</p>
         </main>
       }
     >

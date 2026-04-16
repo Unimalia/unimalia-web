@@ -61,7 +61,7 @@ const MACRO = [
   { key: "pensione", label: "Pensioni" },
   { key: "pet_sitter", label: "Pet sitter & Dog walking" },
   { key: "addestramento", label: "Addestramento" },
-  { key: "ponte_arcobaleno", label: "Ponte dell’Arcobaleno" },
+  { key: "ponte_arcobaleno", label: "Ponte dellâ€™Arcobaleno" },
   { key: "pet_detective", label: "Pet Detective" },
   { key: "altro", label: "Altro" },
 ] as const;
@@ -100,7 +100,7 @@ function normalizeSdi(value: string) {
 }
 
 function statusLabel(pro: Professional | null) {
-  if (!pro) return "—";
+  if (!pro) return "â€”";
 
   if (pro.verification_level === "regulated_vet") {
     if (pro.verification_status === "verified" && pro.public_visible) {
@@ -114,12 +114,12 @@ function statusLabel(pro: Professional | null) {
 
   if (pro.verification_level === "business") {
     if (pro.verification_status === "verified" && pro.public_visible) {
-      return "Attività verificata";
+      return "AttivitÃ  verificata";
     }
     if (pro.verification_status === "rejected") {
       return "Verifica rifiutata";
     }
-    return "Attività in verifica";
+    return "AttivitÃ  in verifica";
   }
 
   if (pro.verification_status === "verified" && pro.public_visible) {
@@ -344,7 +344,7 @@ export default function ModificaProfessionistaPage() {
     }
 
     if (city.trim().length < 2) {
-      setError("Inserisci una città valida.");
+      setError("Inserisci una cittÃ  valida.");
       return;
     }
 
@@ -385,7 +385,7 @@ export default function ModificaProfessionistaPage() {
 
     if (isBusiness) {
       if (businessName.trim().length < 2) {
-        setError("Inserisci il nome attività / ragione sociale.");
+        setError("Inserisci il nome attivitÃ  / ragione sociale.");
         return;
       }
 
@@ -569,7 +569,7 @@ export default function ModificaProfessionistaPage() {
     }
   }
 
-  if (loading) return <p className="text-sm text-zinc-700">Caricamento…</p>;
+  if (loading) return <p className="text-sm text-zinc-700">Caricamentoâ€¦</p>;
 
   return (
     <main>
@@ -580,14 +580,14 @@ export default function ModificaProfessionistaPage() {
         </div>
 
         <Link href="/professionisti" className="text-sm font-medium text-zinc-600 hover:underline">
-          ← Portale
+          â† Portale
         </Link>
       </div>
 
       <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5">
         <p className="text-sm font-semibold text-amber-900">Profilo in verifica</p>
         <p className="mt-2 text-sm leading-relaxed text-amber-800">
-          La scheda professionista è stata salvata correttamente ed è ora in revisione. La verifica
+          La scheda professionista Ã¨ stata salvata correttamente ed Ã¨ ora in revisione. La verifica
           richiede in genere 24/48 ore. Nel frattempo puoi aggiornare i dati, ma le funzioni
           riservate resteranno abilitate solo dopo approvazione.
         </p>
@@ -599,7 +599,7 @@ export default function ModificaProfessionistaPage() {
 
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2">
-              <label className="block text-sm font-medium">Nome attività / professionista *</label>
+              <label className="block text-sm font-medium">Nome attivitÃ  / professionista *</label>
               <input
                 className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
                 value={displayName}
@@ -630,7 +630,7 @@ export default function ModificaProfessionistaPage() {
                   value={activityMode}
                   onChange={(e) => setActivityMode(e.target.value as ActivityMode)}
                 >
-                  <option value="business">Attività / professionista</option>
+                  <option value="business">AttivitÃ  / professionista</option>
                   <option value="hobby">Privato / hobbistico</option>
                 </select>
               </div>
@@ -671,7 +671,7 @@ export default function ModificaProfessionistaPage() {
               <>
                 <div>
                   <label className="block text-sm font-medium">
-                    Nome attività / ragione sociale *
+                    Nome attivitÃ  / ragione sociale *
                   </label>
                   <input
                     className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
@@ -726,7 +726,7 @@ export default function ModificaProfessionistaPage() {
             )}
 
             <div>
-              <label className="block text-sm font-medium">Città *</label>
+              <label className="block text-sm font-medium">CittÃ  *</label>
               <input
                 className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
                 value={city}
@@ -879,7 +879,7 @@ export default function ModificaProfessionistaPage() {
           </button>
 
           <p className="mt-4 text-xs text-zinc-500">
-            Ogni modifica riporta la scheda in verifica. La scheda pubblica mostrerà solo dati
+            Ogni modifica riporta la scheda in verifica. La scheda pubblica mostrerÃ  solo dati
             verificati.
           </p>
         </div>
@@ -888,7 +888,7 @@ export default function ModificaProfessionistaPage() {
           <p className="text-xs font-semibold tracking-wide text-zinc-500">SKILL / SERVIZI</p>
 
           <p className="mt-3 text-sm text-zinc-700">
-            Seleziona ciò che fai. Puoi aggiungere o togliere skill in qualsiasi momento.
+            Seleziona ciÃ² che fai. Puoi aggiungere o togliere skill in qualsiasi momento.
           </p>
 
           <div className="mt-4 space-y-2">

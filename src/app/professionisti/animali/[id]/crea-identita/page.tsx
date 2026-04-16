@@ -49,7 +49,7 @@ export default function CreaIdentitaDaCartellaPage() {
 
         if (!res.ok) {
           if (!alive) return;
-          setErr(json?.error || "Impossibile caricare l’animale.");
+          setErr(json?.error || "Impossibile caricare lâ€™animale.");
           setAnimal(null);
           setLoading(false);
           return;
@@ -77,7 +77,7 @@ export default function CreaIdentitaDaCartellaPage() {
     return (
       <main className="max-w-3xl mx-auto p-6">
         <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm text-sm text-zinc-600">
-          Caricamento…
+          Caricamentoâ€¦
         </div>
       </main>
     );
@@ -90,7 +90,7 @@ export default function CreaIdentitaDaCartellaPage() {
           href={`/professionisti/animali/${animalId}`}
           className="text-sm font-semibold text-zinc-700 hover:text-zinc-900"
         >
-          ← Torna alla scheda animale
+          â† Torna alla scheda animale
         </Link>
 
         <div className="rounded-3xl border border-red-200 bg-white p-6 shadow-sm text-sm text-red-700">
@@ -105,10 +105,10 @@ export default function CreaIdentitaDaCartellaPage() {
       <div className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-zinc-900">
-            Crea identità dalla cartella professionista
+            Crea identitÃ  dalla cartella professionista
           </h1>
           <p className="mt-1 text-sm text-zinc-600">
-            Questo animale è già il record base UNIMALIA: non viene duplicato.
+            Questo animale Ã¨ giÃ  il record base UNIMALIA: non viene duplicato.
           </p>
         </div>
 
@@ -130,14 +130,14 @@ export default function CreaIdentitaDaCartellaPage() {
           <div>
             <div className="text-zinc-500">Specie</div>
             <div className="font-semibold text-zinc-900">
-              {animal.species}{animal.breed ? ` • ${animal.breed}` : ""}
+              {animal.species}{animal.breed ? ` â€¢ ${animal.breed}` : ""}
             </div>
           </div>
 
           <div>
             <div className="text-zinc-500">Microchip</div>
             <div className="font-semibold text-zinc-900">
-              {animal.chip_number ? normalizeChip(animal.chip_number) : "—"}
+              {animal.chip_number ? normalizeChip(animal.chip_number) : "â€”"}
             </div>
           </div>
 
@@ -156,11 +156,11 @@ export default function CreaIdentitaDaCartellaPage() {
         <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-700">
           In questa versione:
           <br />
-          - l’identità non crea un nuovo animale
+          - lâ€™identitÃ  non crea un nuovo animale
           <br />
-          - usa la scheda animale già nata dal flusso professionista
+          - usa la scheda animale giÃ  nata dal flusso professionista
           <br />
-          - il passaggio successivo è collegare il proprietario a questo stesso record
+          - il passaggio successivo Ã¨ collegare il proprietario a questo stesso record
         </div>
 
         <div className="flex flex-wrap gap-2">

@@ -53,7 +53,7 @@ export async function POST(req: Request) {
         </p>
 
         <p style="font-size:12px;color:#666;">
-          UNIMALIA protegge i tuoi dati: la tua email non è stata condivisa.
+          UNIMALIA protegge i tuoi dati: la tua email non Ã¨ stata condivisa.
         </p>
       `,
     });

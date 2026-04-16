@@ -1,7 +1,7 @@
 import RemindersSection from "./RemindersSection";
 
 export default async function Page({ params }: { params: { id: string } }) {
-  // ... tua UI già esistente
+  // ... tua UI giÃ  esistente
 
   return (
     <div className="space-y-4">

@@ -10,7 +10,7 @@ export function buildAbsoluteUrl(path: string) {
 export function buildLostPetsGuideMetadata(): Metadata {
   const title = "Animale smarrito: cosa fare subito";
   const description =
-    "Cosa fare subito se un animale si smarrisce: passaggi utili, errori da evitare, microchip, segnalazione e identità digitale animale con UNIMALIA.";
+    "Cosa fare subito se un animale si smarrisce: passaggi utili, errori da evitare, microchip, segnalazione e identitÃ  digitale animale con UNIMALIA.";
 
   return {
     title,
@@ -38,7 +38,7 @@ export function buildLostPetsGuideMetadata(): Metadata {
 
 export function buildDogLostCityMetadata(city: SeoCity): Metadata {
   const title = `Cane smarrito a ${city.name}: cosa fare subito`;
-  const description = `Guida pratica su cosa fare se hai un cane smarrito a ${city.name}: passaggi immediati, errori da evitare, microchip, identità digitale animale e segnalazione tramite UNIMALIA.`;
+  const description = `Guida pratica su cosa fare se hai un cane smarrito a ${city.name}: passaggi immediati, errori da evitare, microchip, identitÃ  digitale animale e segnalazione tramite UNIMALIA.`;
 
   return {
     title,
@@ -66,7 +66,7 @@ export function buildDogLostCityMetadata(city: SeoCity): Metadata {
 
 export function buildCatLostCityMetadata(city: SeoCity): Metadata {
   const title = `Gatto smarrito a ${city.name}: cosa fare subito`;
-  const description = `Guida pratica su cosa fare se hai un gatto smarrito a ${city.name}: passaggi immediati, errori da evitare, microchip, identità digitale animale e segnalazione tramite UNIMALIA.`;
+  const description = `Guida pratica su cosa fare se hai un gatto smarrito a ${city.name}: passaggi immediati, errori da evitare, microchip, identitÃ  digitale animale e segnalazione tramite UNIMALIA.`;
 
   return {
     title,

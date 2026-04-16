@@ -11,7 +11,7 @@ const MACRO = [
   { key: "pensione", label: "Pensioni" },
   { key: "pet_sitter", label: "Pet sitter & Dog walking" },
   { key: "addestramento", label: "Addestramento" },
-  { key: "ponte_arcobaleno", label: "Ponte dell’Arcobaleno" },
+  { key: "ponte_arcobaleno", label: "Ponte dellâ€™Arcobaleno" },
   { key: "pet_detective", label: "Pet Detective" },
   { key: "altro", label: "Altro" },
 ] as const;
@@ -192,7 +192,7 @@ export default function NuovoProfessionistaClient() {
     }
 
     if (professionalType === "generic" && category === "veterinari") {
-      setError("Un professionista non veterinario non può creare una scheda veterinaria.");
+      setError("Un professionista non veterinario non puÃ² creare una scheda veterinaria.");
       return;
     }
 
@@ -207,7 +207,7 @@ export default function NuovoProfessionistaClient() {
     }
 
     if (city.trim().length < 2) {
-      setError("Inserisci una città valida.");
+      setError("Inserisci una cittÃ  valida.");
       return;
     }
 
@@ -248,7 +248,7 @@ export default function NuovoProfessionistaClient() {
 
     if (isBusiness) {
       if (businessName.trim().length < 2) {
-        setError("Inserisci il nome attività / ragione sociale.");
+        setError("Inserisci il nome attivitÃ  / ragione sociale.");
         return;
       }
 
@@ -364,7 +364,7 @@ export default function NuovoProfessionistaClient() {
   if (loading) {
     return (
       <main>
-        <p className="text-sm text-zinc-700">Caricamento…</p>
+        <p className="text-sm text-zinc-700">Caricamentoâ€¦</p>
       </main>
     );
   }
@@ -377,7 +377,7 @@ export default function NuovoProfessionistaClient() {
           onClick={() => router.push("/professionisti")}
           className="inline-flex w-fit items-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
         >
-          ← Indietro
+          â† Indietro
         </button>
 
         <div className="flex items-center gap-4">
@@ -393,7 +393,7 @@ export default function NuovoProfessionistaClient() {
       <div className="mt-6">
         <h1 className="text-3xl font-bold tracking-tight">Crea scheda professionista</h1>
         <p className="mt-3 text-sm text-zinc-700">
-          Compila la scheda. Dopo salverai le skill. La pubblicazione pubblica avverrà solo dopo
+          Compila la scheda. Dopo salverai le skill. La pubblicazione pubblica avverrÃ  solo dopo
           verifica.
         </p>
       </div>
@@ -401,7 +401,7 @@ export default function NuovoProfessionistaClient() {
       <div className="mt-8 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
-            <label className="block text-sm font-medium">Nome attività / professionista *</label>
+            <label className="block text-sm font-medium">Nome attivitÃ  / professionista *</label>
             <input
               className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
               value={displayName}
@@ -433,7 +433,7 @@ export default function NuovoProfessionistaClient() {
                 value={activityMode}
                 onChange={(e) => setActivityMode(e.target.value as ActivityMode)}
               >
-                <option value="business">Attività / professionista</option>
+                <option value="business">AttivitÃ  / professionista</option>
                 <option value="hobby">Privato / hobbistico</option>
               </select>
             </div>
@@ -474,7 +474,7 @@ export default function NuovoProfessionistaClient() {
             <>
               <div>
                 <label className="block text-sm font-medium">
-                  Nome attività / ragione sociale *
+                  Nome attivitÃ  / ragione sociale *
                 </label>
                 <input
                   className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
@@ -529,7 +529,7 @@ export default function NuovoProfessionistaClient() {
           ) : null}
 
           <div>
-            <label className="block text-sm font-medium">Città *</label>
+            <label className="block text-sm font-medium">CittÃ  *</label>
             <input
               className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
               value={city}
@@ -683,11 +683,11 @@ export default function NuovoProfessionistaClient() {
           disabled={saving}
           className="mt-6 inline-flex items-center justify-center rounded-lg bg-black px-5 py-3 text-sm font-semibold text-white hover:bg-zinc-800 disabled:opacity-60"
         >
-          {saving ? "Salvataggio..." : "Continua: scegli le skill →"}
+          {saving ? "Salvataggio..." : "Continua: scegli le skill â†’"}
         </button>
 
         <p className="mt-3 text-xs text-zinc-500">
-          * Campi obbligatori. La scheda verrà salvata in stato di verifica.
+          * Campi obbligatori. La scheda verrÃ  salvata in stato di verifica.
         </p>
       </div>
     </main>

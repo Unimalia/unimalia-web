@@ -244,7 +244,7 @@ export async function POST(req: Request) {
         shortDescription:
           current.description ||
           current.title ||
-          "Un evento clinico è stato annullato",
+          "Un evento clinico Ã¨ stato annullato",
       });
     }
   } catch (notificationError) {
@@ -284,7 +284,7 @@ export async function POST(req: Request) {
       current.meta && typeof current.meta === "object" ? current.meta : null;
 
     const notesParts = [
-      "Questo evento clinico è stato annullato.",
+      "Questo evento clinico Ã¨ stato annullato.",
       currentType ? `Tipo: ${currentType}` : null,
       currentDescription ? `Note originali: ${currentDescription}` : null,
     ].filter(Boolean);
@@ -294,7 +294,7 @@ export async function POST(req: Request) {
       action: "deleted",
       eventTitle: `${currentTitle} (annullato)`,
       eventDate: currentDate,
-      eventNotes: notesParts.join(" • "),
+      eventNotes: notesParts.join(" â€¢ "),
       eventType: currentType,
       priority: currentPriority,
       meta: currentMeta,

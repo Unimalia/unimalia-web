@@ -43,10 +43,10 @@ function formatDateIT(value?: string | null): string | null {
 }
 
 function formatAgeFromBirthDate(birthDate?: string | null): string {
-  if (!birthDate) return "—";
+  if (!birthDate) return "â€”";
 
   const birth = new Date(birthDate);
-  if (Number.isNaN(birth.getTime())) return "—";
+  if (Number.isNaN(birth.getTime())) return "â€”";
 
   const now = new Date();
   let years = now.getFullYear() - birth.getFullYear();
@@ -65,7 +65,7 @@ function formatAgeFromBirthDate(birthDate?: string | null): string {
     return months === 1 ? "1 mese" : `${months} mesi`;
   }
 
-  return "—";
+  return "â€”";
 }
 
 function sortByEventDateDesc<T extends QuickSummaryEvent>(events: T[]): T[] {
@@ -103,14 +103,14 @@ function extractBloodType(e: QuickSummaryEvent): string | null {
 }
 
 function formatWeight(value: number | null): string {
-  if (value === null) return "—";
+  if (value === null) return "â€”";
   return Number.isInteger(value) ? `${value} kg` : `${value} kg`;
 }
 
 function formatSterilizationStatus(value?: boolean | null): string {
-  if (value === true) return "Sì";
+  if (value === true) return "SÃ¬";
   if (value === false) return "No";
-  return "—";
+  return "â€”";
 }
 
 export function buildClinicalQuickSummary(input: {
@@ -163,15 +163,15 @@ export function buildClinicalQuickSummary(input: {
   return {
     age: formatAgeFromBirthDate(animal?.birth_date),
     weight: lastWeightEntry
-      ? `${formatWeight(lastWeightEntry.weight)} • ${formatDateIT(lastWeightEntry.event.event_date) || "—"}`
-      : "—",
+      ? `${formatWeight(lastWeightEntry.weight)} â€¢ ${formatDateIT(lastWeightEntry.event.event_date) || "â€”"}`
+      : "â€”",
     bloodType: latestBloodType || "Non rilevato",
     sterilizationStatus: formatSterilizationStatus(animal?.sterilized),
     allergies: allergies
       .map((e) => {
         const text = eventMainText(e) || "Allergia";
         const date = formatDateIT(e.event_date);
-        return date ? `${text} • ${date}` : text;
+        return date ? `${text} â€¢ ${date}` : text;
       })
       .slice(0, 3),
     activeTherapies: activeTherapies
@@ -181,14 +181,14 @@ export function buildClinicalQuickSummary(input: {
       .map((e) => {
         const text = eventMainText(e) || "Terapia";
         const date = formatDateIT(e.event_date);
-        return date ? `${text} • ${date}` : text;
+        return date ? `${text} â€¢ ${date}` : text;
       })
       .slice(0, 3),
     chronicPathologies: chronicConditions
       .map((e) => {
         const text = eventMainText(e) || "Patologia cronica";
         const date = formatDateIT(e.event_date);
-        return date ? `${text} • ${date}` : text;
+        return date ? `${text} â€¢ ${date}` : text;
       })
       .slice(0, 3),
     nextRecall: nextRecallEvent ? formatDateIT(nextRecallEvent.event_date) : null,

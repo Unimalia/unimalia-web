@@ -75,7 +75,7 @@ export async function POST(req: Request) {
     );
   }
 
-  // ✅ STEP 1: SYNC PRIMA (rigida)
+  // âœ… STEP 1: SYNC PRIMA (rigida)
   const syncResult = await syncProfessionalAuth(professionalId);
 
   if (!syncResult.ok) {
@@ -99,7 +99,7 @@ export async function POST(req: Request) {
     );
   }
 
-  // ✅ STEP 2: SOLO ORA APPROVI
+  // âœ… STEP 2: SOLO ORA APPROVI
   const approvalTimestamp = new Date().toISOString();
 
   const { error: approveError } = await admin

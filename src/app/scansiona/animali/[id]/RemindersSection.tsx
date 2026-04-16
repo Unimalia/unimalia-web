@@ -129,7 +129,7 @@ export default function RemindersSection({ animalId }: { animalId: string }) {
             <div key={r.id} className="rounded-xl border p-3 flex items-start justify-between gap-3">
               <div>
                 <div className="text-sm font-medium">
-                  {r.type.toUpperCase()} — {r.title}
+                  {r.type.toUpperCase()} â€” {r.title}
                 </div>
                 <div className="text-xs opacity-70">Scadenza: {String(r.due_date).slice(0, 10)}</div>
               </div>

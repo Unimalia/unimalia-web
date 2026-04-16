@@ -6,7 +6,7 @@ const SITE_URL = "https://www.unimalia.it";
 const pagePath = "/rete/professionisti";
 const pageTitle = "Professionisti e servizi nella Rete UNIMALIA";
 const pageDescription =
-  "Scopri come UNIMALIA può aiutare toelettatori, pensioni, pet sitter, educatori e altri professionisti del settore animale, con una piattaforma in evoluzione e strumenti dedicati.";
+  "Scopri come UNIMALIA puÃ² aiutare toelettatori, pensioni, pet sitter, educatori e altri professionisti del settore animale, con una piattaforma in evoluzione e strumenti dedicati.";
 
 export const metadata: Metadata = {
   title: pageTitle,
@@ -37,7 +37,7 @@ const faqJsonLd = {
   mainEntity: [
     {
       "@type": "Question",
-      name: "Chi può iscriversi come professionista su UNIMALIA?",
+      name: "Chi puÃ² iscriversi come professionista su UNIMALIA?",
       acceptedAnswer: {
         "@type": "Answer",
         text:
@@ -46,11 +46,11 @@ const faqJsonLd = {
     },
     {
       "@type": "Question",
-      name: "Le funzioni sono già definitive per tutti i professionisti?",
+      name: "Le funzioni sono giÃ  definitive per tutti i professionisti?",
       acceptedAnswer: {
         "@type": "Answer",
         text:
-          "No. La piattaforma è in evoluzione e le funzioni possono ampliarsi nel tempo in base al tipo di professionista e allo sviluppo del progetto.",
+          "No. La piattaforma Ã¨ in evoluzione e le funzioni possono ampliarsi nel tempo in base al tipo di professionista e allo sviluppo del progetto.",
       },
     },
     {
@@ -59,7 +59,7 @@ const faqJsonLd = {
       acceptedAnswer: {
         "@type": "Answer",
         text:
-          "Sì, in futuro UNIMALIA è pensata per integrare anche strumenti come le prenotazioni online.",
+          "SÃ¬, in futuro UNIMALIA Ã¨ pensata per integrare anche strumenti come le prenotazioni online.",
       },
     },
   ],
@@ -154,8 +154,8 @@ export default function ReteProfessionistiPage() {
           </h1>
 
           <p className="mt-5 max-w-3xl text-lg leading-relaxed text-zinc-600">
-            UNIMALIA è una piattaforma in evoluzione pensata anche per i professionisti del settore
-            animale. Oltre all’area veterinaria, possono entrare nella rete anche altre figure
+            UNIMALIA Ã¨ una piattaforma in evoluzione pensata anche per i professionisti del settore
+            animale. Oltre allâ€™area veterinaria, possono entrare nella rete anche altre figure
             come toelettatori, pensioni, educatori, pet sitter e altri servizi dedicati agli
             animali.
           </p>
@@ -169,7 +169,7 @@ export default function ReteProfessionistiPage() {
         </header>
 
         <div className="mt-8 grid gap-6">
-          <Section title="Chi può iscriversi">
+          <Section title="Chi puÃ² iscriversi">
             <ul className="list-disc space-y-2 pl-6">
               <li>toelettatori</li>
               <li>pensioni per animali</li>
@@ -181,42 +181,42 @@ export default function ReteProfessionistiPage() {
 
           <Section title="Una piattaforma in evoluzione">
             <p>
-              UNIMALIA non è pensata come uno strumento statico. Le funzioni disponibili per i
+              UNIMALIA non Ã¨ pensata come uno strumento statico. Le funzioni disponibili per i
               professionisti possono crescere nel tempo in base al ruolo e allo sviluppo del
               progetto.
             </p>
             <p>
-              L’obiettivo è costruire un ecosistema più ordinato, utile e accessibile per chi
+              Lâ€™obiettivo Ã¨ costruire un ecosistema piÃ¹ ordinato, utile e accessibile per chi
               lavora ogni giorno con gli animali.
             </p>
           </Section>
 
           <Section title="Essere presenti sulla piattaforma">
             <p>
-              Uno dei vantaggi della rete è la possibilità di essere trovati anche all’interno del
+              Uno dei vantaggi della rete Ã¨ la possibilitÃ  di essere trovati anche allâ€™interno del
               sito, in base alla zona e alle competenze reali del professionista.
             </p>
             <p>
-              Questo aiuta i proprietari a orientarsi meglio e rende più semplice scoprire servizi
+              Questo aiuta i proprietari a orientarsi meglio e rende piÃ¹ semplice scoprire servizi
               specifici direttamente sulla piattaforma.
             </p>
           </Section>
 
           <Section title="Prenotazioni online in futuro">
             <p>
-              In futuro UNIMALIA è pensata per integrare anche strumenti evoluti come le
+              In futuro UNIMALIA Ã¨ pensata per integrare anche strumenti evoluti come le
               prenotazioni online.
             </p>
             <p>
-              La piattaforma sta crescendo per offrire un’esperienza sempre più completa sia ai
+              La piattaforma sta crescendo per offrire unâ€™esperienza sempre piÃ¹ completa sia ai
               professionisti sia ai proprietari.
             </p>
           </Section>
 
-          <Section title="Perché entrare nella Rete UNIMALIA">
+          <Section title="PerchÃ© entrare nella Rete UNIMALIA">
             <ul className="list-disc space-y-2 pl-6">
               <li>entri in una rete dedicata al settore animale</li>
-              <li>puoi essere trovato più facilmente sulla piattaforma</li>
+              <li>puoi essere trovato piÃ¹ facilmente sulla piattaforma</li>
               <li>hai accesso a un portale professionale dedicato</li>
               <li>ti prepari a strumenti futuri in evoluzione, come le prenotazioni online</li>
             </ul>
@@ -224,7 +224,7 @@ export default function ReteProfessionistiPage() {
 
           <Section title="Richiedi informazioni">
             <p>
-              Se vuoi capire meglio come funziona UNIMALIA per la tua attività, puoi contattarci qui:
+              Se vuoi capire meglio come funziona UNIMALIA per la tua attivitÃ , puoi contattarci qui:
             </p>
             <p className="font-semibold text-zinc-900">professionisti@unimalia.it</p>
           </Section>

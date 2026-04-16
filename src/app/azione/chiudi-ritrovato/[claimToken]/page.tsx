@@ -27,7 +27,7 @@ export default async function ChiudiRitrovatoPage({
   }
 
   if (report.type !== "lost") {
-    return <div style={{ padding: 24 }}>Questa azione è disponibile solo per gli smarrimenti.</div>;
+    return <div style={{ padding: 24 }}>Questa azione Ã¨ disponibile solo per gli smarrimenti.</div>;
   }
 
   if (report.status !== FOUND_STATUS) {

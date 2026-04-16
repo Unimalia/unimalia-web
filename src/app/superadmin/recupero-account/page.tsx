@@ -61,7 +61,7 @@ function Badge({
 }
 
 function formatDateTime(value: string | null) {
-  if (!value) return "—";
+  if (!value) return "â€”";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleString("it-IT");
@@ -202,8 +202,8 @@ export default async function SuperAdminRecuperoAccountPage() {
 
           <p className="mt-4 text-base leading-relaxed text-zinc-600">
             Da qui puoi recuperare account disattivati e vecchi utenti finiti nel precedente
-            archivio Auth. Il ripristino riabilita l’accesso account; i profili professionali
-            collegati tornano attivi ma restano non approvati finché non vengono nuovamente
+            archivio Auth. Il ripristino riabilita lâ€™accesso account; i profili professionali
+            collegati tornano attivi ma restano non approvati finchÃ© non vengono nuovamente
             verificati.
           </p>
 
@@ -279,7 +279,7 @@ export default async function SuperAdminRecuperoAccountPage() {
         <div className="border-b bg-zinc-50 px-6 py-4">
           <h2 className="text-lg font-semibold text-zinc-900">Account archiviati (nuovo flusso)</h2>
           <p className="mt-1 text-sm text-zinc-600">
-            Ripristina l’account owner e gli eventuali profili professionali collegati.
+            Ripristina lâ€™account owner e gli eventuali profili professionali collegati.
           </p>
         </div>
 
@@ -289,7 +289,7 @@ export default async function SuperAdminRecuperoAccountPage() {
               <tr className="text-left text-xs font-semibold uppercase tracking-wide text-zinc-500">
                 <th className="px-4 py-3">Account</th>
                 <th className="px-4 py-3">Email Auth</th>
-                <th className="px-4 py-3">Città</th>
+                <th className="px-4 py-3">CittÃ </th>
                 <th className="px-4 py-3">Telefono</th>
                 <th className="px-4 py-3">Archiviato il</th>
                 <th className="px-4 py-3">Profili professionali</th>
@@ -307,7 +307,7 @@ export default async function SuperAdminRecuperoAccountPage() {
               ) : (
                 archivedProfiles.map((profile) => {
                   const authUser = authUserById.get(profile.id);
-                  const authEmail = readString(authUser?.email) || "—";
+                  const authEmail = readString(authUser?.email) || "â€”";
                   const linkedProCount = archivedProfessionalCountByOwner[profile.id] || 0;
 
                   return (
@@ -322,11 +322,11 @@ export default async function SuperAdminRecuperoAccountPage() {
                       <td className="px-4 py-4 text-sm text-zinc-600">{authEmail}</td>
 
                       <td className="px-4 py-4 text-sm text-zinc-600">
-                        {profile.city || "—"}
+                        {profile.city || "â€”"}
                       </td>
 
                       <td className="px-4 py-4 text-sm text-zinc-600">
-                        {profile.phone || "—"}
+                        {profile.phone || "â€”"}
                       </td>
 
                       <td className="px-4 py-4 text-sm text-zinc-600">
@@ -409,11 +409,11 @@ export default async function SuperAdminRecuperoAccountPage() {
                       </td>
 
                       <td className="px-4 py-4 text-sm text-zinc-600">
-                        {currentEmail || "—"}
+                        {currentEmail || "â€”"}
                       </td>
 
                       <td className="px-4 py-4 text-sm text-zinc-600">
-                        {originalEmail || "—"}
+                        {originalEmail || "â€”"}
                       </td>
 
                       <td className="px-4 py-4 text-sm">
@@ -495,7 +495,7 @@ export default async function SuperAdminRecuperoAccountPage() {
                     </td>
 
                     <td className="px-4 py-4 text-sm text-zinc-600">
-                      {pro.owner_id || "—"}
+                      {pro.owner_id || "â€”"}
                     </td>
 
                     <td className="px-4 py-4 text-sm">

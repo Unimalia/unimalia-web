@@ -35,7 +35,7 @@ function safeDate(value: string | null | undefined) {
 }
 
 function safeCardTitle(item: PublicFoundReport) {
-  if (item.animal_name && item.species) return `${item.species} – ${item.animal_name}`;
+  if (item.animal_name && item.species) return `${item.species} â€“ ${item.animal_name}`;
   if (item.species) return item.species;
   if (item.animal_name) return item.animal_name;
   if (item.title) return item.title;
@@ -146,7 +146,7 @@ export default function TrovatiPage() {
       <div className="mb-6">
         <Card>
           <div className="rounded-[2rem] border border-[#e3e9f0] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-6 shadow-[0_14px_40px_rgba(42,56,86,0.05)]">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#6f7d91]">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#55657d]">
               Ricerca segnalazioni
             </p>
 
@@ -155,7 +155,7 @@ export default function TrovatiPage() {
             </h2>
 
             <p className="mt-2 text-sm leading-relaxed text-[#5f708a]">
-              Filtra le segnalazioni attive per trovare più rapidamente casi compatibili nella tua area.
+              Filtra le segnalazioni attive per trovare piÃ¹ rapidamente casi compatibili nella tua area.
             </p>
 
             <div className="mt-5 grid gap-3 sm:grid-cols-3">
@@ -198,7 +198,7 @@ export default function TrovatiPage() {
               </div>
             </div>
 
-            <p className="mt-4 text-xs text-[#6f7d91]">
+            <p className="mt-4 text-xs text-[#55657d]">
               Risultati:{" "}
               <span className="font-semibold text-[#30486f]">{filtered.length}</span>
             </p>
@@ -268,8 +268,8 @@ export default function TrovatiPage() {
                   </div>
 
                   <p className="mt-2 text-sm text-[#5f708a]">
-                    {item.location_text || "Località non specificata"}{" "}
-                    {item.province ? `(${item.province})` : ""} – {safeDate(item.event_date)}
+                    {item.location_text || "LocalitÃ  non specificata"}{" "}
+                    {item.province ? `(${item.province})` : ""} â€“ {safeDate(item.event_date)}
                   </p>
 
                   {item.description ? (

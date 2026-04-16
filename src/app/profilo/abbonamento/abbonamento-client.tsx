@@ -24,17 +24,17 @@ type BillingStatusResponse = {
 
 function fmt(v: string | null | undefined) {
   const s = String(v ?? "").trim();
-  return s ? s : "—";
+  return s ? s : "â€”";
 }
 
 function statusLabel(status: string | null | undefined) {
   const s = String(status ?? "").toLowerCase();
   if (!s) return "Nessun abbonamento";
-  if (s === "active") return "Attivo ✅";
-  if (s === "trialing") return "In prova ✅";
-  if (s === "past_due") return "Pagamento in ritardo ⚠️";
+  if (s === "active") return "Attivo âœ…";
+  if (s === "trialing") return "In prova âœ…";
+  if (s === "past_due") return "Pagamento in ritardo âš ï¸";
   if (s === "canceled") return "Cancellato";
-  if (s === "unpaid") return "Non pagato ⚠️";
+  if (s === "unpaid") return "Non pagato âš ï¸";
   return s;
 }
 
@@ -97,7 +97,7 @@ export function AbbonamentoClient() {
   if (loading) {
     return (
       <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <p className="text-sm text-zinc-700">Caricamento abbonamento…</p>
+        <p className="text-sm text-zinc-700">Caricamento abbonamentoâ€¦</p>
       </div>
     );
   }
@@ -105,7 +105,7 @@ export function AbbonamentoClient() {
   if (!sessionUser) {
     return (
       <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <p className="text-sm text-zinc-700">Devi effettuare l’accesso per vedere l’abbonamento.</p>
+        <p className="text-sm text-zinc-700">Devi effettuare lâ€™accesso per vedere lâ€™abbonamento.</p>
         <div className="mt-4 flex gap-2">
           <Link
             href="/login"
@@ -138,7 +138,7 @@ export function AbbonamentoClient() {
           href="/profilo"
           className="inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm hover:bg-zinc-50"
         >
-          ← Profilo
+          â† Profilo
         </Link>
       </div>
 
@@ -151,7 +151,7 @@ export function AbbonamentoClient() {
           <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Stato</p>
           <p className="mt-1 text-sm font-semibold text-zinc-900">{statusLabel(sub?.status)}</p>
           <p className="mt-1 text-xs text-zinc-600">
-            Premium: <span className="font-medium text-zinc-900">{data?.premium ? "Sì" : "No"}</span>
+            Premium: <span className="font-medium text-zinc-900">{data?.premium ? "SÃ¬" : "No"}</span>
           </p>
         </div>
 
@@ -195,7 +195,7 @@ export function AbbonamentoClient() {
           </div>
 
           <p className="mt-3 text-xs text-zinc-500">
-            Nota: current_period_end è ancora null finché non lo salviamo via webhook/sync (step successivi).
+            Nota: current_period_end Ã¨ ancora null finchÃ© non lo salviamo via webhook/sync (step successivi).
           </p>
         </div>
       </div>

@@ -6,13 +6,13 @@ export default function CookiePage() {
       <p className="text-zinc-700">
         UNIMALIA utilizza cookie tecnici necessari al funzionamento del sito e,
         in futuro, potrebbe utilizzare cookie/strumenti di analisi per migliorare
-        l’esperienza.
+        lâ€™esperienza.
       </p>
 
       <section className="space-y-2">
         <h2 className="text-xl font-semibold">1. Cookie tecnici</h2>
         <p className="text-zinc-700">
-          Sono cookie indispensabili per login, sicurezza e funzionalità base.
+          Sono cookie indispensabili per login, sicurezza e funzionalitÃ  base.
           Senza questi cookie il sito potrebbe non funzionare correttamente.
         </p>
       </section>
@@ -20,7 +20,7 @@ export default function CookiePage() {
       <section className="space-y-2">
         <h2 className="text-xl font-semibold">2. Cookie di terze parti</h2>
         <p className="text-zinc-700">
-          Il sito può integrare servizi esterni (es. mappe). Questi servizi
+          Il sito puÃ² integrare servizi esterni (es. mappe). Questi servizi
           possono utilizzare cookie secondo le proprie policy.
         </p>
       </section>
@@ -29,12 +29,12 @@ export default function CookiePage() {
         <h2 className="text-xl font-semibold">3. Gestione cookie</h2>
         <p className="text-zinc-700">
           Puoi gestire i cookie dalle impostazioni del tuo browser. Disabilitare
-          alcuni cookie tecnici può impedire l’uso del sito.
+          alcuni cookie tecnici puÃ² impedire lâ€™uso del sito.
         </p>
       </section>
 
       <p className="text-xs text-zinc-500">
-        Versione iniziale — potrà essere aggiornata con l’introduzione di nuove funzionalità.
+        Versione iniziale â€” potrÃ  essere aggiornata con lâ€™introduzione di nuove funzionalitÃ .
       </p>
     </main>
   );

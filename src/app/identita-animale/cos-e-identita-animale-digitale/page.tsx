@@ -9,9 +9,9 @@ import {
 } from "@/lib/seo/identityAnimal";
 
 const pagePath = "/identita-animale/cos-e-identita-animale-digitale";
-const pageTitle = "Cos’è l’identità animale digitale";
+const pageTitle = "Cosâ€™Ã¨ lâ€™identitÃ  animale digitale";
 const pageDescription =
-  "Scopri cos’è l’identità animale digitale, a cosa serve, perché può essere utile per tutti gli animali anche senza microchip e come funziona in UNIMALIA.";
+  "Scopri cosâ€™Ã¨ lâ€™identitÃ  animale digitale, a cosa serve, perchÃ© puÃ² essere utile per tutti gli animali anche senza microchip e come funziona in UNIMALIA.";
 
 export const metadata: Metadata = buildIdentityPageMetadata({
   title: pageTitle,
@@ -21,27 +21,27 @@ export const metadata: Metadata = buildIdentityPageMetadata({
 
 const faqItems = [
   {
-    question: "Cos’è l’identità animale digitale?",
+    question: "Cosâ€™Ã¨ lâ€™identitÃ  animale digitale?",
     answer:
-      "È una scheda digitale che raccoglie e organizza le informazioni utili di un animale in modo più accessibile, aggiornabile e consultabile online.",
+      "Ãˆ una scheda digitale che raccoglie e organizza le informazioni utili di un animale in modo piÃ¹ accessibile, aggiornabile e consultabile online.",
   },
   {
     question: "Serve solo agli animali con microchip?",
     answer:
-      "No. Tutti gli animali possono avere un’identità animale digitale, anche quelli che non hanno microchip.",
+      "No. Tutti gli animali possono avere unâ€™identitÃ  animale digitale, anche quelli che non hanno microchip.",
   },
   {
-    question: "Cosa succede se l’animale non ha il microchip?",
+    question: "Cosa succede se lâ€™animale non ha il microchip?",
     answer:
-      "Per gli animali senza microchip, UNIMALIA può assegnare un’identità digitale con QR code e barcode, così da creare un riferimento chiaro e sempre disponibile.",
+      "Per gli animali senza microchip, UNIMALIA puÃ² assegnare unâ€™identitÃ  digitale con QR code e barcode, cosÃ¬ da creare un riferimento chiaro e sempre disponibile.",
   },
   {
     question: "A cosa serve concretamente?",
     answer:
-      "Serve a raccogliere dati essenziali, avere un punto unico più ordinato, migliorare la gestione pratica dell’animale e rendere più semplice la consultazione delle informazioni utili.",
+      "Serve a raccogliere dati essenziali, avere un punto unico piÃ¹ ordinato, migliorare la gestione pratica dellâ€™animale e rendere piÃ¹ semplice la consultazione delle informazioni utili.",
   },
   {
-    question: "Che differenza c’è tra Free e Premium?",
+    question: "Che differenza câ€™Ã¨ tra Free e Premium?",
     answer:
       "Con la versione gratuita puoi avere una base utile, compresa una cartella clinica rapida e i referti via email tramite la Rete UNIMALIA. Con Premium puoi consultare una timeline completa e organizzata, storico clinico, reminder e funzioni avanzate.",
   },
@@ -66,7 +66,7 @@ export default function IdentityAnimalDigitalPage() {
   const breadcrumbJsonLd = buildIdentityBreadcrumbJsonLd([
     { name: "Home", item: "https://unimalia.it/" },
     {
-      name: "Cos’è l’identità animale digitale",
+      name: "Cosâ€™Ã¨ lâ€™identitÃ  animale digitale",
       item: "https://unimalia.it/identita-animale/cos-e-identita-animale-digitale",
     },
   ]);
@@ -105,63 +105,63 @@ export default function IdentityAnimalDigitalPage() {
               </Link>
             </li>
             <li>/</li>
-            <li className="text-zinc-700">Cos’è l’identità animale digitale</li>
+            <li className="text-zinc-700">Cosâ€™Ã¨ lâ€™identitÃ  animale digitale</li>
           </ol>
         </nav>
 
         <header className="mt-6 rounded-[2rem] border border-zinc-200 bg-white p-8 shadow-sm sm:p-10">
           <span className="inline-flex items-center rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-semibold text-zinc-700">
-            Guida identità animale
+            Guida identitÃ  animale
           </span>
 
           <h1 className="mt-5 text-4xl font-bold tracking-tight text-zinc-900 sm:text-5xl">
-            Cos’è l’identità animale digitale
+            Cosâ€™Ã¨ lâ€™identitÃ  animale digitale
           </h1>
 
           <p className="mt-5 max-w-3xl text-lg leading-relaxed text-zinc-600">
-            L’identità animale digitale è un modo più ordinato per raccogliere e gestire
-            online le informazioni utili di un animale. È pensata per tutti gli animali,
+            Lâ€™identitÃ  animale digitale Ã¨ un modo piÃ¹ ordinato per raccogliere e gestire
+            online le informazioni utili di un animale. Ãˆ pensata per tutti gli animali,
             anche per quelli che non hanno microchip, e aiuta ad avere un punto unico,
-            più chiaro e più facile da consultare nel tempo.
+            piÃ¹ chiaro e piÃ¹ facile da consultare nel tempo.
           </p>
         </header>
 
         <div className="mt-8 grid gap-6">
           <Section title="Definizione semplice">
             <p>
-              L’identità animale digitale è una scheda online che raccoglie in modo
+              Lâ€™identitÃ  animale digitale Ã¨ una scheda online che raccoglie in modo
               strutturato i dati principali di un animale: informazioni essenziali,
               elementi utili per riconoscerlo, dati sanitari importanti e altri contenuti
-              consultabili in modo più semplice e ordinato.
+              consultabili in modo piÃ¹ semplice e ordinato.
             </p>
           </Section>
 
-          <Section title="È pensata per tutti gli animali">
+          <Section title="Ãˆ pensata per tutti gli animali">
             <p>
-              UNIMALIA non è pensata solo per gli animali che hanno già il microchip.
-              Tutti gli animali possono avere un’identità animale digitale, anche gatti o
+              UNIMALIA non Ã¨ pensata solo per gli animali che hanno giÃ  il microchip.
+              Tutti gli animali possono avere unâ€™identitÃ  animale digitale, anche gatti o
               altri animali che non ne sono provvisti.
             </p>
             <p>
-              Per gli animali senza microchip, UNIMALIA può assegnare un’identità digitale
-              con QR code e barcode, così da creare un riferimento chiaro, consultabile e
+              Per gli animali senza microchip, UNIMALIA puÃ² assegnare unâ€™identitÃ  digitale
+              con QR code e barcode, cosÃ¬ da creare un riferimento chiaro, consultabile e
               sempre disponibile dal telefono.
             </p>
           </Section>
 
           <Section title="A cosa serve davvero">
             <ul className="list-disc space-y-2 pl-6">
-              <li>tenere in ordine i dati essenziali dell’animale</li>
-              <li>avere una base unica, più chiara e aggiornabile nel tempo</li>
-              <li>rendere più semplice la gestione pratica delle informazioni</li>
-              <li>avere dati utili sempre disponibili in caso di necessità</li>
+              <li>tenere in ordine i dati essenziali dellâ€™animale</li>
+              <li>avere una base unica, piÃ¹ chiara e aggiornabile nel tempo</li>
+              <li>rendere piÃ¹ semplice la gestione pratica delle informazioni</li>
+              <li>avere dati utili sempre disponibili in caso di necessitÃ </li>
               <li>ridurre la dispersione tra documenti, email, note e strumenti diversi</li>
             </ul>
           </Section>
 
           <Section title="Cartella clinica rapida e funzioni avanzate">
             <p>
-              Anche nella versione gratuita, UNIMALIA può offrire una cartella clinica
+              Anche nella versione gratuita, UNIMALIA puÃ² offrire una cartella clinica
               rapida con le informazioni essenziali utili soprattutto in caso di
               emergenza.
             </p>
@@ -171,22 +171,22 @@ export default function IdentityAnimalDigitalPage() {
               in quel caso il cliente li riceve via email.
             </p>
             <p>
-              Chi ha Premium, oltre alla mail, può consultare una timeline completa e
+              Chi ha Premium, oltre alla mail, puÃ² consultare una timeline completa e
               organizzata, con archivio clinico, storico, reminder e funzioni avanzate.
             </p>
           </Section>
 
-          <Section title="Perché può essere utile ogni giorno">
+          <Section title="PerchÃ© puÃ² essere utile ogni giorno">
             <p>
               Spesso le informazioni su un animale sono disperse tra documenti, messaggi,
-              foto, email e note personali. L’identità digitale aiuta a ridurre questa
-              frammentazione e a creare un punto unico più ordinato e più facile da
+              foto, email e note personali. Lâ€™identitÃ  digitale aiuta a ridurre questa
+              frammentazione e a creare un punto unico piÃ¹ ordinato e piÃ¹ facile da
               aggiornare.
             </p>
             <p>
               Non solo in viaggio: anche durante una semplice passeggiata o quando sei
               fuori casa con il tuo animale, avere accesso rapido alle informazioni
-              importanti dal telefono può essere utile in caso di bisogno.
+              importanti dal telefono puÃ² essere utile in caso di bisogno.
             </p>
           </Section>
 
@@ -217,7 +217,7 @@ export default function IdentityAnimalDigitalPage() {
                 className="rounded-2xl border border-zinc-200 bg-zinc-50 p-5 transition hover:bg-zinc-100"
               >
                 <p className="text-lg font-semibold text-zinc-900">
-                  Microchip vs identità digitale
+                  Microchip vs identitÃ  digitale
                 </p>
               </Link>
             </div>

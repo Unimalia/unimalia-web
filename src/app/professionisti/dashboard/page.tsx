@@ -49,7 +49,7 @@ function categoryLabel(category: string | null, isVet: boolean) {
     case "pet_detective":
       return "Pet Detective";
     case "ponte_arcobaleno":
-      return "Ponte dell’Arcobaleno";
+      return "Ponte dellâ€™Arcobaleno";
     case "altro":
       return "Altro";
     default:
@@ -105,7 +105,7 @@ export default async function ProDashboardPage({
 
       {displayName ? (
         <p className="mt-1 text-xs text-zinc-500">
-          {displayName} • {roleLabel}
+          {displayName} â€¢ {roleLabel}
         </p>
       ) : null}
 
@@ -113,8 +113,8 @@ export default async function ProDashboardPage({
         <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5">
           <p className="text-sm font-semibold text-amber-900">Profilo in verifica</p>
           <p className="mt-2 text-sm leading-relaxed text-amber-800">
-            La scheda professionista è stata salvata correttamente. Il profilo sarà verificato entro
-            24/48 ore prima dell’abilitazione completa delle funzioni riservate.
+            La scheda professionista Ã¨ stata salvata correttamente. Il profilo sarÃ  verificato entro
+            24/48 ore prima dellâ€™abilitazione completa delle funzioni riservate.
           </p>
         </div>
       ) : null}
@@ -129,7 +129,7 @@ export default async function ProDashboardPage({
         <div className="mt-6 rounded-2xl border border-zinc-200 bg-zinc-50 p-5">
           <p className="text-sm font-semibold text-zinc-900">Area professionista non clinica</p>
           <p className="mt-2 text-sm text-zinc-700">
-            Questa dashboard è dedicata a professionisti come addestratori, toelettatori, pet sitter,
+            Questa dashboard Ã¨ dedicata a professionisti come addestratori, toelettatori, pet sitter,
             pensioni, pet detective e altri operatori non veterinari.
           </p>
           <p className="mt-2 text-sm text-zinc-700">
@@ -177,7 +177,7 @@ export default async function ProDashboardPage({
             <CardLink
               href="/professionisti/animali"
               title="Storia animale"
-              desc="Timeline non clinica dedicata alle attività del professionista: sessioni, trattamenti, note operative e promemoria futuri."
+              desc="Timeline non clinica dedicata alle attivitÃ  del professionista: sessioni, trattamenti, note operative e promemoria futuri."
             />
 
             <CardLink
@@ -188,8 +188,8 @@ export default async function ProDashboardPage({
 
             <CardLink
               href="/professionisti/animali"
-              title="Attività e progressi"
-              desc="Sezione futura per registrare lavori svolti, aggiornamenti, esercizi consigliati e prossime attività."
+              title="AttivitÃ  e progressi"
+              desc="Sezione futura per registrare lavori svolti, aggiornamenti, esercizi consigliati e prossime attivitÃ ."
               right="In arrivo"
             />
           </>

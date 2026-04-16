@@ -104,12 +104,12 @@ export default function NuovoTrovatoPage() {
     }
 
     if (!eventDate) {
-      setResultMsg("Inserisci la data dell’evento.");
+      setResultMsg("Inserisci la data dellâ€™evento.");
       return;
     }
 
     if (!consent) {
-      setResultMsg("Devi accettare l’informativa per pubblicare la segnalazione.");
+      setResultMsg("Devi accettare lâ€™informativa per pubblicare la segnalazione.");
       return;
     }
 
@@ -165,8 +165,8 @@ export default function NuovoTrovatoPage() {
 
       setResultMsg(
         type === "found"
-          ? "✅ Segnalazione di animale trovato pubblicata correttamente. Ora può essere contattato in modo protetto."
-          : "✅ Avvistamento pubblicato correttamente. Anche senza foto, il luogo preciso aiuta molto."
+          ? "âœ… Segnalazione di animale trovato pubblicata correttamente. Ora puÃ² essere contattato in modo protetto."
+          : "âœ… Avvistamento pubblicato correttamente. Anche senza foto, il luogo preciso aiuta molto."
       );
 
       setType("found");
@@ -216,7 +216,7 @@ export default function NuovoTrovatoPage() {
           >
             <div className="text-sm font-semibold">Animale trovato</div>
             <div className={`mt-1 text-xs ${isFound ? "text-zinc-200" : "text-zinc-600"}`}>
-              Hai recuperato l’animale oppure sai esattamente dove si trova.
+              Hai recuperato lâ€™animale oppure sai esattamente dove si trova.
             </div>
           </button>
 
@@ -240,12 +240,12 @@ export default function NuovoTrovatoPage() {
           {isFound ? (
             <>
               <span className="font-semibold text-zinc-900">Animale trovato:</span> descrivi dove si trova,
-              se è al sicuro e qualsiasi dettaglio utile. La foto è facoltativa ma molto consigliata.
+              se Ã¨ al sicuro e qualsiasi dettaglio utile. La foto Ã¨ facoltativa ma molto consigliata.
             </>
           ) : (
             <>
               <span className="font-semibold text-zinc-900">Animale avvistato:</span> segnala comunque anche senza
-              foto. Più sono precisi luogo, orario e direzione, meglio è.
+              foto. PiÃ¹ sono precisi luogo, orario e direzione, meglio Ã¨.
             </>
           )}
         </div>
@@ -284,7 +284,7 @@ export default function NuovoTrovatoPage() {
           <span className="text-xs font-normal text-zinc-500">
             {isFound
               ? "Molto utile per aiutare il riconoscimento, ma non obbligatoria."
-              : "Facoltativa. Se non hai foto, pubblica comunque l’avvistamento."}
+              : "Facoltativa. Se non hai foto, pubblica comunque lâ€™avvistamento."}
           </span>
         </label>
 
@@ -339,9 +339,9 @@ export default function NuovoTrovatoPage() {
             </div>
             <div className="mt-1">
               <span className="font-semibold">Provincia:</span>{" "}
-              {province || "—"}{" "}
+              {province || "â€”"}{" "}
               <span className="ml-3 font-semibold">Regione:</span>{" "}
-              {region || "—"}
+              {region || "â€”"}
             </div>
             <div className="mt-1">
               <span className="font-semibold">Coordinate:</span>{" "}
@@ -359,8 +359,8 @@ export default function NuovoTrovatoPage() {
             onChange={(e) => setDescription(e.target.value)}
             placeholder={
               isFound
-                ? "Dove si trova, se è in sicurezza, se ha collare, condizioni apparenti..."
-                : "Dove l’hai visto, in che direzione andava, orario, particolari utili..."
+                ? "Dove si trova, se Ã¨ in sicurezza, se ha collare, condizioni apparenti..."
+                : "Dove lâ€™hai visto, in che direzione andava, orario, particolari utili..."
             }
             className="min-h-[100px] w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm"
           />
@@ -389,7 +389,7 @@ export default function NuovoTrovatoPage() {
         </label>
 
         <label className="grid gap-2 text-sm font-semibold text-zinc-800">
-          Modalità contatto
+          ModalitÃ  contatto
           <select
             value={contactMode}
             onChange={(e) => setContactMode(e.target.value as ContactMode)}

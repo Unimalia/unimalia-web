@@ -406,7 +406,7 @@ export async function createClinicOperator(input: CreateClinicOperatorInput) {
     .single<ClinicOperatorRow>();
 
   if (result.error || !result.data) {
-    throw new Error(result.error?.message || "Impossibile creare l’operatore clinico.");
+    throw new Error(result.error?.message || "Impossibile creare lâ€™operatore clinico.");
   }
 
   return result.data;

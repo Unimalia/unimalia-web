@@ -57,7 +57,7 @@ export default function SuperAdminChecklistPage() {
           </h1>
           <p className="mt-4 text-base leading-relaxed text-zinc-600">
             Questa pagina serve per fare il punto sulla console superadmin prima del passaggio alla
-            chat sicurezza e prima dell’audit finale della sezione.
+            chat sicurezza e prima dellâ€™audit finale della sezione.
           </p>
         </div>
       </section>
@@ -72,7 +72,7 @@ export default function SuperAdminChecklistPage() {
           <Item
             title="Gestione professionisti"
             status="ok"
-            note="Elenco, filtri, dettaglio singolo, approvazione, rifiuto, ruolo vet, visibilità e revisione."
+            note="Elenco, filtri, dettaglio singolo, approvazione, rifiuto, ruolo vet, visibilitÃ  e revisione."
           />
           <Item
             title="Sincronizzazione accesso"
@@ -95,7 +95,7 @@ export default function SuperAdminChecklistPage() {
             note="Applicato su smarrimenti, nuova registrazione professionisti, consulti e richieste accesso."
           />
           <Item
-            title="Registro attività admin"
+            title="Registro attivitÃ  admin"
             status="ok"
             note="Scrittura eventi e pagina dedicata per consultazione."
           />
@@ -120,12 +120,12 @@ export default function SuperAdminChecklistPage() {
             note="La logica esiste, ma route e namespace andranno rifiniti nella chat sicurezza."
           />
           <Item
-            title="Registro attività"
+            title="Registro attivitÃ "
             status="ok"
-            note="Base pronta per hardening e arricchimento futuro con IP, user agent e policy più strette."
+            note="Base pronta per hardening e arricchimento futuro con IP, user agent e policy piÃ¹ strette."
           />
           <Item
-            title="Modalità emergenza"
+            title="ModalitÃ  emergenza"
             status="partial"
             note="Base settings presente, enforcement profondo ancora da estendere."
           />
@@ -166,7 +166,7 @@ export default function SuperAdminChecklistPage() {
             href="/superadmin/audit"
             className="rounded-2xl border border-zinc-200 bg-white px-4 py-4 text-sm font-semibold text-zinc-900 shadow-sm hover:bg-zinc-50"
           >
-            Registro attività
+            Registro attivitÃ 
           </Link>
         </div>
       </Section>

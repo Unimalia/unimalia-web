@@ -221,7 +221,7 @@ export default function ClinicAgendaDashboardWidget() {
                     {item.animalName}
                   </div>
                   <div className="mt-1 text-sm text-neutral-600">
-                    {item.visitTypeLabel} · {item.ownerName}
+                    {item.visitTypeLabel} Â· {item.ownerName}
                   </div>
                 </div>
 

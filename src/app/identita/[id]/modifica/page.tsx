@@ -167,7 +167,7 @@ export default function ModificaAnimalePage() {
       const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
 
       setPhotoUrl(data.publicUrl + "?t=" + Date.now());
-      setNotice("Foto aggiornata correttamente ✅");
+      setNotice("Foto aggiornata correttamente âœ…");
     } catch (error: unknown) {
       console.error(error);
       setError("Errore durante upload foto.");
@@ -212,7 +212,7 @@ export default function ModificaAnimalePage() {
     return (
       <main className="max-w-2xl">
         <h1 className="text-3xl font-bold tracking-tight">Modifica profilo</h1>
-        <p className="mt-4">Caricamento…</p>
+        <p className="mt-4">Caricamentoâ€¦</p>
       </main>
     );
   }
@@ -227,7 +227,7 @@ export default function ModificaAnimalePage() {
           href={`/identita/${id}`}
           className="text-sm text-zinc-600 hover:underline"
         >
-          ← Torna
+          â† Torna
         </Link>
       </div>
 
@@ -335,7 +335,7 @@ export default function ModificaAnimalePage() {
             disabled={saving}
             className="rounded-lg bg-black px-5 py-3 text-white hover:bg-zinc-800 disabled:opacity-60"
           >
-            {saving ? "Salvataggio…" : "Salva modifiche"}
+            {saving ? "Salvataggioâ€¦" : "Salva modifiche"}
           </button>
         </div>
       </div>

@@ -97,8 +97,8 @@ export default function StampaAnimalPage() {
 
   if (loading) {
     return (
-      <PageShell title="Stampa" subtitle="Caricamento…" backFallbackHref="/identita">
-        <div className="text-sm text-zinc-600">Caricamento…</div>
+      <PageShell title="Stampa" subtitle="Caricamentoâ€¦" backFallbackHref="/identita">
+        <div className="text-sm text-zinc-600">Caricamentoâ€¦</div>
       </PageShell>
     );
   }
@@ -125,8 +125,8 @@ export default function StampaAnimalPage() {
       `}</style>
 
       <PageShell
-        title={`Stampa — ${animal.name}`}
-        subtitle={`${animal.species}${animal.breed ? ` • ${animal.breed}` : ""}`}
+        title={`Stampa â€” ${animal.name}`}
+        subtitle={`${animal.species}${animal.breed ? ` â€¢ ${animal.breed}` : ""}`}
         backFallbackHref={`/identita/${animal.id}`}
         actions={
           <div className="no-print flex gap-2">
@@ -149,14 +149,14 @@ export default function StampaAnimalPage() {
             <h2 className="mt-1 text-2xl font-semibold text-zinc-900">{animal.name}</h2>
             <p className="mt-1 text-sm text-zinc-600">
               {animal.species}
-              {animal.breed ? ` • ${animal.breed}` : ""}
+              {animal.breed ? ` â€¢ ${animal.breed}` : ""}
             </p>
 
             <div className="mt-4 text-xs text-zinc-600">
               <div>
                 Microchip:{" "}
                 <span className="font-semibold text-zinc-900">
-                  {normalizeChip(animal.chip_number) || "—"}
+                  {normalizeChip(animal.chip_number) || "â€”"}
                 </span>{" "}
                 {animal.chip_number ? (
                   <span className="text-zinc-500">

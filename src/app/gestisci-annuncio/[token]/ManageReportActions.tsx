@@ -42,7 +42,7 @@ export default function ManageReportActions({
     if (type !== "lost") return;
 
     const ok = window.confirm(
-      "Confermi che l’animale è stato ritrovato e vuoi chiudere l’annuncio?"
+      "Confermi che lâ€™animale Ã¨ stato ritrovato e vuoi chiudere lâ€™annuncio?"
     );
     if (!ok) return;
 
@@ -60,11 +60,11 @@ export default function ManageReportActions({
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        setErrorMsg(data?.error || "Errore durante la chiusura dell’annuncio.");
+        setErrorMsg(data?.error || "Errore durante la chiusura dellâ€™annuncio.");
         return;
       }
 
-      setResultMsg("✅ Annuncio aggiornato: segnato come ritrovato.");
+      setResultMsg("âœ… Annuncio aggiornato: segnato come ritrovato.");
       router.refresh();
     } catch {
       setErrorMsg("Errore di rete o server.");
@@ -95,11 +95,11 @@ export default function ManageReportActions({
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        setErrorMsg(data?.error || "Errore durante la chiusura dell’annuncio.");
+        setErrorMsg(data?.error || "Errore durante la chiusura dellâ€™annuncio.");
         return;
       }
 
-      setResultMsg("✅ Annuncio chiuso correttamente.");
+      setResultMsg("âœ… Annuncio chiuso correttamente.");
       router.refresh();
     } catch {
       setErrorMsg("Errore di rete o server.");
@@ -124,7 +124,7 @@ export default function ManageReportActions({
         <div className="mt-4 flex flex-wrap gap-2">
           <button
             type="button"
-            onClick={() => copyText(publicUrl, "✅ Link annuncio copiato negli appunti.")}
+            onClick={() => copyText(publicUrl, "âœ… Link annuncio copiato negli appunti.")}
             className="inline-flex items-center justify-center rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
           >
             Copia link annuncio
@@ -132,7 +132,7 @@ export default function ManageReportActions({
 
           <button
             type="button"
-            onClick={() => copyText(textForFacebook, "✅ Testo per Facebook copiato negli appunti.")}
+            onClick={() => copyText(textForFacebook, "âœ… Testo per Facebook copiato negli appunti.")}
             className="inline-flex items-center justify-center rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
           >
             Copia testo per Facebook
@@ -153,7 +153,7 @@ export default function ManageReportActions({
         <div className="rounded-2xl border border-zinc-200 bg-white p-5">
           <h3 className="text-lg font-semibold text-zinc-900">Stato annuncio</h3>
           <p className="mt-2 text-sm text-zinc-600">
-            Da qui puoi chiudere l’annuncio se l’animale è stato ritrovato oppure se non deve più restare online.
+            Da qui puoi chiudere lâ€™annuncio se lâ€™animale Ã¨ stato ritrovato oppure se non deve piÃ¹ restare online.
           </p>
 
           <div className="mt-4 flex flex-wrap gap-2">
@@ -183,12 +183,12 @@ export default function ManageReportActions({
           {!isActive ? (
             <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
               {isClosedFound
-                ? "Questo annuncio risulta già chiuso come ritrovato."
+                ? "Questo annuncio risulta giÃ  chiuso come ritrovato."
                 : isClosedOther
-                ? "Questo annuncio risulta già chiuso."
+                ? "Questo annuncio risulta giÃ  chiuso."
                 : isExpired
                 ? "Questo annuncio risulta scaduto."
-                : "Questo annuncio non è più attivo."}
+                : "Questo annuncio non Ã¨ piÃ¹ attivo."}
             </div>
           ) : null}
         </div>

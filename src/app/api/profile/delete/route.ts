@@ -185,7 +185,7 @@ export async function POST() {
     return NextResponse.json(
       {
         error:
-          err instanceof Error ? err.message : "Errore durante l’eliminazione account",
+          err instanceof Error ? err.message : "Errore durante lâ€™eliminazione account",
       },
       { status: 500 }
     );

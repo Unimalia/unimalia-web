@@ -163,7 +163,7 @@ export default function ScansionaPage() {
       <div className="space-y-6">
         <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
           <h1 className="text-2xl font-bold tracking-tight text-zinc-900">
-            Reindirizzamento in corso…
+            Reindirizzamento in corsoâ€¦
           </h1>
           <p className="mt-2 text-sm text-zinc-600">
             Sto aprendo la scheda corretta in base al contesto di accesso.
@@ -182,7 +182,7 @@ export default function ScansionaPage() {
               Leggi QR / Codice a barre
             </h1>
             <p className="mt-2 text-sm text-zinc-600">
-              Inquadra il codice: appena viene riconosciuto, UNIMALIA aprirà automaticamente la scheda.
+              Inquadra il codice: appena viene riconosciuto, UNIMALIA aprirÃ  automaticamente la scheda.
             </p>
           </div>
 
@@ -192,9 +192,9 @@ export default function ScansionaPage() {
               onClick={() => start()}
               className="rounded-xl bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-900 disabled:opacity-60"
               disabled={running}
-              title={running ? "Scansione già in corso" : "Riavvia scansione"}
+              title={running ? "Scansione giÃ  in corso" : "Riavvia scansione"}
             >
-              {running ? "Scansione in corso…" : "Riavvia scansione"}
+              {running ? "Scansione in corsoâ€¦" : "Riavvia scansione"}
             </button>
 
             <button
@@ -202,7 +202,7 @@ export default function ScansionaPage() {
               onClick={() => router.back()}
               className="rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
             >
-              ← Indietro
+              â† Indietro
             </button>
           </div>
         </div>

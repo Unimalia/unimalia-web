@@ -93,13 +93,13 @@ type ClinicEventRow = {
 function statusLabel(status: string) {
   switch (status) {
     case "lost":
-      return "🔴 Smarrito";
+      return "ðŸ”´ Smarrito";
     case "found":
-      return "🔵 Ritrovato";
+      return "ðŸ”µ Ritrovato";
     case "home":
     case "safe":
     default:
-      return "🟢 A casa";
+      return "ðŸŸ¢ A casa";
   }
 }
 
@@ -108,9 +108,9 @@ function normalizeChip(raw: string | null) {
 }
 
 function formatSterilizedLabel(value?: boolean | null) {
-  if (value === true) return "Sì";
+  if (value === true) return "SÃ¬";
   if (value === false) return "No";
-  return "—";
+  return "â€”";
 }
 
 export default function AnimalProfilePage() {
@@ -256,14 +256,14 @@ export default function AnimalProfilePage() {
     if (!verified) {
       return (
         <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">
-          {label} da verificare ⏳
+          {label} da verificare â³
         </span>
       );
     }
 
     return (
       <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
-        {label} verificato ✅
+        {label} verificato âœ…
       </span>
     );
   }, [animal?.chip_number, animal?.microchip_verified]);
@@ -272,11 +272,11 @@ export default function AnimalProfilePage() {
     return (
       <PageShell
         title="Profilo animale"
-        subtitle="Caricamento…"
+        subtitle="Caricamentoâ€¦"
         backFallbackHref="/identita"
         actions={<div className="h-9 w-32 rounded-lg bg-zinc-200/60" />}
       >
-        <div className="text-sm text-zinc-600">Sto caricando la scheda…</div>
+        <div className="text-sm text-zinc-600">Sto caricando la schedaâ€¦</div>
       </PageShell>
     );
   }
@@ -296,7 +296,7 @@ export default function AnimalProfilePage() {
   return (
     <PageShell
       title={animal.name}
-      subtitle={`${animal.species}${animal.breed ? ` • ${animal.breed}` : ""} • ${statusLabel(
+      subtitle={`${animal.species}${animal.breed ? ` â€¢ ${animal.breed}` : ""} â€¢ ${statusLabel(
         animal.status
       )}`}
       backFallbackHref="/identita"
@@ -339,7 +339,7 @@ export default function AnimalProfilePage() {
             Gestisci accessi professionisti
           </Link>
 
-          <ButtonPrimary href="/identita">Tutte le identità</ButtonPrimary>
+          <ButtonPrimary href="/identita">Tutte le identitÃ </ButtonPrimary>
         </>
       }
     >
@@ -388,7 +388,7 @@ export default function AnimalProfilePage() {
 
             <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
               <div className="flex items-start justify-between gap-4">
-                <h2 className="text-base font-semibold text-zinc-900">Identità</h2>
+                <h2 className="text-base font-semibold text-zinc-900">IdentitÃ </h2>
 
                 <Link
                   href={`/identita/${animal.id}/modifica`}
@@ -411,17 +411,17 @@ export default function AnimalProfilePage() {
 
                 <div className="flex justify-between gap-4">
                   <dt className="text-zinc-500">Razza</dt>
-                  <dd className="font-medium text-zinc-900">{animal.breed || "—"}</dd>
+                  <dd className="font-medium text-zinc-900">{animal.breed || "â€”"}</dd>
                 </div>
 
                 <div className="flex justify-between gap-4">
                   <dt className="text-zinc-500">Colore / segni</dt>
-                  <dd className="font-medium text-zinc-900">{animal.color || "—"}</dd>
+                  <dd className="font-medium text-zinc-900">{animal.color || "â€”"}</dd>
                 </div>
 
                 <div className="flex justify-between gap-4">
                   <dt className="text-zinc-500">Taglia</dt>
-                  <dd className="font-medium text-zinc-900">{animal.size || "—"}</dd>
+                  <dd className="font-medium text-zinc-900">{animal.size || "â€”"}</dd>
                 </div>
 
                 <div className="flex justify-between gap-4">
@@ -449,7 +449,7 @@ export default function AnimalProfilePage() {
 
               <div className="mt-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
                 <div className="text-sm font-semibold text-zinc-900">
-                  Età: {rapidClinicalState.age} | Peso: {rapidClinicalState.weight}
+                  EtÃ : {rapidClinicalState.age} | Peso: {rapidClinicalState.weight}
                 </div>
                 <div className="mt-2 text-sm text-zinc-600">
                   Sintesi immediata dei dati clinici essenziali. Le modifiche professionali restano
@@ -457,7 +457,7 @@ export default function AnimalProfilePage() {
                 </div>
 
                 {eventsLoading ? (
-                  <p className="mt-3 text-xs text-zinc-500">Caricamento dati clinici…</p>
+                  <p className="mt-3 text-xs text-zinc-500">Caricamento dati cliniciâ€¦</p>
                 ) : null}
 
                 {eventsError ? (
@@ -469,14 +469,14 @@ export default function AnimalProfilePage() {
                 <div className="rounded-2xl border border-zinc-200 bg-white p-4">
                   <div className="text-xs text-zinc-500">Gruppo sanguigno</div>
                   <div className="mt-1 text-sm font-semibold text-zinc-900">
-                    {rapidClinicalState.bloodType || "—"}
+                    {rapidClinicalState.bloodType || "â€”"}
                   </div>
                 </div>
 
                 <div className="rounded-2xl border border-zinc-200 bg-white p-4">
                   <div className="text-xs text-zinc-500">Sterilizzato / castrato</div>
                   <div className="mt-1 text-sm font-semibold text-zinc-900">
-                    {rapidClinicalState.sterilizationStatus || "—"}
+                    {rapidClinicalState.sterilizationStatus || "â€”"}
                   </div>
                 </div>
 
@@ -485,7 +485,7 @@ export default function AnimalProfilePage() {
                   <div className="mt-1 text-sm font-semibold text-zinc-900">
                     {rapidClinicalState.allergies.length > 0
                       ? rapidClinicalState.allergies.join(", ")
-                      : "—"}
+                      : "â€”"}
                   </div>
                 </div>
 
@@ -494,7 +494,7 @@ export default function AnimalProfilePage() {
                   <div className="mt-1 text-sm font-semibold text-zinc-900">
                     {rapidClinicalState.activeTherapies.length > 0
                       ? rapidClinicalState.activeTherapies.join(", ")
-                      : "—"}
+                      : "â€”"}
                   </div>
                 </div>
 
@@ -503,7 +503,7 @@ export default function AnimalProfilePage() {
                   <div className="mt-1 text-sm font-semibold text-zinc-900">
                     {rapidClinicalState.lastTherapies.length > 0
                       ? rapidClinicalState.lastTherapies.join(", ")
-                      : "—"}
+                      : "â€”"}
                   </div>
                 </div>
 
@@ -512,35 +512,35 @@ export default function AnimalProfilePage() {
                   <div className="mt-1 text-sm font-semibold text-zinc-900">
                     {rapidClinicalState.chronicPathologies.length > 0
                       ? rapidClinicalState.chronicPathologies.join(", ")
-                      : "—"}
+                      : "â€”"}
                   </div>
                 </div>
 
                 <div className="rounded-2xl border border-zinc-200 bg-white p-4">
                   <div className="text-xs text-zinc-500">Ricontrolli programmati</div>
                   <div className="mt-1 text-sm font-semibold text-zinc-900">
-                    {rapidClinicalState.nextRecall || "—"}
+                    {rapidClinicalState.nextRecall || "â€”"}
                   </div>
                 </div>
 
                 <div className="rounded-2xl border border-zinc-200 bg-white p-4">
                   <div className="text-xs text-zinc-500">Ultima visita</div>
                   <div className="mt-1 text-sm font-semibold text-zinc-900">
-                    {rapidClinicalState.latestVisit || "—"}
+                    {rapidClinicalState.latestVisit || "â€”"}
                   </div>
                 </div>
 
                 <div className="rounded-2xl border border-zinc-200 bg-white p-4">
                   <div className="text-xs text-zinc-500">Ultima vaccinazione</div>
                   <div className="mt-1 text-sm font-semibold text-zinc-900">
-                    {rapidClinicalState.latestVaccination || "—"}
+                    {rapidClinicalState.latestVaccination || "â€”"}
                   </div>
                 </div>
 
                 <div className="rounded-2xl border border-zinc-200 bg-white p-4">
                   <div className="text-xs text-zinc-500">Vaccinazioni scadute / in scadenza</div>
                   <div className="mt-1 text-sm font-semibold text-zinc-900">
-                    {rapidClinicalState.vaccinationExpiry || "—"}
+                    {rapidClinicalState.vaccinationExpiry || "â€”"}
                   </div>
                 </div>
               </div>
@@ -555,7 +555,7 @@ export default function AnimalProfilePage() {
               </div>
 
               <p className="mt-3 text-xs text-zinc-500">
-                Questa sezione è gratuita. La cartella clinica completa e la timeline avanzata
+                Questa sezione Ã¨ gratuita. La cartella clinica completa e la timeline avanzata
                 restano funzioni Premium.
               </p>
             </section>
@@ -586,8 +586,8 @@ export default function AnimalProfilePage() {
               </div>
 
               <p className="mt-3 text-xs text-zinc-500">
-                La cartella clinica completa includerà una vista più estesa e organizzata dello
-                storico sanitario dell’animale.
+                La cartella clinica completa includerÃ  una vista piÃ¹ estesa e organizzata dello
+                storico sanitario dellâ€™animale.
               </p>
             </section>
 
@@ -596,7 +596,7 @@ export default function AnimalProfilePage() {
                 <div>
                   <h2 className="text-base font-semibold text-zinc-900">Storia animale</h2>
                   <p className="mt-1 text-sm text-zinc-600">
-                    Timeline non clinica: servizi, promemoria e attività dell’animale.
+                    Timeline non clinica: servizi, promemoria e attivitÃ  dellâ€™animale.
                   </p>
                 </div>
 
@@ -621,8 +621,8 @@ export default function AnimalProfilePage() {
               </div>
 
               <p className="mt-3 text-xs text-zinc-500">
-                La Storia animale raccoglierà eventi non clinici come servizi, attività e
-                promemoria. Le associazioni avranno accesso gratuito quando questa sezione sarà
+                La Storia animale raccoglierÃ  eventi non clinici come servizi, attivitÃ  e
+                promemoria. Le associazioni avranno accesso gratuito quando questa sezione sarÃ 
                 attivata anche lato professionisti.
               </p>
             </section>
@@ -673,7 +673,7 @@ export default function AnimalProfilePage() {
                   Condividi al professionista
                 </div>
                 <div className="mt-1 text-sm text-zinc-600">
-                  Scegli come condividere questa identità con un veterinario.
+                  Scegli come condividere questa identitÃ  con un veterinario.
                 </div>
               </div>
 

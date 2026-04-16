@@ -78,7 +78,7 @@ export async function GET(req: Request) {
 
     if (session.status === "completed") {
       return NextResponse.json(
-        { error: "Upload session già completata." },
+        { error: "Upload session giÃ  completata." },
         { status: 400 }
       );
     }

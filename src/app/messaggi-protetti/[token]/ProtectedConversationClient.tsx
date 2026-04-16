@@ -79,7 +79,7 @@ export default function ProtectedConversationClient({
 
       setMessages((prev) => [...prev, newMessage]);
       setMessage("");
-      setResultMsg("✅ Risposta inviata.");
+      setResultMsg("âœ… Risposta inviata.");
     } catch {
       setErrorMsg("Errore di rete o server.");
     } finally {
@@ -102,7 +102,7 @@ export default function ProtectedConversationClient({
 
         {!isActive ? (
           <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-            L’annuncio non è più attivo. La conversazione è in sola lettura.
+            Lâ€™annuncio non Ã¨ piÃ¹ attivo. La conversazione Ã¨ in sola lettura.
           </div>
         ) : null}
       </div>

@@ -13,7 +13,7 @@ export default async function ProfessionistiRichiestePage() {
         <div className="rounded-3xl border border-zinc-200 bg-white p-8 shadow-sm">
           <h1 className="text-2xl font-bold tracking-tight text-zinc-900">Consulti temporaneamente non disponibili</h1>
           <p className="mt-3 text-sm leading-relaxed text-zinc-600">
-            Il modulo consulti tra professionisti è momentaneamente disattivato dalle impostazioni di sistema.
+            Il modulo consulti tra professionisti Ã¨ momentaneamente disattivato dalle impostazioni di sistema.
           </p>
           <div className="mt-6">
             <Link

@@ -61,7 +61,7 @@ function labelDuration(d: Duration) {
 }
 
 function formatDateTime(value: string | null | undefined) {
-  if (!value) return "—";
+  if (!value) return "â€”";
   return new Date(value).toLocaleString("it-IT");
 }
 
@@ -200,7 +200,7 @@ export default function OwnerAccessiProfessionisti({ animalId }: { animalId: str
         <div>
           <h2 className="text-lg font-semibold text-zinc-900">Accessi professionisti</h2>
           <p className="mt-1 text-sm text-zinc-600">
-            Qui puoi approvare, rifiutare o revocare l’accesso dei professionisti a questo animale.
+            Qui puoi approvare, rifiutare o revocare lâ€™accesso dei professionisti a questo animale.
           </p>
         </div>
 
@@ -221,7 +221,7 @@ export default function OwnerAccessiProfessionisti({ animalId }: { animalId: str
 
       {loading ? (
         <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600">
-          Caricamento…
+          Caricamentoâ€¦
         </div>
       ) : null}
 

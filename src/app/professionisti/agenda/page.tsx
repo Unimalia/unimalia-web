@@ -531,7 +531,7 @@ export default function AgendaPage() {
     });
 
     if (roomConflict) {
-      alert("La stanza è già occupata in questa fascia oraria.");
+      alert("La stanza Ã¨ giÃ  occupata in questa fascia oraria.");
       return;
     }
 
@@ -681,13 +681,13 @@ export default function AgendaPage() {
         <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-sm font-semibold uppercase tracking-wide text-emerald-700">
-              UNIMALIA · Agenda clinica
+              UNIMALIA Â· Agenda clinica
             </p>
             <h1 className="mt-1 text-3xl font-bold text-neutral-900">
               {settings.clinicName}
             </h1>
             <p className="mt-2 max-w-3xl text-sm text-neutral-600">
-              Agenda stanza-centrica con disponibilità veterinari, turni, pausa e
+              Agenda stanza-centrica con disponibilitÃ  veterinari, turni, pausa e
               supporto sala operatoria multi-dottore.
             </p>
           </div>
@@ -840,7 +840,7 @@ export default function AgendaPage() {
 
         <div className="mb-6 rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm">
           <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
-            Disponibilità del giorno
+            DisponibilitÃ  del giorno
           </div>
           <div className="mt-2 text-sm text-neutral-600">{formatDateLabel(selectedDate)}</div>
 
@@ -912,7 +912,7 @@ export default function AgendaPage() {
                                 Proprietario: {appointment.ownerName}
                               </div>
                               <div className="mt-1 text-xs text-neutral-600">
-                                {appointment.visitTypeLabel} · {appointment.startTime} -{" "}
+                                {appointment.visitTypeLabel} Â· {appointment.startTime} -{" "}
                                 {appointment.endTime}
                               </div>
                               <div className="mt-1 text-xs text-neutral-600">
@@ -1143,10 +1143,10 @@ export default function AgendaPage() {
                   {isSurgeryRoomSelected ? (
                     <div className="md:col-span-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
                       <div className="text-sm font-bold text-neutral-900">
-                        Sala operatoria · selezione multipla dottori
+                        Sala operatoria Â· selezione multipla dottori
                       </div>
                       <div className="mt-1 text-sm text-neutral-600">
-                        In questa stanza puoi assegnare più veterinari. Devono essere
+                        In questa stanza puoi assegnare piÃ¹ veterinari. Devono essere
                         almeno due.
                       </div>
 
@@ -1185,7 +1185,7 @@ export default function AgendaPage() {
                     >
                       {settings.visitTypes.map((item) => (
                         <option key={item.id} value={item.id}>
-                          {item.label} · {item.duration} min
+                          {item.label} Â· {item.duration} min
                         </option>
                       ))}
                     </select>
@@ -1257,7 +1257,7 @@ export default function AgendaPage() {
                       Riepilogo slot
                     </div>
                     <div className="mt-2 text-sm text-neutral-700">
-                      {form.startTime} → {formEndTime} ·{" "}
+                      {form.startTime} â†’ {formEndTime} Â·{" "}
                       {selectedVisitType?.duration || settings.slotMinutes} min
                     </div>
                     <div className="mt-1 text-sm text-neutral-700">

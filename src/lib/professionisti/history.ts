@@ -189,7 +189,7 @@ export function parseProfessionalHistoryCreateInput(raw: unknown): ProfessionalH
   }
 
   if (!isInArray(visibility, ["shared", "professionals"] as const)) {
-    throw new Error("Visibilità non valida");
+    throw new Error("VisibilitÃ  non valida");
   }
 
   const meta = isObject(raw.meta) ? raw.meta : {};
@@ -210,7 +210,7 @@ export function parseProfessionalHistoryCreateInput(raw: unknown): ProfessionalH
 }
 
 export function formatHistoryDateTime(value: string | null | undefined) {
-  if (!value) return "—";
+  if (!value) return "â€”";
 
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value;

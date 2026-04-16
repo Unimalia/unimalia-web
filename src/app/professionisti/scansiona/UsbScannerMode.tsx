@@ -23,7 +23,7 @@ export default function UsbScannerMode({ onScan, disabled = false }: Props) {
   const [isProcessingLocal, setIsProcessingLocal] = useState(false);
 
   const placeholder = useMemo(
-    () => "Collega il lettore USB e scansiona: il codice verrà scritto qui e invierà ENTER.",
+    () => "Collega il lettore USB e scansiona: il codice verrÃ  scritto qui e invierÃ  ENTER.",
     []
   );
 
@@ -60,11 +60,11 @@ export default function UsbScannerMode({ onScan, disabled = false }: Props) {
     <div className="space-y-3">
       <div className="rounded-2xl border p-4">
         <div className="flex items-center justify-between gap-3 mb-2">
-          <div className="text-sm font-medium">🔫 Lettore esterno (USB)</div>
+          <div className="text-sm font-medium">ðŸ”« Lettore esterno (USB)</div>
           {busy ? (
             <div className="text-xs opacity-70 flex items-center gap-2">
               <Spinner />
-              <span>elaborazione…</span>
+              <span>elaborazioneâ€¦</span>
             </div>
           ) : null}
         </div>

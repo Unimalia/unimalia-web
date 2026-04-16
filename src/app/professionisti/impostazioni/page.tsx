@@ -44,7 +44,7 @@ const MACRO = [
   { key: "pet_sitter", label: "Pet sitter & Dog walking" },
   { key: "addestramento", label: "Addestramento" },
   { key: "pet_detective", label: "Pet Detective" },
-  { key: "ponte_arcobaleno", label: "Ponte dell’Arcobaleno" },
+  { key: "ponte_arcobaleno", label: "Ponte dellâ€™Arcobaleno" },
   { key: "altro", label: "Altro" },
 ];
 
@@ -443,7 +443,7 @@ export default function ProfessionistiImpostazioniPage() {
     }
 
     if (professionalType === "generic" && category === "veterinari") {
-      setError("Un professionista non veterinario non può usare la categoria Veterinari.");
+      setError("Un professionista non veterinario non puÃ² usare la categoria Veterinari.");
       return;
     }
 
@@ -458,7 +458,7 @@ export default function ProfessionistiImpostazioniPage() {
     }
 
     if (city.trim().length < 2) {
-      setError("Inserisci una città valida.");
+      setError("Inserisci una cittÃ  valida.");
       return;
     }
 
@@ -520,7 +520,7 @@ export default function ProfessionistiImpostazioniPage() {
           : prev
       );
 
-      setInfo("Profilo professionista salvato ✅");
+      setInfo("Profilo professionista salvato âœ…");
     } catch {
       setError("Errore nel salvataggio del profilo. Riprova.");
     } finally {
@@ -541,7 +541,7 @@ export default function ProfessionistiImpostazioniPage() {
 
     try {
       localStorage.setItem(prefsStorageKey(userId), JSON.stringify(prefs));
-      setInfo("Preferenze e notifiche salvate su questo dispositivo ✅");
+      setInfo("Preferenze e notifiche salvate su questo dispositivo âœ…");
     } catch {
       setError("Errore nel salvataggio locale delle preferenze.");
     } finally {
@@ -603,7 +603,7 @@ export default function ProfessionistiImpostazioniPage() {
 
       window.location.href = json.authorizeUrl;
     } catch {
-      setError("Errore di rete durante l’avvio del collegamento REV.");
+      setError("Errore di rete durante lâ€™avvio del collegamento REV.");
     } finally {
       setConnectingVetinfo(false);
     }
@@ -614,7 +614,7 @@ export default function ProfessionistiImpostazioniPage() {
     setInfo(null);
 
     if (!canManageOperators) {
-      setError("Solo il direttore sanitario o un gestore autorizzato può creare operatori.");
+      setError("Solo il direttore sanitario o un gestore autorizzato puÃ² creare operatori.");
       return;
     }
 
@@ -644,11 +644,11 @@ export default function ProfessionistiImpostazioniPage() {
         return;
       }
       if (!opTaxCode.trim()) {
-        setError("Per i veterinari il codice fiscale è obbligatorio.");
+        setError("Per i veterinari il codice fiscale Ã¨ obbligatorio.");
         return;
       }
       if (!opEmail.trim() || !isEmailValid(opEmail.trim())) {
-        setError("Per i veterinari l'email è obbligatoria.");
+        setError("Per i veterinari l'email Ã¨ obbligatoria.");
         return;
       }
     }
@@ -740,8 +740,8 @@ export default function ProfessionistiImpostazioniPage() {
       setSessionPin("");
       setInfo(
         isSwitch
-          ? `Operatore attivo aggiornato ✅ ${result.session.activeOperatorLabel}`
-          : `Sessione operatore attivata ✅ ${result.session.activeOperatorLabel}`
+          ? `Operatore attivo aggiornato âœ… ${result.session.activeOperatorLabel}`
+          : `Sessione operatore attivata âœ… ${result.session.activeOperatorLabel}`
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore sessione operatore.");
@@ -765,7 +765,7 @@ export default function ProfessionistiImpostazioniPage() {
       await logoutOperatorSession(workstationKey);
       setCurrentOperatorSession(null);
       setSessionPin("");
-      setInfo("Sessione operatore chiusa ✅");
+      setInfo("Sessione operatore chiusa âœ…");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore chiusura sessione.");
     } finally {
@@ -776,7 +776,7 @@ export default function ProfessionistiImpostazioniPage() {
   if (loading) {
     return (
       <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <p className="text-sm text-zinc-700">Caricamento…</p>
+        <p className="text-sm text-zinc-700">Caricamentoâ€¦</p>
       </div>
     );
   }
@@ -809,7 +809,7 @@ export default function ProfessionistiImpostazioniPage() {
             <p className="text-xs font-semibold tracking-wide text-zinc-500">REV / VETINFO</p>
             <h2 className="mt-2 text-lg font-semibold text-zinc-900">Collegamento personale REV</h2>
             <p className="mt-2 text-sm leading-6 text-zinc-600">
-              Questa sezione prepara il nuovo flusso prescrittivo personale del veterinario. Il collegamento reale SPID/CAS verrà completato appena saranno definiti gli ultimi dati operativi.
+              Questa sezione prepara il nuovo flusso prescrittivo personale del veterinario. Il collegamento reale SPID/CAS verrÃ  completato appena saranno definiti gli ultimi dati operativi.
             </p>
 
             <div className="mt-4 grid gap-4 md:grid-cols-3">
@@ -828,7 +828,7 @@ export default function ProfessionistiImpostazioniPage() {
               </div>
 
               <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-                <p className="text-xs font-semibold tracking-wide text-zinc-500">IDENTITÀ</p>
+                <p className="text-xs font-semibold tracking-wide text-zinc-500">IDENTITÃ€</p>
                 <p className="mt-2 text-sm font-semibold text-zinc-900">
                   Collegamento personale veterinario
                 </p>
@@ -846,16 +846,16 @@ export default function ProfessionistiImpostazioniPage() {
               </button>
 
               <span className="inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-zinc-50 px-5 py-3 text-sm font-semibold text-zinc-600">
-                Emissione prescrizioni • in preparazione
+                Emissione prescrizioni â€¢ in preparazione
               </span>
             </div>
 
             <div className="mt-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
               <p className="text-sm font-medium text-zinc-900">Direzione impostata</p>
               <ul className="mt-2 space-y-2 text-sm leading-6 text-zinc-600">
-                <li>• collegamento REV personale del singolo veterinario</li>
-                <li>• nessun account REV condiviso di clinica</li>
-                <li>• base pronta per prescrizioni collegate alla cartella clinica</li>
+                <li>â€¢ collegamento REV personale del singolo veterinario</li>
+                <li>â€¢ nessun account REV condiviso di clinica</li>
+                <li>â€¢ base pronta per prescrizioni collegate alla cartella clinica</li>
               </ul>
             </div>
           </section>
@@ -865,7 +865,7 @@ export default function ProfessionistiImpostazioniPage() {
           <p className="text-xs font-semibold tracking-wide text-zinc-500">OPERATORI CLINICA</p>
           <h2 className="mt-2 text-lg font-semibold text-zinc-900">Gestione operatori</h2>
           <p className="mt-2 text-sm text-zinc-600">
-            La clinica è verificata da UNIMALIA. La validazione e gestione dei sublogin è responsabilità del direttore sanitario o dei gestori autorizzati.
+            La clinica Ã¨ verificata da UNIMALIA. La validazione e gestione dei sublogin Ã¨ responsabilitÃ  del direttore sanitario o dei gestori autorizzati.
           </p>
 
           <div className="mt-4 grid gap-4 md:grid-cols-3">
@@ -875,7 +875,7 @@ export default function ProfessionistiImpostazioniPage() {
                 {actorOperator?.label || "Non disponibile"}
               </p>
               <p className="mt-1 text-xs text-zinc-600">
-                {actorOperator?.role || "—"}
+                {actorOperator?.role || "â€”"}
               </p>
             </div>
 
@@ -929,8 +929,8 @@ export default function ProfessionistiImpostazioniPage() {
                     </div>
                     {operator.isVet ? (
                       <div className="mt-2 text-xs text-zinc-500">
-                        FNOVI: {operator.fnoviNumber || "—"}
-                        {operator.fnoviProvince ? ` • ${operator.fnoviProvince}` : ""}
+                        FNOVI: {operator.fnoviNumber || "â€”"}
+                        {operator.fnoviProvince ? ` â€¢ ${operator.fnoviProvince}` : ""}
                       </div>
                     ) : null}
                   </div>
@@ -943,7 +943,7 @@ export default function ProfessionistiImpostazioniPage() {
             <div className="mt-6 rounded-2xl border border-zinc-200 bg-zinc-50 p-5">
               <div className="text-sm font-semibold text-zinc-900">Aggiungi operatore</div>
               <p className="mt-1 text-sm text-zinc-600">
-                Per i veterinari inserisci già i dati necessari per il futuro collegamento REV.
+                Per i veterinari inserisci giÃ  i dati necessari per il futuro collegamento REV.
               </p>
 
               <div className="mt-5 grid gap-4 md:grid-cols-2">
@@ -1097,7 +1097,7 @@ export default function ProfessionistiImpostazioniPage() {
                     placeholder="4-8 cifre"
                   />
                   <p className="mt-1 text-xs text-zinc-500">
-                    Il direttore sanitario assegna il PIN iniziale. Al primo accesso l’operatore dovrà cambiarlo.
+                    Il direttore sanitario assegna il PIN iniziale. Al primo accesso lâ€™operatore dovrÃ  cambiarlo.
                   </p>
                 </div>
 
@@ -1181,7 +1181,7 @@ export default function ProfessionistiImpostazioniPage() {
                       .filter((operator) => operator.isActive)
                       .map((operator) => (
                         <option key={operator.clinicOperatorId} value={operator.clinicOperatorId}>
-                          {operator.label} — {operator.role}
+                          {operator.label} â€” {operator.role}
                         </option>
                       ))}
                   </select>
@@ -1307,7 +1307,7 @@ export default function ProfessionistiImpostazioniPage() {
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="block text-sm font-medium text-zinc-900">Città</label>
+                <label className="block text-sm font-medium text-zinc-900">CittÃ </label>
                 <input
                   className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
                   value={city}
@@ -1395,9 +1395,9 @@ export default function ProfessionistiImpostazioniPage() {
                 }
               />
               <div>
-                <p className="text-sm font-medium text-zinc-900">Modalità compatta</p>
+                <p className="text-sm font-medium text-zinc-900">ModalitÃ  compatta</p>
                 <p className="text-xs text-zinc-500">
-                  Riduce spazi e densità dei contenuti nel portale.
+                  Riduce spazi e densitÃ  dei contenuti nel portale.
                 </p>
               </div>
             </label>
@@ -1482,7 +1482,7 @@ export default function ProfessionistiImpostazioniPage() {
               />
               <div>
                 <p className="text-sm font-medium text-zinc-900">Aggiornamenti clinici e alert</p>
-                <p className="text-xs text-zinc-500">Avvisi per attività cliniche rilevanti e aggiornamenti rapidi.</p>
+                <p className="text-xs text-zinc-500">Avvisi per attivitÃ  cliniche rilevanti e aggiornamenti rapidi.</p>
               </div>
             </label>
 
@@ -1501,7 +1501,7 @@ export default function ProfessionistiImpostazioniPage() {
           <p className="text-xs font-semibold tracking-wide text-zinc-500">SICUREZZA</p>
           <h2 className="mt-2 text-lg font-semibold text-zinc-900">Sicurezza</h2>
           <p className="mt-2 text-sm text-zinc-600">
-            Sessione corrente, logout e accessi collegati all’account professionale.
+            Sessione corrente, logout e accessi collegati allâ€™account professionale.
           </p>
 
           <div className="mt-4 space-y-4">

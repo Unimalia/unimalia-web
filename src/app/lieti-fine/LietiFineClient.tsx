@@ -31,7 +31,7 @@ function safeDate(value: string | null | undefined) {
 }
 
 function safeCardTitle(item: HappyEndingReport) {
-  if (item.animal_name && item.species) return `${item.animal_name} – ${item.species}`;
+  if (item.animal_name && item.species) return `${item.animal_name} â€“ ${item.species}`;
   if (item.animal_name) return item.animal_name;
   if (item.species) return item.species;
   if (item.title) return item.title;
@@ -100,12 +100,12 @@ export default function LietiFineClient() {
   }
 
   if (loading) {
-    return <p>Caricamento lieti fine…</p>;
+    return <p>Caricamento lieti fineâ€¦</p>;
   }
 
   return (
     <main>
-      <h1 className="text-3xl font-bold tracking-tight">Lieti Fine ❤️</h1>
+      <h1 className="text-3xl font-bold tracking-tight">Lieti Fine â¤ï¸</h1>
       <p className="mt-3 text-zinc-700">
         Qui raccogliamo i casi risolti positivamente: animali tornati a casa,
         ritrovati o ricongiunti con la propria famiglia.
@@ -203,7 +203,7 @@ export default function LietiFineClient() {
                   </div>
 
                   <p className="mt-1 text-sm text-zinc-600">
-                    {(item.location_text || "—")} {item.province ? `(${item.province})` : ""} –{" "}
+                    {(item.location_text || "â€”")} {item.province ? `(${item.province})` : ""} â€“{" "}
                     {safeDate(item.event_date)}
                   </p>
 

@@ -10,10 +10,10 @@ export default function PrivacyPage() {
       </h1>
 
       <p className="mt-3 text-sm text-zinc-600">
-        La Privacy Policy è gestita tramite Iubenda.
+        La Privacy Policy Ã¨ gestita tramite Iubenda.
       </p>
 
-      {/* Iubenda anchor (metodo più compatibile) */}
+      {/* Iubenda anchor (metodo piÃ¹ compatibile) */}
       <div className="mt-6">
         <a
           href="https://www.iubenda.com/privacy-policy/XXXXXXXX"

@@ -26,21 +26,21 @@ export default function ManualScanHandlerPage() {
           className="rounded-xl border px-3 py-2 text-sm"
           onClick={() => router.push("/professionisti/scansiona")}
         >
-          ← Torna allo scanner
+          â† Torna allo scanner
         </button>
       </div>
 
       <div className="rounded-2xl border p-4 space-y-2">
         <div className="text-sm font-medium">Valore letto</div>
         <div className="rounded-xl border bg-zinc-50 p-3 text-sm break-all">
-          {rawValue ? rawValue : "—"}
+          {rawValue ? rawValue : "â€”"}
         </div>
 
         <div className="text-sm font-medium mt-3">
           Microchip normalizzato (solo cifre)
         </div>
         <div className="rounded-xl border bg-zinc-50 p-3 text-sm break-all">
-          {chipDigits ? chipDigits : "—"}
+          {chipDigits ? chipDigits : "â€”"}
         </div>
 
         {!chipLooksValid ? (
@@ -56,7 +56,7 @@ export default function ManualScanHandlerPage() {
           <div className="mt-3 rounded-xl border bg-zinc-50 p-3 text-sm">
             <div className="font-medium">Nuovo flusso</div>
             <div className="opacity-80">
-              Prima verifichiamo se esiste già una scheda coerente. Se il microchip non basta
+              Prima verifichiamo se esiste giÃ  una scheda coerente. Se il microchip non basta
               o non troviamo nulla, potrai continuare con email e telefono del proprietario
               prima di creare una nuova scheda.
             </div>
@@ -77,7 +77,7 @@ export default function ManualScanHandlerPage() {
             )
           }
         >
-          ➕ Continua con ricerca o nuova scheda
+          âž• Continua con ricerca o nuova scheda
         </button>
 
         <button
@@ -90,11 +90,11 @@ export default function ManualScanHandlerPage() {
             )
           }
         >
-          🔗 Cerca animale esistente con questo microchip
+          ðŸ”— Cerca animale esistente con questo microchip
         </button>
 
         <div className="text-xs opacity-70">
-          Se l’animale esiste già, da lì potrai aprire la scheda oppure proseguire nel flusso
+          Se lâ€™animale esiste giÃ , da lÃ¬ potrai aprire la scheda oppure proseguire nel flusso
           corretto in base allo stato owner e agli accessi disponibili.
         </div>
       </div>

@@ -123,7 +123,7 @@ export default function AssociaAnimaleEsistentePage() {
     return (
       <main className="max-w-3xl mx-auto p-4">
         <div className="rounded-2xl border bg-white p-5 text-sm text-zinc-700">
-          Caricamento…
+          Caricamentoâ€¦
         </div>
       </main>
     );
@@ -139,14 +139,14 @@ export default function AssociaAnimaleEsistentePage() {
           className="rounded-xl border px-3 py-2 text-sm"
           onClick={() => router.push("/professionisti/scansiona/manuale")}
         >
-          ← Torna indietro
+          â† Torna indietro
         </button>
       </div>
 
       <div className="rounded-2xl border bg-white p-5">
         <div className="text-sm text-zinc-500">Microchip</div>
         <div className="mt-1 text-sm font-semibold text-zinc-900">
-          {chip || "—"}
+          {chip || "â€”"}
         </div>
       </div>
 
@@ -180,14 +180,14 @@ export default function AssociaAnimaleEsistentePage() {
               {animal.name || "Animale senza nome"}
             </div>
             <div className="mt-1 text-sm text-zinc-600">
-              {[animal.species, animal.unimalia_code].filter(Boolean).join(" • ") || "—"}
+              {[animal.species, animal.unimalia_code].filter(Boolean).join(" â€¢ ") || "â€”"}
             </div>
           </div>
 
           <div className="rounded-xl border bg-zinc-50 p-4 text-sm text-zinc-700">
             {hasDirectAccess
-              ? "Hai già accesso a questo animale: puoi aprire direttamente la scheda."
-              : "L’animale esiste già, ma non hai accesso clinico attivo. Puoi avviare la richiesta di accesso."}
+              ? "Hai giÃ  accesso a questo animale: puoi aprire direttamente la scheda."
+              : "Lâ€™animale esiste giÃ , ma non hai accesso clinico attivo. Puoi avviare la richiesta di accesso."}
           </div>
 
           <div className="flex flex-wrap gap-2">

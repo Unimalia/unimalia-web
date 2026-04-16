@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   },
 
   description:
-    "UNIMALIA è la piattaforma per identità digitale animale, smarrimenti, accessi clinici controllati, consulti veterinari e ricerca di professionisti del settore animale.",
+    "UNIMALIA Ã¨ la piattaforma per identitÃ  digitale animale, smarrimenti, accessi clinici controllati, consulti veterinari e ricerca di professionisti del settore animale.",
 
   alternates: {
     canonical: "/",
@@ -37,7 +37,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "UNIMALIA",
     description:
-      "Piattaforma per identità digitale animale, smarrimenti, accessi clinici controllati, consulti veterinari e servizi per proprietari e professionisti.",
+      "Piattaforma per identitÃ  digitale animale, smarrimenti, accessi clinici controllati, consulti veterinari e servizi per proprietari e professionisti.",
     url: SITE_URL,
     siteName: "UNIMALIA",
     images: [
@@ -56,7 +56,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "UNIMALIA",
     description:
-      "Piattaforma per identità digitale animale, smarrimenti, accessi clinici controllati, consulti veterinari e servizi per proprietari e professionisti.",
+      "Piattaforma per identitÃ  digitale animale, smarrimenti, accessi clinici controllati, consulti veterinari e servizi per proprietari e professionisti.",
     images: [`${SITE_URL}/logo-512.png`],
   },
 };

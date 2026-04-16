@@ -31,7 +31,7 @@ function safeDate(value: string | null | undefined) {
 }
 
 function safeCardTitle(item: HappyEndingReport) {
-  if (item.animal_name && item.species) return `${item.animal_name} – ${item.species}`;
+  if (item.animal_name && item.species) return `${item.animal_name} â€“ ${item.species}`;
   if (item.animal_name) return item.animal_name;
   if (item.species) return item.species;
   if (item.title) return item.title;
@@ -137,7 +137,7 @@ export default function LietiFineClient() {
       <div className="mx-auto max-w-[1260px] px-4 py-8 sm:py-10">
         <section className="overflow-hidden rounded-[2.5rem] border border-[#dde4ec] bg-white shadow-[0_24px_60px_rgba(42,56,86,0.10)]">
           <div className="px-6 py-10 sm:px-8 lg:px-10 lg:py-12">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#6f7d91]">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#55657d]">
               Casi risolti
             </p>
 
@@ -151,7 +151,7 @@ export default function LietiFineClient() {
             </p>
 
             <div className="mt-8 rounded-[2rem] border border-[#e3e9f0] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-6 shadow-[0_14px_40px_rgba(42,56,86,0.05)]">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#6f7d91]">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#55657d]">
                 Ricerca lieti fine
               </p>
 
@@ -204,7 +204,7 @@ export default function LietiFineClient() {
                 </div>
               </div>
 
-              <p className="mt-4 text-xs text-[#6f7d91]">
+              <p className="mt-4 text-xs text-[#55657d]">
                 Risultati:{" "}
                 <span className="font-semibold text-[#30486f]">{filtered.length}</span>
               </p>
@@ -263,8 +263,8 @@ export default function LietiFineClient() {
                         </div>
 
                         <p className="mt-2 text-sm text-[#5f708a]">
-                          {(item.location_text || "Località non specificata")}{" "}
-                          {item.province ? `(${item.province})` : ""} – {safeDate(item.event_date)}
+                          {(item.location_text || "LocalitÃ  non specificata")}{" "}
+                          {item.province ? `(${item.province})` : ""} â€“ {safeDate(item.event_date)}
                         </p>
 
                         {item.description ? (

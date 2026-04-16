@@ -100,7 +100,7 @@ function counterpartLabel(box: BoxType) {
 function counterpartName(item: ConsultItem, box: BoxType) {
   if (box === "received") return item.sender_display_name || "Professionista";
   if (box === "sent") return item.receiver_display_name || "Professionista";
-  return `${item.sender_display_name || "Professionista"} → ${item.receiver_display_name || "Professionista"}`;
+  return `${item.sender_display_name || "Professionista"} â†’ ${item.receiver_display_name || "Professionista"}`;
 }
 
 function activityLabel(box: BoxType, status: ConsultItem["status"]) {
@@ -120,9 +120,9 @@ function activityLabel(box: BoxType, status: ConsultItem["status"]) {
 }
 
 function formatDate(value?: string | null) {
-  if (!value) return "—";
+  if (!value) return "â€”";
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
+  if (Number.isNaN(date.getTime())) return "â€”";
   return date.toLocaleString("it-IT");
 }
 
@@ -350,7 +350,7 @@ export default function ProfessionistiRichiesteClient() {
           onChange={(e) => setPriority(e.target.value)}
           className="h-11 rounded-2xl border border-zinc-200 bg-white px-4 text-sm outline-none focus:border-zinc-400"
         >
-          <option value="">Tutte le priorità</option>
+          <option value="">Tutte le prioritÃ </option>
           <option value="normal">Normale</option>
           <option value="emergency">Emergenza</option>
         </select>
@@ -433,7 +433,7 @@ export default function ProfessionistiRichiesteClient() {
                 <div className="mt-3 grid gap-3 md:grid-cols-[1fr_auto]">
                   <div className="min-w-0">
                     <div className="text-lg font-semibold text-zinc-900">
-                      {item.animal_name} — {item.subject}
+                      {item.animal_name} â€” {item.subject}
                     </div>
 
                     <div className="mt-1 text-sm text-zinc-600">
@@ -441,7 +441,7 @@ export default function ProfessionistiRichiesteClient() {
                     </div>
 
                     <div className="mt-2 text-sm text-zinc-500">
-                      {[item.animal?.species, item.animal?.breed].filter(Boolean).join(" · ") || "Dati animale non disponibili"}
+                      {[item.animal?.species, item.animal?.breed].filter(Boolean).join(" Â· ") || "Dati animale non disponibili"}
                     </div>
 
                     {item.initial_message ? (
@@ -457,7 +457,7 @@ export default function ProfessionistiRichiesteClient() {
 
                   <div className="text-sm text-zinc-500 md:text-right">
                     <div>Aperto: {formatDate(item.created_at)}</div>
-                    <div>Ultima attività: {formatDate(activityDate)}</div>
+                    <div>Ultima attivitÃ : {formatDate(activityDate)}</div>
                     <div>Scade: {formatDate(item.expires_at)}</div>
                   </div>
                 </div>

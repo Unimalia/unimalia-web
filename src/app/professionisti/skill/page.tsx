@@ -172,7 +172,7 @@ export default function ProfessionistiSkillPage() {
   if (loading) {
     return (
       <main>
-        <p className="text-sm text-zinc-700">Caricamento…</p>
+        <p className="text-sm text-zinc-700">Caricamentoâ€¦</p>
       </main>
     );
   }
@@ -185,7 +185,7 @@ export default function ProfessionistiSkillPage() {
           onClick={() => router.push("/professionisti")}
           className="inline-flex w-fit items-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
         >
-          ← Indietro
+          â† Indietro
         </button>
 
         <Link href="/servizi" className="text-sm font-medium text-zinc-600 hover:underline">
@@ -195,13 +195,13 @@ export default function ProfessionistiSkillPage() {
 
       <div className="mt-6">
         <h1 className="text-3xl font-bold tracking-tight">Scegli le skill</h1>
-        <p className="mt-2 text-zinc-700">{pro ? `Scheda: ${pro.display_name}` : "—"}</p>
+        <p className="mt-2 text-zinc-700">{pro ? `Scheda: ${pro.display_name}` : "â€”"}</p>
       </div>
 
       <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5">
         <p className="text-sm font-semibold text-amber-900">Profilo inviato correttamente</p>
         <p className="mt-2 text-sm leading-relaxed text-amber-800">
-          Dopo il salvataggio finale, il profilo resterà in verifica prima dell’abilitazione completa.
+          Dopo il salvataggio finale, il profilo resterÃ  in verifica prima dellâ€™abilitazione completa.
           La revisione avviene in genere entro 24/48 ore.
         </p>
       </div>

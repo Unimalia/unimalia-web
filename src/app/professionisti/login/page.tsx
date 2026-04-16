@@ -5,7 +5,7 @@ import LoginClient from "./LoginClient";
 
 export default function ProLoginPage() {
   return (
-    <Suspense fallback={<div className="p-6">Caricamento…</div>}>
+    <Suspense fallback={<div className="p-6">Caricamentoâ€¦</div>}>
       <LoginClient />
     </Suspense>
   );

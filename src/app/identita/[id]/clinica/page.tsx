@@ -135,7 +135,7 @@ function visibilityLabel(value: "owner" | "professionals" | "emergency" | string
 }
 
 function formatEventDateIT(dateStr?: string | null) {
-  if (!dateStr) return "—";
+  if (!dateStr) return "â€”";
 
   const s = String(dateStr).trim();
 
@@ -158,7 +158,7 @@ function formatEventDateIT(dateStr?: string | null) {
 }
 
 function formatInsertedAtIT(iso?: string | null) {
-  if (!iso) return "—";
+  if (!iso) return "â€”";
 
   return new Date(iso).toLocaleString("it-IT", {
     year: "numeric",
@@ -556,7 +556,7 @@ export default function AnimalClinicalPage() {
             <div>
               <h2 className="text-base font-semibold text-zinc-900">Nuovo evento</h2>
               <p className="mt-1 text-sm text-zinc-600">
-                Inserisci un evento (anche storico). La descrizione è facoltativa.
+                Inserisci un evento (anche storico). La descrizione Ã¨ facoltativa.
               </p>
             </div>
 
@@ -619,7 +619,7 @@ export default function AnimalClinicalPage() {
                 onChange={(e) => setDateLocal(e.target.value)}
               />
               <p className="mt-1.5 text-xs leading-5 text-zinc-500">
-                Precompilata con l’orario attuale. Modificabile per caricare eventi storici.
+                Precompilata con lâ€™orario attuale. Modificabile per caricare eventi storici.
               </p>
             </div>
 
@@ -648,7 +648,7 @@ export default function AnimalClinicalPage() {
                     onChange={(e) => setTherapyEndDate(e.target.value)}
                   />
                   <p className="mt-1.5 text-xs leading-5 text-zinc-500">
-                    Se lasci vuoto, la terapia è considerata in corso.
+                    Se lasci vuoto, la terapia Ã¨ considerata in corso.
                   </p>
                 </div>
               </>
@@ -660,7 +660,7 @@ export default function AnimalClinicalPage() {
               </label>
               <textarea
                 className="mt-1 min-h-[120px] w-full rounded-xl border border-zinc-300 bg-zinc-50 px-3 py-3 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-zinc-400 focus:bg-white focus:ring-2 focus:ring-emerald-500/20"
-                placeholder="Dettagli utili (farmaco, dosaggio, note cliniche, etichetta ingredienti, sospetta allergia)…"
+                placeholder="Dettagli utili (farmaco, dosaggio, note cliniche, etichetta ingredienti, sospetta allergia)â€¦"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
@@ -690,7 +690,7 @@ export default function AnimalClinicalPage() {
                 <p className="mt-2 text-sm text-gray-600">{files.length} file selezionati</p>
               ) : (
                 <p className="mt-1.5 text-xs leading-5 text-zinc-500">
-                  Puoi allegare uno o più documenti: referti, esami, PDF, immagini o etichette
+                  Puoi allegare uno o piÃ¹ documenti: referti, esami, PDF, immagini o etichette
                   ingredienti.
                 </p>
               )}
@@ -728,7 +728,7 @@ export default function AnimalClinicalPage() {
           </div>
 
           <p className="mt-3 text-xs text-zinc-500">
-            Nota: gli allegati vengono associati all’evento e sono visibili nel dettaglio evento.
+            Nota: gli allegati vengono associati allâ€™evento e sono visibili nel dettaglio evento.
           </p>
         </section>
 
@@ -757,17 +757,17 @@ export default function AnimalClinicalPage() {
                 if (ev.source === "owner") {
                   if (ev.verified_at && ev.verified_by_label) {
                     statusTextTop = "Creato da proprietario";
-                    statusTextBadge = `✓ Validato da ${ev.verified_by_label}`;
+                    statusTextBadge = `âœ“ Validato da ${ev.verified_by_label}`;
                   } else if (ev.verified_at) {
                     statusTextTop = "Creato da proprietario";
-                    statusTextBadge = "✓ Validato";
+                    statusTextBadge = "âœ“ Validato";
                   } else {
                     statusTextTop = "Creato da proprietario";
-                    statusTextBadge = "⏳ Da validare";
+                    statusTextBadge = "â³ Da validare";
                   }
                 } else {
                   statusTextTop = `Registrato da ${ev.meta?.created_by_member_label || "professionista"}`;
-                  statusTextBadge = isVerified ? "✓ Validato" : "⏳ Da rivalidare";
+                  statusTextBadge = isVerified ? "âœ“ Validato" : "â³ Da rivalidare";
                 }
 
                 return (
@@ -796,7 +796,7 @@ export default function AnimalClinicalPage() {
 
                           {ev.created_at ? (
                             <span className="text-zinc-400">
-                              • Inserito il {formatInsertedAtIT(ev.created_at)}
+                              â€¢ Inserito il {formatInsertedAtIT(ev.created_at)}
                             </span>
                           ) : null}
                         </div>
@@ -805,7 +805,7 @@ export default function AnimalClinicalPage() {
                           {ev.title || typeLabel(ev.type)}
                           {weightKg !== null ? (
                             <span className="ml-2 inline-flex items-center rounded-full border border-zinc-200 bg-white px-2 py-0.5 text-xs font-semibold text-zinc-700">
-                              ⚖ {weightKg} kg
+                              âš– {weightKg} kg
                             </span>
                           ) : null}
                         </div>
@@ -881,7 +881,7 @@ export default function AnimalClinicalPage() {
 
             {extractWeightKg(detailEvent) !== null ? (
               <div className="mt-4 text-sm leading-6 text-zinc-700">
-                <span className="font-semibold">Peso:</span> ⚖ {extractWeightKg(detailEvent)} kg
+                <span className="font-semibold">Peso:</span> âš– {extractWeightKg(detailEvent)} kg
               </div>
             ) : null}
 
@@ -889,7 +889,7 @@ export default function AnimalClinicalPage() {
               <div className="mt-3 space-y-1.5 text-sm leading-6 text-zinc-700">
                 <div>
                   <span className="font-semibold">Inizio terapia:</span>{" "}
-                  {extractTherapyStartDate(detailEvent) || "—"}
+                  {extractTherapyStartDate(detailEvent) || "â€”"}
                 </div>
                 <div>
                   <span className="font-semibold">Fine terapia:</span>{" "}
@@ -909,11 +909,11 @@ export default function AnimalClinicalPage() {
               <span className="font-semibold">Stato validazione:</span>{" "}
               {detailEvent.verified_at
                 ? detailEvent.verified_by_label
-                  ? `✓ Validato da ${detailEvent.verified_by_label}`
-                  : "✓ Validato"
+                  ? `âœ“ Validato da ${detailEvent.verified_by_label}`
+                  : "âœ“ Validato"
                 : detailEvent.source === "professional"
-                  ? "⏳ Da rivalidare"
-                  : "⏳ Da validare"}
+                  ? "â³ Da rivalidare"
+                  : "â³ Da validare"}
             </div>
 
             {detailEvent.description ? (
@@ -1128,8 +1128,8 @@ export default function AnimalClinicalPage() {
                 </div>
 
                 <p className="mt-3 text-xs text-zinc-500">
-                  Se modifichi un evento già validato o creato dal professionista, il backend deve
-                  riportarlo a “⏳ Da rivalidare”.
+                  Se modifichi un evento giÃ  validato o creato dal professionista, il backend deve
+                  riportarlo a â€œâ³ Da rivalidareâ€.
                 </p>
               </div>
             ) : null}

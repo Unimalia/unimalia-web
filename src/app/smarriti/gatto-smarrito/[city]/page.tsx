@@ -100,14 +100,14 @@ export default async function GattoSmarritoCityPage({ params }: PageProps) {
         "Molti gatti, soprattutto se spaventati, tendono a nascondersi molto vicino al punto di scomparsa nelle prime ore o nei primi giorni.",
     },
     {
-      question: "UNIMALIA serve anche se il gatto ha già il microchip?",
+      question: "UNIMALIA serve anche se il gatto ha giÃ  il microchip?",
       answer:
-        "Sì. UNIMALIA aiuta a organizzare meglio le informazioni dello smarrimento e a creare una scheda chiara, pronta da aggiornare e condividere.",
+        "SÃ¬. UNIMALIA aiuta a organizzare meglio le informazioni dello smarrimento e a creare una scheda chiara, pronta da aggiornare e condividere.",
     },
     {
       question: "Posso aggiornare la segnalazione quando ricevo nuovi avvistamenti?",
       answer:
-        "Sì. Aggiornare lo stato del caso aiuta a mantenere ordine e coerenza in tutte le informazioni diffuse online.",
+        "SÃ¬. Aggiornare lo stato del caso aiuta a mantenere ordine e coerenza in tutte le informazioni diffuse online.",
     },
   ];
 
@@ -172,7 +172,7 @@ export default async function GattoSmarritoCityPage({ params }: PageProps) {
           </h1>
 
           <p className="mt-5 max-w-3xl text-lg leading-relaxed text-zinc-600">
-            Se hai perso un gatto a {city.name}, è importante muoversi subito ma con metodo.
+            Se hai perso un gatto a {city.name}, Ã¨ importante muoversi subito ma con metodo.
             Molti gatti spaventati si nascondono molto vicino al punto di scomparsa, quindi una
             ricerca precisa e una segnalazione chiara possono fare la differenza. UNIMALIA ti
             aiuta a raccogliere le informazioni utili in una scheda ordinata e pronta da condividere.
@@ -181,7 +181,7 @@ export default async function GattoSmarritoCityPage({ params }: PageProps) {
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             <CtaButton href="/smarrimenti/nuovo">Pubblica smarrimento</CtaButton>
             <CtaButton href="/identita/nuovo" variant="secondary">
-              Crea identità animale
+              Crea identitÃ  animale
             </CtaButton>
           </div>
         </header>
@@ -192,7 +192,7 @@ export default async function GattoSmarritoCityPage({ params }: PageProps) {
           </h2>
 
           <ul className="mt-4 list-disc space-y-2 pl-6 text-red-900">
-            <li>torna immediatamente nell’ultima zona in cui è stato visto</li>
+            <li>torna immediatamente nellâ€™ultima zona in cui Ã¨ stato visto</li>
             <li>cerca prima molto vicino e in modo silenzioso</li>
             <li>controlla garage, cortili, siepi, auto parcheggiate e punti riparati</li>
             <li>chiedi rapidamente ai residenti e ai negozi della zona</li>
@@ -207,7 +207,7 @@ export default async function GattoSmarritoCityPage({ params }: PageProps) {
             <p>
               <strong>Cosa fare se ho perso un gatto a {city.name}?</strong>
               <br />
-              Tornare subito nell’ultima zona vista e cercare prima nelle immediate vicinanze,
+              Tornare subito nellâ€™ultima zona vista e cercare prima nelle immediate vicinanze,
               con calma e metodo.
             </p>
 
@@ -230,7 +230,7 @@ export default async function GattoSmarritoCityPage({ params }: PageProps) {
           <h2 className="text-xl font-bold text-zinc-900">In sintesi</h2>
 
           <ul className="mt-4 list-disc space-y-2 pl-6 text-zinc-700">
-            <li>se hai perso un gatto a {city.name}, è utile cercare prima molto vicino</li>
+            <li>se hai perso un gatto a {city.name}, Ã¨ utile cercare prima molto vicino</li>
             <li>molti gatti spaventati restano nascosti nelle immediate vicinanze</li>
             <li>una segnalazione chiara aiuta a mantenere ordine e coerenza</li>
             <li>UNIMALIA ti permette di creare una base unica per tutte le condivisioni</li>
@@ -239,10 +239,10 @@ export default async function GattoSmarritoCityPage({ params }: PageProps) {
         </section>
 
         <div className="mt-8 grid gap-6">
-          <Section title={`Cosa fare subito se il tuo gatto è sparito a ${city.name}`}>
+          <Section title={`Cosa fare subito se il tuo gatto Ã¨ sparito a ${city.name}`}>
             <p>
-              La prima cosa utile è controllare con attenzione l’area immediatamente vicina al
-              punto in cui il gatto è stato visto l’ultima volta. Molti gatti non si allontanano
+              La prima cosa utile Ã¨ controllare con attenzione lâ€™area immediatamente vicina al
+              punto in cui il gatto Ã¨ stato visto lâ€™ultima volta. Molti gatti non si allontanano
               molto, ma restano nascosti in luoghi silenziosi e riparati.
             </p>
             <p>
@@ -251,7 +251,7 @@ export default async function GattoSmarritoCityPage({ params }: PageProps) {
             </p>
           </Section>
 
-          <Section title={`Gatto smarrito a ${city.name}: i passaggi più utili`}>
+          <Section title={`Gatto smarrito a ${city.name}: i passaggi piÃ¹ utili`}>
             <ol className="space-y-4">
               <li>
                 <strong>1. Cerca prima molto vicino.</strong> Controlla garage, giardini, cortili,
@@ -259,7 +259,7 @@ export default async function GattoSmarritoCityPage({ params }: PageProps) {
               </li>
               <li>
                 <strong>2. Procedi con calma.</strong> I rumori forti possono spaventare ancora di
-                più un gatto già nascosto.
+                piÃ¹ un gatto giÃ  nascosto.
               </li>
               <li>
                 <strong>3. Chiedi rapidamente in zona.</strong> Residenti, negozi e vicinato possono
@@ -275,7 +275,7 @@ export default async function GattoSmarritoCityPage({ params }: PageProps) {
               </li>
               <li>
                 <strong>6. Verifica i dati identificativi disponibili.</strong> Foto, nome, segni
-                distintivi e informazioni già pronte aiutano a muoversi meglio.
+                distintivi e informazioni giÃ  pronte aiutano a muoversi meglio.
               </li>
               <li>
                 <strong>7. Aggiorna rapidamente il caso.</strong> Se ricevi avvistamenti o il gatto
@@ -284,7 +284,7 @@ export default async function GattoSmarritoCityPage({ params }: PageProps) {
             </ol>
           </Section>
 
-          <Section title="Come può aiutarti UNIMALIA">
+          <Section title="Come puÃ² aiutarti UNIMALIA">
             <p>
               Quando un animale si smarrisce, le informazioni finiscono spesso disperse tra gruppi,
               post, bacheche e messaggi diversi. Questo crea confusione proprio quando servirebbe il
@@ -292,54 +292,54 @@ export default async function GattoSmarritoCityPage({ params }: PageProps) {
             </p>
 
             <p>
-              UNIMALIA ti permette di creare una scheda chiara e già pronta, che puoi copiare e
+              UNIMALIA ti permette di creare una scheda chiara e giÃ  pronta, che puoi copiare e
               condividere ovunque mantenendo tutte le informazioni coerenti e aggiornate.
             </p>
 
             <p>
-              In questo modo diventa più semplice raccogliere segnalazioni utili e mantenere ordine
-              nella ricerca. UNIMALIA non sostituisce i canali ufficiali, ma può essere un ponte
+              In questo modo diventa piÃ¹ semplice raccogliere segnalazioni utili e mantenere ordine
+              nella ricerca. UNIMALIA non sostituisce i canali ufficiali, ma puÃ² essere un ponte
               concreto contro la frammentazione online.
             </p>
 
             <ul className="list-disc space-y-2 pl-6">
-              <li>crei e gestisci l’identità digitale del tuo animale</li>
-              <li>pubblichi una segnalazione più ordinata e chiara</li>
+              <li>crei e gestisci lâ€™identitÃ  digitale del tuo animale</li>
+              <li>pubblichi una segnalazione piÃ¹ ordinata e chiara</li>
               <li>mantieni centrali le informazioni utili</li>
-              <li>rendi più rapida la consultazione dei dati dell’animale</li>
-              <li>aggiorni più facilmente lo stato del caso</li>
+              <li>rendi piÃ¹ rapida la consultazione dei dati dellâ€™animale</li>
+              <li>aggiorni piÃ¹ facilmente lo stato del caso</li>
             </ul>
           </Section>
 
           <Section title={`Dove cercare un gatto smarrito a ${city.name}`}>
             <p>
-              In una città come {city.name}, conviene concentrare la ricerca in modo pratico e non
+              In una cittÃ  come {city.name}, conviene concentrare la ricerca in modo pratico e non
               dispersivo:
             </p>
             <ul className="list-disc space-y-2 pl-6">
-              <li>nelle immediate vicinanze dell’ultimo punto visto</li>
+              <li>nelle immediate vicinanze dellâ€™ultimo punto visto</li>
               <li>in zone riparate e silenziose</li>
               <li>in cortili, garage, cantine e sotto auto</li>
               <li>vicino a casa o a percorsi abituali</li>
-              <li>in punti dove il gatto può sentirsi nascosto e protetto</li>
+              <li>in punti dove il gatto puÃ² sentirsi nascosto e protetto</li>
             </ul>
             <p>
-              Se il gatto è spaventato, una ricerca molto vicina e metodica è spesso più utile di
+              Se il gatto Ã¨ spaventato, una ricerca molto vicina e metodica Ã¨ spesso piÃ¹ utile di
               una ricerca ampia ma dispersiva.
             </p>
           </Section>
 
-          <Section title="Microchip e identità digitale: non sono la stessa cosa">
+          <Section title="Microchip e identitÃ  digitale: non sono la stessa cosa">
             <p>
-              Il microchip ha una funzione di identificazione ufficiale. L’identità digitale animale
+              Il microchip ha una funzione di identificazione ufficiale. Lâ€™identitÃ  digitale animale
               non lo sostituisce e non va confusa con esso.
             </p>
             <p>
-              Quello che UNIMALIA aggiunge è una gestione più ordinata delle informazioni utili:
+              Quello che UNIMALIA aggiunge Ã¨ una gestione piÃ¹ ordinata delle informazioni utili:
               dati essenziali, note pratiche, riferimenti rapidi e organizzazione del caso.
             </p>
             <p>
-              In sintesi: il microchip e l’identità digitale hanno ruoli diversi. Una buona
+              In sintesi: il microchip e lâ€™identitÃ  digitale hanno ruoli diversi. Una buona
               segnalazione di smarrimento resta comunque fondamentale.
             </p>
           </Section>
@@ -402,7 +402,7 @@ export default async function GattoSmarritoCityPage({ params }: PageProps) {
               >
                 <p className="text-lg font-semibold text-zinc-900">Smarrimenti attivi</p>
                 <p className="mt-2 text-sm text-zinc-600">
-                  Vai all’area con gli annunci di smarrimento pubblicati su UNIMALIA.
+                  Vai allâ€™area con gli annunci di smarrimento pubblicati su UNIMALIA.
                 </p>
               </Link>
             </div>

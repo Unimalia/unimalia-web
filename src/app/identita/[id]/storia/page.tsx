@@ -92,11 +92,11 @@ export default function StoriaAnimalePage() {
     return (
       <PageShell
         title="Storia animale"
-        subtitle="Caricamento…"
+        subtitle="Caricamentoâ€¦"
         backFallbackHref={id ? `/identita/${id}` : "/identita"}
       >
         <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <p className="text-sm text-zinc-700">Sto caricando la pagina…</p>
+          <p className="text-sm text-zinc-700">Sto caricando la paginaâ€¦</p>
         </div>
       </PageShell>
     );
@@ -119,7 +119,7 @@ export default function StoriaAnimalePage() {
     return (
       <PageShell
         title="Storia animale"
-        subtitle={`${animal.name} · funzione Premium`}
+        subtitle={`${animal.name} Â· funzione Premium`}
         backFallbackHref={`/identita/${animal.id}`}
       >
         <div className="space-y-6">
@@ -130,8 +130,8 @@ export default function StoriaAnimalePage() {
                   Disponibile con Premium
                 </h2>
                 <p className="mt-2 max-w-2xl text-sm leading-relaxed text-amber-800">
-                  La Storia animale raccoglierà gli eventi non clinici del tuo animale:
-                  servizi, promemoria, attività e appuntamenti pratici. La cartella clinica
+                  La Storia animale raccoglierÃ  gli eventi non clinici del tuo animale:
+                  servizi, promemoria, attivitÃ  e appuntamenti pratici. La cartella clinica
                   resta separata e dedicata alla parte sanitaria.
                 </p>
               </div>
@@ -160,14 +160,14 @@ export default function StoriaAnimalePage() {
 
           <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
             <h2 className="text-lg font-semibold text-zinc-900">
-              Cosa conterrà Storia animale
+              Cosa conterrÃ  Storia animale
             </h2>
 
             <ul className="mt-4 list-disc space-y-2 pl-6 text-sm text-zinc-700">
               <li>toelettatura e prodotti usati</li>
               <li>pensione, pet sitter e altri servizi non clinici</li>
               <li>promemoria owner e appuntamenti futuri</li>
-              <li>timeline pratica della vita dell’animale</li>
+              <li>timeline pratica della vita dellâ€™animale</li>
               <li>eventi separati dalla cartella clinica veterinaria</li>
             </ul>
           </section>
@@ -179,7 +179,7 @@ export default function StoriaAnimalePage() {
   return (
     <PageShell
       title="Storia animale"
-      subtitle={`${animal.name}${animal.breed ? ` · ${animal.breed}` : ""}`}
+      subtitle={`${animal.name}${animal.breed ? ` Â· ${animal.breed}` : ""}`}
       backFallbackHref={`/identita/${animal.id}`}
       actions={
         <Link
@@ -198,8 +198,8 @@ export default function StoriaAnimalePage() {
                 Sezione in preparazione
               </h2>
               <p className="mt-2 max-w-2xl text-sm leading-relaxed text-zinc-700">
-                Questa area sarà dedicata alla timeline non clinica del tuo animale:
-                servizi, attività, promemoria e appuntamenti pratici. La parte sanitaria
+                Questa area sarÃ  dedicata alla timeline non clinica del tuo animale:
+                servizi, attivitÃ , promemoria e appuntamenti pratici. La parte sanitaria
                 resta nella cartella clinica.
               </p>
             </div>
@@ -226,7 +226,7 @@ export default function StoriaAnimalePage() {
             <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
               <p className="text-sm font-semibold text-zinc-900">Promemoria owner</p>
               <p className="mt-2 text-sm text-zinc-700">
-                Reminder manuali in attesa dell’integrazione futura con le prenotazioni.
+                Reminder manuali in attesa dellâ€™integrazione futura con le prenotazioni.
               </p>
             </div>
 

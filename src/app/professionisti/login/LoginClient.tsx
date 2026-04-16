@@ -145,13 +145,13 @@ export default function LoginClient() {
 
       if (profile?.is_deleted) {
         await supabase.auth.signOut();
-        setErr("Questo account è stato eliminato definitivamente.");
+        setErr("Questo account Ã¨ stato eliminato definitivamente.");
         return;
       }
 
       if (profile?.is_archived) {
         await supabase.auth.signOut();
-        setErr("Questo account è attualmente disattivato.");
+        setErr("Questo account Ã¨ attualmente disattivato.");
         return;
       }
 
@@ -178,13 +178,13 @@ export default function LoginClient() {
 
       if (professional.is_deleted) {
         await supabase.auth.signOut();
-        setErr("Il profilo professionista collegato a questo account è stato eliminato.");
+        setErr("Il profilo professionista collegato a questo account Ã¨ stato eliminato.");
         return;
       }
 
       if (professional.is_archived) {
         await supabase.auth.signOut();
-        setErr("Il profilo professionista collegato a questo account è disattivato.");
+        setErr("Il profilo professionista collegato a questo account Ã¨ disattivato.");
         return;
       }
 
@@ -193,7 +193,7 @@ export default function LoginClient() {
 
       if (!isProfessionalEnabled(user)) {
         await supabase.auth.signOut();
-        setErr("Questo account non è abilitato al Portale Professionisti.");
+        setErr("Questo account non Ã¨ abilitato al Portale Professionisti.");
         return;
       }
 
@@ -253,7 +253,7 @@ export default function LoginClient() {
         const normalizedPhone = normalizePhone(phone);
 
         if (!normalizedPhone) {
-          setErr("Il numero di telefono è obbligatorio.");
+          setErr("Il numero di telefono Ã¨ obbligatorio.");
           setLoading(false);
           return;
         }
@@ -299,7 +299,7 @@ export default function LoginClient() {
             m.includes("user already registered")
           ) {
             setErr(
-              "Questa email risulta già registrata. Usa “Accedi” oppure “Password dimenticata”."
+              "Questa email risulta giÃ  registrata. Usa â€œAccediâ€ oppure â€œPassword dimenticataâ€."
             );
             setMode("login");
             setLoading(false);
@@ -314,8 +314,8 @@ export default function LoginClient() {
         setLoading(false);
         setMsg(
           professionalType === "veterinarian"
-            ? "Registrazione veterinario completata ✅ Controlla l’email per confermare l’account. Dopo la conferma potrai creare la scheda professionista, che resterà in attesa di revisione superadmin."
-            : "Registrazione professionista completata ✅ Controlla l’email per confermare l’account. Dopo la conferma potrai creare la scheda professionista."
+            ? "Registrazione veterinario completata âœ… Controlla lâ€™email per confermare lâ€™account. Dopo la conferma potrai creare la scheda professionista, che resterÃ  in attesa di revisione superadmin."
+            : "Registrazione professionista completata âœ… Controlla lâ€™email per confermare lâ€™account. Dopo la conferma potrai creare la scheda professionista."
         );
         setMode("login");
         return;
@@ -382,7 +382,7 @@ export default function LoginClient() {
         return;
       }
 
-      setMsg("Se l’email esiste, riceverai un link per reimpostare la password.");
+      setMsg("Se lâ€™email esiste, riceverai un link per reimpostare la password.");
     } catch (e: unknown) {
       setErr(getErrorMessage(e));
     } finally {
@@ -395,7 +395,7 @@ export default function LoginClient() {
       <div className="min-h-screen bg-zinc-50 text-zinc-900">
         <div className="mx-auto w-full max-w-6xl px-4 py-12">
           <div className="rounded-[2rem] border border-zinc-200 bg-white p-8 shadow-sm">
-            <p className="text-sm text-zinc-700">Caricamento…</p>
+            <p className="text-sm text-zinc-700">Caricamentoâ€¦</p>
           </div>
         </div>
       </div>
@@ -407,7 +407,7 @@ export default function LoginClient() {
       <div className="mx-auto w-full max-w-6xl px-4 py-10 sm:py-14">
         <div className="mb-6">
           <Link href="/" className="text-sm font-semibold text-zinc-700 hover:text-zinc-900">
-            ← Sito pubblico
+            â† Sito pubblico
           </Link>
         </div>
 
@@ -455,7 +455,7 @@ export default function LoginClient() {
               <div className="rounded-2xl border border-zinc-200 bg-white p-5">
                 <p className="text-sm font-semibold text-zinc-900">Veterinari</p>
                 <p className="mt-2 text-sm leading-relaxed text-zinc-600">
-                  Cartella sanitaria digitale, referti, consulti tra colleghi e gestione più
+                  Cartella sanitaria digitale, referti, consulti tra colleghi e gestione piÃ¹
                   ordinata dei pazienti.
                 </p>
               </div>
@@ -463,7 +463,7 @@ export default function LoginClient() {
               <div className="rounded-2xl border border-zinc-200 bg-white p-5">
                 <p className="text-sm font-semibold text-zinc-900">Altri professionisti</p>
                 <p className="mt-2 text-sm leading-relaxed text-zinc-600">
-                  Uno spazio in evoluzione per servizi e attività del settore animale, con
+                  Uno spazio in evoluzione per servizi e attivitÃ  del settore animale, con
                   strumenti dedicati in crescita.
                 </p>
               </div>
@@ -471,7 +471,7 @@ export default function LoginClient() {
               <div className="rounded-2xl border border-zinc-200 bg-white p-5 sm:col-span-2 xl:col-span-1">
                 <p className="text-sm font-semibold text-zinc-900">In evoluzione</p>
                 <p className="mt-2 text-sm leading-relaxed text-zinc-600">
-                  La piattaforma è progettata per integrare nel tempo funzioni sempre più
+                  La piattaforma Ã¨ progettata per integrare nel tempo funzioni sempre piÃ¹
                   complete, incluse future prenotazioni online.
                 </p>
               </div>
@@ -637,11 +637,11 @@ export default function LoginClient() {
                     <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-800">
                       <p className="font-semibold">Requisiti password</p>
                       <ul className="mt-2 space-y-1">
-                        <li>{password.length >= 12 ? "✅" : "•"} Almeno 12 caratteri</li>
-                        <li>{/[a-z]/.test(password) ? "✅" : "•"} Almeno una minuscola</li>
-                        <li>{/[A-Z]/.test(password) ? "✅" : "•"} Almeno una maiuscola</li>
-                        <li>{/[0-9]/.test(password) ? "✅" : "•"} Almeno un numero</li>
-                        <li>{/[^A-Za-z0-9]/.test(password) ? "✅" : "•"} Almeno un simbolo</li>
+                        <li>{password.length >= 12 ? "âœ…" : "â€¢"} Almeno 12 caratteri</li>
+                        <li>{/[a-z]/.test(password) ? "âœ…" : "â€¢"} Almeno una minuscola</li>
+                        <li>{/[A-Z]/.test(password) ? "âœ…" : "â€¢"} Almeno una maiuscola</li>
+                        <li>{/[0-9]/.test(password) ? "âœ…" : "â€¢"} Almeno un numero</li>
+                        <li>{/[^A-Za-z0-9]/.test(password) ? "âœ…" : "â€¢"} Almeno un simbolo</li>
                       </ul>
                     </div>
                   )}
@@ -667,8 +667,8 @@ export default function LoginClient() {
               >
                 {loading
                   ? mode === "login"
-                    ? "Accesso…"
-                    : "Registrazione…"
+                    ? "Accessoâ€¦"
+                    : "Registrazioneâ€¦"
                   : mode === "login"
                     ? "Accedi"
                     : professionalType === "veterinarian"
@@ -688,7 +688,7 @@ export default function LoginClient() {
               ) : null}
 
               <div className="text-xs text-zinc-500">
-                Dopo l’accesso verrai reindirizzato a:{" "}
+                Dopo lâ€™accesso verrai reindirizzato a:{" "}
                 <span className="font-semibold text-zinc-700">{next}</span>
               </div>
             </form>

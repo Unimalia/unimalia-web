@@ -104,7 +104,7 @@ export default function AppShellClient({ nav, proHref }: AppShellClientProps) {
             <div className="absolute right-0 top-0 h-full w-[88%] max-w-sm border-l border-[#e3e9f0] bg-white shadow-2xl">
               <div className="flex h-20 items-center justify-between border-b border-[#e3e9f0] px-5">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6f7d91]">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#55657d]">
                     Navigazione
                   </p>
                   <p className="mt-1 text-sm font-medium text-[#30486f]">UNIMALIA</p>
@@ -116,7 +116,7 @@ export default function AppShellClient({ nav, proHref }: AppShellClientProps) {
                   onClick={() => setOpen(false)}
                   aria-label="Chiudi menu"
                 >
-                  ✕
+                  âœ•
                 </button>
               </div>
 
@@ -200,7 +200,7 @@ export default function AppShellClient({ nav, proHref }: AppShellClientProps) {
           onClick={() => setOpen(true)}
           aria-label="Apri menu"
         >
-          ☰
+          â˜°
         </button>
       </div>
 

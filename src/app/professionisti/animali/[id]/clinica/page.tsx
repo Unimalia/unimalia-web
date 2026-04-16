@@ -176,25 +176,25 @@ function typeLabel(t: ClinicEventType) {
 function typeIcon(t: ClinicEventType | string) {
   switch (t) {
     case "visit":
-      return "🩺";
+      return "ðŸ©º";
     case "vaccine":
-      return "💉";
+      return "ðŸ’‰";
     case "exam":
-      return "🔬";
+      return "ðŸ”¬";
     case "therapy":
-      return "💊";
+      return "ðŸ’Š";
     case "surgery":
-      return "🏥";
+      return "ðŸ¥";
     case "note":
-      return "📝";
+      return "ðŸ“";
     case "chronic_condition":
-      return "📌";
+      return "ðŸ“Œ";
     case "follow_up":
-      return "🔁";
+      return "ðŸ”";
     case "imaging":
-      return "🖼️";
+      return "ðŸ–¼ï¸";
     default:
-      return "📄";
+      return "ðŸ“„";
   }
 }
 
@@ -260,7 +260,7 @@ function formatDateIT(iso: string) {
 }
 
 function formatEventDateIT(dateStr?: string | null) {
-  if (!dateStr) return "—";
+  if (!dateStr) return "â€”";
   const s = String(dateStr).trim();
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
     const [y, m, d] = s.split("-").map(Number);
@@ -275,7 +275,7 @@ function formatEventDateIT(dateStr?: string | null) {
 }
 
 function formatInsertedAtIT(iso?: string | null) {
-  if (!iso) return "—";
+  if (!iso) return "â€”";
   return new Date(iso).toLocaleString("it-IT", {
     year: "numeric",
     month: "2-digit",
@@ -921,7 +921,7 @@ export default function ClinicaPage() {
 
         const imagingAuthHeaders = await buildClinicWriteHeaders();
 
-        setUploadPhase("Preparazione upload…");
+        setUploadPhase("Preparazione uploadâ€¦");
         const prepareFd = new FormData();
         prepareFd.append("mode", "prepare");
         prepareFd.append("animalId", String(id));
@@ -962,7 +962,7 @@ export default function ClinicaPage() {
           return;
         }
 
-        setUploadPhase("Caricamento file su storage…");
+        setUploadPhase("Caricamento file su storageâ€¦");
 
         try {
           await multipartUpload({
@@ -997,7 +997,7 @@ export default function ClinicaPage() {
         completeFd.append("fileType", file.type || "application/octet-stream");
         completeFd.append("fileSize", String(file.size));
 
-        setUploadPhase("Registrazione imaging…");
+        setUploadPhase("Registrazione imagingâ€¦");
         const completeRes = await fetch("/api/clinic/imaging/upload", {
           method: "POST",
           headers: {
@@ -1017,7 +1017,7 @@ export default function ClinicaPage() {
         setUploadPhase(null);
         setUploadProgress(0);
         setUploadStatus("");
-        setSaveOk("Evento imaging salvato ✅");
+        setSaveOk("Evento imaging salvato âœ…");
         setNewNotes("");
         setNewFiles([]);
         setNewWeightKg("");
@@ -1068,7 +1068,7 @@ export default function ClinicaPage() {
         hasAttachments: newFiles.length > 0,
       };
 
-      setUploadPhase("Salvataggio evento…");
+      setUploadPhase("Salvataggio eventoâ€¦");
       const res = await fetch("/api/clinic-events/create", {
         method: "POST",
         headers: {
@@ -1132,7 +1132,7 @@ export default function ClinicaPage() {
         }
       }
 
-      setSaveOk("Evento salvato ✅");
+      setSaveOk("Evento salvato âœ…");
       setNewNotes("");
       setNewFiles([]);
       setNewWeightKg("");
@@ -1399,7 +1399,7 @@ export default function ClinicaPage() {
 
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setModalErr(json?.error || "Errore durante l’eliminazione.");
+        setModalErr(json?.error || "Errore durante lâ€™eliminazione.");
         return;
       }
 
@@ -1411,7 +1411,7 @@ export default function ClinicaPage() {
       await loadFilesCount();
       await refreshOperatorSession();
     } catch {
-      setModalErr("Errore di rete durante l’eliminazione.");
+      setModalErr("Errore di rete durante lâ€™eliminazione.");
     } finally {
       setDeleting(false);
     }
@@ -1541,7 +1541,7 @@ export default function ClinicaPage() {
     return (
       <div className="space-y-6">
         <div className="text-sm">
-          <span className="font-semibold text-zinc-500">Verifica accesso clinica…</span>
+          <span className="font-semibold text-zinc-500">Verifica accesso clinicaâ€¦</span>
         </div>
 
         <section className="overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm">
@@ -1577,7 +1577,7 @@ export default function ClinicaPage() {
           href={`/professionisti/animali/${id}`}
           className="font-semibold text-zinc-700 hover:text-zinc-900"
         >
-          ← Torna alla scheda
+          â† Torna alla scheda
         </Link>
       </div>
 
@@ -1589,10 +1589,10 @@ export default function ClinicaPage() {
                 Cartella clinica professionale
               </div>
               <h1 className="mt-3 text-xl font-semibold tracking-tight text-zinc-900 md:text-2xl">
-                {animal?.name || "Animale"} <span className="text-zinc-400">•</span>{" "}
+                {animal?.name || "Animale"} <span className="text-zinc-400">â€¢</span>{" "}
                 <span className="text-zinc-700">
                   {animal?.species || "Specie non disponibile"}
-                  {animal?.breed ? ` • ${animal.breed}` : ""}
+                  {animal?.breed ? ` â€¢ ${animal.breed}` : ""}
                 </span>
               </h1>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-600">
@@ -1634,10 +1634,10 @@ export default function ClinicaPage() {
             <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
               Animale
             </div>
-            <div className="mt-2 text-sm font-semibold text-zinc-900">{animal?.name || "—"}</div>
+            <div className="mt-2 text-sm font-semibold text-zinc-900">{animal?.name || "â€”"}</div>
             <div className="mt-1 text-sm text-zinc-600">
-              {animal?.species || "—"}
-              {animal?.breed ? ` • ${animal.breed}` : ""}
+              {animal?.species || "â€”"}
+              {animal?.breed ? ` â€¢ ${animal.breed}` : ""}
             </div>
           </div>
 
@@ -1663,11 +1663,11 @@ export default function ClinicaPage() {
             </div>
 
             <div className="mt-1 text-sm text-zinc-600">
-              Email: {animal?.owner_email || "—"}
+              Email: {animal?.owner_email || "â€”"}
             </div>
 
             <div className="mt-1 text-sm text-zinc-600">
-              Telefono: {animal?.owner_phone || "—"}
+              Telefono: {animal?.owner_phone || "â€”"}
             </div>
           </div>
 
@@ -1681,13 +1681,13 @@ export default function ClinicaPage() {
             </div>
 
             <div className="mt-1 text-xs text-zinc-500">
-              Postazione: <span className="font-mono">{workstationKey || "—"}</span>
+              Postazione: <span className="font-mono">{workstationKey || "â€”"}</span>
             </div>
 
             <div className="mt-1 text-xs text-zinc-500">
               {operatorSession?.expiresAt
                 ? `Sessione valida fino a ${formatDateIT(operatorSession.expiresAt)}`
-                : "Attiva l’operatore dal menu professionisti"}
+                : "Attiva lâ€™operatore dal menu professionisti"}
             </div>
           </div>
         </div>
@@ -1702,7 +1702,7 @@ export default function ClinicaPage() {
                 {selectedIds.size > 0 ? (
                   <>
                     {" "}
-                    • Selezionati: <span className="font-semibold">{selectedIds.size}</span>
+                    â€¢ Selezionati: <span className="font-semibold">{selectedIds.size}</span>
                   </>
                 ) : null}
               </div>
@@ -1723,7 +1723,7 @@ export default function ClinicaPage() {
                   disabled={bulkVerifying || selectedIds.size === 0 || !canWriteClinicEvents}
                   onClick={() => void verifyMany(Array.from(selectedIds))}
                 >
-                  {bulkVerifying ? "Validazione…" : "Valida selezionati"}
+                  {bulkVerifying ? "Validazioneâ€¦" : "Valida selezionati"}
                 </button>
 
                 <button
@@ -1733,7 +1733,7 @@ export default function ClinicaPage() {
                   onClick={() => void verifyMany(pendingIds)}
                   title="Valida tutti gli eventi in attesa"
                 >
-                  {bulkVerifying ? "Validazione…" : "Valida tutto"}
+                  {bulkVerifying ? "Validazioneâ€¦" : "Valida tutto"}
                 </button>
 
                 {selectedIds.size > 0 ? (
@@ -1750,22 +1750,22 @@ export default function ClinicaPage() {
             </div>
 
             <p className="mt-2 text-xs leading-5 text-zinc-600">
-              Puoi selezionare i singoli eventi “⏳ da validare” direttamente dalla timeline.
+              Puoi selezionare i singoli eventi â€œâ³ da validareâ€ direttamente dalla timeline.
             </p>
           </div>
         ) : null}
 
         {!canWriteClinicEvents ? (
           <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">
-            Grant revocato: la clinica può leggere solo gli eventi consentiti dall’audit attuale,
-            ma non può creare, modificare, validare, eliminare o allegare nuovi file.
+            Grant revocato: la clinica puÃ² leggere solo gli eventi consentiti dallâ€™audit attuale,
+            ma non puÃ² creare, modificare, validare, eliminare o allegare nuovi file.
           </div>
         ) : null}
 
         {!operatorSession?.id ? (
           <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-medium text-blue-900">
             Nessun operatore attivo su questa postazione. Apri il menu professionisti e attiva
-            l’operatore con PIN prima di creare, modificare o validare eventi.
+            lâ€™operatore con PIN prima di creare, modificare o validare eventi.
           </div>
         ) : null}
 
@@ -1778,7 +1778,7 @@ export default function ClinicaPage() {
               <h2 className="mt-3 text-base font-semibold text-zinc-900">Nuovo evento clinico</h2>
               <p className="mt-1.5 text-sm leading-6 text-zinc-600">
                 Registra subito visite, vaccini, esami, terapie e documenti. Dopo il salvataggio
-                l’evento resta in questa pagina e compare subito nella timeline.
+                lâ€™evento resta in questa pagina e compare subito nella timeline.
               </p>
             </div>
           </div>
@@ -1814,8 +1814,8 @@ export default function ClinicaPage() {
                         </div>
                         <div className="mt-1 text-xs text-zinc-600">
                           {draft.modality || "Imaging"}
-                          {draft.bodyPart ? ` • ${draft.bodyPart}` : ""}
-                          {typeof draft.percent === "number" ? ` • ${draft.percent}%` : ""}
+                          {draft.bodyPart ? ` â€¢ ${draft.bodyPart}` : ""}
+                          {typeof draft.percent === "number" ? ` â€¢ ${draft.percent}%` : ""}
                         </div>
                         <div className="mt-1 text-xs text-zinc-500">
                           Ultimo aggiornamento: {formatInsertedAtIT(draft.updatedAt)}
@@ -1856,16 +1856,16 @@ export default function ClinicaPage() {
                 onChange={(e) => setNewType(e.target.value as ClinicEventType)}
                 disabled={!canWriteClinicEvents}
               >
-                <option value="visit">🩺 Visita</option>
-                <option value="vaccine">💉 Vaccinazione</option>
-                <option value="exam">🔬 Esame</option>
-                <option value="imaging">🖼️ Imaging</option>
-                <option value="therapy">💊 Terapia</option>
-                <option value="allergy">⚠️ Allergia</option>
-                <option value="chronic_condition">📌 Patologia cronica</option>
-                <option value="follow_up">🔁 Prossimo ricontrollo</option>
-                <option value="surgery">🏥 Intervento chirurgico</option>
-                <option value="note">📝 Nota</option>
+                <option value="visit">ðŸ©º Visita</option>
+                <option value="vaccine">ðŸ’‰ Vaccinazione</option>
+                <option value="exam">ðŸ”¬ Esame</option>
+                <option value="imaging">ðŸ–¼ï¸ Imaging</option>
+                <option value="therapy">ðŸ’Š Terapia</option>
+                <option value="allergy">âš ï¸ Allergia</option>
+                <option value="chronic_condition">ðŸ“Œ Patologia cronica</option>
+                <option value="follow_up">ðŸ” Prossimo ricontrollo</option>
+                <option value="surgery">ðŸ¥ Intervento chirurgico</option>
+                <option value="note">ðŸ“ Nota</option>
               </select>
             </label>
 
@@ -1936,8 +1936,8 @@ export default function ClinicaPage() {
 
               {newFiles.length > 0 ? (
                 <div className="mt-1.5 text-[11px] leading-5 text-zinc-600">
-                  📎 <span className="font-semibold">{newFiles.length}</span>
-                  {newType === "imaging" ? ` • ${newFiles[0]?.name || ""}` : ""}
+                  ðŸ“Ž <span className="font-semibold">{newFiles.length}</span>
+                  {newType === "imaging" ? ` â€¢ ${newFiles[0]?.name || ""}` : ""}
                 </div>
               ) : null}
 
@@ -1973,7 +1973,7 @@ export default function ClinicaPage() {
                     })}
                   </div>
                   <p className="mt-1.5 text-xs leading-5 text-zinc-500">
-                    Puoi selezionare più vaccini nello stesso evento.
+                    Puoi selezionare piÃ¹ vaccini nello stesso evento.
                   </p>
                 </div>
 
@@ -2025,7 +2025,7 @@ export default function ClinicaPage() {
                     disabled={!canWriteClinicEvents}
                   />
                   <p className="mt-1.5 text-xs leading-5 text-zinc-500">
-                    Se lasci vuoto, la terapia è considerata in corso.
+                    Se lasci vuoto, la terapia Ã¨ considerata in corso.
                   </p>
                 </label>
               </div>
@@ -2034,7 +2034,7 @@ export default function ClinicaPage() {
             {newType === "imaging" ? (
               <div className="grid gap-4 md:col-span-12 md:grid-cols-12">
                 <label className="block md:col-span-4">
-                  <span className={FIELD_LABEL_CLASS}>Modalità</span>
+                  <span className={FIELD_LABEL_CLASS}>ModalitÃ </span>
                   <select
                     className={FIELD_CLASS}
                     value={newImagingModality}
@@ -2061,7 +2061,7 @@ export default function ClinicaPage() {
                 </label>
 
                 <div className="md:col-span-12 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-medium text-amber-800">
-                  Per gli eventi imaging il file diagnostico va caricato solo qui e verrà salvato
+                  Per gli eventi imaging il file diagnostico va caricato solo qui e verrÃ  salvato
                   su storage dedicato Cloudflare.
                 </div>
               </div>
@@ -2102,7 +2102,7 @@ export default function ClinicaPage() {
                 onClick={() => void saveClinicEvent()}
               >
                 {saving
-                  ? uploadPhase || "Salvataggio…"
+                  ? uploadPhase || "Salvataggioâ€¦"
                   : newType === "imaging"
                     ? "Salva imaging"
                     : "Salva evento e aggiorna timeline"}
@@ -2148,9 +2148,9 @@ export default function ClinicaPage() {
                     }
                   }}
                 />
-                Imposta promemoria per l’owner
+                Imposta promemoria per lâ€™owner
               </label>
-              <span className="text-xs text-zinc-600">Email ✅ • Push ⏳</span>
+              <span className="text-xs text-zinc-600">Email âœ… â€¢ Push â³</span>
             </div>
 
             {reminderEnabled ? (
@@ -2220,13 +2220,13 @@ export default function ClinicaPage() {
 
                 {newType === "vaccine" && remindAt ? (
                   <p className="text-xs leading-5 text-zinc-600 md:col-span-2">
-                    Nota vaccino: oltre al promemoria alla data impostata, l’owner verrà avvisato
+                    Nota vaccino: oltre al promemoria alla data impostata, lâ€™owner verrÃ  avvisato
                     anche <span className="font-semibold">15 giorni prima</span>.
                   </p>
                 ) : null}
 
                 <p className="text-xs leading-5 text-zinc-600 md:col-span-2">
-                  Il promemoria verrà inviato{" "}
+                  Il promemoria verrÃ  inviato{" "}
                   <span className="font-semibold">solo al proprietario</span>.
                 </p>
               </div>
@@ -2257,8 +2257,8 @@ export default function ClinicaPage() {
         <div className="space-y-3 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="text-sm text-zinc-700">
-              Eventi totali: <span className="font-semibold">{events.length}</span> • Filtrati:{" "}
-              <span className="font-semibold">{filteredEvents.length}</span> • Mostrati:{" "}
+              Eventi totali: <span className="font-semibold">{events.length}</span> â€¢ Filtrati:{" "}
+              <span className="font-semibold">{filteredEvents.length}</span> â€¢ Mostrati:{" "}
               <span className="font-semibold">{flattenedShownEvents.length}</span>
             </div>
 
@@ -2312,7 +2312,7 @@ export default function ClinicaPage() {
         </div>
 
         {eventsLoading ? (
-          <div className="text-sm text-zinc-600">Caricamento eventi…</div>
+          <div className="text-sm text-zinc-600">Caricamento eventiâ€¦</div>
         ) : filteredEvents.length === 0 ? (
           <div className="mt-4 rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 p-6 text-sm leading-6 text-zinc-600">
             Nessun evento per questo filtro.
@@ -2368,7 +2368,7 @@ export default function ClinicaPage() {
                                   {ev.created_at ? (
                                     <span className="text-zinc-400">
                                       {" "}
-                                      • Inserito il {formatInsertedAtIT(ev.created_at)}
+                                      â€¢ Inserito il {formatInsertedAtIT(ev.created_at)}
                                     </span>
                                   ) : null}
                                 </div>
@@ -2379,7 +2379,7 @@ export default function ClinicaPage() {
                                       className="inline-flex items-center rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-xs font-semibold text-zinc-700"
                                       title="Peso registrato"
                                     >
-                                      ⚖ {formatWeightLabel(evKg)}
+                                      âš– {formatWeightLabel(evKg)}
                                     </span>
                                   ) : null}
 
@@ -2388,7 +2388,7 @@ export default function ClinicaPage() {
                                       className="inline-flex items-center rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-xs font-semibold text-zinc-700"
                                       title={`Allegati: ${filesCountByEventId[ev.id]}`}
                                     >
-                                      📎 {filesCountByEventId[ev.id]}
+                                      ðŸ“Ž {filesCountByEventId[ev.id]}
                                     </span>
                                   ) : null}
 
@@ -2417,11 +2417,11 @@ export default function ClinicaPage() {
                           <div className="flex shrink-0 flex-col items-end gap-2">
                             {isVerified ? (
                               <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-700">
-                                ✓ Validato
+                                âœ“ Validato
                               </span>
                             ) : (
                               <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[11px] font-semibold text-amber-700">
-                                ⏳ Da validare
+                                â³ Da validare
                               </span>
                             )}
 
@@ -2436,7 +2436,7 @@ export default function ClinicaPage() {
                                 }}
                                 title="Valida questo evento"
                               >
-                                {verifyingId === ev.id ? "Validazione…" : "Valida"}
+                                {verifyingId === ev.id ? "Validazioneâ€¦" : "Valida"}
                               </button>
                             ) : null}
                           </div>
@@ -2497,7 +2497,7 @@ export default function ClinicaPage() {
                         {kg !== null ? (
                           <div className="mt-3 text-sm leading-6 text-zinc-700">
                             <span className="inline-flex items-center rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-xs font-semibold text-zinc-700">
-                              ⚖ {formatWeightLabel(kg)}
+                              âš– {formatWeightLabel(kg)}
                             </span>
                           </div>
                         ) : null}
@@ -2554,7 +2554,7 @@ export default function ClinicaPage() {
                           </>
                         ) : (
                           <span className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-semibold text-zinc-700">
-                            Modalità modifica
+                            ModalitÃ  modifica
                           </span>
                         )}
                       </div>
@@ -2586,12 +2586,12 @@ export default function ClinicaPage() {
 
                               <div className="mt-3 space-y-2 text-sm text-zinc-700">
                                 <div>
-                                  <span className="font-semibold">Modalità:</span>{" "}
-                                  {detailEvent.meta?.imaging?.modality || "—"}
+                                  <span className="font-semibold">ModalitÃ :</span>{" "}
+                                  {detailEvent.meta?.imaging?.modality || "â€”"}
                                 </div>
                                 <div>
                                   <span className="font-semibold">Distretto:</span>{" "}
-                                  {detailEvent.meta?.imaging?.body_part || "—"}
+                                  {detailEvent.meta?.imaging?.body_part || "â€”"}
                                 </div>
                                 <div>
                                   <span className="font-semibold">Viewer DICOM:</span>{" "}
@@ -2642,7 +2642,7 @@ export default function ClinicaPage() {
                                             <div className="mt-1 text-xs text-zinc-500">
                                               {file.mime || "mime sconosciuto"}
                                               {typeof file.size === "number"
-                                                ? ` • ${Math.round(file.size / 1024)} KB`
+                                                ? ` â€¢ ${Math.round(file.size / 1024)} KB`
                                                 : ""}
                                             </div>
 
@@ -2760,8 +2760,8 @@ export default function ClinicaPage() {
 
                                         {isImage ? (
                                           <div className="mt-3 rounded-lg border border-dashed border-zinc-200 bg-zinc-50 px-3 py-3 text-xs text-zinc-500">
-                                            Anteprima inline non ancora disponibile. Usa “Apri
-                                            viewer” o “Scarica file”.
+                                            Anteprima inline non ancora disponibile. Usa â€œApri
+                                            viewerâ€ o â€œScarica fileâ€.
                                           </div>
                                         ) : null}
                                       </div>
@@ -2871,14 +2871,14 @@ export default function ClinicaPage() {
                             </div>
                             {isEventVerified(detailEvent) ? (
                               <div className="mt-2 font-semibold text-emerald-700">
-                                ✓ Validato{" "}
+                                âœ“ Validato{" "}
                                 {detailEvent.verified_by_label
                                   ? `da ${detailEvent.verified_by_label}`
                                   : ""}
                               </div>
                             ) : (
                               <div className="mt-2 font-semibold text-amber-700">
-                                ⏳ In attesa di validazione
+                                â³ In attesa di validazione
                               </div>
                             )}
                           </div>
@@ -2891,49 +2891,49 @@ export default function ClinicaPage() {
                               <div>
                                 ID evento: <span className="font-mono">{detailEvent.id}</span>
                               </div>
-                              <div>Visibilità: {visibilityLabel(detailEvent.visibility)}</div>
+                              <div>VisibilitÃ : {visibilityLabel(detailEvent.visibility)}</div>
                               <div>Fonte: {detailEvent.source}</div>
                               <div>Registrato da: {getEventAuthorLabel(detailEvent)}</div>
                               <div>
                                 Operatore attivo:{" "}
                                 <span className="font-mono">
-                                  {String(detailEvent.meta?.active_operator_label || "—")}
+                                  {String(detailEvent.meta?.active_operator_label || "â€”")}
                                 </span>
                               </div>
                               <div>
                                 Sessione operatore:{" "}
                                 <span className="font-mono">
-                                  {String(detailEvent.meta?.operator_session_id || "—")}
+                                  {String(detailEvent.meta?.operator_session_id || "â€”")}
                                 </span>
                               </div>
                               <div>
                                 Signature mode:{" "}
                                 <span className="font-mono">
-                                  {String(detailEvent.meta?.signature_mode || "—")}
+                                  {String(detailEvent.meta?.signature_mode || "â€”")}
                                 </span>
                               </div>
                               <div>
                                 Creato da user:{" "}
                                 <span className="font-mono">
-                                  {detailEvent.created_by_user_id || "—"}
+                                  {detailEvent.created_by_user_id || "â€”"}
                                 </span>
                               </div>
                               <div>
                                 Verificato da user:{" "}
                                 <span className="font-mono">
-                                  {detailEvent.verified_by_user_id || "—"}
+                                  {detailEvent.verified_by_user_id || "â€”"}
                                 </span>
                               </div>
                               <div>
                                 Verificato da org:{" "}
                                 <span className="font-mono">
-                                  {detailEvent.verified_by_organization_id || "—"}
+                                  {detailEvent.verified_by_organization_id || "â€”"}
                                 </span>
                               </div>
                               <div>
                                 Verificato da member:{" "}
                                 <span className="font-mono">
-                                  {detailEvent.verified_by_member_id || "—"}
+                                  {detailEvent.verified_by_member_id || "â€”"}
                                 </span>
                               </div>
                               {detailEvent.verified_by_label ? (
@@ -2967,16 +2967,16 @@ export default function ClinicaPage() {
                                 value={editType}
                                 onChange={(e) => setEditType(e.target.value as ClinicEventType)}
                               >
-                                <option value="visit">🩺 Visita</option>
-                                <option value="vaccine">💉 Vaccinazione</option>
-                                <option value="exam">🔬 Esame</option>
-                                <option value="imaging">🖼️ Imaging</option>
-                                <option value="therapy">💊 Terapia</option>
-                                <option value="allergy">⚠️ Allergia</option>
-                                <option value="chronic_condition">📌 Patologia cronica</option>
-                                <option value="follow_up">🔁 Prossimo ricontrollo</option>
-                                <option value="surgery">🏥 Intervento chirurgico</option>
-                                <option value="note">📝 Nota</option>
+                                <option value="visit">ðŸ©º Visita</option>
+                                <option value="vaccine">ðŸ’‰ Vaccinazione</option>
+                                <option value="exam">ðŸ”¬ Esame</option>
+                                <option value="imaging">ðŸ–¼ï¸ Imaging</option>
+                                <option value="therapy">ðŸ’Š Terapia</option>
+                                <option value="allergy">âš ï¸ Allergia</option>
+                                <option value="chronic_condition">ðŸ“Œ Patologia cronica</option>
+                                <option value="follow_up">ðŸ” Prossimo ricontrollo</option>
+                                <option value="surgery">ðŸ¥ Intervento chirurgico</option>
+                                <option value="note">ðŸ“ Nota</option>
                               </select>
                             </label>
 
@@ -3026,7 +3026,7 @@ export default function ClinicaPage() {
                           </div>
 
                           <p className="mt-3 text-xs leading-5 text-zinc-600">
-                            Nota: il peso è salvato in “meta” e non è ancora modificabile da questa
+                            Nota: il peso Ã¨ salvato in â€œmetaâ€ e non Ã¨ ancora modificabile da questa
                             schermata.
                           </p>
                         </div>
@@ -3038,7 +3038,7 @@ export default function ClinicaPage() {
                             Conferma eliminazione
                           </div>
                           <p className="mt-1 text-sm leading-6 text-red-800">
-                            Vuoi eliminare questo evento? L’azione sarà tracciata nello storico.
+                            Vuoi eliminare questo evento? Lâ€™azione sarÃ  tracciata nello storico.
                           </p>
                           <div className="mt-3 flex flex-wrap gap-2">
                             <button
@@ -3055,7 +3055,7 @@ export default function ClinicaPage() {
                               disabled={!allowed || deleting}
                               onClick={() => void deleteDetailEvent()}
                             >
-                              {deleting ? "Eliminazione…" : "Conferma eliminazione"}
+                              {deleting ? "Eliminazioneâ€¦" : "Conferma eliminazione"}
                             </button>
                           </div>
                         </div>
@@ -3085,7 +3085,7 @@ export default function ClinicaPage() {
                               disabled={!allowed || updating || !editTitle.trim() || !editDate}
                               onClick={() => void updateDetailEvent()}
                             >
-                              {updating ? "Salvataggio…" : "Salva e chiudi"}
+                              {updating ? "Salvataggioâ€¦" : "Salva e chiudi"}
                             </button>
                           </>
                         ) : (

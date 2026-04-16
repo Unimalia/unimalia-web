@@ -89,18 +89,18 @@ export default function RichiesteProfessionistaPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Richieste contatto</h1>
           <p className="mt-2 text-zinc-700">
-            {pro ? `Scheda: ${pro.display_name}` : "—"}
+            {pro ? `Scheda: ${pro.display_name}` : "â€”"}
           </p>
         </div>
 
         <Link href="/professionisti" className="text-sm font-medium text-zinc-600 hover:underline">
-          ← Portale
+          â† Portale
         </Link>
       </div>
 
       {loading ? (
         <div className="mt-8 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <p className="text-sm text-zinc-700">Caricamento…</p>
+          <p className="text-sm text-zinc-700">Caricamentoâ€¦</p>
         </div>
       ) : error ? (
         <div className="mt-8 rounded-2xl border border-red-200 bg-white p-6 text-sm text-red-700 shadow-sm">

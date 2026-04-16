@@ -33,7 +33,7 @@ export default function ContactProtectedForm({ reportId }: Props) {
 
     if (message.trim().length < 10) {
       setIsError(true);
-      setResultMsg("Scrivi un messaggio un po’ più completo.");
+      setResultMsg("Scrivi un messaggio un poâ€™ piÃ¹ completo.");
       return;
     }
 
@@ -64,7 +64,7 @@ export default function ContactProtectedForm({ reportId }: Props) {
       setHoneypot("");
       setIsError(false);
       setResultMsg(
-        "✅ Messaggio inviato correttamente. Il segnalatore riceverà la tua comunicazione."
+        "âœ… Messaggio inviato correttamente. Il segnalatore riceverÃ  la tua comunicazione."
       );
     } catch {
       setIsError(true);
@@ -114,7 +114,7 @@ export default function ContactProtectedForm({ reportId }: Props) {
       </label>
 
       <p className="text-xs leading-5 text-zinc-500">
-        Il tuo messaggio verrà inoltrato al segnalatore senza mostrare pubblicamente il suo indirizzo email.
+        Il tuo messaggio verrÃ  inoltrato al segnalatore senza mostrare pubblicamente il suo indirizzo email.
       </p>
 
       <button

@@ -61,7 +61,7 @@ function pageTitle(data: ReportPublicRow) {
   const species = safeText(data.species).trim();
   const title = safeText(data.title).trim();
 
-  if (animal && species) return `${animal} – ${species}`;
+  if (animal && species) return `${animal} â€“ ${species}`;
   if (animal) return animal;
   if (species) return species;
   if (title) return title;
@@ -92,7 +92,7 @@ function ogTitle(data: ReportPublicRow) {
   const place = locationLabel(data);
 
   if (place) {
-    return `${base} ${typeText} – ${place}`;
+    return `${base} ${typeText} â€“ ${place}`;
   }
 
   return `${base} ${typeText}`;
@@ -163,7 +163,7 @@ function buildMetaDescription(report: ReportPublicRow) {
   const place = locationLabel(report);
   const date = formatEventDate(report.event_date);
 
-  return `${typeLabel}: ${title}. Località: ${place || "non specificata"}. Data evento: ${date}. Pubblicato su UNIMALIA.`;
+  return `${typeLabel}: ${title}. LocalitÃ : ${place || "non specificata"}. Data evento: ${date}. Pubblicato su UNIMALIA.`;
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -173,7 +173,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (!report) {
     return {
       title: "Annuncio non disponibile",
-      description: "Questo annuncio non è disponibile.",
+      description: "Questo annuncio non Ã¨ disponibile.",
     };
   }
 
@@ -223,7 +223,7 @@ export default async function AnnuncioPage({ params }: PageProps) {
             Annuncio non disponibile
           </h1>
           <p className="mt-3 text-sm leading-6 text-zinc-600">
-            Questo annuncio potrebbe non essere più disponibile pubblicamente.
+            Questo annuncio potrebbe non essere piÃ¹ disponibile pubblicamente.
           </p>
 
           <div className="mt-6 flex flex-wrap gap-3">
@@ -264,7 +264,7 @@ export default async function AnnuncioPage({ params }: PageProps) {
           href={backHrefByType(reportType)}
           className="text-sm font-medium text-zinc-600 hover:text-zinc-900"
         >
-          ← Torna a {backLabelByType(reportType)}
+          â† Torna a {backLabelByType(reportType)}
         </Link>
       </div>
 
@@ -307,7 +307,7 @@ export default async function AnnuncioPage({ params }: PageProps) {
               </h1>
 
               <p className="mt-2 text-sm text-zinc-600">
-                {locationLabel(report) || "Località non disponibile"}
+                {locationLabel(report) || "LocalitÃ  non disponibile"}
               </p>
 
               <p className="mt-1 text-sm text-zinc-500">
@@ -331,7 +331,7 @@ export default async function AnnuncioPage({ params }: PageProps) {
             <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
               <h3 className="text-sm font-semibold text-zinc-900">Posizione</h3>
               <p className="mt-3 text-sm text-zinc-700">
-                {safeText(report.location_text) || "Località non specificata"}
+                {safeText(report.location_text) || "LocalitÃ  non specificata"}
                 {safeText(report.province) ? ` (${safeText(report.province)})` : ""}
               </p>
 
@@ -365,7 +365,7 @@ export default async function AnnuncioPage({ params }: PageProps) {
             <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
               <h3 className="text-sm font-semibold text-zinc-900">Link annuncio</h3>
               <p className="mt-3 text-sm text-zinc-700">
-                Questo è il link pubblico dell’annuncio.
+                Questo Ã¨ il link pubblico dellâ€™annuncio.
               </p>
 
               <div className="mt-4 flex flex-wrap gap-2">
@@ -378,7 +378,7 @@ export default async function AnnuncioPage({ params }: PageProps) {
               </div>
 
               <p className="mt-3 text-xs text-zinc-500">
-                La condivisione guidata dal sito è riservata solo al proprietario dall’area privata di gestione.
+                La condivisione guidata dal sito Ã¨ riservata solo al proprietario dallâ€™area privata di gestione.
               </p>
             </div>
           </div>
@@ -399,7 +399,7 @@ export default async function AnnuncioPage({ params }: PageProps) {
             <div className="mt-6 rounded-2xl border border-zinc-200 bg-white p-5">
               <h2 className="text-lg font-semibold text-zinc-900">Contatto protetto</h2>
               <p className="mt-2 text-sm text-zinc-600">
-                Scrivi un messaggio senza mostrare pubblicamente l’email del segnalatore.
+                Scrivi un messaggio senza mostrare pubblicamente lâ€™email del segnalatore.
               </p>
 
               <div className="mt-4">
@@ -410,7 +410,7 @@ export default async function AnnuncioPage({ params }: PageProps) {
             <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5">
               <h2 className="text-lg font-semibold text-amber-900">Annuncio chiuso</h2>
               <p className="mt-2 text-sm text-amber-800">
-                Questo annuncio non è più attivo, quindi i contatti pubblici e il contatto protetto non sono più disponibili.
+                Questo annuncio non Ã¨ piÃ¹ attivo, quindi i contatti pubblici e il contatto protetto non sono piÃ¹ disponibili.
               </p>
             </div>
           )}

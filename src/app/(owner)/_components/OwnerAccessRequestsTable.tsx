@@ -18,7 +18,7 @@ type Row = {
 type Duration = "24h" | "7d" | "6m" | "forever";
 
 function formatDateTime(value: string | null | undefined) {
-  if (!value) return "—";
+  if (!value) return "â€”";
   return new Date(value).toLocaleString("it-IT");
 }
 
@@ -137,7 +137,7 @@ export default function OwnerAccessRequestsTable({ animalId }: { animalId?: stri
 
       {loading ? (
         <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600">
-          Caricamento…
+          Caricamentoâ€¦
         </div>
       ) : null}
 
@@ -157,7 +157,7 @@ export default function OwnerAccessRequestsTable({ animalId }: { animalId?: stri
                 <div key={r.id} className="rounded-2xl border border-zinc-200 bg-white p-4 space-y-4">
                   <div className="text-sm">
                     <div className="font-semibold text-zinc-900">
-                      {r.animal_name ?? r.animal_id} • {r.organization_name ?? r.organization_id}
+                      {r.animal_name ?? r.animal_id} â€¢ {r.organization_name ?? r.organization_id}
                     </div>
                     <div className="mt-1 text-zinc-600">
                       Richiesta del {formatDateTime(r.created_at)}
@@ -229,12 +229,12 @@ export default function OwnerAccessRequestsTable({ animalId }: { animalId?: stri
               >
                 <div className="text-sm">
                   <div className="font-semibold text-zinc-900">
-                    {r.animal_name ?? r.animal_id} • {r.organization_name ?? r.organization_id}
+                    {r.animal_name ?? r.animal_id} â€¢ {r.organization_name ?? r.organization_id}
                   </div>
                   <div className="mt-1 text-zinc-600">Stato: {r.status}</div>
                   <div className="mt-1 text-zinc-500">
                     Data: {formatDateTime(r.created_at)}
-                    {r.expires_at ? ` • Scade: ${formatDate(r.expires_at)}` : ""}
+                    {r.expires_at ? ` â€¢ Scade: ${formatDate(r.expires_at)}` : ""}
                   </div>
                 </div>
 

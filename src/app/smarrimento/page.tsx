@@ -216,7 +216,7 @@ export default function SmarrimentoPage() {
 
       if (insertError) throw insertError;
 
-      setMsg("Smarrimento pubblicato correttamente ✅");
+      setMsg("Smarrimento pubblicato correttamente âœ…");
 
       setSpecies("");
       setAnimalName("");
@@ -281,7 +281,7 @@ export default function SmarrimentoPage() {
                 onClick={pickPhoto}
                 className="inline-flex items-center justify-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
               >
-                <span aria-hidden>📷</span>
+                <span aria-hidden>ðŸ“·</span>
                 Scegli foto
               </button>
 
@@ -352,7 +352,7 @@ export default function SmarrimentoPage() {
           <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4">
             <p className="text-sm font-semibold text-zinc-900">Contatti (opzionali)</p>
             <p className="mt-1 text-xs text-zinc-600">
-              Se qualcuno lo vede, potrà contattarti più velocemente.
+              Se qualcuno lo vede, potrÃ  contattarti piÃ¹ velocemente.
             </p>
 
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -395,7 +395,7 @@ export default function SmarrimentoPage() {
             <label className="block text-sm font-medium">Luogo (cerca e seleziona)</label>
 
             {!isLoaded ? (
-              <p className="mt-2 text-sm text-zinc-600">Caricamento Maps…</p>
+              <p className="mt-2 text-sm text-zinc-600">Caricamento Mapsâ€¦</p>
             ) : (
               <Autocomplete
                 onLoad={(a) => setAutocomplete(a)}
@@ -424,7 +424,7 @@ export default function SmarrimentoPage() {
 
           <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
             {!isLoaded ? (
-              <div className="p-6 text-sm text-zinc-600">Caricamento mappa…</div>
+              <div className="p-6 text-sm text-zinc-600">Caricamento mappaâ€¦</div>
             ) : (
               <GoogleMap
                 mapContainerStyle={{ width: "100%", height: "420px" }}

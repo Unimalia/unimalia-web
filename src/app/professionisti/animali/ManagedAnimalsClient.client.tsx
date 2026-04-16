@@ -143,13 +143,13 @@ export default function ManagedAnimalsClient({
                   </div>
 
                   <div className="mt-1 text-sm text-zinc-600">
-                    {[row.species, row.breed].filter(Boolean).join(" • ") || "—"}
+                    {[row.species, row.breed].filter(Boolean).join(" â€¢ ") || "â€”"}
                   </div>
 
                   <div className="mt-2 space-y-1 text-sm text-zinc-500">
-                    <div>Microchip: {row.microchip || "—"}</div>
+                    <div>Microchip: {row.microchip || "â€”"}</div>
                     {row.unimalia_code ? <div>UNIMALIA: {row.unimalia_code}</div> : null}
-                    <div>Proprietario: {row.owner_name || "—"}</div>
+                    <div>Proprietario: {row.owner_name || "â€”"}</div>
                   </div>
                 </div>
 
@@ -172,7 +172,7 @@ export default function ManagedAnimalsClient({
 
                   {row.grant_status === "revoked_own_history" ? (
                     <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-800">
-                      Grant revocato · vedi solo i tuoi dati
+                      Grant revocato Â· vedi solo i tuoi dati
                     </span>
                   ) : null}
 

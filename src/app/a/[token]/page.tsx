@@ -179,8 +179,8 @@ export default function AnimalPublicPage() {
               {t.animalLabel}
             </div>
             <div className="mt-1 text-sm text-zinc-900">
-              {animal.name} · {animal.species}
-              {animal.breed ? ` · ${animal.breed}` : ""}
+              {animal.name} Â· {animal.species}
+              {animal.breed ? ` Â· ${animal.breed}` : ""}
             </div>
           </div>
         </div>
@@ -205,7 +205,7 @@ export default function AnimalPublicPage() {
             </h1>
             <p className="mt-2 text-zinc-700">
               {emergency?.species || animal.species}
-              {animal.breed ? ` • ${animal.breed}` : ""}
+              {animal.breed ? ` â€¢ ${animal.breed}` : ""}
             </p>
           </div>
 
