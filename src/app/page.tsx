@@ -124,7 +124,7 @@ function SectionIntro({
   return (
     <div className="max-w-3xl">
       {eyebrow ? (
-        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#6f7d91]">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#55657d]">
           {eyebrow}
         </p>
       ) : null}
@@ -266,7 +266,7 @@ function QuickActionCard({
       className="group block rounded-[2rem] border border-[#e3e9f0] bg-white p-7 shadow-[0_14px_40px_rgba(42,56,86,0.06)] transition hover:-translate-y-1 hover:shadow-[0_20px_50px_rgba(42,56,86,0.08)]"
     >
       <div className="flex items-center justify-between gap-4">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#6f7d91]">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#55657d]">
           Azione {number}
         </p>
         <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-[#30486f] text-sm font-semibold text-white">
@@ -426,7 +426,7 @@ export default function HomePage() {
           <section className="relative overflow-hidden bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)]">
             <div className="grid min-h-[560px] grid-cols-1 md:grid-cols-[0.96fr_1.04fr]">
               <div className="flex flex-col justify-center px-8 py-12 md:px-10 lg:px-14">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#6f7d91]">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#55657d]">
                   Building the Digital Infrastructure of Veterinary Care
                 </p>
 
@@ -688,7 +688,7 @@ export default function HomePage() {
           <div className="overflow-hidden rounded-[2.5rem] border border-[#e3e9f0] bg-white shadow-[0_24px_80px_rgba(42,56,86,0.08)]">
             <div className="grid gap-8 lg:grid-cols-[1.12fr_0.88fr]">
               <div className="px-6 py-8 sm:px-8 sm:py-10 lg:px-10 lg:py-12">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#6f7d91]">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#55657d]">
                   Chiusura
                 </p>
                 <h2 className="mt-4 max-w-3xl text-3xl font-semibold tracking-[-0.04em] text-[#30486f] sm:text-4xl lg:text-5xl">
