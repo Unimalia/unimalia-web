@@ -30,10 +30,12 @@ function StatCard({
   href?: string;
 }) {
   const content = (
-    <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm transition hover:border-zinc-300">
-      <div className="text-sm font-semibold text-zinc-500">{title}</div>
-      <div className="mt-3 text-3xl font-bold tracking-tight text-zinc-900">{value}</div>
-      <p className="mt-3 text-sm leading-relaxed text-zinc-600">{description}</p>
+    <div className="rounded-[1.9rem] border border-[#e3e9f0] bg-white p-6 shadow-[0_12px_30px_rgba(42,56,86,0.05)] transition hover:-translate-y-0.5 hover:border-[#d4deea] hover:shadow-[0_18px_40px_rgba(42,56,86,0.08)]">
+      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6f7d91]">
+        {title}
+      </div>
+      <div className="mt-4 text-4xl font-semibold tracking-[-0.04em] text-[#30486f]">{value}</div>
+      <p className="mt-3 text-sm leading-7 text-[#5f708a]">{description}</p>
     </div>
   );
 
@@ -52,10 +54,12 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-      <div className="max-w-3xl">
-        <h2 className="text-lg font-semibold text-zinc-900">{title}</h2>
-        {description ? <p className="mt-2 text-sm leading-relaxed text-zinc-600">{description}</p> : null}
+    <section className="rounded-[1.9rem] border border-[#e3e9f0] bg-white p-6 shadow-[0_12px_30px_rgba(42,56,86,0.05)] sm:p-7">
+      <div className="max-w-4xl">
+        <h2 className="text-xl font-semibold tracking-[-0.03em] text-[#30486f]">{title}</h2>
+        {description ? (
+          <p className="mt-2 text-sm leading-7 text-[#5f708a]">{description}</p>
+        ) : null}
       </div>
       <div className="mt-5">{children}</div>
     </section>
@@ -78,10 +82,12 @@ function Badge({
           ? "border-rose-200 bg-rose-50 text-rose-700"
           : tone === "info"
             ? "border-sky-200 bg-sky-50 text-sky-700"
-            : "border-zinc-200 bg-zinc-100 text-zinc-700";
+            : "border-[#d7dfe9] bg-[#f8fbff] text-[#4f6078]";
 
   return (
-    <span className={`inline-flex rounded-full border px-2 py-1 text-xs font-semibold ${toneClass}`}>
+    <span
+      className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${toneClass}`}
+    >
       {children}
     </span>
   );
@@ -171,26 +177,57 @@ export default async function SuperAdminPage() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[2rem] border border-zinc-200 bg-white p-7 shadow-sm">
-        <div className="max-w-4xl">
-          <p className="text-sm font-semibold text-teal-700">Area interna privata</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl">
-            Dashboard superadmin
-          </h1>
-          <p className="mt-4 text-base leading-relaxed text-zinc-600">
-            Questa dashboard mostra una panoramica rapida dei professionisti registrati e offre un
-            punto di controllo immediato prima di entrare nella revisione dettagliata.
-          </p>
+      <section className="overflow-hidden rounded-[2.2rem] border border-[#dde4ec] bg-white shadow-[0_18px_45px_rgba(42,56,86,0.07)]">
+        <div className="grid gap-0 lg:grid-cols-[1.08fr_0.92fr]">
+          <div className="px-7 py-8 sm:px-8 sm:py-10 lg:px-10 lg:py-12">
+            <div className="max-w-4xl">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#6f7d91]">
+                Area interna privata
+              </p>
 
-          {hasError ? (
-            <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-              Alcuni dati della dashboard non sono stati caricati correttamente.
+              <h1 className="mt-4 text-3xl font-semibold tracking-[-0.05em] text-[#30486f] sm:text-4xl lg:text-5xl">
+                Dashboard superadmin
+              </h1>
+
+              <p className="mt-5 text-base leading-relaxed text-[#5f708a]">
+                Questa dashboard mostra una panoramica rapida dei professionisti registrati e offre
+                un punto di controllo immediato prima di entrare nella revisione dettagliata.
+              </p>
+
+              {hasError ? (
+                <div className="mt-5 rounded-[1.2rem] border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                  Alcuni dati della dashboard non sono stati caricati correttamente.
+                </div>
+              ) : null}
             </div>
-          ) : null}
+          </div>
+
+          <div className="bg-[linear-gradient(180deg,#f8fbff_0%,#eef4fb_100%)] px-7 py-8 sm:px-8 sm:py-10 lg:px-10 lg:py-12">
+            <div className="rounded-[1.7rem] border border-[#e3e9f0] bg-white p-6 shadow-[0_12px_28px_rgba(42,56,86,0.05)]">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6f7d91]">
+                Stato console
+              </p>
+
+              <h2 className="mt-2 text-xl font-semibold tracking-[-0.03em] text-[#30486f]">
+                Revisione operativa attiva
+              </h2>
+
+              <p className="mt-3 text-sm leading-7 text-[#5f708a]">
+                Pannello dedicato a revisione professionisti, ruoli veterinari, visibilità pubblica
+                e strumenti interni di controllo.
+              </p>
+
+              <div className="mt-5 flex flex-wrap gap-2">
+                <Badge tone="success">Console attiva</Badge>
+                <Badge tone="info">Revisione professionisti</Badge>
+                <Badge tone="warning">Area interna</Badge>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
-      <section className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+      <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
         <StatCard
           title="Professionisti totali"
           value={String(totalProfessionals ?? 0)}
@@ -235,15 +272,15 @@ export default async function SuperAdminPage() {
           description="Accesso rapido agli ultimi profili entrati nel sistema."
         >
           {latest.length === 0 ? (
-            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-4 text-sm text-zinc-600">
+            <div className="rounded-[1.25rem] border border-[#e3e9f0] bg-[#fbfdff] px-4 py-4 text-sm text-[#5f708a]">
               Nessun professionista disponibile.
             </div>
           ) : (
-            <div className="overflow-hidden rounded-2xl border border-zinc-200">
+            <div className="overflow-hidden rounded-[1.4rem] border border-[#e3e9f0]">
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[920px] border-collapse">
-                  <thead className="border-b bg-zinc-50">
-                    <tr className="text-left text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                  <thead className="border-b bg-[#f8fbff]">
+                    <tr className="text-left text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6f7d91]">
                       <th className="px-4 py-3">Professionista</th>
                       <th className="px-4 py-3">Categoria</th>
                       <th className="px-4 py-3">Località</th>
@@ -253,18 +290,20 @@ export default async function SuperAdminPage() {
                   </thead>
                   <tbody>
                     {latest.map((p) => (
-                      <tr key={p.id} className="border-t align-top">
+                      <tr key={p.id} className="border-t border-[#edf2f7] align-top">
                         <td className="px-4 py-4">
-                          <div className="text-sm font-semibold text-zinc-900">{getDisplayName(p)}</div>
-                          <div className="mt-1 text-xs text-zinc-500">{p.email || p.id}</div>
-                          <div className="mt-1 text-xs text-zinc-500">
+                          <div className="text-sm font-semibold text-[#30486f]">
+                            {getDisplayName(p)}
+                          </div>
+                          <div className="mt-1 text-xs text-[#6f7d91]">{p.email || p.id}</div>
+                          <div className="mt-1 text-xs text-[#6f7d91]">
                             Creato il: {formatDateTime(p.created_at)}
                           </div>
                         </td>
 
-                        <td className="px-4 py-4 text-sm text-zinc-600">{p.category || "—"}</td>
+                        <td className="px-4 py-4 text-sm text-[#5f708a]">{p.category || "—"}</td>
 
-                        <td className="px-4 py-4 text-sm text-zinc-600">
+                        <td className="px-4 py-4 text-sm text-[#5f708a]">
                           {[p.city, p.province].filter(Boolean).join(" · ") || "—"}
                         </td>
 
@@ -287,7 +326,7 @@ export default async function SuperAdminPage() {
                         <td className="px-4 py-4">
                           <Link
                             href={`/superadmin/professionisti/${p.id}`}
-                            className="inline-flex rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-900 shadow-sm hover:bg-zinc-50"
+                            className="inline-flex rounded-xl border border-[#d7dfe9] bg-white px-3 py-2 text-xs font-semibold text-[#30486f] shadow-sm transition hover:bg-[#f8fbff]"
                           >
                             Apri dettaglio
                           </Link>
@@ -306,7 +345,7 @@ export default async function SuperAdminPage() {
           description="Distribuzione rapida dei profili per categoria."
         >
           {topCategories.length === 0 ? (
-            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-4 text-sm text-zinc-600">
+            <div className="rounded-[1.25rem] border border-[#e3e9f0] bg-[#fbfdff] px-4 py-4 text-sm text-[#5f708a]">
               Nessuna categoria disponibile.
             </div>
           ) : (
@@ -314,9 +353,9 @@ export default async function SuperAdminPage() {
               {topCategories.map(([category, count]) => (
                 <div
                   key={category}
-                  className="flex items-center justify-between rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3"
+                  className="flex items-center justify-between rounded-[1.25rem] border border-[#e3e9f0] bg-[#fbfdff] px-4 py-3"
                 >
-                  <div className="text-sm font-semibold text-zinc-900">{category}</div>
+                  <div className="text-sm font-semibold text-[#30486f]">{category}</div>
                   <Badge tone="info">{count}</Badge>
                 </div>
               ))}
@@ -333,35 +372,35 @@ export default async function SuperAdminPage() {
           <div className="grid gap-3 sm:grid-cols-2">
             <Link
               href="/superadmin/professionisti"
-              className="rounded-2xl border border-zinc-200 bg-white px-4 py-4 text-sm font-semibold text-zinc-900 shadow-sm hover:bg-zinc-50"
+              className="rounded-[1.25rem] border border-[#e3e9f0] bg-white px-4 py-4 text-sm font-semibold text-[#30486f] shadow-sm transition hover:bg-[#f8fbff]"
             >
               Revisione professionisti
             </Link>
 
             <Link
               href="/superadmin/professionisti?status=review"
-              className="rounded-2xl border border-zinc-200 bg-white px-4 py-4 text-sm font-semibold text-zinc-900 shadow-sm hover:bg-zinc-50"
+              className="rounded-[1.25rem] border border-[#e3e9f0] bg-white px-4 py-4 text-sm font-semibold text-[#30486f] shadow-sm transition hover:bg-[#f8fbff]"
             >
               Solo da verificare
             </Link>
 
             <Link
               href="/superadmin/professionisti?vet=yes"
-              className="rounded-2xl border border-zinc-200 bg-white px-4 py-4 text-sm font-semibold text-zinc-900 shadow-sm hover:bg-zinc-50"
+              className="rounded-[1.25rem] border border-[#e3e9f0] bg-white px-4 py-4 text-sm font-semibold text-[#30486f] shadow-sm transition hover:bg-[#f8fbff]"
             >
               Solo veterinari
             </Link>
 
             <Link
               href="/superadmin/professionisti?status=approved"
-              className="rounded-2xl border border-zinc-200 bg-white px-4 py-4 text-sm font-semibold text-zinc-900 shadow-sm hover:bg-zinc-50"
+              className="rounded-[1.25rem] border border-[#e3e9f0] bg-white px-4 py-4 text-sm font-semibold text-[#30486f] shadow-sm transition hover:bg-[#f8fbff]"
             >
               Solo approvati
             </Link>
 
             <Link
               href="/superadmin/recupero-account"
-              className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm font-semibold text-amber-900 shadow-sm hover:bg-amber-100"
+              className="rounded-[1.25rem] border border-amber-200 bg-amber-50 px-4 py-4 text-sm font-semibold text-amber-900 shadow-sm transition hover:bg-amber-100"
             >
               Recupero account
             </Link>
@@ -372,16 +411,18 @@ export default async function SuperAdminPage() {
           title="Stato console"
           description="Promemoria operativo della sezione superadmin."
         >
-          <div className="space-y-3 text-sm text-zinc-600">
-            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3">
+          <div className="space-y-3 text-sm text-[#5f708a]">
+            <div className="rounded-[1.25rem] border border-[#e3e9f0] bg-[#fbfdff] px-4 py-3">
               La console gestisce già la revisione dei professionisti, il ruolo veterinario, la
               visibilità pubblica e la sincronizzazione degli accessi.
             </div>
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+
+            <div className="rounded-[1.25rem] border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900">
               È presente anche un blocco dedicato al recupero degli account archiviati e dei vecchi
               utenti finiti nel precedente archivio Auth.
             </div>
-            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3">
+
+            <div className="rounded-[1.25rem] border border-[#e3e9f0] bg-[#fbfdff] px-4 py-3">
               La parte di hardening, registro attività, Cloudflare e protezione avanzata verrà poi
               portata nella chat sicurezza dedicata.
             </div>
