@@ -281,7 +281,7 @@ export function AdottaClient() {
       setOptionsLoading(false);
     }
 
-    loadOptions();
+    void loadOptions();
 
     return () => {
       mounted = false;
@@ -320,7 +320,7 @@ export function AdottaClient() {
       setResultsLoading(false);
     }
 
-    loadResults();
+    void loadResults();
 
     return () => {
       mounted = false;
@@ -355,22 +355,28 @@ export function AdottaClient() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <h2 className="text-xl font-bold text-zinc-900">Adozioni UNIMALIA</h2>
+      <section className="overflow-hidden rounded-[2.2rem] border border-[#e3e9f0] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-6 shadow-[0_18px_40px_rgba(42,56,86,0.06)] sm:p-8">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#55657d]">
+          Area associazioni
+        </p>
 
-        <div className="mt-4 grid gap-4 lg:grid-cols-2">
-          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-5">
-            <p className="text-sm font-semibold text-zinc-900">Area riservata alle associazioni</p>
-            <p className="mt-2 text-sm leading-relaxed text-zinc-700">
+        <h2 className="mt-3 text-2xl font-semibold tracking-[-0.03em] text-[#30486f] sm:text-3xl">
+          Adozioni più ordinate, consultazione più chiara, continuità più forte
+        </h2>
+
+        <div className="mt-5 grid gap-4 lg:grid-cols-2">
+          <div className="rounded-[1.6rem] border border-[#e3e9f0] bg-white p-5 shadow-[0_10px_24px_rgba(42,56,86,0.05)]">
+            <p className="text-sm font-semibold text-[#30486f]">Area riservata alle associazioni</p>
+            <p className="mt-2 text-sm leading-relaxed text-[#5f708a]">
               Le adozioni su UNIMALIA sono pensate per le associazioni e non per i privati.
-              L’obiettivo è pubblicare animali adottabili in modo più ordinato, con filtri di
-              ricerca chiari e una base digitale già pronta.
+              L’obiettivo è pubblicare animali adottabili in modo più ordinato, con filtri chiari
+              e una base digitale già pronta.
             </p>
           </div>
 
-          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-5">
-            <p className="text-sm font-semibold text-zinc-900">Continuità dopo l’adozione</p>
-            <p className="mt-2 text-sm leading-relaxed text-zinc-700">
+          <div className="rounded-[1.6rem] border border-[#e3e9f0] bg-white p-5 shadow-[0_10px_24px_rgba(42,56,86,0.05)]">
+            <p className="text-sm font-semibold text-[#30486f]">Continuità dopo l’adozione</p>
+            <p className="mt-2 text-sm leading-relaxed text-[#5f708a]">
               L’associazione può creare gratuitamente l’identità animale completa. Se il nuovo
               proprietario decide di continuare a usare UNIMALIA in versione Premium entro 15 giorni
               dal passaggio di proprietà, il primo anno da 6 euro viene riconosciuto all’associazione.
@@ -378,7 +384,7 @@ export function AdottaClient() {
           </div>
         </div>
 
-        <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
+        <div className="mt-4 rounded-[1.6rem] border border-emerald-200 bg-emerald-50 p-5">
           <p className="text-sm font-semibold text-emerald-900">Ricerca con filtri</p>
           <p className="mt-2 text-sm leading-relaxed text-emerald-800">
             Dentro l’area adozioni è possibile cercare gli animali tramite filtri per specie,
@@ -386,17 +392,17 @@ export function AdottaClient() {
           </p>
         </div>
 
-        <div className="mt-4 flex flex-wrap gap-3">
+        <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
           <Link
             href="/professionisti/login"
-            className="inline-flex items-center justify-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-zinc-800"
+            className="inline-flex items-center justify-center rounded-full bg-[linear-gradient(180deg,#2f69c7_0%,#2558ab_100%)] px-5 py-3 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(47,105,199,0.22)] transition hover:scale-[1.01]"
           >
             Accesso associazioni
           </Link>
 
           <Link
             href="/identita"
-            className="inline-flex items-center justify-center rounded-2xl border border-zinc-200 bg-white px-5 py-3 text-sm font-semibold text-zinc-900 shadow-sm hover:bg-zinc-50"
+            className="inline-flex items-center justify-center rounded-full border border-[#d7dfe9] bg-white px-5 py-3 text-sm font-semibold text-[#31486f] transition hover:bg-[#f8fbff]"
           >
             Scopri identità animale
           </Link>
@@ -404,11 +410,11 @@ export function AdottaClient() {
       </section>
 
       {adoptionTableMissing ? (
-        <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <p className="text-sm font-medium text-zinc-900">
+        <div className="rounded-[1.8rem] border border-[#e3e9f0] bg-white p-6 shadow-[0_14px_40px_rgba(42,56,86,0.06)]">
+          <p className="text-sm font-semibold text-[#30486f]">
             Sezione adozioni non ancora collegata al database
           </p>
-          <p className="mt-2 text-sm text-zinc-700">
+          <p className="mt-2 text-sm leading-relaxed text-[#5f708a]">
             La pagina è pronta, ma nel database Supabase non risulta ancora disponibile la tabella{" "}
             <b>{ADOPTION_TABLE}</b>. Appena la colleghi, gli annunci compariranno qui.
           </p>
@@ -416,8 +422,8 @@ export function AdottaClient() {
       ) : null}
 
       {optionsLoading ? (
-        <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-          <p className="text-sm text-zinc-700">Caricamento filtri…</p>
+        <div className="rounded-[1.8rem] border border-[#e3e9f0] bg-white p-5 shadow-[0_14px_40px_rgba(42,56,86,0.06)]">
+          <p className="text-sm text-[#5f708a]">Caricamento filtri…</p>
         </div>
       ) : (
         <AdottaFilters

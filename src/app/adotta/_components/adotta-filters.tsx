@@ -160,19 +160,20 @@ export function AdottaFilters({
   }
 
   return (
-    <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-zinc-900">Tipo animale</span>
-          <div className="inline-flex overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50">
+    <div className="rounded-[2rem] border border-[#e3e9f0] bg-white p-5 shadow-[0_14px_40px_rgba(42,56,86,0.06)]">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+          <span className="text-sm font-semibold text-[#30486f]">Tipo animale</span>
+
+          <div className="inline-flex overflow-hidden rounded-2xl border border-[#d7dfe9] bg-[#f4f7fb]">
             <button
               type="button"
               onClick={() => setParam("species", "dog")}
               className={[
-                "px-3 py-2 text-sm font-medium",
+                "px-4 py-2.5 text-sm font-semibold transition",
                 current.species === "dog"
-                  ? "bg-white text-zinc-900"
-                  : "text-zinc-600 hover:text-zinc-900",
+                  ? "bg-[#30486f] text-white"
+                  : "text-[#5f708a] hover:bg-white hover:text-[#30486f]",
               ].join(" ")}
               aria-pressed={current.species === "dog"}
             >
@@ -182,10 +183,10 @@ export function AdottaFilters({
               type="button"
               onClick={() => setParam("species", "cat")}
               className={[
-                "px-3 py-2 text-sm font-medium",
+                "px-4 py-2.5 text-sm font-semibold transition",
                 current.species === "cat"
-                  ? "bg-white text-zinc-900"
-                  : "text-zinc-600 hover:text-zinc-900",
+                  ? "bg-[#30486f] text-white"
+                  : "text-[#5f708a] hover:bg-white hover:text-[#30486f]",
               ].join(" ")}
               aria-pressed={current.species === "cat"}
             >
@@ -195,10 +196,10 @@ export function AdottaFilters({
               type="button"
               onClick={() => setParam("species", "other")}
               className={[
-                "px-3 py-2 text-sm font-medium",
+                "px-4 py-2.5 text-sm font-semibold transition",
                 current.species === "other"
-                  ? "bg-white text-zinc-900"
-                  : "text-zinc-600 hover:text-zinc-900",
+                  ? "bg-[#30486f] text-white"
+                  : "text-[#5f708a] hover:bg-white hover:text-[#30486f]",
               ].join(" ")}
               aria-pressed={current.species === "other"}
             >
@@ -208,24 +209,26 @@ export function AdottaFilters({
         </div>
 
         <div className="flex items-center justify-between gap-3 sm:justify-end">
-          <p className="text-xs text-zinc-500">Risultati aggiornati automaticamente</p>
+          <p className="text-xs text-[#6f7d91]">Risultati aggiornati automaticamente</p>
           <button
             type="button"
             onClick={resetAll}
-            className="inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm hover:bg-zinc-50"
+            className="inline-flex items-center justify-center rounded-xl border border-[#d7dfe9] bg-white px-3 py-2 text-sm font-semibold text-[#31486f] transition hover:bg-[#f8fbff]"
           >
             Reset
           </button>
         </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div>
-          <label className="text-xs font-medium text-zinc-700">Città</label>
+          <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#55657d]">
+            Città
+          </label>
           <select
             value={current.city}
             onChange={(e) => setParam("city", e.target.value)}
-            className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm"
+            className="mt-1 w-full rounded-2xl border border-[#d7dfe9] bg-white px-3 py-3 text-sm text-[#30486f] outline-none transition focus:border-[#2f69c7]"
           >
             <option value="">Tutte</option>
             {cities.map((c) => (
@@ -237,11 +240,13 @@ export function AdottaFilters({
         </div>
 
         <div>
-          <label className="text-xs font-medium text-zinc-700">Struttura</label>
+          <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#55657d]">
+            Struttura
+          </label>
           <select
             value={current.shelterType}
             onChange={(e) => setParam("shelterType", e.target.value)}
-            className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm"
+            className="mt-1 w-full rounded-2xl border border-[#d7dfe9] bg-white px-3 py-3 text-sm text-[#30486f] outline-none transition focus:border-[#2f69c7]"
           >
             <option value="">Tutte</option>
             <option value="canile">Canile</option>
@@ -251,11 +256,13 @@ export function AdottaFilters({
         </div>
 
         <div>
-          <label className="text-xs font-medium text-zinc-700">Nome struttura</label>
+          <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#55657d]">
+            Nome struttura
+          </label>
           <select
             value={current.shelterId}
             onChange={(e) => setParam("shelterId", e.target.value)}
-            className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm"
+            className="mt-1 w-full rounded-2xl border border-[#d7dfe9] bg-white px-3 py-3 text-sm text-[#30486f] outline-none transition focus:border-[#2f69c7]"
           >
             <option value="">Tutte</option>
             {sheltersFiltered.map((s) => (
@@ -268,7 +275,9 @@ export function AdottaFilters({
         </div>
 
         <div className="relative" ref={breedBoxRef}>
-          <label className="text-xs font-medium text-zinc-700">Razza</label>
+          <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#55657d]">
+            Razza
+          </label>
 
           <input
             value={breedInputValue}
@@ -286,24 +295,24 @@ export function AdottaFilters({
               setBreedOpen(true);
             }}
             placeholder="Cerca razza..."
-            className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm outline-none"
+            className="mt-1 w-full rounded-2xl border border-[#d7dfe9] bg-white px-3 py-3 text-sm text-[#30486f] outline-none transition focus:border-[#2f69c7]"
           />
 
           {breedOpen && breedQuery.trim() ? (
-            <div className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-xl border border-zinc-200 bg-white shadow-lg">
+            <div className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-2xl border border-[#d7dfe9] bg-white shadow-[0_18px_40px_rgba(42,56,86,0.12)]">
               {filteredBreeds.length > 0 ? (
                 filteredBreeds.map((b) => (
                   <button
                     key={b.id}
                     type="button"
                     onClick={() => selectBreed(b)}
-                    className="block w-full px-3 py-2 text-left text-sm text-zinc-800 hover:bg-zinc-50"
+                    className="block w-full px-3 py-3 text-left text-sm text-[#30486f] transition hover:bg-[#f8fbff]"
                   >
                     {b.name}
                   </button>
                 ))
               ) : (
-                <div className="px-3 py-2 text-sm text-zinc-500">
+                <div className="px-3 py-3 text-sm text-[#6f7d91]">
                   Nessuna razza trovata
                 </div>
               )}
@@ -314,7 +323,7 @@ export function AdottaFilters({
             <button
               type="button"
               onClick={clearBreed}
-              className="mt-2 text-xs font-medium text-zinc-500 hover:text-zinc-800"
+              className="mt-2 text-xs font-semibold text-[#5f708a] hover:text-[#30486f]"
             >
               Rimuovi razza selezionata
             </button>
@@ -322,11 +331,13 @@ export function AdottaFilters({
         </div>
 
         <div className="lg:col-span-2">
-          <label className="text-xs font-medium text-zinc-700">Meticcio</label>
+          <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#55657d]">
+            Meticcio
+          </label>
           <select
             value={current.mixed}
             onChange={(e) => setParam("mixed", e.target.value)}
-            className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm"
+            className="mt-1 w-full rounded-2xl border border-[#d7dfe9] bg-white px-3 py-3 text-sm text-[#30486f] outline-none transition focus:border-[#2f69c7]"
           >
             <option value="">Indifferente</option>
             <option value="true">Solo meticci</option>
@@ -335,11 +346,13 @@ export function AdottaFilters({
         </div>
 
         <div>
-          <label className="text-xs font-medium text-zinc-700">Taglia</label>
+          <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#55657d]">
+            Taglia
+          </label>
           <select
             value={current.size}
             onChange={(e) => setParam("size", e.target.value)}
-            className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm"
+            className="mt-1 w-full rounded-2xl border border-[#d7dfe9] bg-white px-3 py-3 text-sm text-[#30486f] outline-none transition focus:border-[#2f69c7]"
           >
             <option value="">Tutte</option>
             <option value="s">Piccola</option>
@@ -349,11 +362,13 @@ export function AdottaFilters({
         </div>
 
         <div>
-          <label className="text-xs font-medium text-zinc-700">Età</label>
+          <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#55657d]">
+            Età
+          </label>
           <select
             value={current.age}
             onChange={(e) => setParam("age", e.target.value)}
-            className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm"
+            className="mt-1 w-full rounded-2xl border border-[#d7dfe9] bg-white px-3 py-3 text-sm text-[#30486f] outline-none transition focus:border-[#2f69c7]"
           >
             <option value="">Tutte</option>
             <option value="0-2">0–2 anni</option>
@@ -363,11 +378,13 @@ export function AdottaFilters({
         </div>
 
         <div>
-          <label className="text-xs font-medium text-zinc-700">Sesso</label>
+          <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#55657d]">
+            Sesso
+          </label>
           <select
             value={current.sex}
             onChange={(e) => setParam("sex", e.target.value)}
-            className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm"
+            className="mt-1 w-full rounded-2xl border border-[#d7dfe9] bg-white px-3 py-3 text-sm text-[#30486f] outline-none transition focus:border-[#2f69c7]"
           >
             <option value="">Indifferente</option>
             <option value="m">Maschio</option>
@@ -383,7 +400,7 @@ export function AdottaFilters({
             <FilterPill label="Urgente" value={current.urgent} onChange={(v) => setParam("urgent", v)} />
             <FilterPill label="Bisogni speciali" value={current.specialNeeds} onChange={(v) => setParam("specialNeeds", v)} />
             <FilterPill label="Solo con foto" value={current.hasPhoto} onChange={(v) => setParam("hasPhoto", v)} />
-            {isPending ? <span className="ml-1 text-xs text-zinc-500">Aggiornamento…</span> : null}
+            {isPending ? <span className="ml-1 text-xs text-[#6f7d91]">Aggiornamento…</span> : null}
           </div>
         </div>
       </div>
@@ -401,15 +418,16 @@ function FilterPill({
   onChange: (next: string) => void;
 }) {
   const active = value === "true";
+
   return (
     <button
       type="button"
       onClick={() => onChange(active ? "" : "true")}
       className={[
-        "inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium",
+        "inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-semibold transition",
         active
-          ? "border-zinc-900 bg-zinc-900 text-white"
-          : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300",
+          ? "border-[#30486f] bg-[#30486f] text-white"
+          : "border-[#d7dfe9] bg-white text-[#4f6078] hover:border-[#bcc9d8] hover:bg-[#f8fbff]",
       ].join(" ")}
       aria-pressed={active}
     >

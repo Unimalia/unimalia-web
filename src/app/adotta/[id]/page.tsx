@@ -106,8 +106,29 @@ function CompatBadge({
   if (active !== true) return null;
 
   return (
-    <span className="inline-flex items-center rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-medium text-zinc-700">
+    <span className="inline-flex items-center rounded-full border border-[#d7dfe9] bg-white px-3 py-1 text-xs font-semibold text-[#4f6078]">
       {label}
+    </span>
+  );
+}
+
+function StatusBadge({
+  children,
+  tone = "default",
+}: {
+  children: React.ReactNode;
+  tone?: "default" | "amber" | "sky";
+}) {
+  const className =
+    tone === "amber"
+      ? "border-amber-200 bg-amber-50 text-amber-800"
+      : tone === "sky"
+        ? "border-sky-200 bg-sky-50 text-sky-800"
+        : "border-[#d7dfe9] bg-[#f8fbff] text-[#4f6078]";
+
+  return (
+    <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${className}`}>
+      {children}
     </span>
   );
 }
@@ -120,9 +141,11 @@ function InfoCard({
   value: string;
 }) {
   return (
-    <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-      <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{label}</p>
-      <p className="mt-2 text-sm font-medium text-zinc-900">{value}</p>
+    <div className="rounded-[1.5rem] border border-[#e3e9f0] bg-white p-4 shadow-[0_10px_24px_rgba(42,56,86,0.05)]">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#55657d]">
+        {label}
+      </p>
+      <p className="mt-2 text-sm font-semibold text-[#30486f]">{value}</p>
     </div>
   );
 }
@@ -184,9 +207,9 @@ export default async function AdottaDetailPage({
       backFallbackHref="/adotta"
     >
       <div className="space-y-6">
-        <section className="overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm">
-          <div className="grid gap-0 lg:grid-cols-[1.1fr_0.9fr]">
-            <div className="bg-zinc-100">
+        <section className="overflow-hidden rounded-[2.3rem] border border-[#dde4ec] bg-white shadow-[0_24px_60px_rgba(42,56,86,0.08)]">
+          <div className="grid gap-0 lg:grid-cols-[1.06fr_0.94fr]">
+            <div className="bg-[linear-gradient(180deg,#f8fbff_0%,#eef4fb_100%)]">
               <div className="aspect-[4/3] w-full">
                 {animal.photo_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -196,8 +219,8 @@ export default async function AdottaDetailPage({
                     className="h-full w-full object-cover"
                   />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center">
-                    <span className="text-sm text-zinc-500">Nessuna foto disponibile</span>
+                  <div className="flex h-full w-full items-center justify-center px-6 text-center">
+                    <span className="text-sm text-[#5f708a]">Nessuna foto disponibile</span>
                   </div>
                 )}
               </div>
@@ -205,34 +228,26 @@ export default async function AdottaDetailPage({
 
             <div className="p-6 sm:p-8">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-semibold text-zinc-700">
-                  {speciesLabel(animal.species)}
-                </span>
+                <StatusBadge>{speciesLabel(animal.species)}</StatusBadge>
 
                 {animal.urgent ? (
-                  <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">
-                    Adozione urgente
-                  </span>
+                  <StatusBadge tone="amber">Adozione urgente</StatusBadge>
                 ) : null}
 
                 {animal.special_needs ? (
-                  <span className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-800">
-                    Bisogni speciali
-                  </span>
+                  <StatusBadge tone="sky">Bisogni speciali</StatusBadge>
                 ) : null}
 
                 {animal.is_mixed ? (
-                  <span className="inline-flex items-center rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-semibold text-zinc-700">
-                    Meticcio
-                  </span>
+                  <StatusBadge>Meticcio</StatusBadge>
                 ) : null}
               </div>
 
-              <h1 className="mt-5 text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl">
+              <h1 className="mt-5 text-3xl font-semibold tracking-[-0.04em] text-[#30486f] sm:text-4xl">
                 {title}
               </h1>
 
-              <p className="mt-3 text-sm leading-relaxed text-zinc-600">
+              <p className="mt-3 text-sm leading-relaxed text-[#5f708a]">
                 {placeLabel || "Località non indicata"}
                 {shelter?.name ? ` · ${shelter.name}` : ""}
               </p>
@@ -256,14 +271,14 @@ export default async function AdottaDetailPage({
               <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                 <Link
                   href="/adotta"
-                  className="inline-flex items-center justify-center rounded-2xl border border-zinc-200 bg-white px-5 py-3 text-sm font-semibold text-zinc-900 shadow-sm transition hover:bg-zinc-50"
+                  className="inline-flex items-center justify-center rounded-full border border-[#d7dfe9] bg-white px-5 py-3 text-sm font-semibold text-[#31486f] transition hover:bg-[#f8fbff]"
                 >
                   Torna alle adozioni
                 </Link>
 
                 <Link
                   href="/professionisti/login"
-                  className="inline-flex items-center justify-center rounded-2xl bg-zinc-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-800"
+                  className="inline-flex items-center justify-center rounded-full bg-[linear-gradient(180deg,#2f69c7_0%,#2558ab_100%)] px-5 py-3 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(47,105,199,0.22)] transition hover:scale-[1.01]"
                 >
                   Contatta la struttura
                 </Link>
@@ -272,17 +287,28 @@ export default async function AdottaDetailPage({
           </div>
         </section>
 
-        <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <h2 className="text-xl font-bold text-zinc-900">Descrizione</h2>
-          <p className="mt-4 text-sm leading-relaxed text-zinc-700">
+        <section className="rounded-[2rem] border border-[#e3e9f0] bg-white p-6 shadow-[0_14px_40px_rgba(42,56,86,0.06)]">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#55657d]">
+            Profilo animale
+          </p>
+          <h2 className="mt-3 text-2xl font-semibold tracking-[-0.03em] text-[#30486f]">
+            Descrizione
+          </h2>
+          <p className="mt-4 text-sm leading-relaxed text-[#5f708a]">
             {animal.description?.trim() || "Descrizione non disponibile."}
           </p>
         </section>
 
-        <section className="rounded-3xl border border-zinc-200 bg-zinc-50 p-6 shadow-sm">
-          <h2 className="text-xl font-bold text-zinc-900">Come funziona l’adozione su UNIMALIA</h2>
+        <section className="rounded-[2rem] border border-[#e3e9f0] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-6 shadow-[0_14px_40px_rgba(42,56,86,0.06)]">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#55657d]">
+            Come funziona
+          </p>
 
-          <div className="mt-4 space-y-3 text-sm leading-relaxed text-zinc-700">
+          <h2 className="mt-3 text-2xl font-semibold tracking-[-0.03em] text-[#30486f]">
+            Come funziona l’adozione su UNIMALIA
+          </h2>
+
+          <div className="mt-4 space-y-3 text-sm leading-relaxed text-[#5f708a]">
             <p>
               Gli animali presenti in questa area vengono pubblicati dalle associazioni, non dai
               privati.
