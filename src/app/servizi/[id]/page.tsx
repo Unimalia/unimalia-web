@@ -60,7 +60,8 @@ function badgeInfo(pro: Professional) {
     if (pro.verification_status === "verified" && pro.public_visible) {
       return {
         label: "Struttura veterinaria verificata",
-        className: "bg-emerald-50 text-emerald-700",
+        className:
+          "border border-emerald-200 bg-emerald-50/90 text-emerald-700",
         title: "Scheda veterinaria verificata e visibile pubblicamente",
       };
     }
@@ -68,14 +69,14 @@ function badgeInfo(pro: Professional) {
     if (pro.verification_status === "rejected") {
       return {
         label: "Verifica rifiutata",
-        className: "bg-red-50 text-red-700",
+        className: "border border-red-200 bg-red-50/90 text-red-700",
         title: "La verifica della scheda è stata rifiutata",
       };
     }
 
     return {
       label: "Struttura veterinaria in verifica",
-      className: "bg-amber-50 text-amber-700",
+      className: "border border-amber-200 bg-amber-50/90 text-amber-700",
       title: "Scheda in verifica, non ancora pubblica",
     };
   }
@@ -84,7 +85,8 @@ function badgeInfo(pro: Professional) {
     if (pro.verification_status === "verified" && pro.public_visible) {
       return {
         label: "Attività verificata",
-        className: "bg-emerald-50 text-emerald-700",
+        className:
+          "border border-emerald-200 bg-emerald-50/90 text-emerald-700",
         title: "Scheda business verificata e visibile pubblicamente",
       };
     }
@@ -92,14 +94,14 @@ function badgeInfo(pro: Professional) {
     if (pro.verification_status === "rejected") {
       return {
         label: "Verifica rifiutata",
-        className: "bg-red-50 text-red-700",
+        className: "border border-red-200 bg-red-50/90 text-red-700",
         title: "La verifica della scheda è stata rifiutata",
       };
     }
 
     return {
       label: "Attività in verifica",
-      className: "bg-amber-50 text-amber-700",
+      className: "border border-amber-200 bg-amber-50/90 text-amber-700",
       title: "Scheda in verifica, non ancora pubblica",
     };
   }
@@ -107,7 +109,8 @@ function badgeInfo(pro: Professional) {
   if (pro.verification_status === "verified" && pro.public_visible) {
     return {
       label: "Profilo base verificato",
-      className: "bg-emerald-50 text-emerald-700",
+      className:
+        "border border-emerald-200 bg-emerald-50/90 text-emerald-700",
       title: "Profilo base verificato e visibile pubblicamente",
     };
   }
@@ -115,14 +118,14 @@ function badgeInfo(pro: Professional) {
   if (pro.verification_status === "rejected") {
     return {
       label: "Verifica rifiutata",
-      className: "bg-red-50 text-red-700",
+      className: "border border-red-200 bg-red-50/90 text-red-700",
       title: "La verifica della scheda è stata rifiutata",
     };
   }
 
   return {
     label: "Profilo base in verifica",
-    className: "bg-amber-50 text-amber-700",
+    className: "border border-amber-200 bg-amber-50/90 text-amber-700",
     title: "Scheda in verifica, non ancora pubblica",
   };
 }
@@ -317,31 +320,83 @@ export default function ServizioDettaglioPage() {
 
   if (loading) {
     return (
-      <main>
-        <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <p className="text-sm text-zinc-700">Caricamento…</p>
-        </div>
+      <main className="min-h-screen bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_38%,#f6f9fc_100%)]">
+        <section className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
+          <div className="overflow-hidden rounded-[28px] border border-[#e3e9f0] bg-white/92 p-6 shadow-[0_20px_60px_rgba(48,72,111,0.08)] backdrop-blur sm:p-8">
+            <div className="h-3 w-32 rounded-full bg-[#dfe7f0]" />
+            <div className="mt-6 h-10 w-2/3 rounded-2xl bg-[#eef3f8]" />
+            <div className="mt-4 h-4 w-1/2 rounded-full bg-[#eef3f8]" />
+            <div className="mt-8 grid gap-6 lg:grid-cols-3">
+              <div className="lg:col-span-2 space-y-6">
+                <div className="rounded-[24px] border border-[#e3e9f0] bg-white p-6 shadow-sm">
+                  <div className="h-5 w-32 rounded-full bg-[#eef3f8]" />
+                  <div className="mt-4 space-y-3">
+                    <div className="h-4 w-full rounded-full bg-[#f1f5f9]" />
+                    <div className="h-4 w-11/12 rounded-full bg-[#f1f5f9]" />
+                    <div className="h-4 w-4/5 rounded-full bg-[#f1f5f9]" />
+                  </div>
+                </div>
+                <div className="rounded-[24px] border border-[#e3e9f0] bg-white p-6 shadow-sm">
+                  <div className="h-5 w-28 rounded-full bg-[#eef3f8]" />
+                  <div className="mt-4 h-28 rounded-2xl bg-[#f6f9fc]" />
+                </div>
+              </div>
+              <div className="space-y-6">
+                <div className="rounded-[24px] border border-[#e3e9f0] bg-white p-6 shadow-sm">
+                  <div className="h-5 w-24 rounded-full bg-[#eef3f8]" />
+                  <div className="mt-4 h-4 w-3/4 rounded-full bg-[#f1f5f9]" />
+                </div>
+                <div className="rounded-[24px] border border-[#e3e9f0] bg-white p-6 shadow-sm">
+                  <div className="h-5 w-24 rounded-full bg-[#eef3f8]" />
+                  <div className="mt-4 space-y-3">
+                    <div className="h-4 w-full rounded-full bg-[#f1f5f9]" />
+                    <div className="h-4 w-5/6 rounded-full bg-[#f1f5f9]" />
+                    <div className="h-4 w-2/3 rounded-full bg-[#f1f5f9]" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
       </main>
     );
   }
 
   if (error || !pro) {
     return (
-      <main>
-        <button
-          type="button"
-          onClick={() => router.push(backHref)}
-          className="inline-flex w-fit items-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
-        >
-          ← Indietro
-        </button>
+      <main className="min-h-screen bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_42%,#f6f9fc_100%)]">
+        <section className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
+          <div className="overflow-hidden rounded-[28px] border border-[#e3e9f0] bg-white/94 p-6 shadow-[0_20px_60px_rgba(48,72,111,0.08)] backdrop-blur sm:p-8">
+            <button
+              type="button"
+              onClick={() => router.push(backHref)}
+              className="inline-flex w-fit items-center gap-2 rounded-full border border-[#d8e1eb] bg-white px-4 py-2 text-sm font-semibold text-[#30486f] transition hover:border-[#c9d5e2] hover:bg-[#f8fbff]"
+            >
+              ← Indietro
+            </button>
 
-        <div className="mt-6 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <p className="text-sm text-zinc-700">{error ?? "Scheda non disponibile."}</p>
-          <Link href={backHref} className="mt-3 inline-block text-sm font-medium hover:underline">
-            Torna indietro
-          </Link>
-        </div>
+            <div className="mt-6 rounded-[24px] border border-[#e3e9f0] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-6 shadow-sm sm:p-8">
+              <div className="inline-flex items-center rounded-full border border-[#dbe5ef] bg-[#f5f9fd] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#5f708a]">
+                Servizi UNIMALIA
+              </div>
+
+              <h1 className="mt-4 text-2xl font-semibold tracking-tight text-[#30486f] sm:text-3xl">
+                Scheda non disponibile
+              </h1>
+
+              <p className="mt-3 text-sm leading-7 text-[#55657d]">
+                {error ?? "Scheda non disponibile."}
+              </p>
+
+              <Link
+                href={backHref}
+                className="mt-6 inline-flex items-center rounded-full bg-[#30486f] px-5 py-3 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(48,72,111,0.18)] transition hover:bg-[#263b59]"
+              >
+                Torna indietro
+              </Link>
+            </div>
+          </div>
+        </section>
       </main>
     );
   }
@@ -349,141 +404,212 @@ export default function ServizioDettaglioPage() {
   const badge = badgeInfo(pro);
 
   return (
-    <main>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <button
-          type="button"
-          onClick={() => router.push(backHref)}
-          className="inline-flex w-fit items-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
-        >
-          ← Indietro
-        </button>
+    <main className="min-h-screen bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_36%,#f6f9fc_100%)]">
+      <section className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
+        <div className="overflow-hidden rounded-[32px] border border-[#e3e9f0] bg-white/94 p-6 shadow-[0_24px_70px_rgba(48,72,111,0.08)] backdrop-blur sm:p-8 lg:p-10">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <button
+              type="button"
+              onClick={() => router.push(backHref)}
+              className="inline-flex w-fit items-center gap-2 rounded-full border border-[#d8e1eb] bg-white px-4 py-2 text-sm font-semibold text-[#30486f] transition hover:border-[#c9d5e2] hover:bg-[#f8fbff]"
+            >
+              ← Indietro
+            </button>
 
-        <Link href="/servizi" className="text-sm font-medium text-zinc-600 hover:underline">
-          Servizi
-        </Link>
-      </div>
-
-      <div className="mt-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">{pro.display_name}</h1>
-            <p className="mt-2 text-zinc-700">
-              {macroLabel(pro.category)} • {pro.city} {pro.province ? `(${pro.province})` : ""}
-            </p>
+            <Link
+              href="/servizi"
+              className="text-sm font-semibold text-[#5f708a] underline-offset-4 transition hover:text-[#30486f] hover:underline"
+            >
+              Tutti i servizi
+            </Link>
           </div>
 
-          <span
-            className={["rounded-full px-3 py-1 text-xs font-semibold", badge.className].join(" ")}
-            title={badge.title}
-          >
-            {badge.label}
-          </span>
-        </div>
+          <div className="mt-8 rounded-[28px] border border-[#e3e9f0] bg-[radial-gradient(circle_at_top_left,rgba(227,233,240,0.45),transparent_42%),linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-6 sm:p-8">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="max-w-3xl">
+                <div className="inline-flex items-center rounded-full border border-[#dbe5ef] bg-white/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#5f708a]">
+                  Scheda servizio
+                </div>
 
-        {tagLabels.length > 0 && (
-          <div className="mt-4 flex flex-wrap gap-2">
-            {tagLabels.map((l) => (
+                <h1 className="mt-4 text-3xl font-semibold tracking-tight text-[#30486f] sm:text-4xl">
+                  {pro.display_name}
+                </h1>
+
+                <p className="mt-3 text-sm font-medium leading-7 text-[#55657d] sm:text-base">
+                  {macroLabel(pro.category)} • {pro.city}{" "}
+                  {pro.province ? `(${pro.province})` : ""}
+                </p>
+              </div>
+
               <span
-                key={l}
-                className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-semibold text-zinc-700"
+                className={[
+                  "inline-flex rounded-full px-4 py-2 text-xs font-semibold shadow-sm",
+                  badge.className,
+                ].join(" ")}
+                title={badge.title}
               >
-                {l}
+                {badge.label}
               </span>
-            ))}
-          </div>
-        )}
-      </div>
+            </div>
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-6">
-          <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-semibold">Descrizione</h2>
-            {pro.description ? (
-              <p className="mt-3 whitespace-pre-wrap text-sm text-zinc-700">{pro.description}</p>
-            ) : (
-              <p className="mt-3 text-sm text-zinc-500">Scheda in aggiornamento.</p>
-            )}
-          </div>
-
-          <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-semibold">Contatta</h2>
-
-            {isOwner ? (
-              <p className="mt-3 text-sm text-zinc-700">
-                Sei il proprietario della scheda. Le richieste contatto arriveranno nel tuo portale.
-              </p>
-            ) : (
-              <>
-                <p className="mt-3 text-sm text-zinc-700">
-                  Invia una richiesta. Il professionista la riceverà nel suo portale.
-                </p>
-
-                <label className="mt-4 block text-sm font-medium">Messaggio</label>
-                <textarea
-                  className="mt-2 w-full rounded-lg border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
-                  rows={5}
-                  placeholder="Es. Vorrei info su… disponibilità… prezzi…"
-                  value={msg}
-                  onChange={(e) => setMsg(e.target.value)}
-                />
-
-                <button
-                  type="button"
-                  onClick={sendRequest}
-                  disabled={sending}
-                  className="mt-3 inline-flex w-full items-center justify-center rounded-lg bg-black px-5 py-3 text-sm font-semibold text-white hover:bg-zinc-800 disabled:opacity-60"
-                >
-                  {sending ? "Invio..." : "Invia richiesta"}
-                </button>
-
-                {info && <p className="mt-3 text-sm text-zinc-700">{info}</p>}
-
-                <p className="mt-4 text-xs text-zinc-500">
-                  Anti-spam: limitazione invio messaggi per evitare abusi.
-                </p>
-              </>
-            )}
-          </div>
-        </div>
-
-        <div className="space-y-6">
-          <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-semibold">Indirizzo</h2>
-            <p className="mt-3 text-sm text-zinc-700">{pro.address ?? "Non disponibile"}</p>
-          </div>
-
-          <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-semibold">Contatti</h2>
-
-            <div className="mt-3 space-y-2 text-sm text-zinc-700">
-              <div>
-                <span className="font-medium">Telefono:</span>{" "}
-                {pro.phone ? pro.phone : "Non disponibile"}
-              </div>
-              <div>
-                <span className="font-medium">Email:</span>{" "}
-                {pro.email ? pro.email : "Non disponibile"}
-              </div>
-              <div>
-                <span className="font-medium">Sito:</span>{" "}
-                {pro.website ? (
-                  <a
-                    href={pro.website}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-zinc-900 underline underline-offset-2"
+            {tagLabels.length > 0 && (
+              <div className="mt-6 flex flex-wrap gap-2">
+                {tagLabels.map((l) => (
+                  <span
+                    key={l}
+                    className="rounded-full border border-[#dbe5ef] bg-white px-3 py-1.5 text-xs font-semibold text-[#55657d]"
                   >
-                    Apri sito
-                  </a>
+                    {l}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="mt-8 grid gap-6 lg:grid-cols-3">
+            <div className="lg:col-span-2 space-y-6">
+              <div className="rounded-[28px] border border-[#e3e9f0] bg-white p-6 shadow-[0_12px_30px_rgba(48,72,111,0.05)] sm:p-8">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-2xl bg-[linear-gradient(135deg,#30486f_0%,#5f708a_100%)] shadow-[0_10px_24px_rgba(48,72,111,0.22)]" />
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#5f708a]">
+                      Presentazione
+                    </p>
+                    <h2 className="text-lg font-semibold text-[#30486f]">Descrizione</h2>
+                  </div>
+                </div>
+
+                {pro.description ? (
+                  <p className="mt-5 whitespace-pre-wrap text-sm leading-7 text-[#55657d]">
+                    {pro.description}
+                  </p>
                 ) : (
-                  "Non disponibile"
+                  <p className="mt-5 text-sm leading-7 text-[#55657d]">
+                    Scheda in aggiornamento.
+                  </p>
                 )}
+              </div>
+
+              <div className="rounded-[28px] border border-[#e3e9f0] bg-white p-6 shadow-[0_12px_30px_rgba(48,72,111,0.05)] sm:p-8">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-2xl bg-[linear-gradient(135deg,#30486f_0%,#5f708a_100%)] shadow-[0_10px_24px_rgba(48,72,111,0.22)]" />
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#5f708a]">
+                      Richieste
+                    </p>
+                    <h2 className="text-lg font-semibold text-[#30486f]">Contatta</h2>
+                  </div>
+                </div>
+
+                {isOwner ? (
+                  <p className="mt-5 text-sm leading-7 text-[#55657d]">
+                    Sei il proprietario della scheda. Le richieste di contatto arriveranno nel tuo
+                    portale.
+                  </p>
+                ) : (
+                  <>
+                    <p className="mt-5 text-sm leading-7 text-[#55657d]">
+                      Invia una richiesta direttamente da qui. Il professionista la riceverà nel suo
+                      portale UNIMALIA.
+                    </p>
+
+                    <label className="mt-6 block text-sm font-semibold text-[#30486f]">
+                      Messaggio
+                    </label>
+
+                    <textarea
+                      className="mt-2 w-full rounded-[20px] border border-[#d7e0ea] bg-[#fcfdff] px-4 py-3 text-sm text-[#30486f] outline-none transition placeholder:text-[#7a8799] focus:border-[#5f708a] focus:bg-white focus:ring-4 focus:ring-[#30486f]/10"
+                      rows={5}
+                      placeholder="Es. Vorrei maggiori informazioni su disponibilità, costi o modalità del servizio."
+                      value={msg}
+                      onChange={(e) => setMsg(e.target.value)}
+                    />
+
+                    <button
+                      type="button"
+                      onClick={sendRequest}
+                      disabled={sending}
+                      className="mt-4 inline-flex w-full items-center justify-center rounded-full bg-[#30486f] px-5 py-3.5 text-sm font-semibold text-white shadow-[0_14px_34px_rgba(48,72,111,0.18)] transition hover:bg-[#263b59] disabled:opacity-60"
+                    >
+                      {sending ? "Invio..." : "Invia richiesta"}
+                    </button>
+
+                    {info && (
+                      <p className="mt-4 text-sm font-medium leading-7 text-[#55657d]">{info}</p>
+                    )}
+
+                    <div className="mt-5 rounded-[20px] border border-[#e3e9f0] bg-[#f8fbff] px-4 py-3">
+                      <p className="text-xs leading-6 text-[#5f708a]">
+                        Anti-spam attivo: l’invio dei messaggi è limitato per ridurre abusi e
+                        contatti automatici.
+                      </p>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <div className="rounded-[28px] border border-[#e3e9f0] bg-white p-6 shadow-[0_12px_30px_rgba(48,72,111,0.05)] sm:p-8">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#5f708a]">
+                  Dove si trova
+                </p>
+                <h2 className="mt-2 text-lg font-semibold text-[#30486f]">Indirizzo</h2>
+                <p className="mt-4 text-sm leading-7 text-[#55657d]">
+                  {pro.address ?? "Non disponibile"}
+                </p>
+              </div>
+
+              <div className="rounded-[28px] border border-[#e3e9f0] bg-white p-6 shadow-[0_12px_30px_rgba(48,72,111,0.05)] sm:p-8">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#5f708a]">
+                  Informazioni utili
+                </p>
+                <h2 className="mt-2 text-lg font-semibold text-[#30486f]">Contatti</h2>
+
+                <div className="mt-5 space-y-4 text-sm text-[#55657d]">
+                  <div className="rounded-[20px] border border-[#edf2f7] bg-[#fbfdff] px-4 py-3">
+                    <span className="block text-xs font-semibold uppercase tracking-[0.14em] text-[#5f708a]">
+                      Telefono
+                    </span>
+                    <span className="mt-1 block text-sm font-medium text-[#30486f]">
+                      {pro.phone ? pro.phone : "Non disponibile"}
+                    </span>
+                  </div>
+
+                  <div className="rounded-[20px] border border-[#edf2f7] bg-[#fbfdff] px-4 py-3">
+                    <span className="block text-xs font-semibold uppercase tracking-[0.14em] text-[#5f708a]">
+                      Email
+                    </span>
+                    <span className="mt-1 block text-sm font-medium text-[#30486f]">
+                      {pro.email ? pro.email : "Non disponibile"}
+                    </span>
+                  </div>
+
+                  <div className="rounded-[20px] border border-[#edf2f7] bg-[#fbfdff] px-4 py-3">
+                    <span className="block text-xs font-semibold uppercase tracking-[0.14em] text-[#5f708a]">
+                      Sito web
+                    </span>
+                    <span className="mt-1 block text-sm font-medium text-[#30486f]">
+                      {pro.website ? (
+                        <a
+                          href={pro.website}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="underline decoration-[#9fb0c4] underline-offset-4 transition hover:text-[#243750]"
+                        >
+                          Apri sito
+                        </a>
+                      ) : (
+                        "Non disponibile"
+                      )}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      </section>
     </main>
   );
 }
