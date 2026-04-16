@@ -403,7 +403,7 @@ export default function HomePage() {
                 </Link>
 
                 <div className="flex items-center gap-3">
-                  <HeaderButton href="/contatti">Contattaci</HeaderButton>
+                  <HeaderButton href="mailto:info@unimalia.it">Contattaci</HeaderButton>
                 </div>
               </div>
 
@@ -414,7 +414,7 @@ export default function HomePage() {
                 <NavLink href="/smarrimenti">Smarrimenti</NavLink>
                 <NavLink href="/trovati">Trovati / Avvistati</NavLink>
                 <NavLink href="/lieti-fine">Lieti Fine</NavLink>
-                <NavLink href="/adozioni">Adozioni</NavLink>
+                <NavLink href="/adotta">Adozioni</NavLink>
                 <NavLink href="/servizi">Servizi</NavLink>
                 <NavLink href="/identita">Identità animale</NavLink>
                 <NavLink href="/professionisti">Area professionisti</NavLink>
