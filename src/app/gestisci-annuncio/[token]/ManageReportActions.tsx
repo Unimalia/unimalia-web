@@ -114,10 +114,10 @@ export default function ManageReportActions({
   const isActive = status === "active";
 
   return (
-    <div className="grid gap-4">
-      <div className="rounded-2xl border border-zinc-200 bg-white p-5">
-        <h3 className="text-lg font-semibold text-zinc-900">Condivisione</h3>
-        <p className="mt-2 text-sm text-zinc-600">
+    <div className="grid gap-5">
+      <div className="rounded-[1.5rem] border border-[#e3e9f0] bg-white p-5 shadow-[0_8px_22px_rgba(42,56,86,0.03)]">
+        <h3 className="text-lg font-semibold text-[#30486f]">Condivisione</h3>
+        <p className="mt-2 text-sm leading-7 text-[#5f708a]">
           Copia il link o il testo pronto, poi incollalo su Facebook dove vuoi pubblicare il post.
         </p>
 
@@ -125,7 +125,7 @@ export default function ManageReportActions({
           <button
             type="button"
             onClick={() => copyText(publicUrl, "✅ Link annuncio copiato negli appunti.")}
-            className="inline-flex items-center justify-center rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
+            className="inline-flex items-center justify-center rounded-full border border-[#d7dfe9] bg-white px-4 py-2.5 text-sm font-semibold text-[#30486f] hover:bg-[#f8fbff]"
           >
             Copia link annuncio
           </button>
@@ -133,7 +133,7 @@ export default function ManageReportActions({
           <button
             type="button"
             onClick={() => copyText(textForFacebook, "✅ Testo per Facebook copiato negli appunti.")}
-            className="inline-flex items-center justify-center rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
+            className="inline-flex items-center justify-center rounded-full border border-[#d7dfe9] bg-white px-4 py-2.5 text-sm font-semibold text-[#30486f] hover:bg-[#f8fbff]"
           >
             Copia testo per Facebook
           </button>
@@ -142,7 +142,7 @@ export default function ManageReportActions({
             href={publicUrl}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center justify-center rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800"
+            className="inline-flex items-center justify-center rounded-full bg-[#30486f] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_14px_34px_rgba(48,72,111,0.18)] hover:bg-[#263b59]"
           >
             Apri annuncio pubblico
           </a>
@@ -150,10 +150,11 @@ export default function ManageReportActions({
       </div>
 
       {type === "lost" ? (
-        <div className="rounded-2xl border border-zinc-200 bg-white p-5">
-          <h3 className="text-lg font-semibold text-zinc-900">Stato annuncio</h3>
-          <p className="mt-2 text-sm text-zinc-600">
-            Da qui puoi chiudere l’annuncio se l’animale è stato ritrovato oppure se non deve più restare online.
+        <div className="rounded-[1.5rem] border border-[#e3e9f0] bg-white p-5 shadow-[0_8px_22px_rgba(42,56,86,0.03)]">
+          <h3 className="text-lg font-semibold text-[#30486f]">Stato annuncio</h3>
+          <p className="mt-2 text-sm leading-7 text-[#5f708a]">
+            Da qui puoi chiudere l’annuncio se l’animale è stato ritrovato oppure se non deve più
+            restare online.
           </p>
 
           <div className="mt-4 flex flex-wrap gap-2">
@@ -163,7 +164,7 @@ export default function ManageReportActions({
                   type="button"
                   onClick={markFound}
                   disabled={loadingFound || loadingCloseOther}
-                  className="inline-flex items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-60"
+                  className="inline-flex items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-60"
                 >
                   {loadingFound ? "Aggiornamento..." : "Segna come ritrovato"}
                 </button>
@@ -172,7 +173,7 @@ export default function ManageReportActions({
                   type="button"
                   onClick={closeOther}
                   disabled={loadingFound || loadingCloseOther}
-                  className="inline-flex items-center justify-center rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50 disabled:opacity-60"
+                  className="inline-flex items-center justify-center rounded-full border border-[#d7dfe9] bg-white px-4 py-2.5 text-sm font-semibold text-[#30486f] hover:bg-[#f8fbff] disabled:opacity-60"
                 >
                   {loadingCloseOther ? "Chiusura..." : "Chiudi annuncio"}
                 </button>
@@ -181,27 +182,27 @@ export default function ManageReportActions({
           </div>
 
           {!isActive ? (
-            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+            <div className="mt-4 rounded-[1.1rem] border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
               {isClosedFound
                 ? "Questo annuncio risulta già chiuso come ritrovato."
                 : isClosedOther
-                ? "Questo annuncio risulta già chiuso."
-                : isExpired
-                ? "Questo annuncio risulta scaduto."
-                : "Questo annuncio non è più attivo."}
+                  ? "Questo annuncio risulta già chiuso."
+                  : isExpired
+                    ? "Questo annuncio risulta scaduto."
+                    : "Questo annuncio non è più attivo."}
             </div>
           ) : null}
         </div>
       ) : null}
 
       {resultMsg ? (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">
+        <div className="rounded-[1.1rem] border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">
           {resultMsg}
         </div>
       ) : null}
 
       {errorMsg ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <div className="rounded-[1.1rem] border border-red-200 bg-red-50 p-4 text-sm text-red-700">
           {errorMsg}
         </div>
       ) : null}

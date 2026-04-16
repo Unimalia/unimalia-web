@@ -109,24 +109,26 @@ export default async function GestisciAnnuncioPage({ params }: PageProps) {
 
   if (error || !data) {
     return (
-      <main className="mx-auto w-full max-w-3xl px-4 py-10">
-        <div className="rounded-3xl border border-zinc-200 bg-white p-8 shadow-sm">
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900">
-            Link di gestione non valido
-          </h1>
-          <p className="mt-3 text-sm leading-6 text-zinc-600">
-            Questo link potrebbe essere scaduto, errato oppure non più disponibile.
-          </p>
+      <main className="min-h-screen bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_42%,#f6f9fc_100%)]">
+        <section className="mx-auto w-full max-w-4xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
+          <div className="rounded-[1.9rem] border border-[#e3e9f0] bg-white p-8 shadow-[0_12px_32px_rgba(42,56,86,0.06)]">
+            <h1 className="text-2xl font-semibold tracking-tight text-[#30486f]">
+              Link di gestione non valido
+            </h1>
+            <p className="mt-3 text-sm leading-7 text-[#5f708a]">
+              Questo link potrebbe essere scaduto, errato oppure non più disponibile.
+            </p>
 
-          <div className="mt-6">
-            <Link
-              href="/smarrimenti"
-              className="inline-flex items-center justify-center rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800"
-            >
-              Vai agli smarrimenti
-            </Link>
+            <div className="mt-6">
+              <Link
+                href="/smarrimenti"
+                className="inline-flex items-center justify-center rounded-full bg-[#30486f] px-5 py-3 text-sm font-semibold text-white shadow-[0_14px_34px_rgba(48,72,111,0.18)] hover:bg-[#263b59]"
+              >
+                Vai agli smarrimenti
+              </Link>
+            </div>
           </div>
-        </div>
+        </section>
       </main>
     );
   }
@@ -141,57 +143,66 @@ export default async function GestisciAnnuncioPage({ params }: PageProps) {
       : "/placeholder-animal.jpg";
 
   return (
-    <main className="mx-auto w-full max-w-4xl px-4 py-8">
-      <div className="rounded-3xl border border-zinc-200 bg-white shadow-sm">
-        <div className="relative h-72 w-full sm:h-96">
-          <Image
-            src={mainPhoto}
-            alt={safeCardTitle(report)}
-            fill
-            className="rounded-t-3xl object-cover"
-            unoptimized
-          />
-        </div>
-
-        <div className="p-6 sm:p-8">
-          <div className="mb-6">
-            <span className="inline-flex rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-semibold text-zinc-700">
-              Area privata proprietario
-            </span>
-            <h1 className="mt-3 text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl">
-              Gestisci il tuo annuncio
-            </h1>
-            <p className="mt-2 text-sm text-zinc-600">
-              Questa pagina è privata. Conservala: da qui puoi gestire l’annuncio senza registrarti.
-            </p>
-          </div>
-
-          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-            <h2 className="text-lg font-semibold text-zinc-900">{safeCardTitle(report)}</h2>
-            <p className="mt-2 text-sm text-zinc-700">
-              {[report.location_text, report.province, report.region].filter(Boolean).join(" • ") || "Località non disponibile"}
-            </p>
-            <p className="mt-1 text-sm text-zinc-500">Data evento: {safeDate(report.event_date)}</p>
-            <p className="mt-2 text-sm text-zinc-500">
-              Stato:{" "}
-              <span className="font-semibold text-zinc-800">
-                {report.status === "active" ? "attivo" : "chiuso / ritrovato"}
-              </span>
-            </p>
-          </div>
-
-          <div className="mt-6">
-            <ManageReportActions
-              token={report.claim_token}
-              type={report.type}
-              status={report.status}
-              publicUrl={publicUrl}
-              manageUrl={manageUrl}
-              textForFacebook={textForFacebook}
+    <main className="min-h-screen bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_42%,#f6f9fc_100%)]">
+      <section className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
+        <div className="overflow-hidden rounded-[2rem] border border-[#e3e9f0] bg-white shadow-[0_12px_32px_rgba(42,56,86,0.06)]">
+          <div className="relative h-72 w-full sm:h-96">
+            <Image
+              src={mainPhoto}
+              alt={safeCardTitle(report)}
+              fill
+              className="object-cover"
+              unoptimized
             />
           </div>
+
+          <div className="p-6 sm:p-8">
+            <div className="mb-6">
+              <span className="inline-flex rounded-full border border-[#dbe5ef] bg-[#f5f9fd] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#5f708a]">
+                Area privata proprietario
+              </span>
+
+              <h1 className="mt-4 text-2xl font-semibold tracking-tight text-[#30486f] sm:text-3xl">
+                Gestisci il tuo annuncio
+              </h1>
+
+              <p className="mt-2 text-sm leading-7 text-[#5f708a]">
+                Questa pagina è privata. Conservala: da qui puoi gestire l’annuncio senza
+                registrarti.
+              </p>
+            </div>
+
+            <div className="rounded-[1.5rem] border border-[#e3e9f0] bg-[#f8fbff] p-5">
+              <h2 className="text-lg font-semibold text-[#30486f]">{safeCardTitle(report)}</h2>
+
+              <p className="mt-2 text-sm text-[#5f708a]">
+                {[report.location_text, report.province, report.region].filter(Boolean).join(" • ") ||
+                  "Località non disponibile"}
+              </p>
+
+              <p className="mt-1 text-sm text-[#6f7d91]">Data evento: {safeDate(report.event_date)}</p>
+
+              <p className="mt-2 text-sm text-[#6f7d91]">
+                Stato:{" "}
+                <span className="font-semibold text-[#30486f]">
+                  {report.status === "active" ? "attivo" : "chiuso / ritrovato"}
+                </span>
+              </p>
+            </div>
+
+            <div className="mt-6">
+              <ManageReportActions
+                token={report.claim_token}
+                type={report.type}
+                status={report.status}
+                publicUrl={publicUrl}
+                manageUrl={manageUrl}
+                textForFacebook={textForFacebook}
+              />
+            </div>
+          </div>
         </div>
-      </div>
+      </section>
     </main>
   );
 }

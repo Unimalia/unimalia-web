@@ -28,15 +28,17 @@ export default async function MessaggiProtettiPage({ params }: PageProps) {
 
   if (error || !conversation) {
     return (
-      <main className="mx-auto w-full max-w-3xl px-4 py-10">
-        <div className="rounded-3xl border border-zinc-200 bg-white p-8 shadow-sm">
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900">
-            Conversazione non disponibile
-          </h1>
-          <p className="mt-3 text-sm leading-6 text-zinc-600">
-            Questo link potrebbe essere errato, scaduto oppure non più disponibile.
-          </p>
-        </div>
+      <main className="min-h-screen bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_42%,#f6f9fc_100%)]">
+        <section className="mx-auto w-full max-w-4xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
+          <div className="rounded-[1.9rem] border border-[#e3e9f0] bg-white p-8 shadow-[0_12px_32px_rgba(42,56,86,0.06)]">
+            <h1 className="text-2xl font-semibold tracking-tight text-[#30486f]">
+              Conversazione non disponibile
+            </h1>
+            <p className="mt-3 text-sm leading-7 text-[#5f708a]">
+              Questo link potrebbe essere errato, scaduto oppure non più disponibile.
+            </p>
+          </div>
+        </section>
       </main>
     );
   }
@@ -54,19 +56,21 @@ export default async function MessaggiProtettiPage({ params }: PageProps) {
   const viewerRole = conversation.owner_token === token ? "owner" : "requester";
 
   return (
-    <main className="mx-auto w-full max-w-4xl px-4 py-8">
-      <ProtectedConversationClient
-        token={token}
-        viewerRole={viewerRole}
-        reportTitle={report?.title || "Annuncio UNIMALIA"}
-        reportStatus={report?.status || "active"}
-        messages={(messages ?? []) as Array<{
-          id: string;
-          sender_role: "owner" | "requester";
-          message: string;
-          created_at: string;
-        }>}
-      />
+    <main className="min-h-screen bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_42%,#f6f9fc_100%)]">
+      <section className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
+        <ProtectedConversationClient
+          token={token}
+          viewerRole={viewerRole}
+          reportTitle={report?.title || "Annuncio UNIMALIA"}
+          reportStatus={report?.status || "active"}
+          messages={(messages ?? []) as Array<{
+            id: string;
+            sender_role: "owner" | "requester";
+            message: string;
+            created_at: string;
+          }>}
+        />
+      </section>
     </main>
   );
 }
