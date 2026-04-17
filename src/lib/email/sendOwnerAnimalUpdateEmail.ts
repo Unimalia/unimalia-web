@@ -167,6 +167,9 @@ function renderMetaRows(meta: Record<string, unknown> | null | undefined) {
     "created_by_member_id",
     "created_by_organization_name",
     "organization_name",
+    "active_operator_label",
+    "operator_session_id",
+    "signature_mode",
   ]);
 
   return Object.entries(meta)
@@ -287,11 +290,15 @@ export async function sendOwnerAnimalUpdateEmail(input: SendOwnerAnimalUpdateEma
   const formattedTherapyStartDate = formatDateValue(therapyStartDate);
   const formattedTherapyEndDate = formatDateValue(therapyEndDate);
 
-  const professionalLabel =
+  const clinicLabel =
     normalizeValue(meta?.created_by_organization_name) ||
     normalizeValue(meta?.organization_name) ||
-    normalizeValue(vetSignature) ||
     "Clinica veterinaria";
+
+  const professionalLabel =
+    normalizeValue(vetSignature) ||
+    normalizeValue(meta?.created_by_member_label) ||
+    clinicLabel;
 
   const detailsRows = [
     renderDetailRow("Animale", animal.name ?? "il tuo animale"),
@@ -332,7 +339,9 @@ export async function sendOwnerAnimalUpdateEmail(input: SendOwnerAnimalUpdateEma
   const html = `
     <div style="font-family: Arial, sans-serif; color: #222; line-height: 1.5; max-width: 720px; margin: 0 auto;">
       <p>
-        La clinica veterinaria ${labelForAction(action)} per
+        La clinica veterinaria <strong>${escapeHtml(clinicLabel)}</strong> ${escapeHtml(
+          labelForAction(action)
+        )} per
         <strong>${escapeHtml(animal.name ?? "il tuo animale")}</strong>.
       </p>
 

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import UsbScannerMode from "./UsbScannerMode";
 import { normalizeScanResult } from "@/lib/normalizeScanResult";
 import CameraScanner from "./CameraScanner";
@@ -149,10 +149,10 @@ function ModeButton({
       onClick={onClick}
       disabled={disabled}
       className={[
-        "w-full rounded-2xl border p-4 text-left transition",
+        "w-full rounded-[1.5rem] border p-4 text-left transition",
         active
-          ? "border-black bg-black text-white"
-          : "border-zinc-200 bg-white text-zinc-900 hover:border-zinc-300 hover:bg-zinc-50",
+          ? "border-[#30486f] bg-[#30486f] text-white shadow-[0_14px_34px_rgba(48,72,111,0.18)]"
+          : "border-[#d7dfe9] bg-white text-[#30486f] hover:border-[#cbd7e4] hover:bg-[#f8fbff]",
         disabled ? "opacity-60" : "",
       ].join(" ")}
     >
@@ -160,7 +160,7 @@ function ModeButton({
         <div className="text-xl">{icon}</div>
         <div>
           <div className="text-sm font-semibold">{title}</div>
-          <div className={active ? "mt-1 text-xs text-white/80" : "mt-1 text-xs text-zinc-500"}>
+          <div className={active ? "mt-1 text-xs text-white/80" : "mt-1 text-xs text-[#6f7d91]"}>
             {description}
           </div>
         </div>
@@ -404,7 +404,9 @@ export default function ScannerPage() {
         if (ex.kind === "animalId") {
           showBanner({ kind: "success", text: "Codice riconosciuto. Risolvo animale…" }, 1200);
 
-          const lookup = await resolveAnimalForProfessional(String(ex.animalId ?? normalized ?? raw ?? ""));
+          const lookup = await resolveAnimalForProfessional(
+            String(ex.animalId ?? normalized ?? raw ?? "")
+          );
 
           if (!lookup.ok) {
             showBanner(
@@ -496,222 +498,230 @@ export default function ScannerPage() {
   }, [directValue, handleScan]);
 
   return (
-    <div className="mx-auto max-w-3xl space-y-5">
-      <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <p className="text-xs font-semibold tracking-wide text-zinc-500">SCANSIONE</p>
-            <h1 className="mt-2 text-2xl font-semibold text-zinc-900">
-              Apri rapidamente una scheda animale
-            </h1>
-            <p className="mt-2 max-w-2xl text-sm text-zinc-600">
-              Usa la fotocamera del telefono, la webcam del computer oppure inserisci il codice
-              manualmente. Se hai già accesso, la scheda si apre subito. Se manca autorizzazione,
-              parte la richiesta al proprietario.
-            </p>
-          </div>
+    <main className="min-h-screen bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_40%,#f6f9fc_100%)]">
+      <section className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
+        <div className="space-y-5">
+          <div className="rounded-[2rem] border border-[#dde4ec] bg-white p-6 shadow-[0_24px_60px_rgba(42,56,86,0.08)]">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#6f7d91]">
+                  Scansione
+                </p>
+                <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-[#30486f]">
+                  Apri rapidamente una scheda animale
+                </h1>
+                <p className="mt-4 max-w-2xl text-sm leading-7 text-[#5f708a] sm:text-base">
+                  Usa la fotocamera del telefono, la webcam del computer oppure inserisci il codice
+                  manualmente. Se hai già accesso, la scheda si apre subito. Se manca autorizzazione,
+                  parte la richiesta al proprietario.
+                </p>
+              </div>
 
-          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-700">
-            <div className="font-medium text-zinc-900">Stato</div>
-            <div className="mt-1 flex items-center gap-2">
-              {busy ? (
-                <Spinner />
-              ) : (
-                <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
-              )}
-              <span>{statusLabel}</span>
+              <div className="rounded-[1.4rem] border border-[#e3e9f0] bg-[#f8fbff] px-4 py-3 text-sm text-[#5f708a]">
+                <div className="font-semibold text-[#30486f]">Stato</div>
+                <div className="mt-1 flex items-center gap-2">
+                  {busy ? (
+                    <Spinner />
+                  ) : (
+                    <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
+                  )}
+                  <span>{statusLabel}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-5 flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={openCameraMode}
+                disabled={busy}
+                className="inline-flex items-center justify-center rounded-full bg-[#30486f] px-5 py-3 text-sm font-semibold text-white shadow-[0_14px_34px_rgba(48,72,111,0.18)] transition hover:bg-[#263b59] disabled:opacity-60"
+              >
+                Avvia fotocamera / webcam
+              </button>
+
+              <button
+                type="button"
+                onClick={openCodeMode}
+                disabled={busy}
+                className="inline-flex items-center justify-center rounded-full border border-[#d7dfe9] bg-white px-5 py-3 text-sm font-semibold text-[#30486f] transition hover:bg-[#f8fbff] disabled:opacity-60"
+              >
+                Inserisci codice / usa lettore
+              </button>
             </div>
           </div>
-        </div>
 
-        <div className="mt-5 flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={openCameraMode}
-            disabled={busy}
-            className="inline-flex items-center justify-center rounded-2xl bg-black px-5 py-3 text-sm font-semibold text-white hover:bg-zinc-800 disabled:opacity-60"
-          >
-            Avvia fotocamera / webcam
-          </button>
-
-          <button
-            type="button"
-            onClick={openCodeMode}
-            disabled={busy}
-            className="inline-flex items-center justify-center rounded-2xl border border-zinc-200 bg-white px-5 py-3 text-sm font-semibold text-zinc-900 hover:bg-zinc-50 disabled:opacity-60"
-          >
-            Inserisci codice / usa lettore
-          </button>
-        </div>
-      </div>
-
-      {banner && (
-        <div
-          className={`rounded-2xl border p-4 shadow-sm ${
-            banner.kind === "error"
-              ? "border-red-200 bg-red-50"
-              : banner.kind === "success"
-                ? "border-emerald-200 bg-emerald-50"
-                : "border-zinc-200 bg-white"
-          }`}
-          role="status"
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div className="text-sm text-zinc-800">
-              <span className="font-semibold">
-                {banner.kind === "error"
-                  ? "Errore"
+          {banner && (
+            <div
+              className={`rounded-[1.4rem] border p-4 shadow-sm ${
+                banner.kind === "error"
+                  ? "border-red-200 bg-red-50"
                   : banner.kind === "success"
-                    ? "Operazione riuscita"
-                    : "Informazione"}
-                :
-              </span>{" "}
-              {banner.text}
-            </div>
-
-            <button
-              type="button"
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
-              onClick={() => setBanner(null)}
+                    ? "border-emerald-200 bg-emerald-50"
+                    : "border-[#e3e9f0] bg-white"
+              }`}
+              role="status"
             >
-              Chiudi
-            </button>
-          </div>
-        </div>
-      )}
+              <div className="flex items-start justify-between gap-3">
+                <div className="text-sm text-zinc-800">
+                  <span className="font-semibold">
+                    {banner.kind === "error"
+                      ? "Errore"
+                      : banner.kind === "success"
+                        ? "Operazione riuscita"
+                        : "Informazione"}
+                    :
+                  </span>{" "}
+                  {banner.text}
+                </div>
 
-      <div className="grid gap-3 md:grid-cols-2">
-        <ModeButton
-          active={mode === "camera"}
-          title="Fotocamera / webcam"
-          description="La modalità più rapida per QR UNIMALIA e codici visibili."
-          icon="📷"
-          onClick={openCameraMode}
-          disabled={busy}
-        />
-        <ModeButton
-          active={mode === "codice"}
-          title="Codice / lettore"
-          description="Incolla il codice o usa un lettore USB collegato."
-          icon="⌨️"
-          onClick={openCodeMode}
-          disabled={busy}
-        />
-      </div>
+                <button
+                  type="button"
+                  className="rounded-xl border border-[#d7dfe9] bg-white px-3 py-1 text-xs font-medium text-[#30486f] transition hover:bg-[#f8fbff]"
+                  onClick={() => setBanner(null)}
+                >
+                  Chiudi
+                </button>
+              </div>
+            </div>
+          )}
 
-      <div className="grid gap-3 md:grid-cols-3">
-        <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-          <div className="text-sm font-semibold text-zinc-900">1. Acquisisci codice</div>
-          <div className="mt-1 text-xs text-zinc-600">
-            QR UNIMALIA, microchip, UUID o codice compatibile.
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-          <div className="text-sm font-semibold text-zinc-900">2. Verifica accesso</div>
-          <div className="mt-1 text-xs text-zinc-600">
-            Se l’animale è già autorizzato, entri subito nella scheda.
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-          <div className="text-sm font-semibold text-zinc-900">3. Se manca accesso</div>
-          <div className="mt-1 text-xs text-zinc-600">
-            Parte la richiesta al proprietario e resti in attesa di conferma.
-          </div>
-        </div>
-      </div>
-
-      {mode === "camera" && (
-        <div
-          ref={cameraSectionRef}
-          className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm"
-        >
-          <div className="mb-4">
-            <h2 className="text-lg font-semibold text-zinc-900">Fotocamera / webcam</h2>
-            <p className="mt-1 text-sm text-zinc-600">
-              Punta la fotocamera del telefono o la webcam del computer verso il codice.
-            </p>
+          <div className="grid gap-3 md:grid-cols-2">
+            <ModeButton
+              active={mode === "camera"}
+              title="Fotocamera / webcam"
+              description="La modalità più rapida per QR UNIMALIA e codici visibili."
+              icon="📷"
+              onClick={openCameraMode}
+              disabled={busy}
+            />
+            <ModeButton
+              active={mode === "codice"}
+              title="Codice / lettore"
+              description="Incolla il codice o usa un lettore USB collegato."
+              icon="⌨️"
+              onClick={openCodeMode}
+              disabled={busy}
+            />
           </div>
 
-          <CameraScanner onScan={(value) => handleScan(value)} disabled={busy} />
-
-          <div className="mt-4 rounded-2xl bg-zinc-50 p-4 text-xs text-zinc-600">
-            Supporta QR UNIMALIA, link compatibili, UUID diretti e microchip da 15 cifre.
-          </div>
-        </div>
-      )}
-
-      {mode === "codice" && (
-        <div
-          ref={codeSectionRef}
-          className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm space-y-6"
-        >
-          <div>
-            <h2 className="text-lg font-semibold text-zinc-900">Codice / lettore</h2>
-            <p className="mt-1 text-sm text-zinc-600">
-              Usa questa area se vuoi incollare un codice manualmente oppure leggere il microchip
-              con un lettore USB.
-            </p>
-          </div>
-
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-zinc-900">Codice o link</label>
-              <input
-                className="mt-1 w-full rounded-2xl border border-zinc-300 px-4 py-3 outline-none focus:border-zinc-900"
-                placeholder="Es. UNIMALIA:XXXX, 380260101234567, link QR..."
-                value={manualValue}
-                onChange={(e) => setManualValue(e.target.value)}
-                disabled={busy}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    void handleScan(manualValue);
-                  }
-                }}
-              />
+          <div className="grid gap-3 md:grid-cols-3">
+            <div className="rounded-[1.4rem] border border-[#e3e9f0] bg-white p-4 shadow-sm">
+              <div className="text-sm font-semibold text-[#30486f]">1. Acquisisci codice</div>
+              <div className="mt-1 text-xs text-[#6f7d91]">
+                QR UNIMALIA, microchip, UUID o codice compatibile.
+              </div>
             </div>
 
-            <div className="flex flex-wrap gap-3">
-              <button
-                type="button"
-                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-black px-5 py-3 text-sm font-semibold text-white hover:bg-zinc-800 disabled:opacity-60"
-                disabled={busy || !manualValue.trim()}
-                onClick={() => void handleScan(manualValue)}
-              >
-                {busy ? <Spinner /> : null}
-                <span>Apri scheda animale</span>
-              </button>
+            <div className="rounded-[1.4rem] border border-[#e3e9f0] bg-white p-4 shadow-sm">
+              <div className="text-sm font-semibold text-[#30486f]">2. Verifica accesso</div>
+              <div className="mt-1 text-xs text-[#6f7d91]">
+                Se l’animale è già autorizzato, entri subito nella scheda.
+              </div>
+            </div>
 
-              <button
-                type="button"
-                className="inline-flex items-center justify-center rounded-2xl border border-zinc-200 bg-white px-5 py-3 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
-                disabled={busy}
-                onClick={() => setManualValue("")}
-              >
-                Pulisci
-              </button>
+            <div className="rounded-[1.4rem] border border-[#e3e9f0] bg-white p-4 shadow-sm">
+              <div className="text-sm font-semibold text-[#30486f]">3. Se manca accesso</div>
+              <div className="mt-1 text-xs text-[#6f7d91]">
+                Parte la richiesta al proprietario e resti in attesa di conferma.
+              </div>
             </div>
           </div>
 
-          <div className="border-t border-zinc-200 pt-5">
-            <h3 className="text-sm font-semibold text-zinc-900">Oppure usa il lettore USB</h3>
-            <p className="mt-1 text-sm text-zinc-600">
-              Se il lettore è collegato, acquisisci qui il codice senza cambiare pagina.
-            </p>
+          {mode === "camera" && (
+            <div
+              ref={cameraSectionRef}
+              className="rounded-[2rem] border border-[#dde4ec] bg-white p-6 shadow-[0_24px_60px_rgba(42,56,86,0.08)]"
+            >
+              <div className="mb-4">
+                <h2 className="text-lg font-semibold text-[#30486f]">Fotocamera / webcam</h2>
+                <p className="mt-1 text-sm text-[#5f708a]">
+                  Punta la fotocamera del telefono o la webcam del computer verso il codice.
+                </p>
+              </div>
 
-            <div className="mt-4">
-              <UsbScannerMode onScan={handleScan} disabled={busy} />
+              <CameraScanner onScan={(value) => handleScan(value)} disabled={busy} />
+
+              <div className="mt-4 rounded-[1.2rem] bg-[#f8fbff] p-4 text-xs text-[#6f7d91]">
+                Supporta QR UNIMALIA, link compatibili, UUID diretti e microchip da 15 cifre.
+              </div>
             </div>
-          </div>
+          )}
 
-          <div className="rounded-2xl bg-zinc-50 p-4 text-xs text-zinc-600">
-            Se il microchip non viene trovato, si apre la gestione manuale per creare o associare
-            l’animale.
-          </div>
+          {mode === "codice" && (
+            <div
+              ref={codeSectionRef}
+              className="rounded-[2rem] border border-[#dde4ec] bg-white p-6 shadow-[0_24px_60px_rgba(42,56,86,0.08)] space-y-6"
+            >
+              <div>
+                <h2 className="text-lg font-semibold text-[#30486f]">Codice / lettore</h2>
+                <p className="mt-1 text-sm text-[#5f708a]">
+                  Usa questa area se vuoi incollare un codice manualmente oppure leggere il microchip
+                  con un lettore USB.
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-[#30486f]">
+                    Codice o link
+                  </label>
+                  <input
+                    className="mt-1 w-full rounded-[1rem] border border-[#d7dfe9] bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-[#30486f]"
+                    placeholder="Es. UNIMALIA:XXXX, 380260101234567, link QR..."
+                    value={manualValue}
+                    onChange={(e) => setManualValue(e.target.value)}
+                    disabled={busy}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        void handleScan(manualValue);
+                      }
+                    }}
+                  />
+                </div>
+
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    className="inline-flex items-center justify-center gap-2 rounded-full bg-[#30486f] px-5 py-3 text-sm font-semibold text-white shadow-[0_14px_34px_rgba(48,72,111,0.18)] transition hover:bg-[#263b59] disabled:opacity-60"
+                    disabled={busy || !manualValue.trim()}
+                    onClick={() => void handleScan(manualValue)}
+                  >
+                    {busy ? <Spinner /> : null}
+                    <span>Apri scheda animale</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="inline-flex items-center justify-center rounded-full border border-[#d7dfe9] bg-white px-5 py-3 text-sm font-semibold text-[#30486f] transition hover:bg-[#f8fbff]"
+                    disabled={busy}
+                    onClick={() => setManualValue("")}
+                  >
+                    Pulisci
+                  </button>
+                </div>
+              </div>
+
+              <div className="border-t border-[#e3e9f0] pt-5">
+                <h3 className="text-sm font-semibold text-[#30486f]">Oppure usa il lettore USB</h3>
+                <p className="mt-1 text-sm text-[#5f708a]">
+                  Se il lettore è collegato, acquisisci qui il codice senza cambiare pagina.
+                </p>
+
+                <div className="mt-4">
+                  <UsbScannerMode onScan={handleScan} disabled={busy} />
+                </div>
+              </div>
+
+              <div className="rounded-[1.2rem] bg-[#f8fbff] p-4 text-xs text-[#6f7d91]">
+                Se il microchip non viene trovato, si apre la gestione manuale per creare o associare
+                l’animale.
+              </div>
+            </div>
+          )}
         </div>
-      )}
-    </div>
+      </section>
+    </main>
   );
 }

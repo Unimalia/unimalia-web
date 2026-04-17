@@ -102,201 +102,227 @@ export default function NuovoAnimaleProfessionistaPage() {
   }
 
   return (
-    <main className="max-w-3xl mx-auto p-4 space-y-6">
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">Nuovo animale da professionista</h1>
-        <button
-          type="button"
-          className="rounded-xl border px-3 py-2 text-sm"
-          onClick={() => router.push("/professionisti/scansiona/manuale")}
-        >
-          Torna indietro
-        </button>
-      </div>
+    <main className="min-h-screen bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_42%,#f6f9fc_100%)]">
+      <section className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
+        <div className="overflow-hidden rounded-[2rem] border border-[#dde4ec] bg-white shadow-[0_24px_60px_rgba(42,56,86,0.08)]">
+          <div className="border-b border-[#e3e9f0] bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_100%)] px-6 py-8 sm:px-8">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="max-w-2xl">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#6f7d91]">
+                  Nuova scheda professionista
+                </p>
 
-      <p className="text-sm text-zinc-700">
-        Prima verifichiamo se esiste già una scheda coerente. Se non troviamo nulla,
-        potrai creare una nuova scheda animale.
-      </p>
+                <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-[#30486f]">
+                  Cerca prima di creare
+                </h1>
 
-      <form onSubmit={handleSearch} className="rounded-2xl border bg-white p-5 space-y-4">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label className="block text-sm font-medium">Email proprietario</label>
-            <input
-              className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="es. proprietario@email.it"
-            />
-          </div>
+                <p className="mt-4 text-sm leading-7 text-[#5f708a] sm:text-base">
+                  Prima verifichiamo se esiste già una scheda coerente. Se non troviamo nulla,
+                  potrai creare una nuova scheda animale senza generare duplicati inutili.
+                </p>
+              </div>
 
-          <div>
-            <label className="block text-sm font-medium">Telefono proprietario</label>
-            <input
-              className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="es. +39 333 1234567"
-            />
-          </div>
-
-          <div className="sm:col-span-2">
-            <label className="block text-sm font-medium">Microchip (opzionale)</label>
-            <input
-              className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
-              value={microchip}
-              onChange={(e) => setMicrochip(digitsOnly(e.target.value))}
-              placeholder="15 cifre"
-              inputMode="numeric"
-            />
-
-            <div className="mt-3 flex flex-wrap gap-2">
               <button
                 type="button"
-                onClick={() =>
-                  router.push(
-                    "/professionisti/scansiona?returnTo=" +
-                      encodeURIComponent("/professionisti/scansiona/manuale/nuovo")
-                  )
-                }
-                className="rounded-xl border px-3 py-2 text-sm"
+                className="inline-flex items-center justify-center rounded-full border border-[#d7dfe9] bg-white px-5 py-3 text-sm font-semibold text-[#30486f] transition hover:bg-[#f8fbff]"
+                onClick={() => router.push("/professionisti/scansiona/manuale")}
               >
-                Scansiona microchip
+                ← Torna indietro
               </button>
+            </div>
+          </div>
 
-              {microchip ? (
-                <button
-                  type="button"
-                  onClick={() => setMicrochip("")}
-                  className="rounded-xl border px-3 py-2 text-sm"
-                >
-                  Pulisci microchip
-                </button>
+          <div className="px-6 py-6 sm:px-8 sm:py-8">
+            <form onSubmit={handleSearch} className="space-y-5">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="block text-sm font-semibold text-[#30486f]">
+                    Email proprietario
+                  </label>
+                  <input
+                    className="mt-1 w-full rounded-[1rem] border border-[#d7dfe9] bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-[#30486f]"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="es. proprietario@email.it"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-[#30486f]">
+                    Telefono proprietario
+                  </label>
+                  <input
+                    className="mt-1 w-full rounded-[1rem] border border-[#d7dfe9] bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-[#30486f]"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="es. +39 333 1234567"
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-sm font-semibold text-[#30486f]">
+                    Microchip (opzionale)
+                  </label>
+                  <input
+                    className="mt-1 w-full rounded-[1rem] border border-[#d7dfe9] bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-[#30486f]"
+                    value={microchip}
+                    onChange={(e) => setMicrochip(digitsOnly(e.target.value))}
+                    placeholder="15 cifre"
+                    inputMode="numeric"
+                  />
+
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        router.push(
+                          "/professionisti/scansiona?returnTo=" +
+                            encodeURIComponent("/professionisti/scansiona/manuale/nuovo")
+                        )
+                      }
+                      className="rounded-full border border-[#d7dfe9] bg-white px-4 py-2.5 text-sm font-semibold text-[#30486f] transition hover:bg-[#f8fbff]"
+                    >
+                      Scansiona microchip
+                    </button>
+
+                    {microchip ? (
+                      <button
+                        type="button"
+                        onClick={() => setMicrochip("")}
+                        className="rounded-full border border-[#d7dfe9] bg-white px-4 py-2.5 text-sm font-semibold text-[#30486f] transition hover:bg-[#f8fbff]"
+                      >
+                        Pulisci microchip
+                      </button>
+                    ) : null}
+                  </div>
+
+                  <p className="mt-2 text-xs leading-6 text-[#6f7d91]">
+                    Il microchip è facoltativo in questa fase. Se presente, viene usato come match forte.
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-[1.4rem] border border-[#e3e9f0] bg-[#f8fbff] p-4 text-sm leading-7 text-[#5f708a]">
+                Il sistema controlla prima se esiste già una scheda compatibile.
+                <br />- se trova una scheda coerente, puoi usarla subito
+                <br />- se non trova nulla, puoi creare una nuova scheda
+              </div>
+
+              {error ? (
+                <div className="rounded-[1.2rem] border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+                  {error}
+                </div>
               ) : null}
-            </div>
-
-            <p className="mt-2 text-xs text-zinc-500">
-              Il microchip è facoltativo in questa fase. Se presente, viene usato come match forte.
-            </p>
-          </div>
-        </div>
-
-        <div className="rounded-xl border bg-zinc-50 p-4 text-sm text-zinc-700">
-          Il sistema controlla prima se esiste già una scheda compatibile.
-          <br />- se trova una scheda coerente, puoi usarla subito
-          <br />- se non trova nulla, puoi creare una nuova scheda
-        </div>
-
-        {error ? (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-            {error}
-          </div>
-        ) : null}
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="inline-flex rounded-lg bg-black px-5 py-3 text-sm font-semibold text-white hover:bg-zinc-800 disabled:opacity-60"
-        >
-          {loading ? "Ricerca..." : "Cerca schede esistenti"}
-        </button>
-      </form>
-
-      {result ? (
-        <section className="rounded-2xl border bg-white p-5 space-y-4">
-          {result.found === false ? (
-            <div className="space-y-3">
-              <div className="rounded-xl border bg-zinc-50 p-4 text-sm text-zinc-700">
-                Nessuna scheda trovata. Puoi creare una nuova scheda animale.
-              </div>
 
               <button
-                type="button"
-                onClick={goToCreateNew}
-                className="rounded-lg bg-black px-5 py-3 text-sm font-semibold text-white hover:bg-zinc-800"
+                type="submit"
+                disabled={loading}
+                className="inline-flex items-center justify-center rounded-full bg-[#30486f] px-5 py-3 text-sm font-semibold text-white shadow-[0_14px_34px_rgba(48,72,111,0.18)] transition hover:bg-[#263b59] disabled:opacity-60"
               >
-                Crea nuova scheda
+                {loading ? "Ricerca..." : "Cerca schede esistenti"}
               </button>
-            </div>
-          ) : null}
+            </form>
 
-          {result.strong_match && result.animal ? (
-            <div className="space-y-3">
-              <div className="rounded-xl border bg-zinc-50 p-4 text-sm text-zinc-700">
-                <div className="font-medium text-zinc-900">Animale trovato tramite microchip</div>
-                <div className="mt-2">
-                  {result.animal.name ?? "Animale"} · {result.animal.species ?? "Specie non indicata"}
-                </div>
-                <div className="mt-1 text-xs text-zinc-500">
-                  Microchip: {result.animal.microchip ?? "—"}
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => goToAnimal(result.animal.id)}
-                  className="rounded-lg bg-black px-5 py-3 text-sm font-semibold text-white hover:bg-zinc-800"
-                >
-                  Apri scheda
-                </button>
-
-                <button
-                  type="button"
-                  onClick={goToCreateNew}
-                  className="rounded-lg border px-5 py-3 text-sm font-semibold"
-                >
-                  Crea nuova comunque
-                </button>
-              </div>
-            </div>
-          ) : null}
-
-          {Array.isArray(result.candidates) && result.candidates.length > 0 ? (
-            <div className="space-y-3">
-              <div className="rounded-xl border bg-zinc-50 p-4 text-sm text-zinc-700">
-                Abbiamo trovato una o più schede compatibili. Scegli quella corretta oppure crea
-                una nuova scheda.
-              </div>
-
-              <div className="space-y-3">
-                {result.candidates.map((animal: any) => (
-                  <div key={animal.id} className="rounded-xl border p-4">
-                    <div className="font-medium text-zinc-900">
-                      {animal.name ?? "Animale"} · {animal.species ?? "Specie non indicata"}
-                    </div>
-
-                    <div className="mt-1 text-sm text-zinc-600">
-                      Microchip: {animal.microchip ?? "—"}
-                    </div>
-
-                    <div className="mt-1 text-xs text-zinc-500">
-                      Stato owner: {animal.owner_claim_status ?? "none"}
+            {result ? (
+              <section className="mt-6 rounded-[1.6rem] border border-[#e3e9f0] bg-white p-5 shadow-sm">
+                {result.found === false ? (
+                  <div className="space-y-3">
+                    <div className="rounded-[1.2rem] border border-[#e3e9f0] bg-[#f8fbff] p-4 text-sm text-[#5f708a]">
+                      Nessuna scheda trovata. Puoi creare una nuova scheda animale.
                     </div>
 
                     <button
                       type="button"
-                      onClick={() => goToAnimal(animal.id)}
-                      className="mt-3 rounded-lg border px-4 py-2 text-sm font-semibold"
+                      onClick={goToCreateNew}
+                      className="rounded-full bg-[#30486f] px-5 py-3 text-sm font-semibold text-white shadow-[0_14px_34px_rgba(48,72,111,0.18)] transition hover:bg-[#263b59]"
                     >
-                      Usa questa scheda
+                      Crea nuova scheda
                     </button>
                   </div>
-                ))}
-              </div>
+                ) : null}
 
-              <button
-                type="button"
-                onClick={goToCreateNew}
-                className="rounded-lg bg-black px-5 py-3 text-sm font-semibold text-white hover:bg-zinc-800"
-              >
-                Crea nuova scheda
-              </button>
-            </div>
-          ) : null}
-        </section>
-      ) : null}
+                {result.strong_match && result.animal ? (
+                  <div className="space-y-3">
+                    <div className="rounded-[1.2rem] border border-[#e3e9f0] bg-[#f8fbff] p-4 text-sm text-[#5f708a]">
+                      <div className="font-semibold text-[#30486f]">Animale trovato tramite microchip</div>
+                      <div className="mt-2">
+                        {result.animal.name ?? "Animale"} · {result.animal.species ?? "Specie non indicata"}
+                      </div>
+                      <div className="mt-1 text-xs text-[#6f7d91]">
+                        Microchip: {result.animal.microchip ?? "—"}
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => goToAnimal(result.animal.id)}
+                        className="rounded-full bg-[#30486f] px-5 py-3 text-sm font-semibold text-white shadow-[0_14px_34px_rgba(48,72,111,0.18)] transition hover:bg-[#263b59]"
+                      >
+                        Apri scheda
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={goToCreateNew}
+                        className="rounded-full border border-[#d7dfe9] bg-white px-5 py-3 text-sm font-semibold text-[#30486f] transition hover:bg-[#f8fbff]"
+                      >
+                        Crea nuova comunque
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+
+                {Array.isArray(result.candidates) && result.candidates.length > 0 ? (
+                  <div className="space-y-3">
+                    <div className="rounded-[1.2rem] border border-[#e3e9f0] bg-[#f8fbff] p-4 text-sm text-[#5f708a]">
+                      Abbiamo trovato una o più schede compatibili. Scegli quella corretta oppure crea
+                      una nuova scheda.
+                    </div>
+
+                    <div className="space-y-3">
+                      {result.candidates.map((animal: any) => (
+                        <div
+                          key={animal.id}
+                          className="rounded-[1.2rem] border border-[#e3e9f0] bg-white p-4"
+                        >
+                          <div className="font-semibold text-[#30486f]">
+                            {animal.name ?? "Animale"} · {animal.species ?? "Specie non indicata"}
+                          </div>
+
+                          <div className="mt-1 text-sm text-[#5f708a]">
+                            Microchip: {animal.microchip ?? "—"}
+                          </div>
+
+                          <div className="mt-1 text-xs text-[#6f7d91]">
+                            Stato owner: {animal.owner_claim_status ?? "none"}
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => goToAnimal(animal.id)}
+                            className="mt-3 rounded-full border border-[#d7dfe9] bg-white px-4 py-2.5 text-sm font-semibold text-[#30486f] transition hover:bg-[#f8fbff]"
+                          >
+                            Usa questa scheda
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={goToCreateNew}
+                      className="rounded-full bg-[#30486f] px-5 py-3 text-sm font-semibold text-white shadow-[0_14px_34px_rgba(48,72,111,0.18)] transition hover:bg-[#263b59]"
+                    >
+                      Crea nuova scheda
+                    </button>
+                  </div>
+                ) : null}
+              </section>
+            ) : null}
+          </div>
+        </div>
+      </section>
     </main>
   );
 }

@@ -121,103 +121,128 @@ export default function AssociaAnimaleEsistentePage() {
 
   if (loading) {
     return (
-      <main className="max-w-3xl mx-auto p-4">
-        <div className="rounded-2xl border bg-white p-5 text-sm text-zinc-700">
-          Caricamento…
-        </div>
+      <main className="min-h-screen bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_42%,#f6f9fc_100%)]">
+        <section className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
+          <div className="rounded-[2rem] border border-[#dde4ec] bg-white p-6 shadow-[0_24px_60px_rgba(42,56,86,0.08)] text-sm text-[#5f708a]">
+            Caricamento…
+          </div>
+        </section>
       </main>
     );
   }
 
   return (
-    <main className="max-w-3xl mx-auto p-4 space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">Animale esistente con microchip</h1>
+    <main className="min-h-screen bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_42%,#f6f9fc_100%)]">
+      <section className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
+        <div className="overflow-hidden rounded-[2rem] border border-[#dde4ec] bg-white shadow-[0_24px_60px_rgba(42,56,86,0.08)]">
+          <div className="border-b border-[#e3e9f0] bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_100%)] px-6 py-8 sm:px-8">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="max-w-2xl">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#6f7d91]">
+                  Associazione animale esistente
+                </p>
 
-        <button
-          type="button"
-          className="rounded-xl border px-3 py-2 text-sm"
-          onClick={() => router.push("/professionisti/scansiona/manuale")}
-        >
-          ← Torna indietro
-        </button>
-      </div>
+                <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-[#30486f]">
+                  Animale esistente con microchip
+                </h1>
 
-      <div className="rounded-2xl border bg-white p-5">
-        <div className="text-sm text-zinc-500">Microchip</div>
-        <div className="mt-1 text-sm font-semibold text-zinc-900">
-          {chip || "—"}
-        </div>
-      </div>
+                <p className="mt-4 text-sm leading-7 text-[#5f708a] sm:text-base">
+                  Verifichiamo se il microchip è già collegato a una scheda esistente e se la tua
+                  struttura ha già accesso diretto.
+                </p>
+              </div>
 
-      {error ? (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 space-y-4">
-          <div className="text-sm font-semibold text-amber-900">{error}</div>
-
-          <div className="flex flex-wrap gap-2">
-            <Link
-              href={`/professionisti/scansiona/manuale/nuovo?chip=${encodeURIComponent(chip)}`}
-              className="rounded-xl bg-black px-4 py-2 text-sm font-semibold text-white"
-            >
-              Crea nuovo animale
-            </Link>
-
-            <Link
-              href="/professionisti/scansiona/manuale"
-              className="rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900"
-            >
-              Torna alla gestione manuale
-            </Link>
-          </div>
-        </div>
-      ) : null}
-
-      {!error && animal ? (
-        <div className="rounded-2xl border bg-white p-5 space-y-4">
-          <div>
-            <div className="text-sm text-zinc-500">Animale trovato</div>
-            <div className="mt-1 text-lg font-semibold text-zinc-900">
-              {animal.name || "Animale senza nome"}
-            </div>
-            <div className="mt-1 text-sm text-zinc-600">
-              {[animal.species, animal.unimalia_code].filter(Boolean).join(" • ") || "—"}
+              <button
+                type="button"
+                className="inline-flex items-center justify-center rounded-full border border-[#d7dfe9] bg-white px-5 py-3 text-sm font-semibold text-[#30486f] transition hover:bg-[#f8fbff]"
+                onClick={() => router.push("/professionisti/scansiona/manuale")}
+              >
+                ← Torna indietro
+              </button>
             </div>
           </div>
 
-          <div className="rounded-xl border bg-zinc-50 p-4 text-sm text-zinc-700">
-            {hasDirectAccess
-              ? "Hai già accesso a questo animale: puoi aprire direttamente la scheda."
-              : "L’animale esiste già, ma non hai accesso clinico attivo. Puoi avviare la richiesta di accesso."}
-          </div>
+          <div className="px-6 py-6 sm:px-8 sm:py-8 space-y-4">
+            <div className="rounded-[1.4rem] border border-[#e3e9f0] bg-white p-5 shadow-sm">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6f7d91]">
+                Microchip
+              </div>
+              <div className="mt-2 text-sm font-semibold text-[#30486f]">
+                {chip || "—"}
+              </div>
+            </div>
 
-          <div className="flex flex-wrap gap-2">
-            {hasDirectAccess ? (
-              <Link
-                href={`/professionisti/animali/${encodeURIComponent(animal.id)}`}
-                className="rounded-xl bg-black px-4 py-2 text-sm font-semibold text-white"
-              >
-                Apri scheda animale
-              </Link>
-            ) : (
-              <Link
-                href={`/professionisti/richieste-accesso?animalId=${encodeURIComponent(
-                  animal.id
-                )}&auto=1&chip=${encodeURIComponent(chip)}`}
-                className="rounded-xl bg-black px-4 py-2 text-sm font-semibold text-white"
-              >
-                Richiedi accesso a questo animale
-              </Link>
-            )}
+            {error ? (
+              <div className="rounded-[1.4rem] border border-amber-200 bg-amber-50 p-5 space-y-4">
+                <div className="text-sm font-semibold text-amber-900">{error}</div>
 
-            <Link
-              href="/professionisti/scansiona/manuale"
-              className="rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900"
-            >
-              Torna alla gestione manuale
-            </Link>
+                <div className="flex flex-wrap gap-2">
+                  <Link
+                    href={`/professionisti/scansiona/manuale/nuovo?chip=${encodeURIComponent(chip)}`}
+                    className="rounded-full bg-[#30486f] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_14px_34px_rgba(48,72,111,0.18)] transition hover:bg-[#263b59]"
+                  >
+                    Crea nuovo animale
+                  </Link>
+
+                  <Link
+                    href="/professionisti/scansiona/manuale"
+                    className="rounded-full border border-[#d7dfe9] bg-white px-4 py-2.5 text-sm font-semibold text-[#30486f] transition hover:bg-[#f8fbff]"
+                  >
+                    Torna alla gestione manuale
+                  </Link>
+                </div>
+              </div>
+            ) : null}
+
+            {!error && animal ? (
+              <div className="rounded-[1.4rem] border border-[#e3e9f0] bg-white p-5 space-y-4 shadow-sm">
+                <div>
+                  <div className="text-sm text-[#6f7d91]">Animale trovato</div>
+                  <div className="mt-1 text-lg font-semibold text-[#30486f]">
+                    {animal.name || "Animale senza nome"}
+                  </div>
+                  <div className="mt-1 text-sm text-[#5f708a]">
+                    {[animal.species, animal.unimalia_code].filter(Boolean).join(" • ") || "—"}
+                  </div>
+                </div>
+
+                <div className="rounded-[1.2rem] border border-[#e3e9f0] bg-[#f8fbff] p-4 text-sm text-[#5f708a]">
+                  {hasDirectAccess
+                    ? "Hai già accesso a questo animale: puoi aprire direttamente la scheda."
+                    : "L’animale esiste già, ma non hai accesso clinico attivo. Puoi avviare la richiesta di accesso."}
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {hasDirectAccess ? (
+                    <Link
+                      href={`/professionisti/animali/${encodeURIComponent(animal.id)}`}
+                      className="rounded-full bg-[#30486f] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_14px_34px_rgba(48,72,111,0.18)] transition hover:bg-[#263b59]"
+                    >
+                      Apri scheda animale
+                    </Link>
+                  ) : (
+                    <Link
+                      href={`/professionisti/richieste-accesso?animalId=${encodeURIComponent(
+                        animal.id
+                      )}&auto=1&chip=${encodeURIComponent(chip)}`}
+                      className="rounded-full bg-[#30486f] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_14px_34px_rgba(48,72,111,0.18)] transition hover:bg-[#263b59]"
+                    >
+                      Richiedi accesso a questo animale
+                    </Link>
+                  )}
+
+                  <Link
+                    href="/professionisti/scansiona/manuale"
+                    className="rounded-full border border-[#d7dfe9] bg-white px-4 py-2.5 text-sm font-semibold text-[#30486f] transition hover:bg-[#f8fbff]"
+                  >
+                    Torna alla gestione manuale
+                  </Link>
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
-      ) : null}
+      </section>
     </main>
   );
 }
