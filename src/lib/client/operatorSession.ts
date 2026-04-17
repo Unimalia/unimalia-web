@@ -46,11 +46,13 @@ type CurrentResponse = {
 };
 
 async function jsonFetch<T>(input: RequestInfo | URL, init?: RequestInit) {
+  const auth = await authHeaders();
+
   const res = await fetch(input, {
     ...init,
     headers: {
+      ...auth,
       ...(init?.headers || {}),
-      ...(await authHeaders()),
     },
   });
 
