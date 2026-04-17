@@ -8,13 +8,14 @@ import {
   getWorkstationKeyFromRequest,
   isValidOperatorPin,
   resolveOrganizationOperator,
+  upsertOperatorPin,
   upsertOperatorSession,
   verifyOperatorPin,
 } from "@/lib/clinic/operatorSession";
 
 type Body = {
-  pin?: string;
-  clinicOperatorId?: string;
+  currentPin?: string;
+  newPin?: string;
 };
 
 function unauthorized(message = "Non autorizzato") {
@@ -53,19 +54,27 @@ export async function POST(req: Request) {
   }
 
   const body = (await req.json().catch(() => null)) as Body | null;
-  const pin = String(body?.pin || "").trim();
-  const clinicOperatorId = String(body?.clinicOperatorId || "").trim();
+  const currentPin = String(body?.currentPin || "").trim();
+  const newPin = String(body?.newPin || "").trim();
 
-  if (!isValidOperatorPin(pin)) {
-    return badRequest("PIN non valido: usa 4-8 cifre numeriche.");
+  if (!isValidOperatorPin(currentPin)) {
+    return badRequest("PIN attuale non valido: usa 4-8 cifre numeriche.");
   }
 
-  if (!clinicOperatorId || !isUuid(clinicOperatorId)) {
-    return badRequest("clinicOperatorId non valido");
+  if (!isValidOperatorPin(newPin)) {
+    return badRequest("Nuovo PIN non valido: usa 4-8 cifre numeriche.");
+  }
+
+  if (currentPin === newPin) {
+    return badRequest("Il nuovo PIN deve essere diverso da quello temporaneo.");
   }
 
   const supabase = createClient(supabaseUrl, supabaseAnon, {
-    global: { headers: { Authorization: `Bearer ${token}` } },
+    global: {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
   });
 
   const { data: userData, error: userErr } = await supabase.auth.getUser(token);
@@ -84,11 +93,11 @@ export async function POST(req: Request) {
   try {
     const operator = await resolveOrganizationOperator({
       organizationId,
-      clinicOperatorId,
+      userId: user.id,
     });
 
     if (!operator) {
-      return forbidden("Operatore non disponibile per questa organizzazione.");
+      return forbidden("Operatore clinico non configurato per questo utente.");
     }
 
     if (!operator.isActive) {
@@ -97,28 +106,25 @@ export async function POST(req: Request) {
 
     const pinRow = await getOperatorPinRow({
       organizationId,
-      clinicOperatorId,
+      clinicOperatorId: operator.clinicOperatorId,
     });
 
     if (!pinRow?.id || !pinRow.is_active || !pinRow.pin_hash) {
       return forbidden("PIN operatore non configurato.");
     }
 
-    const isPinValid = verifyOperatorPin(pin, pinRow.pin_hash);
+    const isCurrentPinValid = verifyOperatorPin(currentPin, pinRow.pin_hash);
 
-    if (!isPinValid) {
-      return forbidden("PIN non corretto.");
+    if (!isCurrentPinValid) {
+      return forbidden("PIN attuale non corretto.");
     }
 
-    if (pinRow.must_change_pin) {
-      return NextResponse.json({
-        ok: true,
-        requiresPinChange: true,
-        clinicOperatorId: operator.clinicOperatorId,
-        workstationKey,
-        operatorLabel: operator.label,
-      });
-    }
+    await upsertOperatorPin({
+      organizationId,
+      clinicOperatorId: operator.clinicOperatorId,
+      pin: newPin,
+      mustChangePin: false,
+    });
 
     const session = await upsertOperatorSession({
       organizationId,
@@ -154,10 +160,10 @@ export async function POST(req: Request) {
       },
     });
   } catch (error) {
-    console.error("[operator-session/activate] fatal error", {
+    console.error("[operator-session/change-pin-first-access] fatal error", {
       organizationId,
       workstationKey,
-      clinicOperatorId,
+      userId: user.id,
       error,
     });
 
@@ -166,7 +172,7 @@ export async function POST(req: Request) {
         error:
           error instanceof Error
             ? error.message
-            : "Errore attivazione sessione operatore.",
+            : "Errore durante il cambio PIN del primo accesso.",
       },
       { status: 500 }
     );

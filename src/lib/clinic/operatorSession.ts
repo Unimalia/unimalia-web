@@ -47,6 +47,7 @@ type OperatorPinRow = {
   clinic_operator_id: string;
   pin_hash: string;
   is_active: boolean;
+  must_change_pin: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -420,7 +421,9 @@ export async function getOperatorPinRow(params: {
 
   const result = await admin
     .from("clinic_operator_pins_v2")
-    .select("id, organization_id, clinic_operator_id, pin_hash, is_active, created_at, updated_at")
+    .select(
+      "id, organization_id, clinic_operator_id, pin_hash, is_active, must_change_pin, created_at, updated_at"
+    )
     .eq("organization_id", params.organizationId)
     .eq("clinic_operator_id", params.clinicOperatorId)
     .maybeSingle<OperatorPinRow>();
@@ -444,6 +447,7 @@ export async function upsertOperatorPin(params: {
   organizationId: string;
   clinicOperatorId: string;
   pin: string;
+  mustChangePin?: boolean;
 }) {
   const admin = supabaseAdmin();
   const pinHash = hashOperatorPin(params.pin);
@@ -456,10 +460,13 @@ export async function upsertOperatorPin(params: {
         clinic_operator_id: params.clinicOperatorId,
         pin_hash: pinHash,
         is_active: true,
+        must_change_pin: params.mustChangePin ?? false,
       },
       { onConflict: "organization_id,clinic_operator_id" }
     )
-    .select("id, organization_id, clinic_operator_id, pin_hash, is_active, created_at, updated_at")
+    .select(
+      "id, organization_id, clinic_operator_id, pin_hash, is_active, must_change_pin, created_at, updated_at"
+    )
     .single<OperatorPinRow>();
 
   if (result.error || !result.data) {

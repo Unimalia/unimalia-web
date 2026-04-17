@@ -35,6 +35,23 @@ export type OperatorSession = {
   signatureMode: string | null;
 };
 
+export type OperatorActivationRequiresPinChange = {
+  ok: true;
+  requiresPinChange: true;
+  clinicOperatorId: string;
+  workstationKey: string;
+  operatorLabel: string;
+};
+
+export type OperatorActivationSuccess = {
+  ok: true;
+  session: OperatorSession;
+};
+
+export type OperatorActivationResponse =
+  | OperatorActivationRequiresPinChange
+  | OperatorActivationSuccess;
+
 type CurrentResponse = {
   ok: true;
   workstationKey: string;
@@ -80,10 +97,7 @@ export async function activateOperatorSession(params: {
   clinicOperatorId: string;
   pin: string;
 }) {
-  return await jsonFetch<{
-    ok: true;
-    session: OperatorSession;
-  }>("/api/clinic/operator-session/activate", {
+  return await jsonFetch<OperatorActivationResponse>("/api/clinic/operator-session/activate", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -101,10 +115,7 @@ export async function switchOperatorSession(params: {
   clinicOperatorId: string;
   pin: string;
 }) {
-  return await jsonFetch<{
-    ok: true;
-    session: OperatorSession;
-  }>("/api/clinic/operator-session/switch", {
+  return await jsonFetch<OperatorActivationResponse>("/api/clinic/operator-session/switch", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -149,5 +160,26 @@ export async function setMyOperatorPin(clinicOperatorId: string, pin: string) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ clinicOperatorId, pin }),
+  });
+}
+
+export async function changePinFirstAccess(params: {
+  workstationKey: string;
+  currentPin: string;
+  newPin: string;
+}) {
+  return await jsonFetch<{
+    ok: true;
+    session: OperatorSession;
+  }>("/api/clinic/operator-session/change-pin-first-access", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-workstation-key": params.workstationKey,
+    },
+    body: JSON.stringify({
+      currentPin: params.currentPin,
+      newPin: params.newPin,
+    }),
   });
 }

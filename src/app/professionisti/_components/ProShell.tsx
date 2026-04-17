@@ -336,49 +336,66 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
   }
 
   async function handleActivateOrSwitchOperator() {
-    if (!workstationKey) {
-      setOperatorError("Postazione non disponibile.");
-      return;
-    }
+  if (!workstationKey) {
+    setOperatorError("Postazione non disponibile.");
+    return;
+  }
 
-    if (!selectedOperatorId) {
-      setOperatorError("Seleziona un operatore.");
-      return;
-    }
+  if (!selectedOperatorId) {
+    setOperatorError("Seleziona un operatore.");
+    return;
+  }
 
-    if (!operatorPin.trim()) {
-      setOperatorError("Inserisci il PIN operatore.");
-      return;
-    }
+  if (!operatorPin.trim()) {
+    setOperatorError("Inserisci il PIN operatore.");
+    return;
+  }
 
-    setOperatorLoading(true);
-    setOperatorError(null);
-    setOperatorInfo(null);
+  setOperatorLoading(true);
+  setOperatorError(null);
+  setOperatorInfo(null);
 
-    try {
-      const response = operatorSession?.id
-        ? await switchOperatorSession({
-            workstationKey,
-            clinicOperatorId: selectedOperatorId,
-            pin: operatorPin,
-          })
-        : await activateOperatorSession({
-            workstationKey,
-            clinicOperatorId: selectedOperatorId,
-            pin: operatorPin,
-          });
+  try {
+    const response = operatorSession?.id
+      ? await switchOperatorSession({
+          workstationKey,
+          clinicOperatorId: selectedOperatorId,
+          pin: operatorPin,
+        })
+      : await activateOperatorSession({
+          workstationKey,
+          clinicOperatorId: selectedOperatorId,
+          pin: operatorPin,
+        });
 
+    if ("session" in response && response.session) {
       setOperatorSession(response.session);
       setOperatorPin("");
       setOperatorModalOpen(false);
-      setOperatorInfo("Operatore attivo aggiornato ✅");
+      setOperatorInfo(`Operatore attivo aggiornato ✅ ${response.session.activeOperatorLabel}`);
       await refreshOperatorState();
-    } catch (error) {
-      setOperatorError(error instanceof Error ? error.message : "Errore attivazione operatore.");
-    } finally {
-      setOperatorLoading(false);
+      return;
     }
+
+    if ("requiresPinChange" in response && response.requiresPinChange) {
+      setOperatorPin("");
+      setOperatorModalOpen(false);
+      setOperatorInfo(
+        `PIN temporaneo verificato per ${response.operatorLabel}. Vai in Impostazioni e imposta il PIN personale.`
+      );
+      await refreshOperatorState();
+      return;
+    }
+
+    setOperatorError("Risposta sessione operatore non valida.");
+  } catch (error) {
+    setOperatorError(
+      error instanceof Error ? error.message : "Errore attivazione operatore."
+    );
+  } finally {
+    setOperatorLoading(false);
   }
+}
 
   async function handleOperatorLogout() {
     if (!workstationKey) return;

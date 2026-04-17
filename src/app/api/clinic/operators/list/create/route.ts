@@ -187,20 +187,8 @@ export async function POST(req: Request) {
       organizationId,
       clinicOperatorId: operator.id,
       pin: initialPin!,
+      mustChangePin: true,
     });
-
-    const admin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
-
-    await admin
-      .from("clinic_operator_pins_v2")
-      .update({
-        must_change_pin: true,
-      })
-      .eq("organization_id", organizationId)
-      .eq("clinic_operator_id", operator.id);
 
     return NextResponse.json({
       ok: true,

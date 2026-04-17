@@ -12,6 +12,7 @@ import {
 } from "@/lib/client/clinicOperators";
 import {
   activateOperatorSession,
+  changePinFirstAccess,
   getOperatorSessionCurrent,
   heartbeatOperatorSession,
   logoutOperatorSession,
@@ -160,6 +161,7 @@ export default function ProfessionistiImpostazioniPage() {
 
   const [loadingOperatorSession, setLoadingOperatorSession] = useState(false);
   const [savingOperatorSession, setSavingOperatorSession] = useState(false);
+  const [savingFirstAccessPinChange, setSavingFirstAccessPinChange] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
@@ -193,6 +195,12 @@ export default function ProfessionistiImpostazioniPage() {
   const [selectedSessionOperatorId, setSelectedSessionOperatorId] = useState("");
   const [sessionPin, setSessionPin] = useState("");
 
+  const [firstAccessPinChangeRequired, setFirstAccessPinChangeRequired] = useState(false);
+  const [firstAccessOperatorLabel, setFirstAccessOperatorLabel] = useState("");
+  const [firstAccessCurrentPin, setFirstAccessCurrentPin] = useState("");
+  const [firstAccessNewPin, setFirstAccessNewPin] = useState("");
+  const [firstAccessConfirmPin, setFirstAccessConfirmPin] = useState("");
+
   const [opFirstName, setOpFirstName] = useState("");
   const [opLastName, setOpLastName] = useState("");
   const [opDisplayName, setOpDisplayName] = useState("");
@@ -213,7 +221,9 @@ export default function ProfessionistiImpostazioniPage() {
     [professionalType]
   );
 
-  const canManageOperators = Boolean(actorOperator?.isMedicalDirector || actorOperator?.canManageOperators);
+  const canManageOperators = Boolean(
+    actorOperator?.isMedicalDirector || actorOperator?.canManageOperators
+  );
 
   async function loadOperators() {
     setLoadingOperators(true);
@@ -230,7 +240,8 @@ export default function ProfessionistiImpostazioniPage() {
   }
 
   async function refreshOperatorSession(workstationKeyValue?: string) {
-    const resolvedWorkstationKey = workstationKeyValue || workstationKey || getOrCreateWorkstationKey();
+    const resolvedWorkstationKey =
+      workstationKeyValue || workstationKey || getOrCreateWorkstationKey();
 
     if (!resolvedWorkstationKey) {
       return;
@@ -248,7 +259,9 @@ export default function ProfessionistiImpostazioniPage() {
       } else if (result.currentUserClinicOperatorId) {
         setSelectedSessionOperatorId(result.currentUserClinicOperatorId);
       } else if (result.availableOperators?.length) {
-        setSelectedSessionOperatorId((prev) => prev || result.availableOperators[0].clinicOperatorId);
+        setSelectedSessionOperatorId(
+          (prev) => prev || result.availableOperators[0].clinicOperatorId
+        );
       }
     } catch {
       setCurrentOperatorSession(null);
@@ -699,42 +712,51 @@ export default function ProfessionistiImpostazioniPage() {
   }
 
   async function handleActivateOrSwitchOperatorSession() {
-    setError(null);
-    setInfo(null);
+  setError(null);
+  setInfo(null);
 
-    if (!workstationKey) {
-      setError("Workstation non disponibile.");
-      return;
-    }
+  if (!workstationKey) {
+    setError("Workstation non disponibile.");
+    return;
+  }
 
-    if (!selectedSessionOperatorId) {
-      setError("Seleziona un operatore.");
-      return;
-    }
+  if (!selectedSessionOperatorId) {
+    setError("Seleziona un operatore.");
+    return;
+  }
 
-    if (!/^\d{4,8}$/.test(sessionPin.trim())) {
-      setError("Inserisci un PIN valido di 4-8 cifre.");
-      return;
-    }
+  if (!/^\d{4,8}$/.test(sessionPin.trim())) {
+    setError("Inserisci un PIN valido di 4-8 cifre.");
+    return;
+  }
 
-    setSavingOperatorSession(true);
+  setSavingOperatorSession(true);
 
-    try {
-      const isSwitch =
-        Boolean(currentOperatorSession?.activeClinicOperatorId) &&
-        currentOperatorSession?.activeClinicOperatorId !== selectedSessionOperatorId;
+  try {
+    const activeClinicOperatorId = currentOperatorSession?.activeClinicOperatorId ?? null;
 
-      const result = isSwitch
-        ? await switchOperatorSession({
-            workstationKey,
-            clinicOperatorId: selectedSessionOperatorId,
-            pin: sessionPin.trim(),
-          })
-        : await activateOperatorSession({
-            workstationKey,
-            clinicOperatorId: selectedSessionOperatorId,
-            pin: sessionPin.trim(),
-          });
+    const isSwitch =
+      Boolean(activeClinicOperatorId) &&
+      activeClinicOperatorId !== selectedSessionOperatorId;
+
+    const result = isSwitch
+      ? await switchOperatorSession({
+          workstationKey,
+          clinicOperatorId: selectedSessionOperatorId,
+          pin: sessionPin.trim(),
+        })
+      : await activateOperatorSession({
+          workstationKey,
+          clinicOperatorId: selectedSessionOperatorId,
+          pin: sessionPin.trim(),
+        });
+
+    if ("session" in result && result.session) {
+      setFirstAccessPinChangeRequired(false);
+      setFirstAccessOperatorLabel("");
+      setFirstAccessCurrentPin("");
+      setFirstAccessNewPin("");
+      setFirstAccessConfirmPin("");
 
       setCurrentOperatorSession(result.session);
       setSessionPin("");
@@ -743,10 +765,86 @@ export default function ProfessionistiImpostazioniPage() {
           ? `Operatore attivo aggiornato ✅ ${result.session.activeOperatorLabel}`
           : `Sessione operatore attivata ✅ ${result.session.activeOperatorLabel}`
       );
+      return;
+    }
+
+    if ("requiresPinChange" in result && result.requiresPinChange) {
+      setCurrentOperatorSession(null);
+      setFirstAccessPinChangeRequired(true);
+      setFirstAccessOperatorLabel(result.operatorLabel || "");
+      setFirstAccessCurrentPin(sessionPin.trim());
+      setFirstAccessNewPin("");
+      setFirstAccessConfirmPin("");
+      setSessionPin("");
+      setInfo(
+        `PIN temporaneo verificato per ${result.operatorLabel}. Imposta ora il PIN personale.`
+      );
+      return;
+    }
+
+    setError("Risposta sessione operatore non valida.");
+  } catch (err) {
+    setError(err instanceof Error ? err.message : "Errore sessione operatore.");
+  } finally {
+    setSavingOperatorSession(false);
+  }
+}
+
+  async function handleChangeFirstAccessPin() {
+    setError(null);
+    setInfo(null);
+
+    if (!workstationKey) {
+      setError("Workstation non disponibile.");
+      return;
+    }
+
+    if (!firstAccessPinChangeRequired) {
+      setError("Nessun cambio PIN obbligatorio in corso.");
+      return;
+    }
+
+    if (!/^\d{4,8}$/.test(firstAccessCurrentPin.trim())) {
+      setError("PIN attuale non valido: usa 4-8 cifre.");
+      return;
+    }
+
+    if (!/^\d{4,8}$/.test(firstAccessNewPin.trim())) {
+      setError("Nuovo PIN non valido: usa 4-8 cifre.");
+      return;
+    }
+
+    if (firstAccessNewPin.trim() !== firstAccessConfirmPin.trim()) {
+      setError("Conferma PIN non corrispondente.");
+      return;
+    }
+
+    if (firstAccessCurrentPin.trim() === firstAccessNewPin.trim()) {
+      setError("Il nuovo PIN deve essere diverso da quello temporaneo.");
+      return;
+    }
+
+    setSavingFirstAccessPinChange(true);
+
+    try {
+      const result = await changePinFirstAccess({
+        workstationKey,
+        currentPin: firstAccessCurrentPin.trim(),
+        newPin: firstAccessNewPin.trim(),
+      });
+
+      setCurrentOperatorSession(result.session);
+      setFirstAccessPinChangeRequired(false);
+      setFirstAccessOperatorLabel("");
+      setFirstAccessCurrentPin("");
+      setFirstAccessNewPin("");
+      setFirstAccessConfirmPin("");
+      setSessionPin("");
+      setInfo(`PIN personale impostato ✅ ${result.session.activeOperatorLabel}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Errore sessione operatore.");
+      setError(err instanceof Error ? err.message : "Errore cambio PIN primo accesso.");
     } finally {
-      setSavingOperatorSession(false);
+      setSavingFirstAccessPinChange(false);
     }
   }
 
@@ -765,6 +863,11 @@ export default function ProfessionistiImpostazioniPage() {
       await logoutOperatorSession(workstationKey);
       setCurrentOperatorSession(null);
       setSessionPin("");
+      setFirstAccessPinChangeRequired(false);
+      setFirstAccessOperatorLabel("");
+      setFirstAccessCurrentPin("");
+      setFirstAccessNewPin("");
+      setFirstAccessConfirmPin("");
       setInfo("Sessione operatore chiusa ✅");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore chiusura sessione.");
@@ -786,7 +889,8 @@ export default function ProfessionistiImpostazioniPage() {
       <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
         <h1 className="text-2xl font-semibold text-zinc-900">Impostazioni</h1>
         <p className="mt-2 text-sm text-zinc-600">
-          Gestisci profilo professionista, preferenze operative, notifiche, sicurezza e operatori della clinica.
+          Gestisci profilo professionista, preferenze operative, notifiche, sicurezza e operatori
+          della clinica.
         </p>
       </div>
 
@@ -809,7 +913,9 @@ export default function ProfessionistiImpostazioniPage() {
             <p className="text-xs font-semibold tracking-wide text-zinc-500">REV / VETINFO</p>
             <h2 className="mt-2 text-lg font-semibold text-zinc-900">Collegamento personale REV</h2>
             <p className="mt-2 text-sm leading-6 text-zinc-600">
-              Questa sezione prepara il nuovo flusso prescrittivo personale del veterinario. Il collegamento reale SPID/CAS verrà completato appena saranno definiti gli ultimi dati operativi.
+              Questa sezione prepara il nuovo flusso prescrittivo personale del veterinario. Il
+              collegamento reale SPID/CAS verrà completato appena saranno definiti gli ultimi dati
+              operativi.
             </p>
 
             <div className="mt-4 grid gap-4 md:grid-cols-3">
@@ -865,7 +971,8 @@ export default function ProfessionistiImpostazioniPage() {
           <p className="text-xs font-semibold tracking-wide text-zinc-500">OPERATORI CLINICA</p>
           <h2 className="mt-2 text-lg font-semibold text-zinc-900">Gestione operatori</h2>
           <p className="mt-2 text-sm text-zinc-600">
-            La clinica è verificata da UNIMALIA. La validazione e gestione dei sublogin è responsabilità del direttore sanitario o dei gestori autorizzati.
+            La clinica è verificata da UNIMALIA. La validazione e gestione dei sublogin è
+            responsabilità del direttore sanitario o dei gestori autorizzati.
           </p>
 
           <div className="mt-4 grid gap-4 md:grid-cols-3">
@@ -874,9 +981,7 @@ export default function ProfessionistiImpostazioniPage() {
               <p className="mt-2 text-sm font-semibold text-zinc-900">
                 {actorOperator?.label || "Non disponibile"}
               </p>
-              <p className="mt-1 text-xs text-zinc-600">
-                {actorOperator?.role || "—"}
-              </p>
+              <p className="mt-1 text-xs text-zinc-600">{actorOperator?.role || "—"}</p>
             </div>
 
             <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
@@ -1091,13 +1196,12 @@ export default function ProfessionistiImpostazioniPage() {
                     maxLength={8}
                     className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
                     value={opInitialPin}
-                    onChange={(e) =>
-                      setOpInitialPin(e.target.value.replace(/\D/g, ""))
-                    }
+                    onChange={(e) => setOpInitialPin(e.target.value.replace(/\D/g, ""))}
                     placeholder="4-8 cifre"
                   />
                   <p className="mt-1 text-xs text-zinc-500">
-                    Il direttore sanitario assegna il PIN iniziale. Al primo accesso l’operatore dovrà cambiarlo.
+                    Il direttore sanitario assegna il PIN iniziale. Al primo accesso l’operatore
+                    dovrà cambiarlo.
                   </p>
                 </div>
 
@@ -1197,6 +1301,7 @@ export default function ProfessionistiImpostazioniPage() {
                     value={sessionPin}
                     onChange={(e) => setSessionPin(e.target.value.replace(/\D/g, ""))}
                     placeholder="4-8 cifre"
+                    disabled={firstAccessPinChangeRequired}
                   />
                 </div>
               </div>
@@ -1205,7 +1310,11 @@ export default function ProfessionistiImpostazioniPage() {
                 <button
                   type="button"
                   onClick={handleActivateOrSwitchOperatorSession}
-                  disabled={savingOperatorSession || loadingOperatorSession}
+                  disabled={
+                    savingOperatorSession ||
+                    loadingOperatorSession ||
+                    firstAccessPinChangeRequired
+                  }
                   className="inline-flex items-center justify-center rounded-xl bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800 disabled:opacity-60"
                 >
                   {savingOperatorSession
@@ -1217,7 +1326,7 @@ export default function ProfessionistiImpostazioniPage() {
                 <button
                   type="button"
                   onClick={handleCloseOperatorSession}
-                  disabled={savingOperatorSession || !currentOperatorSession}
+                  disabled={savingOperatorSession || (!currentOperatorSession && !firstAccessPinChangeRequired)}
                   className="inline-flex items-center justify-center rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 disabled:opacity-60"
                 >
                   Chiudi sessione
@@ -1225,12 +1334,100 @@ export default function ProfessionistiImpostazioniPage() {
                 <button
                   type="button"
                   onClick={() => void refreshOperatorSession()}
-                  disabled={loadingOperatorSession || savingOperatorSession}
+                  disabled={loadingOperatorSession || savingOperatorSession || savingFirstAccessPinChange}
                   className="inline-flex items-center justify-center rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 disabled:opacity-60"
                 >
                   Aggiorna stato
                 </button>
               </div>
+
+              {firstAccessPinChangeRequired ? (
+                <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                  <div className="text-sm font-semibold text-amber-900">
+                    Primo accesso: cambio PIN obbligatorio
+                  </div>
+                  <p className="mt-1 text-sm text-amber-900">
+                    {firstAccessOperatorLabel
+                      ? `L’operatore ${firstAccessOperatorLabel} sta usando un PIN temporaneo assegnato dal direttore sanitario.`
+                      : "Stai usando un PIN temporaneo assegnato dal direttore sanitario."}{" "}
+                    Imposta ora il PIN personale per continuare.
+                  </p>
+
+                  <div className="mt-4 grid gap-3 md:grid-cols-3">
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-900">PIN attuale</label>
+                      <input
+                        type="password"
+                        inputMode="numeric"
+                        maxLength={8}
+                        className="mt-1 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 outline-none focus:border-zinc-900"
+                        value={firstAccessCurrentPin}
+                        onChange={(e) =>
+                          setFirstAccessCurrentPin(e.target.value.replace(/\D/g, ""))
+                        }
+                        placeholder="PIN temporaneo"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-900">Nuovo PIN</label>
+                      <input
+                        type="password"
+                        inputMode="numeric"
+                        maxLength={8}
+                        className="mt-1 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 outline-none focus:border-zinc-900"
+                        value={firstAccessNewPin}
+                        onChange={(e) => setFirstAccessNewPin(e.target.value.replace(/\D/g, ""))}
+                        placeholder="4-8 cifre"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-900">
+                        Conferma nuovo PIN
+                      </label>
+                      <input
+                        type="password"
+                        inputMode="numeric"
+                        maxLength={8}
+                        className="mt-1 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 outline-none focus:border-zinc-900"
+                        value={firstAccessConfirmPin}
+                        onChange={(e) =>
+                          setFirstAccessConfirmPin(e.target.value.replace(/\D/g, ""))
+                        }
+                        placeholder="Ripeti PIN"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap gap-3">
+                    <button
+                      type="button"
+                      onClick={handleChangeFirstAccessPin}
+                      disabled={savingFirstAccessPinChange}
+                      className="inline-flex items-center justify-center rounded-xl bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800 disabled:opacity-60"
+                    >
+                      {savingFirstAccessPinChange ? "Salvataggio..." : "Imposta PIN personale"}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFirstAccessPinChangeRequired(false);
+                        setFirstAccessOperatorLabel("");
+                        setFirstAccessCurrentPin("");
+                        setFirstAccessNewPin("");
+                        setFirstAccessConfirmPin("");
+                        setSessionPin("");
+                      }}
+                      disabled={savingFirstAccessPinChange}
+                      className="inline-flex items-center justify-center rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 disabled:opacity-60"
+                    >
+                      Annulla
+                    </button>
+                  </div>
+                </div>
+              ) : null}
             </div>
           </div>
         </section>
@@ -1244,7 +1441,9 @@ export default function ProfessionistiImpostazioniPage() {
 
           <div className="mt-4 grid gap-4">
             <div>
-              <label className="block text-sm font-medium text-zinc-900">Nome struttura / professionista</label>
+              <label className="block text-sm font-medium text-zinc-900">
+                Nome struttura / professionista
+              </label>
               <input
                 className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
                 value={displayName}
@@ -1360,12 +1559,15 @@ export default function ProfessionistiImpostazioniPage() {
           <p className="text-xs font-semibold tracking-wide text-zinc-500">PREFERENZE</p>
           <h2 className="mt-2 text-lg font-semibold text-zinc-900">Preferenze</h2>
           <p className="mt-2 text-sm text-zinc-600">
-            Configurazioni del portale e personalizzazioni operative. Salvataggio locale su questo dispositivo.
+            Configurazioni del portale e personalizzazioni operative. Salvataggio locale su questo
+            dispositivo.
           </p>
 
           <div className="mt-4 space-y-4">
             <div>
-              <label className="block text-sm font-medium text-zinc-900">Vista iniziale dashboard</label>
+              <label className="block text-sm font-medium text-zinc-900">
+                Vista iniziale dashboard
+              </label>
               <select
                 className="mt-1 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 outline-none focus:border-zinc-900"
                 value={prefs.defaultView}
@@ -1415,7 +1617,9 @@ export default function ProfessionistiImpostazioniPage() {
                 }
               />
               <div>
-                <p className="text-sm font-medium text-zinc-900">Preferenze operative struttura</p>
+                <p className="text-sm font-medium text-zinc-900">
+                  Preferenze operative struttura
+                </p>
                 <p className="text-xs text-zinc-500">
                   Mantiene attive le opzioni operative locali del portale.
                 </p>
@@ -1428,7 +1632,8 @@ export default function ProfessionistiImpostazioniPage() {
           <p className="text-xs font-semibold tracking-wide text-zinc-500">NOTIFICHE</p>
           <h2 className="mt-2 text-lg font-semibold text-zinc-900">Notifiche</h2>
           <p className="mt-2 text-sm text-zinc-600">
-            Gestione avvisi per richieste accesso, consulti e aggiornamenti clinici. Salvataggio locale su questo dispositivo.
+            Gestione avvisi per richieste accesso, consulti e aggiornamenti clinici. Salvataggio
+            locale su questo dispositivo.
           </p>
 
           <div className="mt-4 space-y-3">
@@ -1446,7 +1651,9 @@ export default function ProfessionistiImpostazioniPage() {
               />
               <div>
                 <p className="text-sm font-medium text-zinc-900">Richieste accesso</p>
-                <p className="text-xs text-zinc-500">Avvisi per nuove richieste o cambi di stato.</p>
+                <p className="text-xs text-zinc-500">
+                  Avvisi per nuove richieste o cambi di stato.
+                </p>
               </div>
             </label>
 
@@ -1464,7 +1671,9 @@ export default function ProfessionistiImpostazioniPage() {
               />
               <div>
                 <p className="text-sm font-medium text-zinc-900">Consulti e messaggi</p>
-                <p className="text-xs text-zinc-500">Avvisi per consulti in arrivo e messaggi dal portale.</p>
+                <p className="text-xs text-zinc-500">
+                  Avvisi per consulti in arrivo e messaggi dal portale.
+                </p>
               </div>
             </label>
 
@@ -1481,8 +1690,12 @@ export default function ProfessionistiImpostazioniPage() {
                 }
               />
               <div>
-                <p className="text-sm font-medium text-zinc-900">Aggiornamenti clinici e alert</p>
-                <p className="text-xs text-zinc-500">Avvisi per attività cliniche rilevanti e aggiornamenti rapidi.</p>
+                <p className="text-sm font-medium text-zinc-900">
+                  Aggiornamenti clinici e alert
+                </p>
+                <p className="text-xs text-zinc-500">
+                  Avvisi per attività cliniche rilevanti e aggiornamenti rapidi.
+                </p>
               </div>
             </label>
 
@@ -1508,7 +1721,10 @@ export default function ProfessionistiImpostazioniPage() {
             <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
               <p className="text-sm font-medium text-zinc-900">Sessione attiva</p>
               <p className="mt-1 text-sm text-zinc-600">
-                Account: <span className="font-medium text-zinc-800">{userEmail || "Non disponibile"}</span>
+                Account:{" "}
+                <span className="font-medium text-zinc-800">
+                  {userEmail || "Non disponibile"}
+                </span>
               </p>
               <p className="mt-1 text-xs text-zinc-500">
                 Vista iniziale preferita: {currentDefaultViewLabel}
@@ -1542,7 +1758,9 @@ export default function ProfessionistiImpostazioniPage() {
 
             <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
               <p className="text-sm font-medium text-zinc-900">Logout e controllo accessi</p>
-              <p className="mt-1 text-sm text-zinc-600">Esci in sicurezza dal portale professionisti.</p>
+              <p className="mt-1 text-sm text-zinc-600">
+                Esci in sicurezza dal portale professionisti.
+              </p>
 
               <button
                 type="button"
