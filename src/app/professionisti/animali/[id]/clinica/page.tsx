@@ -386,13 +386,38 @@ function getEventAuthorLabel(ev: ClinicEventRow) {
 }
 
 const FIELD_LABEL_CLASS =
-  "mb-1.5 block text-xs font-semibold uppercase tracking-wide text-zinc-700";
+  "mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6f7d91]";
 const FIELD_CLASS =
-  "mt-1 w-full rounded-xl border border-zinc-300 bg-zinc-50 px-3 py-2.5 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-zinc-400 focus:bg-white focus:ring-2 focus:ring-emerald-500/20";
+  "mt-1 w-full rounded-[1rem] border border-[#d7dfe9] bg-white px-3 py-2.5 text-sm text-[#30486f] shadow-sm outline-none transition focus:border-[#30486f] focus:ring-4 focus:ring-[#30486f]/10";
 const TEXTAREA_CLASS =
-  "mt-1 min-h-[120px] w-full rounded-xl border border-zinc-300 bg-zinc-50 px-3 py-3 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-zinc-400 focus:bg-white focus:ring-2 focus:ring-emerald-500/20";
+  "mt-1 min-h-[120px] w-full rounded-[1rem] border border-[#d7dfe9] bg-white px-3 py-3 text-sm text-[#30486f] shadow-sm outline-none transition focus:border-[#30486f] focus:ring-4 focus:ring-[#30486f]/10";
 const FILE_INPUT_CLASS =
-  "block w-full rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 px-3.5 py-3 text-sm text-zinc-700 file:mr-3 file:rounded-xl file:border-0 file:bg-black file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:border-zinc-400 focus-within:border-zinc-500 focus-within:ring-4 focus-within:ring-zinc-200";
+  "block w-full rounded-[1rem] border border-dashed border-[#cfd8e3] bg-[#fbfdff] px-3.5 py-3 text-sm text-[#5f708a] file:mr-3 file:rounded-xl file:border-0 file:bg-[#30486f] file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:border-[#bfcadb] focus-within:border-[#30486f] focus-within:ring-4 focus-within:ring-[#30486f]/10";
+
+function SectionCard({
+  title,
+  subtitle,
+  children,
+  right,
+}: {
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+  right?: React.ReactNode;
+}) {
+  return (
+    <section className="rounded-[1.75rem] border border-[#e3e9f0] bg-white p-5 shadow-[0_10px_28px_rgba(42,56,86,0.05)] md:p-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h2 className="text-lg font-semibold tracking-[-0.02em] text-[#30486f]">{title}</h2>
+          {subtitle ? <p className="mt-1 text-sm leading-7 text-[#5f708a]">{subtitle}</p> : null}
+        </div>
+        {right ? <div className="shrink-0">{right}</div> : null}
+      </div>
+      <div className="mt-5">{children}</div>
+    </section>
+  );
+}
 
 export default function ClinicaPage() {
   const params = useParams<{ id: string }>();
@@ -1541,28 +1566,28 @@ export default function ClinicaPage() {
     return (
       <div className="space-y-6">
         <div className="text-sm">
-          <span className="font-semibold text-zinc-500">Verifica accesso clinica…</span>
+          <span className="font-semibold text-[#6f7d91]">Verifica accesso clinica…</span>
         </div>
 
-        <section className="overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm">
-          <div className="border-b border-zinc-200 bg-gradient-to-r from-zinc-50 to-white px-5 py-5 md:px-6">
-            <div className="h-5 w-44 rounded bg-zinc-200/70" />
-            <div className="mt-3 h-8 w-72 rounded bg-zinc-200/60" />
-            <div className="mt-2 h-4 w-full max-w-3xl rounded bg-zinc-200/50" />
+        <section className="overflow-hidden rounded-[2rem] border border-[#dde4ec] bg-white shadow-[0_18px_45px_rgba(42,56,86,0.07)]">
+          <div className="border-b border-[#e3e9f0] bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_100%)] px-5 py-5 md:px-6">
+            <div className="h-5 w-44 rounded bg-[#dfe7f0]" />
+            <div className="mt-3 h-8 w-72 rounded bg-[#e9eff6]" />
+            <div className="mt-2 h-4 w-full max-w-3xl rounded bg-[#eef3f8]" />
           </div>
 
           <div className="grid gap-4 px-5 py-5 md:grid-cols-3 md:px-6">
-            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-              <div className="h-3 w-20 rounded bg-zinc-200/70" />
-              <div className="mt-2 h-4 w-28 rounded bg-zinc-200/60" />
+            <div className="rounded-[1.4rem] border border-[#e3e9f0] bg-[#f8fbff] p-4">
+              <div className="h-3 w-20 rounded bg-[#dfe7f0]" />
+              <div className="mt-2 h-4 w-28 rounded bg-[#eef3f8]" />
             </div>
-            <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-              <div className="h-3 w-28 rounded bg-zinc-200/70" />
-              <div className="mt-2 h-4 w-36 rounded bg-zinc-200/60" />
+            <div className="rounded-[1.4rem] border border-[#e3e9f0] bg-white p-4">
+              <div className="h-3 w-28 rounded bg-[#dfe7f0]" />
+              <div className="mt-2 h-4 w-36 rounded bg-[#eef3f8]" />
             </div>
-            <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-              <div className="h-3 w-24 rounded bg-zinc-200/70" />
-              <div className="mt-2 h-4 w-40 rounded bg-zinc-200/60" />
+            <div className="rounded-[1.4rem] border border-[#e3e9f0] bg-white p-4">
+              <div className="h-3 w-24 rounded bg-[#dfe7f0]" />
+              <div className="mt-2 h-4 w-40 rounded bg-[#eef3f8]" />
             </div>
           </div>
         </section>
@@ -1575,36 +1600,36 @@ export default function ClinicaPage() {
       <div className="text-sm">
         <Link
           href={`/professionisti/animali/${id}`}
-          className="font-semibold text-zinc-700 hover:text-zinc-900"
+          className="font-semibold text-[#5f708a] hover:text-[#30486f]"
         >
           ← Torna alla scheda
         </Link>
       </div>
 
-      <section className="overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm">
-        <div className="border-b border-zinc-200 bg-gradient-to-r from-zinc-50 to-white px-5 py-5 md:px-6">
+      <section className="overflow-hidden rounded-[2rem] border border-[#dde4ec] bg-white shadow-[0_18px_45px_rgba(42,56,86,0.07)]">
+        <div className="border-b border-[#e3e9f0] bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_100%)] px-5 py-5 md:px-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0">
               <div className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
                 Cartella clinica professionale
               </div>
-              <h1 className="mt-3 text-xl font-semibold tracking-tight text-zinc-900 md:text-2xl">
-                {animal?.name || "Animale"} <span className="text-zinc-400">•</span>{" "}
-                <span className="text-zinc-700">
+              <h1 className="mt-3 text-xl font-semibold tracking-[-0.03em] text-[#30486f] md:text-2xl">
+                {animal?.name || "Animale"} <span className="text-[#9aa8bb]">•</span>{" "}
+                <span className="text-[#5f708a]">
                   {animal?.species || "Specie non disponibile"}
                   {animal?.breed ? ` • ${animal.breed}` : ""}
                 </span>
               </h1>
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-600">
-                Timeline cronologica, validazione eventi, allegati, promemoria e collaborazione
-                tra professionisti.
+              <p className="mt-2 max-w-3xl text-sm leading-7 text-[#5f708a]">
+                Timeline cronologica, validazione eventi, allegati, promemoria e collaborazione tra
+                professionisti.
               </p>
             </div>
 
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                className="rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800 shadow-sm transition hover:bg-zinc-50"
+                className="rounded-full border border-[#d7dfe9] bg-white px-4 py-2.5 text-sm font-semibold text-[#30486f] transition hover:bg-[#f8fbff]"
                 onClick={() => {
                   if (!animal?.id) return;
                   router.push(`/professionisti/animali/${animal.id}/consulto`);
@@ -1616,12 +1641,12 @@ export default function ClinicaPage() {
               {isVet ? (
                 <Link
                   href={`/professionisti/animali/${id}/verifica`}
-                  className="rounded-xl bg-black px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-900"
+                  className="rounded-full bg-[#30486f] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_14px_34px_rgba(48,72,111,0.18)] transition hover:bg-[#263b59]"
                 >
-                  Validazione (vet)
+                  Validazione
                 </Link>
               ) : (
-                <span className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm font-semibold text-zinc-600">
+                <span className="rounded-full border border-[#e3e9f0] bg-[#fbfdff] px-4 py-2.5 text-sm font-semibold text-[#6f7d91]">
                   Validazione riservata ai vet
                 </span>
               )}
@@ -1630,61 +1655,61 @@ export default function ClinicaPage() {
         </div>
 
         <div className="grid gap-4 px-5 py-5 md:grid-cols-4 md:px-6">
-          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-            <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+          <div className="rounded-[1.4rem] border border-[#e3e9f0] bg-[#f8fbff] p-4">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6f7d91]">
               Animale
             </div>
-            <div className="mt-2 text-sm font-semibold text-zinc-900">{animal?.name || "—"}</div>
-            <div className="mt-1 text-sm text-zinc-600">
+            <div className="mt-2 text-sm font-semibold text-[#30486f]">{animal?.name || "—"}</div>
+            <div className="mt-1 text-sm text-[#5f708a]">
               {animal?.species || "—"}
               {animal?.breed ? ` • ${animal.breed}` : ""}
             </div>
           </div>
 
-          <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-            <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+          <div className="rounded-[1.4rem] border border-[#e3e9f0] bg-white p-4">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6f7d91]">
               Microchip / Codice
             </div>
-            <div className="mt-2 break-all text-sm font-semibold text-zinc-900">
+            <div className="mt-2 break-all text-sm font-semibold text-[#30486f]">
               {normalizeChip(animal?.chip_number) || "Non disponibile"}
             </div>
-            <div className="mt-1 text-xs text-zinc-500">
+            <div className="mt-1 text-xs text-[#6f7d91]">
               Identificazione rapida per accesso clinico e verifica.
             </div>
           </div>
 
-          <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-            <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+          <div className="rounded-[1.4rem] border border-[#e3e9f0] bg-white p-4">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6f7d91]">
               Proprietario
             </div>
 
-            <div className="mt-2 text-sm font-semibold text-zinc-900">
+            <div className="mt-2 text-sm font-semibold text-[#30486f]">
               {animal?.owner_name || "Non disponibile"}
             </div>
 
-            <div className="mt-1 text-sm text-zinc-600">
+            <div className="mt-1 text-sm text-[#5f708a]">
               Email: {animal?.owner_email || "—"}
             </div>
 
-            <div className="mt-1 text-sm text-zinc-600">
+            <div className="mt-1 text-sm text-[#5f708a]">
               Telefono: {animal?.owner_phone || "—"}
             </div>
           </div>
 
-          <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-            <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+          <div className="rounded-[1.4rem] border border-[#e3e9f0] bg-white p-4">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6f7d91]">
               Operatore attivo
             </div>
 
-            <div className="mt-2 text-sm font-semibold text-zinc-900">
+            <div className="mt-2 text-sm font-semibold text-[#30486f]">
               {operatorSession?.activeOperatorLabel || "Non attivo"}
             </div>
 
-            <div className="mt-1 text-xs text-zinc-500">
+            <div className="mt-1 text-xs text-[#6f7d91]">
               Postazione: <span className="font-mono">{workstationKey || "—"}</span>
             </div>
 
-            <div className="mt-1 text-xs text-zinc-500">
+            <div className="mt-1 text-xs text-[#6f7d91]">
               {operatorSession?.expiresAt
                 ? `Sessione valida fino a ${formatDateIT(operatorSession.expiresAt)}`
                 : "Attiva l’operatore dal menu professionisti"}
@@ -1693,16 +1718,16 @@ export default function ClinicaPage() {
         </div>
       </section>
 
-      <section className="space-y-4 rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
-        {isVet && pendingIds.length > 0 ? (
-          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+      {isVet && pendingIds.length > 0 ? (
+        <SectionCard title="Validazione rapida" subtitle="Gestione eventi in attesa di validazione.">
+          <div className="rounded-[1.3rem] border border-[#e3e9f0] bg-[#f8fbff] p-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="text-sm text-zinc-700">
-                Eventi in attesa: <span className="font-semibold">{pendingIds.length}</span>
+              <div className="text-sm text-[#5f708a]">
+                Eventi in attesa: <span className="font-semibold text-[#30486f]">{pendingIds.length}</span>
                 {selectedIds.size > 0 ? (
                   <>
                     {" "}
-                    • Selezionati: <span className="font-semibold">{selectedIds.size}</span>
+                    • Selezionati: <span className="font-semibold text-[#30486f]">{selectedIds.size}</span>
                   </>
                 ) : null}
               </div>
@@ -1710,7 +1735,7 @@ export default function ClinicaPage() {
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
-                  className="rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800 shadow-sm transition hover:bg-zinc-50 disabled:opacity-50"
+                  className="rounded-full border border-[#d7dfe9] bg-white px-4 py-2.5 text-sm font-semibold text-[#30486f] transition hover:bg-[#f8fbff] disabled:opacity-50"
                   disabled={bulkVerifying || !canWriteClinicEvents}
                   onClick={() => selectAllPending()}
                 >
@@ -1719,7 +1744,7 @@ export default function ClinicaPage() {
 
                 <button
                   type="button"
-                  className="rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800 shadow-sm transition hover:bg-zinc-50 disabled:opacity-50"
+                  className="rounded-full border border-[#d7dfe9] bg-white px-4 py-2.5 text-sm font-semibold text-[#30486f] transition hover:bg-[#f8fbff] disabled:opacity-50"
                   disabled={bulkVerifying || selectedIds.size === 0 || !canWriteClinicEvents}
                   onClick={() => void verifyMany(Array.from(selectedIds))}
                 >
@@ -1728,7 +1753,7 @@ export default function ClinicaPage() {
 
                 <button
                   type="button"
-                  className="rounded-xl bg-black px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-900 disabled:opacity-50"
+                  className="rounded-full bg-[#30486f] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_14px_34px_rgba(48,72,111,0.18)] transition hover:bg-[#263b59] disabled:opacity-50"
                   disabled={bulkVerifying || !canWriteClinicEvents}
                   onClick={() => void verifyMany(pendingIds)}
                   title="Valida tutti gli eventi in attesa"
@@ -1739,7 +1764,7 @@ export default function ClinicaPage() {
                 {selectedIds.size > 0 ? (
                   <button
                     type="button"
-                    className="rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800 shadow-sm transition hover:bg-zinc-50 disabled:opacity-50"
+                    className="rounded-full border border-[#d7dfe9] bg-white px-4 py-2.5 text-sm font-semibold text-[#30486f] transition hover:bg-[#f8fbff] disabled:opacity-50"
                     disabled={bulkVerifying}
                     onClick={() => clearSelection()}
                   >
@@ -1749,538 +1774,513 @@ export default function ClinicaPage() {
               </div>
             </div>
 
-            <p className="mt-2 text-xs leading-5 text-zinc-600">
-              Puoi selezionare i singoli eventi “⏳ da validare” direttamente dalla timeline.
+            <p className="mt-2 text-xs leading-5 text-[#6f7d91]">
+              Puoi selezionare i singoli eventi “da validare” direttamente dalla timeline.
             </p>
           </div>
-        ) : null}
+        </SectionCard>
+      ) : null}
 
-        {!canWriteClinicEvents ? (
-          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">
-            Grant revocato: la clinica può leggere solo gli eventi consentiti dall’audit attuale,
-            ma non può creare, modificare, validare, eliminare o allegare nuovi file.
+      {!canWriteClinicEvents ? (
+        <div className="rounded-[1.3rem] border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">
+          Grant revocato: la clinica può leggere solo gli eventi consentiti dall’audit attuale, ma
+          non può creare, modificare, validare, eliminare o allegare nuovi file.
+        </div>
+      ) : null}
+
+      {!operatorSession?.id ? (
+        <div className="rounded-[1.3rem] border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-medium text-blue-900">
+          Nessun operatore attivo su questa postazione. Apri il menu professionisti e attiva
+          l’operatore con PIN prima di creare, modificare o validare eventi.
+        </div>
+      ) : null}
+
+      <SectionCard
+        title="Nuovo evento clinico"
+        subtitle="Inserimento rapido, allegati, imaging e promemoria owner."
+      >
+        {saveErr ? (
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3.5 text-sm leading-6 text-red-800">
+            {saveErr}
           </div>
         ) : null}
 
-        {!operatorSession?.id ? (
-          <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-medium text-blue-900">
-            Nessun operatore attivo su questa postazione. Apri il menu professionisti e attiva
-            l’operatore con PIN prima di creare, modificare o validare eventi.
+        {saveOk ? (
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3.5 text-sm leading-6 text-emerald-800">
+            {saveOk}
           </div>
         ) : null}
 
-        <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <div className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
-                Inserimento rapido
-              </div>
-              <h2 className="mt-3 text-base font-semibold text-zinc-900">Nuovo evento clinico</h2>
-              <p className="mt-1.5 text-sm leading-6 text-zinc-600">
-                Registra subito visite, vaccini, esami, terapie e documenti. Dopo il salvataggio
-                l’evento resta in questa pagina e compare subito nella timeline.
-              </p>
-            </div>
-          </div>
+        {uploadDrafts.length > 0 ? (
+          <div className="rounded-[1.3rem] border border-amber-200 bg-amber-50 p-4">
+            <div className="text-sm font-semibold text-amber-900">Upload imaging incompleti</div>
 
-          {saveErr ? (
-            <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3.5 text-sm leading-6 text-red-800">
-              {saveErr}
-            </div>
-          ) : null}
-
-          {saveOk ? (
-            <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3.5 text-sm leading-6 text-emerald-800">
-              {saveOk}
-            </div>
-          ) : null}
-
-          {uploadDrafts.length > 0 ? (
-            <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
-              <div className="text-sm font-semibold text-amber-900">
-                Upload imaging incompleti
-              </div>
-
-              <div className="mt-3 space-y-3">
-                {uploadDrafts.map((draft) => (
-                  <div
-                    key={draft.uploadId}
-                    className="rounded-xl border border-amber-200 bg-white px-4 py-3"
-                  >
-                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                      <div className="min-w-0">
-                        <div className="truncate text-sm font-semibold text-zinc-900">
-                          {draft.fileName}
-                        </div>
-                        <div className="mt-1 text-xs text-zinc-600">
-                          {draft.modality || "Imaging"}
-                          {draft.bodyPart ? ` • ${draft.bodyPart}` : ""}
-                          {typeof draft.percent === "number" ? ` • ${draft.percent}%` : ""}
-                        </div>
-                        <div className="mt-1 text-xs text-zinc-500">
-                          Ultimo aggiornamento: {formatInsertedAtIT(draft.updatedAt)}
-                        </div>
+            <div className="mt-3 space-y-3">
+              {uploadDrafts.map((draft) => (
+                <div
+                  key={draft.uploadId}
+                  className="rounded-xl border border-amber-200 bg-white px-4 py-3"
+                >
+                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-semibold text-[#30486f]">
+                        {draft.fileName}
                       </div>
-
-                      <div className="shrink-0">
-                        <button
-                          type="button"
-                          className="rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800 shadow-sm transition hover:bg-zinc-50 disabled:opacity-50"
-                          disabled={!canWriteClinicEvents}
-                          onClick={() => {
-                            setNewType("imaging");
-                            setNewImagingModality(draft.modality || "RX");
-                            setNewImagingBodyPart(draft.bodyPart || "");
-                            setResumeHint(
-                              `Bozza trovata per "${draft.fileName}". Riseleziona lo stesso file per riprendere dal punto interrotto.`
-                            );
-                            window.scrollTo({ top: 0, behavior: "smooth" });
-                          }}
-                        >
-                          Riprendi
-                        </button>
+                      <div className="mt-1 text-xs text-[#5f708a]">
+                        {draft.modality || "Imaging"}
+                        {draft.bodyPart ? ` • ${draft.bodyPart}` : ""}
+                        {typeof draft.percent === "number" ? ` • ${draft.percent}%` : ""}
+                      </div>
+                      <div className="mt-1 text-xs text-[#6f7d91]">
+                        Ultimo aggiornamento: {formatInsertedAtIT(draft.updatedAt)}
                       </div>
                     </div>
+
+                    <div className="shrink-0">
+                      <button
+                        type="button"
+                        className="rounded-full border border-[#d7dfe9] bg-white px-4 py-2.5 text-sm font-semibold text-[#30486f] transition hover:bg-[#f8fbff] disabled:opacity-50"
+                        disabled={!canWriteClinicEvents}
+                        onClick={() => {
+                          setNewType("imaging");
+                          setNewImagingModality(draft.modality || "RX");
+                          setNewImagingBodyPart(draft.bodyPart || "");
+                          setResumeHint(
+                            `Bozza trovata per "${draft.fileName}". Riseleziona lo stesso file per riprendere dal punto interrotto.`
+                          );
+                          window.scrollTo({ top: 0, behavior: "smooth" });
+                        }}
+                      >
+                        Riprendi
+                      </button>
+                    </div>
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
             </div>
-          ) : null}
+          </div>
+        ) : null}
 
-          <div className="mt-5 grid gap-4 md:grid-cols-12">
-            <label className="block md:col-span-3">
-              <span className={FIELD_LABEL_CLASS}>Tipo evento</span>
-              <select
-                className={FIELD_CLASS}
-                value={newType}
-                onChange={(e) => setNewType(e.target.value as ClinicEventType)}
-                disabled={!canWriteClinicEvents}
-              >
-                <option value="visit">🩺 Visita</option>
-                <option value="vaccine">💉 Vaccinazione</option>
-                <option value="exam">🔬 Esame</option>
-                <option value="imaging">🖼️ Imaging</option>
-                <option value="therapy">💊 Terapia</option>
-                <option value="allergy">⚠️ Allergia</option>
-                <option value="chronic_condition">📌 Patologia cronica</option>
-                <option value="follow_up">🔁 Prossimo ricontrollo</option>
-                <option value="surgery">🏥 Intervento chirurgico</option>
-                <option value="note">📝 Nota</option>
-              </select>
-            </label>
+        <div className="grid gap-4 md:grid-cols-12">
+          <label className="block md:col-span-3">
+            <span className={FIELD_LABEL_CLASS}>Tipo evento</span>
+            <select
+              className={FIELD_CLASS}
+              value={newType}
+              onChange={(e) => setNewType(e.target.value as ClinicEventType)}
+              disabled={!canWriteClinicEvents}
+            >
+              <option value="visit">🩺 Visita</option>
+              <option value="vaccine">💉 Vaccinazione</option>
+              <option value="exam">🔬 Esame</option>
+              <option value="imaging">🖼️ Imaging</option>
+              <option value="therapy">💊 Terapia</option>
+              <option value="allergy">⚠️ Allergia</option>
+              <option value="chronic_condition">📌 Patologia cronica</option>
+              <option value="follow_up">🔁 Prossimo ricontrollo</option>
+              <option value="surgery">🏥 Intervento chirurgico</option>
+              <option value="note">📝 Nota</option>
+            </select>
+          </label>
 
-            <label className="block md:col-span-2">
-              <span className={FIELD_LABEL_CLASS}>Data</span>
-              <input
-                type="date"
-                className={FIELD_CLASS}
-                value={newDate}
-                onChange={(e) => setNewDate(e.target.value)}
-                disabled={!canWriteClinicEvents}
-              />
-            </label>
+          <label className="block md:col-span-2">
+            <span className={FIELD_LABEL_CLASS}>Data</span>
+            <input
+              type="date"
+              className={FIELD_CLASS}
+              value={newDate}
+              onChange={(e) => setNewDate(e.target.value)}
+              disabled={!canWriteClinicEvents}
+            />
+          </label>
 
-            <label className="block md:col-span-2">
-              <span className={FIELD_LABEL_CLASS}>Peso (kg)</span>
-              <input
-                type="number"
-                inputMode="decimal"
-                step="0.1"
-                min="0"
-                className={FIELD_CLASS}
-                value={newWeightKg}
-                onChange={(e) => setNewWeightKg(e.target.value)}
-                placeholder="Es. 12.5"
-                disabled={!canWriteClinicEvents}
-              />
-            </label>
+          <label className="block md:col-span-2">
+            <span className={FIELD_LABEL_CLASS}>Peso (kg)</span>
+            <input
+              type="number"
+              inputMode="decimal"
+              step="0.1"
+              min="0"
+              className={FIELD_CLASS}
+              value={newWeightKg}
+              onChange={(e) => setNewWeightKg(e.target.value)}
+              placeholder="Es. 12.5"
+              disabled={!canWriteClinicEvents}
+            />
+          </label>
 
-            <label className="block md:col-span-5">
-              <span className={FIELD_LABEL_CLASS}>
-                {newType === "imaging" ? "File imaging" : "Allegati"}
-              </span>
-              <input
-                type="file"
-                multiple={newType !== "imaging"}
-                accept={
-                  newType === "imaging"
-                    ? ".dcm,application/dicom,.dicom,image/jpeg,image/png,application/pdf"
-                    : ".pdf,image/jpeg,image/png,image/webp"
+          <label className="block md:col-span-5">
+            <span className={FIELD_LABEL_CLASS}>
+              {newType === "imaging" ? "File imaging" : "Allegati"}
+            </span>
+            <input
+              type="file"
+              multiple={newType !== "imaging"}
+              accept={
+                newType === "imaging"
+                  ? ".dcm,application/dicom,.dicom,image/jpeg,image/png,application/pdf"
+                  : ".pdf,image/jpeg,image/png,image/webp"
+              }
+              className={FILE_INPUT_CLASS}
+              disabled={!canWriteClinicEvents}
+              onChange={(e) => {
+                const list = Array.from(e.target.files || []);
+
+                if (newType === "imaging" && list.length > 1) {
+                  setSaveErr("Per imaging puoi caricare un solo file alla volta.");
+                  setNewFiles(list.slice(0, 1));
+                  return;
                 }
-                className={FILE_INPUT_CLASS}
-                disabled={!canWriteClinicEvents}
-                onChange={(e) => {
-                  const list = Array.from(e.target.files || []);
 
-                  if (newType === "imaging" && list.length > 1) {
-                    setSaveErr("Per imaging puoi caricare un solo file alla volta.");
-                    setNewFiles(list.slice(0, 1));
-                    return;
-                  }
-
-                  setSaveErr(null);
-                  setNewFiles(list);
-                }}
-              />
-
-              {newType === "imaging" ? (
-                <div className="mt-1.5 text-[11px] leading-5 text-zinc-600">
-                  Formati ammessi imaging:{" "}
-                  <span className="font-semibold">.dcm, .dicom, PDF, JPG, PNG</span>
-                </div>
-              ) : (
-                <div className="mt-1.5 text-[11px] leading-5 text-zinc-600">
-                  Formati ammessi: <span className="font-semibold">PDF, JPG, PNG, WEBP</span>
-                </div>
-              )}
-
-              {newFiles.length > 0 ? (
-                <div className="mt-1.5 text-[11px] leading-5 text-zinc-600">
-                  📎 <span className="font-semibold">{newFiles.length}</span>
-                  {newType === "imaging" ? ` • ${newFiles[0]?.name || ""}` : ""}
-                </div>
-              ) : null}
-
-              {resumeHint ? (
-                <div className="mt-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-800">
-                  {resumeHint}
-                </div>
-              ) : null}
-            </label>
-
-            {newType === "vaccine" ? (
-              <div className="grid gap-4 md:col-span-12 md:grid-cols-12">
-                <div className="block md:col-span-6">
-                  <span className={FIELD_LABEL_CLASS}>Vaccini eseguiti</span>
-                  <div className="mt-1 grid gap-2 rounded-2xl border border-zinc-300 bg-zinc-50 p-3">
-                    {(isCatSpecies(animalSpecies) ? CAT_VACCINES : DOG_VACCINES).map((v) => {
-                      const checked = selectedVaccines.includes(v.value);
-                      return (
-                        <label
-                          key={v.value}
-                          className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800"
-                        >
-                          <input
-                            type="checkbox"
-                            className="h-4 w-4"
-                            checked={checked}
-                            onChange={() => toggleSelectedVaccine(v.value)}
-                            disabled={!canWriteClinicEvents}
-                          />
-                          <span>{v.label}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                  <p className="mt-1.5 text-xs leading-5 text-zinc-500">
-                    Puoi selezionare più vaccini nello stesso evento.
-                  </p>
-                </div>
-
-                <label className="block md:col-span-3">
-                  <span className={FIELD_LABEL_CLASS}>Lotto vaccino</span>
-                  <input
-                    type="text"
-                    className={FIELD_CLASS}
-                    value={vaccineBatch}
-                    onChange={(e) => setVaccineBatch(e.target.value)}
-                    placeholder="Lotto"
-                    disabled={!canWriteClinicEvents}
-                  />
-                </label>
-
-                <label className="block md:col-span-3">
-                  <span className={FIELD_LABEL_CLASS}>Prossimo richiamo</span>
-                  <input
-                    type="date"
-                    className={FIELD_CLASS}
-                    value={vaccineNextDue}
-                    onChange={(e) => setVaccineNextDue(e.target.value)}
-                    disabled={!canWriteClinicEvents}
-                  />
-                </label>
-              </div>
-            ) : null}
-
-            {newType === "therapy" ? (
-              <div className="grid gap-4 md:col-span-12 md:grid-cols-12">
-                <label className="block md:col-span-6">
-                  <span className={FIELD_LABEL_CLASS}>Inizio terapia</span>
-                  <input
-                    type="date"
-                    className={FIELD_CLASS}
-                    value={therapyStartDate}
-                    onChange={(e) => setTherapyStartDate(e.target.value)}
-                    disabled={!canWriteClinicEvents}
-                  />
-                </label>
-
-                <label className="block md:col-span-6">
-                  <span className={FIELD_LABEL_CLASS}>Fine terapia</span>
-                  <input
-                    type="date"
-                    className={FIELD_CLASS}
-                    value={therapyEndDate}
-                    onChange={(e) => setTherapyEndDate(e.target.value)}
-                    disabled={!canWriteClinicEvents}
-                  />
-                  <p className="mt-1.5 text-xs leading-5 text-zinc-500">
-                    Se lasci vuoto, la terapia è considerata in corso.
-                  </p>
-                </label>
-              </div>
-            ) : null}
+                setSaveErr(null);
+                setNewFiles(list);
+              }}
+            />
 
             {newType === "imaging" ? (
-              <div className="grid gap-4 md:col-span-12 md:grid-cols-12">
-                <label className="block md:col-span-4">
-                  <span className={FIELD_LABEL_CLASS}>Modalità</span>
-                  <select
-                    className={FIELD_CLASS}
-                    value={newImagingModality}
-                    onChange={(e) => setNewImagingModality(e.target.value)}
-                    disabled={!canWriteClinicEvents}
-                  >
-                    <option value="RX">RX</option>
-                    <option value="TAC">TAC</option>
-                    <option value="RM">RM</option>
-                    <option value="ECO">ECO</option>
-                  </select>
-                </label>
+              <div className="mt-1.5 text-[11px] leading-5 text-[#6f7d91]">
+                Formati ammessi imaging: <span className="font-semibold">.dcm, .dicom, PDF, JPG, PNG</span>
+              </div>
+            ) : (
+              <div className="mt-1.5 text-[11px] leading-5 text-[#6f7d91]">
+                Formati ammessi: <span className="font-semibold">PDF, JPG, PNG, WEBP</span>
+              </div>
+            )}
 
-                <label className="block md:col-span-8">
-                  <span className={FIELD_LABEL_CLASS}>Distretto</span>
-                  <input
-                    type="text"
-                    className={FIELD_CLASS}
-                    value={newImagingBodyPart}
-                    onChange={(e) => setNewImagingBodyPart(e.target.value)}
-                    placeholder="Es. Torace, Addome, Arto anteriore destro"
-                    disabled={!canWriteClinicEvents}
-                  />
-                </label>
-
-                <div className="md:col-span-12 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-medium text-amber-800">
-                  Per gli eventi imaging il file diagnostico va caricato solo qui e verrà salvato
-                  su storage dedicato Cloudflare.
-                </div>
+            {newFiles.length > 0 ? (
+              <div className="mt-1.5 text-[11px] leading-5 text-[#6f7d91]">
+                📎 <span className="font-semibold">{newFiles.length}</span>
+                {newType === "imaging" ? ` • ${newFiles[0]?.name || ""}` : ""}
               </div>
             ) : null}
 
-            <label className="block md:col-span-12">
-              <span className={FIELD_LABEL_CLASS}>Note cliniche</span>
-              <textarea
-                className={TEXTAREA_CLASS}
-                rows={4}
-                value={newNotes}
-                onChange={(e) => setNewNotes(e.target.value)}
-                placeholder="Dettagli clinici, note, dosaggi, esito, osservazioni..."
-                disabled={!canWriteClinicEvents}
-              />
-            </label>
-          </div>
-
-          <div className="mt-5 grid gap-4 md:grid-cols-12">
-            <div className="md:col-span-9 rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3">
-              <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                Firma operatore attiva
+            {resumeHint ? (
+              <div className="mt-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-800">
+                {resumeHint}
               </div>
-              <div className="mt-2 text-sm font-semibold text-zinc-900">
-                {operatorSession?.activeOperatorLabel || "Nessun operatore attivo"}
-              </div>
-              <div className="mt-1 text-xs text-zinc-500">
-                La firma evento viene presa automaticamente dalla sessione operatore attiva della
-                postazione.
-              </div>
-            </div>
+            ) : null}
+          </label>
 
-            <div className="md:col-span-3">
-              <button
-                type="button"
-                className="w-full rounded-xl bg-black px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-900 disabled:opacity-60"
-                disabled={!canSave}
-                onClick={() => void saveClinicEvent()}
-              >
-                {saving
-                  ? uploadPhase || "Salvataggio…"
-                  : newType === "imaging"
-                    ? "Salva imaging"
-                    : "Salva evento e aggiorna timeline"}
-              </button>
-
-              {saving && (uploadStatus || uploadProgress > 0) ? (
-                <div className="mt-3 space-y-2">
-                  {uploadStatus ? (
-                    <div className="text-xs font-medium text-zinc-600">{uploadStatus}</div>
-                  ) : null}
-
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-200">
-                    <div
-                      className="h-full rounded-full bg-emerald-500 transition-all"
-                      style={{ width: `${uploadProgress}%` }}
-                    />
-                  </div>
-
-                  <div className="text-[11px] text-zinc-500">{uploadProgress}%</div>
-                </div>
-              ) : null}
-            </div>
-          </div>
-
-          <div className="mt-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-            <div className="flex items-start justify-between gap-3">
-              <label className="flex items-center gap-2 text-sm font-semibold text-zinc-900">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4"
-                  checked={reminderEnabled}
-                  disabled={!canWriteClinicEvents}
-                  onChange={(e) => {
-                    const v = e.target.checked;
-                    setReminderEnabled(v);
-                    if (!v) {
-                      setRemindAt("");
-                      setReminderPresetDays(null);
-                    }
-                    if (v && !remindAt) {
-                      setReminderPresetDays(30);
-                      setRemindAt(addDaysISO(newDate, 30));
-                    }
-                  }}
-                />
-                Imposta promemoria per l’owner
-              </label>
-              <span className="text-xs text-zinc-600">Email ✅ • Push ⏳</span>
-            </div>
-
-            {reminderEnabled ? (
-              <div className="mt-3 grid gap-4 md:grid-cols-2">
-                <label className="block">
-                  <span className={FIELD_LABEL_CLASS}>Data promemoria</span>
-                  <input
-                    type="date"
-                    className={FIELD_CLASS}
-                    value={remindAt}
-                    onChange={(e) => {
-                      setRemindAt(e.target.value);
-                      setReminderPresetDays(null);
-                    }}
-                    disabled={!canWriteClinicEvents}
-                  />
-                </label>
-
-                <div className="block">
-                  <span className={FIELD_LABEL_CLASS}>Canali</span>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    <label className="flex items-center gap-2 rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm">
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4"
-                        checked={remindEmail}
-                        onChange={(e) => setRemindEmail(e.target.checked)}
-                        disabled={!canWriteClinicEvents}
-                      />
-                      Email
-                    </label>
-                    <span
-                      className="flex items-center gap-2 rounded-2xl border border-zinc-200 bg-zinc-100 px-3 py-2 text-sm text-zinc-500"
-                      title="Disponibile quando UNIMALIA diventa web app (PWA)"
-                    >
-                      Push (in arrivo)
-                    </span>
-                  </div>
-                </div>
-
-                {showRecallQuickActions ? (
-                  <div className="md:col-span-2">
-                    <div className="text-xs font-semibold text-zinc-700">Suggerisci richiamo</div>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {[15, 30, 180, 365].map((days) => (
-                        <button
-                          key={days}
-                          type="button"
+          {newType === "vaccine" ? (
+            <div className="grid gap-4 md:col-span-12 md:grid-cols-12">
+              <div className="block md:col-span-6">
+                <span className={FIELD_LABEL_CLASS}>Vaccini eseguiti</span>
+                <div className="mt-1 grid gap-2 rounded-[1rem] border border-[#d7dfe9] bg-[#f8fbff] p-3">
+                  {(isCatSpecies(animalSpecies) ? CAT_VACCINES : DOG_VACCINES).map((v) => {
+                    const checked = selectedVaccines.includes(v.value);
+                    return (
+                      <label
+                        key={v.value}
+                        className="flex items-center gap-2 rounded-xl border border-[#e3e9f0] bg-white px-3 py-2 text-sm text-[#30486f]"
+                      >
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4"
+                          checked={checked}
+                          onChange={() => toggleSelectedVaccine(v.value)}
                           disabled={!canWriteClinicEvents}
-                          className={
-                            reminderPresetDays === days
-                              ? "rounded-2xl border border-black bg-black px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
-                              : "rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50 disabled:opacity-50"
-                          }
-                          onClick={() => onSuggestRecall(days)}
-                        >
-                          {days === 180
-                            ? "+6 mesi"
-                            : days === 365
-                              ? "+12 mesi"
-                              : `+${days} giorni`}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-
-                {newType === "vaccine" && remindAt ? (
-                  <p className="text-xs leading-5 text-zinc-600 md:col-span-2">
-                    Nota vaccino: oltre al promemoria alla data impostata, l’owner verrà avvisato
-                    anche <span className="font-semibold">15 giorni prima</span>.
-                  </p>
-                ) : null}
-
-                <p className="text-xs leading-5 text-zinc-600 md:col-span-2">
-                  Il promemoria verrà inviato{" "}
-                  <span className="font-semibold">solo al proprietario</span>.
+                        />
+                        <span>{v.label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+                <p className="mt-1.5 text-xs leading-5 text-[#6f7d91]">
+                  Puoi selezionare più vaccini nello stesso evento.
                 </p>
               </div>
+
+              <label className="block md:col-span-3">
+                <span className={FIELD_LABEL_CLASS}>Lotto vaccino</span>
+                <input
+                  type="text"
+                  className={FIELD_CLASS}
+                  value={vaccineBatch}
+                  onChange={(e) => setVaccineBatch(e.target.value)}
+                  placeholder="Lotto"
+                  disabled={!canWriteClinicEvents}
+                />
+              </label>
+
+              <label className="block md:col-span-3">
+                <span className={FIELD_LABEL_CLASS}>Prossimo richiamo</span>
+                <input
+                  type="date"
+                  className={FIELD_CLASS}
+                  value={vaccineNextDue}
+                  onChange={(e) => setVaccineNextDue(e.target.value)}
+                  disabled={!canWriteClinicEvents}
+                />
+              </label>
+            </div>
+          ) : null}
+
+          {newType === "therapy" ? (
+            <div className="grid gap-4 md:col-span-12 md:grid-cols-12">
+              <label className="block md:col-span-6">
+                <span className={FIELD_LABEL_CLASS}>Inizio terapia</span>
+                <input
+                  type="date"
+                  className={FIELD_CLASS}
+                  value={therapyStartDate}
+                  onChange={(e) => setTherapyStartDate(e.target.value)}
+                  disabled={!canWriteClinicEvents}
+                />
+              </label>
+
+              <label className="block md:col-span-6">
+                <span className={FIELD_LABEL_CLASS}>Fine terapia</span>
+                <input
+                  type="date"
+                  className={FIELD_CLASS}
+                  value={therapyEndDate}
+                  onChange={(e) => setTherapyEndDate(e.target.value)}
+                  disabled={!canWriteClinicEvents}
+                />
+                <p className="mt-1.5 text-xs leading-5 text-[#6f7d91]">
+                  Se lasci vuoto, la terapia è considerata in corso.
+                </p>
+              </label>
+            </div>
+          ) : null}
+
+          {newType === "imaging" ? (
+            <div className="grid gap-4 md:col-span-12 md:grid-cols-12">
+              <label className="block md:col-span-4">
+                <span className={FIELD_LABEL_CLASS}>Modalità</span>
+                <select
+                  className={FIELD_CLASS}
+                  value={newImagingModality}
+                  onChange={(e) => setNewImagingModality(e.target.value)}
+                  disabled={!canWriteClinicEvents}
+                >
+                  <option value="RX">RX</option>
+                  <option value="TAC">TAC</option>
+                  <option value="RM">RM</option>
+                  <option value="ECO">ECO</option>
+                </select>
+              </label>
+
+              <label className="block md:col-span-8">
+                <span className={FIELD_LABEL_CLASS}>Distretto</span>
+                <input
+                  type="text"
+                  className={FIELD_CLASS}
+                  value={newImagingBodyPart}
+                  onChange={(e) => setNewImagingBodyPart(e.target.value)}
+                  placeholder="Es. Torace, Addome, Arto anteriore destro"
+                  disabled={!canWriteClinicEvents}
+                />
+              </label>
+
+              <div className="md:col-span-12 rounded-[1rem] border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-medium text-amber-800">
+                Per gli eventi imaging il file diagnostico va caricato solo qui e verrà salvato su
+                storage dedicato Cloudflare.
+              </div>
+            </div>
+          ) : null}
+
+          <label className="block md:col-span-12">
+            <span className={FIELD_LABEL_CLASS}>Note cliniche</span>
+            <textarea
+              className={TEXTAREA_CLASS}
+              rows={4}
+              value={newNotes}
+              onChange={(e) => setNewNotes(e.target.value)}
+              placeholder="Dettagli clinici, note, dosaggi, esito, osservazioni..."
+              disabled={!canWriteClinicEvents}
+            />
+          </label>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-12">
+          <div className="md:col-span-9 rounded-[1rem] border border-[#e3e9f0] bg-[#f8fbff] px-4 py-3">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6f7d91]">
+              Firma operatore attiva
+            </div>
+            <div className="mt-2 text-sm font-semibold text-[#30486f]">
+              {operatorSession?.activeOperatorLabel || "Nessun operatore attivo"}
+            </div>
+            <div className="mt-1 text-xs text-[#6f7d91]">
+              La firma evento viene presa automaticamente dalla sessione operatore attiva della postazione.
+            </div>
+          </div>
+
+          <div className="md:col-span-3">
+            <button
+              type="button"
+              className="w-full rounded-[1rem] bg-[#30486f] px-4 py-3 text-sm font-semibold text-white shadow-[0_14px_34px_rgba(48,72,111,0.18)] transition hover:bg-[#263b59] disabled:opacity-60"
+              disabled={!canSave}
+              onClick={() => void saveClinicEvent()}
+            >
+              {saving
+                ? uploadPhase || "Salvataggio…"
+                : newType === "imaging"
+                  ? "Salva imaging"
+                  : "Salva evento"}
+            </button>
+
+            {saving && (uploadStatus || uploadProgress > 0) ? (
+              <div className="mt-3 space-y-2">
+                {uploadStatus ? (
+                  <div className="text-xs font-medium text-[#5f708a]">{uploadStatus}</div>
+                ) : null}
+
+                <div className="h-2 w-full overflow-hidden rounded-full bg-[#dfe7f0]">
+                  <div
+                    className="h-full rounded-full bg-emerald-500 transition-all"
+                    style={{ width: `${uploadProgress}%` }}
+                  />
+                </div>
+
+                <div className="text-[11px] text-[#6f7d91]">{uploadProgress}%</div>
+              </div>
             ) : null}
           </div>
         </div>
 
-        {eventsErr ? (
-          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3.5 text-sm leading-6 text-amber-900">
-            {eventsErr}
+        <div className="rounded-[1rem] border border-[#e3e9f0] bg-[#f8fbff] p-4">
+          <div className="flex items-start justify-between gap-3">
+            <label className="flex items-center gap-2 text-sm font-semibold text-[#30486f]">
+              <input
+                type="checkbox"
+                className="h-4 w-4"
+                checked={reminderEnabled}
+                disabled={!canWriteClinicEvents}
+                onChange={(e) => {
+                  const v = e.target.checked;
+                  setReminderEnabled(v);
+                  if (!v) {
+                    setRemindAt("");
+                    setReminderPresetDays(null);
+                  }
+                  if (v && !remindAt) {
+                    setReminderPresetDays(30);
+                    setRemindAt(addDaysISO(newDate, 30));
+                  }
+                }}
+              />
+              Imposta promemoria per l’owner
+            </label>
+            <span className="text-xs text-[#6f7d91]">Email ✅ • Push ⏳</span>
           </div>
-        ) : null}
 
-        {verifyErr ? (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3.5 text-sm leading-6 text-red-800">
-            {verifyErr}
-          </div>
-        ) : null}
+          {reminderEnabled ? (
+            <div className="mt-3 grid gap-4 md:grid-cols-2">
+              <label className="block">
+                <span className={FIELD_LABEL_CLASS}>Data promemoria</span>
+                <input
+                  type="date"
+                  className={FIELD_CLASS}
+                  value={remindAt}
+                  onChange={(e) => {
+                    setRemindAt(e.target.value);
+                    setReminderPresetDays(null);
+                  }}
+                  disabled={!canWriteClinicEvents}
+                />
+              </label>
 
-        <div>
-          <h2 className="text-base font-semibold text-zinc-900">Timeline clinica</h2>
-          <p className="mt-1 text-sm leading-6 text-zinc-600">
-            Eventi cronologici, professionista visibile subito, stato validazione chiaro e
-            dettaglio completo al click.
-          </p>
-        </div>
-
-        <div className="space-y-3 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm md:p-6">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="text-sm text-zinc-700">
-              Eventi totali: <span className="font-semibold">{events.length}</span> • Filtrati:{" "}
-              <span className="font-semibold">{filteredEvents.length}</span> • Mostrati:{" "}
-              <span className="font-semibold">{flattenedShownEvents.length}</span>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              {FILTERS.map((f) => {
-                const active = filter === f.key;
-                return (
-                  <button
-                    key={f.key}
-                    type="button"
-                    className={
-                      active
-                        ? "rounded-full border border-black bg-black px-3 py-1.5 text-xs font-semibold text-white"
-                        : "rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-800 hover:bg-zinc-50"
-                    }
-                    onClick={() => setFilter(f.key)}
+              <div className="block">
+                <span className={FIELD_LABEL_CLASS}>Canali</span>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <label className="flex items-center gap-2 rounded-full border border-[#d7dfe9] bg-white px-3 py-2 text-sm text-[#30486f]">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4"
+                      checked={remindEmail}
+                      onChange={(e) => setRemindEmail(e.target.checked)}
+                      disabled={!canWriteClinicEvents}
+                    />
+                    Email
+                  </label>
+                  <span
+                    className="flex items-center gap-2 rounded-full border border-[#e3e9f0] bg-[#f3f6fa] px-3 py-2 text-sm text-[#6f7d91]"
+                    title="Disponibile quando UNIMALIA diventa web app (PWA)"
                   >
-                    {f.label}
-                  </button>
-                );
-              })}
+                    Push (in arrivo)
+                  </span>
+                </div>
+              </div>
+
+              {showRecallQuickActions ? (
+                <div className="md:col-span-2">
+                  <div className="text-xs font-semibold text-[#5f708a]">Suggerisci richiamo</div>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {[15, 30, 180, 365].map((days) => (
+                      <button
+                        key={days}
+                        type="button"
+                        disabled={!canWriteClinicEvents}
+                        className={
+                          reminderPresetDays === days
+                            ? "rounded-full border border-[#30486f] bg-[#30486f] px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                            : "rounded-full border border-[#d7dfe9] bg-white px-3 py-2 text-sm font-semibold text-[#30486f] hover:bg-[#f8fbff] disabled:opacity-50"
+                        }
+                        onClick={() => onSuggestRecall(days)}
+                      >
+                        {days === 180 ? "+6 mesi" : days === 365 ? "+12 mesi" : `+${days} giorni`}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              {newType === "vaccine" && remindAt ? (
+                <p className="text-xs leading-5 text-[#5f708a] md:col-span-2">
+                  Nota vaccino: oltre al promemoria alla data impostata, l’owner verrà avvisato
+                  anche <span className="font-semibold">15 giorni prima</span>.
+                </p>
+              ) : null}
+
+              <p className="text-xs leading-5 text-[#5f708a] md:col-span-2">
+                Il promemoria verrà inviato <span className="font-semibold">solo al proprietario</span>.
+              </p>
             </div>
+          ) : null}
+        </div>
+      </SectionCard>
+
+      {eventsErr ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3.5 text-sm leading-6 text-amber-900">
+          {eventsErr}
+        </div>
+      ) : null}
+
+      {verifyErr ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3.5 text-sm leading-6 text-red-800">
+          {verifyErr}
+        </div>
+      ) : null}
+
+      <SectionCard
+        title="Timeline clinica"
+        subtitle="Eventi cronologici, filtri rapidi, allegati e validazione."
+        right={
+          <div className="rounded-full border border-[#d7dfe9] bg-white px-3 py-1.5 text-xs font-semibold text-[#4f6078]">
+            Totali: {events.length} • Filtrati: {filteredEvents.length}
+          </div>
+        }
+      >
+        <div className="space-y-4 rounded-[1.4rem] border border-[#e3e9f0] bg-[#fbfdff] p-5">
+          <div className="flex flex-wrap gap-2">
+            {FILTERS.map((f) => {
+              const active = filter === f.key;
+              return (
+                <button
+                  key={f.key}
+                  type="button"
+                  className={
+                    active
+                      ? "rounded-full border border-[#30486f] bg-[#30486f] px-3 py-1.5 text-xs font-semibold text-white"
+                      : "rounded-full border border-[#d7dfe9] bg-white px-3 py-1.5 text-xs font-semibold text-[#30486f] hover:bg-[#f8fbff]"
+                  }
+                  onClick={() => setFilter(f.key)}
+                >
+                  {f.label}
+                </button>
+              );
+            })}
           </div>
 
           <div className="grid gap-3 md:grid-cols-3">
@@ -2305,23 +2305,23 @@ export default function ClinicaPage() {
               ))}
             </select>
 
-            <div className="flex items-center rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-medium text-zinc-600">
+            <div className="flex items-center rounded-[1rem] border border-[#e3e9f0] bg-white px-3 py-2 text-xs font-medium text-[#6f7d91]">
               Filtra rapidamente per tipo, testo e professionista.
             </div>
           </div>
         </div>
 
         {eventsLoading ? (
-          <div className="text-sm text-zinc-600">Caricamento eventi…</div>
+          <div className="text-sm text-[#5f708a]">Caricamento eventi…</div>
         ) : filteredEvents.length === 0 ? (
-          <div className="mt-4 rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 p-6 text-sm leading-6 text-zinc-600">
+          <div className="rounded-[1.4rem] border border-dashed border-[#cfd8e3] bg-[#f8fbff] p-6 text-sm leading-6 text-[#5f708a]">
             Nessun evento per questo filtro.
           </div>
         ) : (
           <div className="space-y-5">
             {shownGroupedEvents.map((group) => (
               <div key={group.key} className="space-y-2">
-                <div className="sticky top-0 z-10 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2 text-sm font-semibold text-zinc-800">
+                <div className="sticky top-0 z-10 rounded-[1rem] border border-[#e3e9f0] bg-[#f8fbff] px-4 py-2 text-sm font-semibold text-[#30486f]">
                   {group.label}
                 </div>
 
@@ -2334,7 +2334,7 @@ export default function ClinicaPage() {
                     return (
                       <div
                         key={ev.id}
-                        className="cursor-pointer rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-zinc-300 hover:shadow-md"
+                        className="cursor-pointer rounded-[1.4rem] border border-[#e3e9f0] bg-white p-4 shadow-[0_8px_22px_rgba(42,56,86,0.04)] transition hover:-translate-y-0.5 hover:border-[#d1dbe6] hover:shadow-[0_14px_30px_rgba(42,56,86,0.07)]"
                         onClick={() => {
                           setDetailEvent(ev);
                           setIsEditing(false);
@@ -2358,16 +2358,15 @@ export default function ClinicaPage() {
                               ) : null}
 
                               <div className="min-w-0 flex-1">
-                                <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-500">
-                                  <span className="rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 font-medium text-zinc-700">
+                                <div className="flex flex-wrap items-center gap-2 text-xs text-[#6f7d91]">
+                                  <span className="rounded-full border border-[#d7dfe9] bg-[#f8fbff] px-2.5 py-1 font-medium text-[#4f6078]">
                                     {eventTypeDisplay(ev.type)}
                                   </span>
-                                  <span className="font-medium text-zinc-700">
+                                  <span className="font-medium text-[#4f6078]">
                                     {formatEventDateIT(ev.event_date)}
                                   </span>
                                   {ev.created_at ? (
-                                    <span className="text-zinc-400">
-                                      {" "}
+                                    <span className="text-[#9aa8bb]">
                                       • Inserito il {formatInsertedAtIT(ev.created_at)}
                                     </span>
                                   ) : null}
@@ -2376,7 +2375,7 @@ export default function ClinicaPage() {
                                 <div className="mt-3 flex flex-wrap items-center gap-2">
                                   {evKg !== null ? (
                                     <span
-                                      className="inline-flex items-center rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-xs font-semibold text-zinc-700"
+                                      className="inline-flex items-center rounded-full border border-[#d7dfe9] bg-white px-2.5 py-1 text-xs font-semibold text-[#4f6078]"
                                       title="Peso registrato"
                                     >
                                       ⚖ {formatWeightLabel(evKg)}
@@ -2385,28 +2384,28 @@ export default function ClinicaPage() {
 
                                   {(filesCountByEventId[ev.id] ?? 0) > 0 ? (
                                     <span
-                                      className="inline-flex items-center rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-xs font-semibold text-zinc-700"
+                                      className="inline-flex items-center rounded-full border border-[#d7dfe9] bg-white px-2.5 py-1 text-xs font-semibold text-[#4f6078]"
                                       title={`Allegati: ${filesCountByEventId[ev.id]}`}
                                     >
                                       📎 {filesCountByEventId[ev.id]}
                                     </span>
                                   ) : null}
 
-                                  <span className="inline-flex items-center rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-xs font-medium text-zinc-700">
+                                  <span className="inline-flex items-center rounded-full border border-[#d7dfe9] bg-white px-2.5 py-1 text-xs font-medium text-[#4f6078]">
                                     {visibilityLabel(ev.visibility)}
                                   </span>
                                 </div>
 
-                                <div className="mt-3 text-sm font-semibold leading-6 text-zinc-900">
+                                <div className="mt-3 text-sm font-semibold leading-6 text-[#30486f]">
                                   {ev.title || typeLabel(ev.type)}
                                 </div>
 
-                                <div className="mt-1 text-xs font-medium text-zinc-500">
+                                <div className="mt-1 text-xs font-medium text-[#6f7d91]">
                                   {getEventAuthorLabel(ev)}
                                 </div>
 
                                 {ev.description ? (
-                                  <p className="mt-2 line-clamp-2 text-sm leading-6 text-zinc-700">
+                                  <p className="mt-2 line-clamp-2 text-sm leading-6 text-[#5f708a]">
                                     {ev.description}
                                   </p>
                                 ) : null}
@@ -2428,7 +2427,7 @@ export default function ClinicaPage() {
                             {!isVerified && isVet ? (
                               <button
                                 type="button"
-                                className="rounded-xl bg-black px-3 py-2 text-[11px] font-semibold text-white shadow-sm transition hover:bg-zinc-900 disabled:opacity-50"
+                                className="rounded-xl bg-[#30486f] px-3 py-2 text-[11px] font-semibold text-white shadow-sm transition hover:bg-[#263b59] disabled:opacity-50"
                                 disabled={verifyingId === ev.id || !canWriteClinicEvents}
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -2452,7 +2451,7 @@ export default function ClinicaPage() {
               <div className="flex justify-center pt-2">
                 <button
                   type="button"
-                  className="rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800 shadow-sm transition hover:bg-zinc-50"
+                  className="rounded-full border border-[#d7dfe9] bg-white px-4 py-2.5 text-sm font-semibold text-[#30486f] transition hover:bg-[#f8fbff]"
                   onClick={() => setVisibleCount((v) => v + PAGE_SIZE)}
                 >
                   Carica altri
@@ -2461,11 +2460,11 @@ export default function ClinicaPage() {
             ) : null}
           </div>
         )}
-      </section>
+      </SectionCard>
 
       {detailEvent ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="max-h-[85vh] w-full max-w-2xl overflow-hidden rounded-3xl bg-white shadow-xl">
+          <div className="max-h-[85vh] w-full max-w-2xl overflow-hidden rounded-[2rem] bg-white shadow-[0_28px_70px_rgba(0,0,0,0.22)]">
             <div className="p-5 md:p-6">
               {(() => {
                 const allowed = detailEvent ? canEditOrDelete(detailEvent) : false;
@@ -2475,41 +2474,41 @@ export default function ClinicaPage() {
                   <>
                     <div className="flex items-start justify-between gap-4">
                       <div>
-                        <h2 className="text-lg font-semibold leading-6 text-zinc-900">
+                        <h2 className="text-lg font-semibold leading-6 text-[#30486f]">
                           {detailEvent.title}
                         </h2>
 
-                        <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-zinc-600">
-                          <span className="rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-xs font-semibold text-zinc-700">
+                        <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-[#5f708a]">
+                          <span className="rounded-full border border-[#d7dfe9] bg-[#f8fbff] px-2.5 py-1 text-xs font-semibold text-[#4f6078]">
                             {eventTypeDisplay(detailEvent.type)}
                           </span>
                           <span>{formatEventDateIT(detailEvent.event_date)}</span>
                         </div>
 
-                        <div className="mt-2 text-sm font-medium text-zinc-600">
+                        <div className="mt-2 text-sm font-medium text-[#5f708a]">
                           {getEventAuthorLabel(detailEvent)}
                         </div>
 
-                        <div className="mt-2 text-xs text-zinc-400">
+                        <div className="mt-2 text-xs text-[#9aa8bb]">
                           Inserito il {formatInsertedAtIT(detailEvent.created_at)}
                         </div>
 
                         {kg !== null ? (
-                          <div className="mt-3 text-sm leading-6 text-zinc-700">
-                            <span className="inline-flex items-center rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-xs font-semibold text-zinc-700">
+                          <div className="mt-3 text-sm leading-6 text-[#5f708a]">
+                            <span className="inline-flex items-center rounded-full border border-[#d7dfe9] bg-white px-2.5 py-1 text-xs font-semibold text-[#4f6078]">
                               ⚖ {formatWeightLabel(kg)}
                             </span>
                           </div>
                         ) : null}
 
                         {detailEvent.type === "therapy" ? (
-                          <div className="mt-3 space-y-1.5 text-sm leading-6 text-zinc-700">
+                          <div className="mt-3 space-y-1.5 text-sm leading-6 text-[#5f708a]">
                             <div>
-                              <span className="font-semibold">Inizio terapia:</span>{" "}
+                              <span className="font-semibold text-[#30486f]">Inizio terapia:</span>{" "}
                               {formatEventDateIT(extractTherapyStartDate(detailEvent))}
                             </div>
                             <div>
-                              <span className="font-semibold">Fine terapia:</span>{" "}
+                              <span className="font-semibold text-[#30486f]">Fine terapia:</span>{" "}
                               {extractTherapyEndDate(detailEvent)
                                 ? formatEventDateIT(extractTherapyEndDate(detailEvent))
                                 : "In corso"}
@@ -2523,7 +2522,7 @@ export default function ClinicaPage() {
                           <>
                             <button
                               type="button"
-                              className="rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800 shadow-sm transition hover:bg-zinc-50 disabled:opacity-50"
+                              className="rounded-full border border-[#d7dfe9] bg-white px-4 py-2.5 text-sm font-semibold text-[#30486f] transition hover:bg-[#f8fbff] disabled:opacity-50"
                               disabled={!allowed}
                               onClick={() => {
                                 setIsEditing(true);
@@ -2536,7 +2535,7 @@ export default function ClinicaPage() {
 
                             <button
                               type="button"
-                              className="rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-700 shadow-sm transition hover:bg-red-100 disabled:opacity-50"
+                              className="rounded-full border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-700 transition hover:bg-red-100 disabled:opacity-50"
                               disabled={!allowed}
                               onClick={() => setDeleteConfirm(true)}
                               title={!allowed ? "Non autorizzato a eliminare questo evento" : ""}
@@ -2546,14 +2545,14 @@ export default function ClinicaPage() {
 
                             <button
                               type="button"
-                              className="rounded-xl border border-zinc-200 bg-white px-3.5 py-2 text-sm font-semibold text-zinc-800 shadow-sm transition hover:bg-zinc-50"
+                              className="rounded-full border border-[#d7dfe9] bg-white px-3.5 py-2 text-sm font-semibold text-[#30486f] transition hover:bg-[#f8fbff]"
                               onClick={closeDetailModal}
                             >
                               Chiudi
                             </button>
                           </>
                         ) : (
-                          <span className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-semibold text-zinc-700">
+                          <span className="rounded-full border border-[#d7dfe9] bg-[#f8fbff] px-3 py-2 text-xs font-semibold text-[#4f6078]">
                             Modalità modifica
                           </span>
                         )}
@@ -2571,37 +2570,35 @@ export default function ClinicaPage() {
                         <>
                           {detailEvent.description ? (
                             <div>
-                              <div className="text-xs font-semibold text-zinc-700">Descrizione</div>
-                              <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-zinc-700">
+                              <div className="text-xs font-semibold text-[#6f7d91]">Descrizione</div>
+                              <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[#5f708a]">
                                 {detailEvent.description}
                               </p>
                             </div>
                           ) : null}
 
                           {detailEvent.type === "imaging" ? (
-                            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-                              <div className="text-xs font-semibold text-zinc-700">
-                                Dati imaging
-                              </div>
+                            <div className="rounded-[1.2rem] border border-[#e3e9f0] bg-[#f8fbff] p-4">
+                              <div className="text-xs font-semibold text-[#6f7d91]">Dati imaging</div>
 
-                              <div className="mt-3 space-y-2 text-sm text-zinc-700">
+                              <div className="mt-3 space-y-2 text-sm text-[#5f708a]">
                                 <div>
-                                  <span className="font-semibold">Modalità:</span>{" "}
+                                  <span className="font-semibold text-[#30486f]">Modalità:</span>{" "}
                                   {detailEvent.meta?.imaging?.modality || "—"}
                                 </div>
                                 <div>
-                                  <span className="font-semibold">Distretto:</span>{" "}
+                                  <span className="font-semibold text-[#30486f]">Distretto:</span>{" "}
                                   {detailEvent.meta?.imaging?.body_part || "—"}
                                 </div>
                                 <div>
-                                  <span className="font-semibold">Viewer DICOM:</span>{" "}
+                                  <span className="font-semibold text-[#30486f]">Viewer DICOM:</span>{" "}
                                   {detailEvent.meta?.imaging?.files?.some((f) => !!f?.orthanc?.viewer_url || !!f?.id)
                                     ? "Disponibile"
                                     : "Non disponibile"}
                                 </div>
                                 {detailEvent.meta?.imaging?.files?.[0]?.orthanc?.study_instance_uid ? (
                                   <div>
-                                    <span className="font-semibold">Study UID:</span>{" "}
+                                    <span className="font-semibold text-[#30486f]">Study UID:</span>{" "}
                                     <span className="break-all font-mono text-xs">
                                       {detailEvent.meta.imaging.files[0].orthanc.study_instance_uid}
                                     </span>
@@ -2631,15 +2628,15 @@ export default function ClinicaPage() {
                                     return (
                                       <div
                                         key={file.id || file.path}
-                                        className="rounded-xl border border-zinc-200 bg-white p-3"
+                                        className="rounded-xl border border-[#e3e9f0] bg-white p-3"
                                       >
                                         <div className="flex items-start justify-between gap-3">
                                           <div className="min-w-0">
-                                            <div className="truncate text-sm font-semibold text-zinc-900">
+                                            <div className="truncate text-sm font-semibold text-[#30486f]">
                                               {file.name || "File imaging"}
                                             </div>
 
-                                            <div className="mt-1 text-xs text-zinc-500">
+                                            <div className="mt-1 text-xs text-[#6f7d91]">
                                               {file.mime || "mime sconosciuto"}
                                               {typeof file.size === "number"
                                                 ? ` • ${Math.round(file.size / 1024)} KB`
@@ -2653,8 +2650,8 @@ export default function ClinicaPage() {
                                             ) : null}
 
                                             {shareUrl ? (
-                                              <div className="mt-2 break-all text-[11px] leading-5 text-zinc-600">
-                                                <span className="font-semibold text-zinc-700">
+                                              <div className="mt-2 break-all text-[11px] leading-5 text-[#5f708a]">
+                                                <span className="font-semibold text-[#30486f]">
                                                   Link condivisibile:
                                                 </span>{" "}
                                                 {shareUrl}
@@ -2662,7 +2659,7 @@ export default function ClinicaPage() {
                                             ) : null}
 
                                             {shareExpiresAt ? (
-                                              <div className="mt-1 text-[11px] text-zinc-500">
+                                              <div className="mt-1 text-[11px] text-[#6f7d91]">
                                                 Valido fino al {formatShareExpiry(shareExpiresAt)}
                                               </div>
                                             ) : null}
@@ -2683,7 +2680,7 @@ export default function ClinicaPage() {
                                           <div className="shrink-0 space-y-2">
                                             <button
                                               type="button"
-                                              className="block w-full rounded-xl bg-black px-3 py-2 text-xs font-semibold text-white"
+                                              className="block w-full rounded-xl bg-[#30486f] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#263b59]"
                                               onClick={() =>
                                                 void openImagingViewerOrFile(detailEvent.id, file)
                                               }
@@ -2698,7 +2695,7 @@ export default function ClinicaPage() {
 
                                             <button
                                               type="button"
-                                              className="block w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-800"
+                                              className="block w-full rounded-xl border border-[#d7dfe9] bg-white px-3 py-2 text-xs font-semibold text-[#30486f]"
                                               disabled={isShareLoading || !file?.orthanc?.study_instance_uid}
                                               onClick={() =>
                                                 void createImagingShareLink(
@@ -2713,7 +2710,7 @@ export default function ClinicaPage() {
 
                                             <button
                                               type="button"
-                                              className="block w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-800 disabled:opacity-50"
+                                              className="block w-full rounded-xl border border-[#d7dfe9] bg-white px-3 py-2 text-xs font-semibold text-[#30486f] disabled:opacity-50"
                                               disabled={!shareUrl}
                                               onClick={() => void copyImagingShareLink(file)}
                                             >
@@ -2759,9 +2756,8 @@ export default function ClinicaPage() {
                                         </div>
 
                                         {isImage ? (
-                                          <div className="mt-3 rounded-lg border border-dashed border-zinc-200 bg-zinc-50 px-3 py-3 text-xs text-zinc-500">
-                                            Anteprima inline non ancora disponibile. Usa “Apri
-                                            viewer” o “Scarica file”.
+                                          <div className="mt-3 rounded-lg border border-dashed border-[#d7dfe9] bg-[#f8fbff] px-3 py-3 text-xs text-[#6f7d91]">
+                                            Anteprima inline non ancora disponibile. Usa “Apri viewer” o “Scarica file”.
                                           </div>
                                         ) : null}
                                       </div>
@@ -2769,26 +2765,26 @@ export default function ClinicaPage() {
                                   })}
                                 </div>
                               ) : (
-                                <div className="mt-3 text-xs text-zinc-600">
+                                <div className="mt-3 text-xs text-[#5f708a]">
                                   Nessun file imaging associato.
                                 </div>
                               )}
                             </div>
                           ) : null}
 
-                          <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-                            <div className="text-xs font-semibold text-zinc-700">Allegati</div>
+                          <div className="rounded-[1.2rem] border border-[#e3e9f0] bg-white p-4">
+                            <div className="text-xs font-semibold text-[#6f7d91]">Allegati</div>
 
                             {detailFilesLoading ? (
-                              <div className="mt-2 text-xs text-zinc-600">Caricamento...</div>
+                              <div className="mt-2 text-xs text-[#5f708a]">Caricamento...</div>
                             ) : detailFiles.length === 0 ? (
-                              <div className="mt-2 text-xs text-zinc-600">Nessun allegato.</div>
+                              <div className="mt-2 text-xs text-[#5f708a]">Nessun allegato.</div>
                             ) : (
                               <ul className="mt-3 space-y-2">
                                 {detailFiles.map((f) => (
                                   <li
                                     key={f.id}
-                                    className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-800"
+                                    className="rounded-xl border border-[#e3e9f0] bg-[#f8fbff] px-3 py-2 text-sm text-[#30486f]"
                                   >
                                     {f.filename}
                                   </li>
@@ -2865,8 +2861,8 @@ export default function ClinicaPage() {
                             </label>
                           </div>
 
-                          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-                            <div className="text-xs font-semibold text-zinc-700">
+                          <div className="rounded-[1.2rem] border border-[#e3e9f0] bg-[#f8fbff] p-4">
+                            <div className="text-xs font-semibold text-[#6f7d91]">
                               Stato validazione
                             </div>
                             {isEventVerified(detailEvent) ? (
@@ -2883,11 +2879,11 @@ export default function ClinicaPage() {
                             )}
                           </div>
 
-                          <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-                            <div className="text-xs font-semibold text-zinc-700">
+                          <div className="rounded-[1.2rem] border border-[#e3e9f0] bg-white p-4">
+                            <div className="text-xs font-semibold text-[#6f7d91]">
                               Meta informazioni
                             </div>
-                            <div className="mt-2 space-y-1.5 text-xs leading-5 text-zinc-600">
+                            <div className="mt-2 space-y-1.5 text-xs leading-5 text-[#5f708a]">
                               <div>
                                 ID evento: <span className="font-mono">{detailEvent.id}</span>
                               </div>
@@ -2946,8 +2942,8 @@ export default function ClinicaPage() {
                           </div>
                         </>
                       ) : (
-                        <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-                          <div className="text-xs font-semibold text-zinc-700">Modifica evento</div>
+                        <div className="rounded-[1.2rem] border border-[#e3e9f0] bg-[#f8fbff] p-4">
+                          <div className="text-xs font-semibold text-[#6f7d91]">Modifica evento</div>
 
                           <div className="mt-5 grid gap-4 md:grid-cols-2">
                             <label className="block md:col-span-2">
@@ -3025,15 +3021,14 @@ export default function ClinicaPage() {
                             </label>
                           </div>
 
-                          <p className="mt-3 text-xs leading-5 text-zinc-600">
-                            Nota: il peso è salvato in “meta” e non è ancora modificabile da questa
-                            schermata.
+                          <p className="mt-3 text-xs leading-5 text-[#6f7d91]">
+                            Nota: il peso è salvato in “meta” e non è ancora modificabile da questa schermata.
                           </p>
                         </div>
                       )}
 
                       {deleteConfirm ? (
-                        <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
+                        <div className="rounded-[1.2rem] border border-red-200 bg-red-50 p-4">
                           <div className="text-sm font-semibold text-red-800">
                             Conferma eliminazione
                           </div>
@@ -3043,7 +3038,7 @@ export default function ClinicaPage() {
                           <div className="mt-3 flex flex-wrap gap-2">
                             <button
                               type="button"
-                              className="rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800 shadow-sm transition hover:bg-zinc-50"
+                              className="rounded-full border border-[#d7dfe9] bg-white px-4 py-2.5 text-sm font-semibold text-[#30486f] transition hover:bg-[#f8fbff]"
                               onClick={() => setDeleteConfirm(false)}
                               disabled={deleting}
                             >
@@ -3051,7 +3046,7 @@ export default function ClinicaPage() {
                             </button>
                             <button
                               type="button"
-                              className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700 disabled:opacity-50"
+                              className="rounded-full bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-50"
                               disabled={!allowed || deleting}
                               onClick={() => void deleteDetailEvent()}
                             >
@@ -3068,7 +3063,7 @@ export default function ClinicaPage() {
                           <>
                             <button
                               type="button"
-                              className="rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800 shadow-sm transition hover:bg-zinc-50"
+                              className="rounded-full border border-[#d7dfe9] bg-white px-4 py-2.5 text-sm font-semibold text-[#30486f] transition hover:bg-[#f8fbff]"
                               onClick={() => {
                                 resetEditStateFromEvent(detailEvent);
                                 setIsEditing(false);
@@ -3081,7 +3076,7 @@ export default function ClinicaPage() {
                             </button>
                             <button
                               type="button"
-                              className="rounded-xl bg-black px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-900 disabled:opacity-60"
+                              className="rounded-full bg-[#30486f] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_14px_34px_rgba(48,72,111,0.18)] transition hover:bg-[#263b59] disabled:opacity-60"
                               disabled={!allowed || updating || !editTitle.trim() || !editDate}
                               onClick={() => void updateDetailEvent()}
                             >
@@ -3091,7 +3086,7 @@ export default function ClinicaPage() {
                         ) : (
                           <button
                             type="button"
-                            className="rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800 shadow-sm transition hover:bg-zinc-50"
+                            className="rounded-full border border-[#d7dfe9] bg-white px-4 py-2.5 text-sm font-semibold text-[#30486f] transition hover:bg-[#f8fbff]"
                             onClick={closeDetailModal}
                           >
                             Chiudi
@@ -3100,7 +3095,7 @@ export default function ClinicaPage() {
                       ) : (
                         <button
                           type="button"
-                          className="rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800 shadow-sm transition hover:bg-zinc-50"
+                          className="rounded-full border border-[#d7dfe9] bg-white px-4 py-2.5 text-sm font-semibold text-[#30486f] transition hover:bg-[#f8fbff]"
                           onClick={closeDetailModal}
                         >
                           Chiudi
