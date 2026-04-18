@@ -14,6 +14,7 @@ import {
 } from "@/lib/clinic/operatorSession";
 
 type Body = {
+  clinicOperatorId?: string;
   currentPin?: string;
   newPin?: string;
 };
@@ -54,8 +55,13 @@ export async function POST(req: Request) {
   }
 
   const body = (await req.json().catch(() => null)) as Body | null;
+  const clinicOperatorId = String(body?.clinicOperatorId || "").trim();
   const currentPin = String(body?.currentPin || "").trim();
   const newPin = String(body?.newPin || "").trim();
+
+  if (!clinicOperatorId || !isUuid(clinicOperatorId)) {
+    return badRequest("clinicOperatorId non valido");
+  }
 
   if (!isValidOperatorPin(currentPin)) {
     return badRequest("PIN attuale non valido: usa 4-8 cifre numeriche.");
@@ -93,11 +99,11 @@ export async function POST(req: Request) {
   try {
     const operator = await resolveOrganizationOperator({
       organizationId,
-      userId: user.id,
+      clinicOperatorId,
     });
 
     if (!operator) {
-      return forbidden("Operatore clinico non configurato per questo utente.");
+      return forbidden("Operatore non disponibile per questa organizzazione.");
     }
 
     if (!operator.isActive) {
@@ -163,6 +169,7 @@ export async function POST(req: Request) {
     console.error("[operator-session/change-pin-first-access] fatal error", {
       organizationId,
       workstationKey,
+      clinicOperatorId,
       userId: user.id,
       error,
     });

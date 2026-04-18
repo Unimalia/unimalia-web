@@ -196,6 +196,7 @@ export default function ProfessionistiImpostazioniPage() {
   const [sessionPin, setSessionPin] = useState("");
 
   const [firstAccessPinChangeRequired, setFirstAccessPinChangeRequired] = useState(false);
+  const [firstAccessClinicOperatorId, setFirstAccessClinicOperatorId] = useState("");
   const [firstAccessOperatorLabel, setFirstAccessOperatorLabel] = useState("");
   const [firstAccessCurrentPin, setFirstAccessCurrentPin] = useState("");
   const [firstAccessNewPin, setFirstAccessNewPin] = useState("");
@@ -712,83 +713,85 @@ export default function ProfessionistiImpostazioniPage() {
   }
 
   async function handleActivateOrSwitchOperatorSession() {
-  setError(null);
-  setInfo(null);
+    setError(null);
+    setInfo(null);
 
-  if (!workstationKey) {
-    setError("Workstation non disponibile.");
-    return;
-  }
-
-  if (!selectedSessionOperatorId) {
-    setError("Seleziona un operatore.");
-    return;
-  }
-
-  if (!/^\d{4,8}$/.test(sessionPin.trim())) {
-    setError("Inserisci un PIN valido di 4-8 cifre.");
-    return;
-  }
-
-  setSavingOperatorSession(true);
-
-  try {
-    const activeClinicOperatorId = currentOperatorSession?.activeClinicOperatorId ?? null;
-
-    const isSwitch =
-      Boolean(activeClinicOperatorId) &&
-      activeClinicOperatorId !== selectedSessionOperatorId;
-
-    const result = isSwitch
-      ? await switchOperatorSession({
-          workstationKey,
-          clinicOperatorId: selectedSessionOperatorId,
-          pin: sessionPin.trim(),
-        })
-      : await activateOperatorSession({
-          workstationKey,
-          clinicOperatorId: selectedSessionOperatorId,
-          pin: sessionPin.trim(),
-        });
-
-    if ("session" in result && result.session) {
-      setFirstAccessPinChangeRequired(false);
-      setFirstAccessOperatorLabel("");
-      setFirstAccessCurrentPin("");
-      setFirstAccessNewPin("");
-      setFirstAccessConfirmPin("");
-
-      setCurrentOperatorSession(result.session);
-      setSessionPin("");
-      setInfo(
-        isSwitch
-          ? `Operatore attivo aggiornato ✅ ${result.session.activeOperatorLabel}`
-          : `Sessione operatore attivata ✅ ${result.session.activeOperatorLabel}`
-      );
+    if (!workstationKey) {
+      setError("Workstation non disponibile.");
       return;
     }
 
-    if ("requiresPinChange" in result && result.requiresPinChange) {
-      setCurrentOperatorSession(null);
-      setFirstAccessPinChangeRequired(true);
-      setFirstAccessOperatorLabel(result.operatorLabel || "");
-      setFirstAccessCurrentPin(sessionPin.trim());
-      setFirstAccessNewPin("");
-      setFirstAccessConfirmPin("");
-      setSessionPin("");
-      setInfo(
-        `PIN temporaneo verificato per ${result.operatorLabel}. Imposta ora il PIN personale.`
-      );
+    if (!selectedSessionOperatorId) {
+      setError("Seleziona un operatore.");
       return;
     }
 
-    setError("Risposta sessione operatore non valida.");
-  } catch (err) {
-    setError(err instanceof Error ? err.message : "Errore sessione operatore.");
-  } finally {
-    setSavingOperatorSession(false);
+    if (!/^\d{4,8}$/.test(sessionPin.trim())) {
+      setError("Inserisci un PIN valido di 4-8 cifre.");
+      return;
+    }
+
+    setSavingOperatorSession(true);
+
+    try {
+      const activeClinicOperatorId = currentOperatorSession?.activeClinicOperatorId ?? null;
+
+      const isSwitch =
+        Boolean(activeClinicOperatorId) &&
+        activeClinicOperatorId !== selectedSessionOperatorId;
+
+      const result = isSwitch
+        ? await switchOperatorSession({
+            workstationKey,
+            clinicOperatorId: selectedSessionOperatorId,
+            pin: sessionPin.trim(),
+          })
+        : await activateOperatorSession({
+            workstationKey,
+            clinicOperatorId: selectedSessionOperatorId,
+            pin: sessionPin.trim(),
+          });
+
+      if ("session" in result && result.session) {
+        setFirstAccessPinChangeRequired(false);
+        setFirstAccessClinicOperatorId("");
+        setFirstAccessOperatorLabel("");
+        setFirstAccessCurrentPin("");
+        setFirstAccessNewPin("");
+        setFirstAccessConfirmPin("");
+
+        setCurrentOperatorSession(result.session);
+        setSessionPin("");
+        setInfo(
+          isSwitch
+            ? `Operatore attivo aggiornato ✅ ${result.session.activeOperatorLabel}`
+            : `Sessione operatore attivata ✅ ${result.session.activeOperatorLabel}`
+        );
+        return;
+      }
+
+      if ("requiresPinChange" in result && result.requiresPinChange) {
+        setCurrentOperatorSession(null);
+        setFirstAccessPinChangeRequired(true);
+        setFirstAccessClinicOperatorId(result.clinicOperatorId || selectedSessionOperatorId);
+        setFirstAccessOperatorLabel(result.operatorLabel || "");
+        setFirstAccessCurrentPin(sessionPin.trim());
+        setFirstAccessNewPin("");
+        setFirstAccessConfirmPin("");
+        setSessionPin("");
+        setInfo(
+          `PIN temporaneo verificato per ${result.operatorLabel}. Imposta ora il PIN personale.`
+        );
+        return;
+      }
+
+      setError("Risposta sessione operatore non valida.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Errore sessione operatore.");
+    } finally {
+      setSavingOperatorSession(false);
+    }
   }
-}
 
   async function handleChangeFirstAccessPin() {
     setError(null);
@@ -801,6 +804,11 @@ export default function ProfessionistiImpostazioniPage() {
 
     if (!firstAccessPinChangeRequired) {
       setError("Nessun cambio PIN obbligatorio in corso.");
+      return;
+    }
+
+    if (!firstAccessClinicOperatorId) {
+      setError("Operatore del primo accesso non disponibile.");
       return;
     }
 
@@ -829,12 +837,14 @@ export default function ProfessionistiImpostazioniPage() {
     try {
       const result = await changePinFirstAccess({
         workstationKey,
+        clinicOperatorId: firstAccessClinicOperatorId,
         currentPin: firstAccessCurrentPin.trim(),
         newPin: firstAccessNewPin.trim(),
       });
 
       setCurrentOperatorSession(result.session);
       setFirstAccessPinChangeRequired(false);
+      setFirstAccessClinicOperatorId("");
       setFirstAccessOperatorLabel("");
       setFirstAccessCurrentPin("");
       setFirstAccessNewPin("");
@@ -864,6 +874,7 @@ export default function ProfessionistiImpostazioniPage() {
       setCurrentOperatorSession(null);
       setSessionPin("");
       setFirstAccessPinChangeRequired(false);
+      setFirstAccessClinicOperatorId("");
       setFirstAccessOperatorLabel("");
       setFirstAccessCurrentPin("");
       setFirstAccessNewPin("");
@@ -1326,7 +1337,10 @@ export default function ProfessionistiImpostazioniPage() {
                 <button
                   type="button"
                   onClick={handleCloseOperatorSession}
-                  disabled={savingOperatorSession || (!currentOperatorSession && !firstAccessPinChangeRequired)}
+                  disabled={
+                    savingOperatorSession ||
+                    (!currentOperatorSession && !firstAccessPinChangeRequired)
+                  }
                   className="inline-flex items-center justify-center rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 disabled:opacity-60"
                 >
                   Chiudi sessione
@@ -1334,7 +1348,11 @@ export default function ProfessionistiImpostazioniPage() {
                 <button
                   type="button"
                   onClick={() => void refreshOperatorSession()}
-                  disabled={loadingOperatorSession || savingOperatorSession || savingFirstAccessPinChange}
+                  disabled={
+                    loadingOperatorSession ||
+                    savingOperatorSession ||
+                    savingFirstAccessPinChange
+                  }
                   className="inline-flex items-center justify-center rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 disabled:opacity-60"
                 >
                   Aggiorna stato
@@ -1414,6 +1432,7 @@ export default function ProfessionistiImpostazioniPage() {
                       type="button"
                       onClick={() => {
                         setFirstAccessPinChangeRequired(false);
+                        setFirstAccessClinicOperatorId("");
                         setFirstAccessOperatorLabel("");
                         setFirstAccessCurrentPin("");
                         setFirstAccessNewPin("");

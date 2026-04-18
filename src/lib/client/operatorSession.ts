@@ -165,6 +165,7 @@ export async function setMyOperatorPin(clinicOperatorId: string, pin: string) {
 
 export async function changePinFirstAccess(params: {
   workstationKey: string;
+  clinicOperatorId: string;
   currentPin: string;
   newPin: string;
 }) {
@@ -178,6 +179,7 @@ export async function changePinFirstAccess(params: {
       "x-workstation-key": params.workstationKey,
     },
     body: JSON.stringify({
+      clinicOperatorId: params.clinicOperatorId,
       currentPin: params.currentPin,
       newPin: params.newPin,
     }),
