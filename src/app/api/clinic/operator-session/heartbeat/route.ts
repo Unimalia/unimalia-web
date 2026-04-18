@@ -61,19 +61,68 @@ export async function POST(req: Request) {
     return forbidden("Profilo professionista non collegato a una organizzazione.");
   }
 
+  console.info("[heartbeat] Request received", {
+    organizationId,
+    workstationKey,
+    userId: user.id,
+  });
+
   const existing = await getOperatorSession({
     organizationId,
     workstationKey,
   });
 
   if (!existing) {
+    console.info("[heartbeat] No existing session found", {
+      organizationId,
+      workstationKey,
+    });
     return NextResponse.json({ ok: true, session: null });
   }
 
-  const session = await heartbeatOperatorSession({
-    organizationId,
-    workstationKey,
-  });
+  let session;
+  try {
+    session = await heartbeatOperatorSession({
+      organizationId,
+      workstationKey,
+    });
+    console.info("[heartbeat] Session updated successfully", {
+      organizationId,
+      workstationKey,
+      sessionId: session?.id,
+    });
+  } catch (error) {
+    console.error("[heartbeat] Failed to update session", {
+      organizationId,
+      workstationKey,
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    
+    // Return existing session data even if update failed
+    return NextResponse.json({
+      ok: false,
+      session: existing
+        ? {
+            id: existing.id,
+            organizationId: existing.organization_id,
+            workstationKey: existing.workstation_key,
+            activeClinicOperatorId: existing.active_clinic_operator_id,
+            activeUserId: existing.active_user_id,
+            activeProfessionalId: existing.active_professional_id,
+            activeOperatorLabel: existing.active_operator_label,
+            activeOperatorRole: existing.active_operator_role,
+            activeOperatorIsVeterinarian: existing.active_operator_is_veterinarian,
+            activeOperatorFnoviNumber: existing.active_operator_fnovi_number,
+            activeOperatorFnoviProvince: existing.active_operator_fnovi_province,
+            pinVerifiedAt: existing.pin_verified_at,
+            lastSeenAt: existing.last_seen_at,
+            expiresAt: existing.expires_at,
+            signatureMode: existing.signature_mode,
+          }
+        : null,
+    });
+  }
 
   return NextResponse.json({
     ok: true,

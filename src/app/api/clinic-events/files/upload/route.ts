@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireOwnerOrGrant } from "@/lib/server/requireOwnerOrGrant";
+import { requireClinicOperatorSession } from "@/lib/server/requireClinicOperatorSession";
 import { safeWriteAudit } from "@/lib/server/safeAudit";
 import { sendOwnerAnimalUpdateEmail } from "@/lib/email/sendOwnerAnimalUpdateEmail";
 import { getBearerToken } from "@/lib/server/bearer";
@@ -167,9 +168,31 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const operatorContext = await requireClinicOperatorSession(req, user.id);
+
+  if (!operatorContext.ok) {
+    return NextResponse.json(
+      { error: operatorContext.reason },
+      { status: operatorContext.status }
+    );
+  }
+
+  const operator = operatorContext.data;
+
   const professionalRole = await getProfessionalRole(user.id);
 
   if (professionalRole && professionalRole !== "veterinarian") {
+    await safeWriteAudit(supabase, {
+      req,
+      actor_user_id: operator.activeOperatorUserId,
+      actor_organization_id: operator.organizationId,
+      action: "file.upload",
+      target_type: "animal",
+      target_id: "",
+      result: "denied",
+      reason: "Accesso clinico riservato ai veterinari.",
+    });
+
     return NextResponse.json(
       { error: "Accesso clinico riservato ai veterinari." },
       { status: 403 }
@@ -231,8 +254,8 @@ export async function POST(req: Request) {
   if (!grant.ok) {
     await safeWriteAudit(supabase, {
       req,
-      actor_user_id: user.id,
-      actor_organization_id: null,
+      actor_user_id: operator.activeOperatorUserId,
+      actor_organization_id: operator.organizationId,
       action: "file.upload",
       target_type: "event",
       target_id: eventId,
@@ -242,29 +265,6 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ error: grant.reason }, { status: 403 });
-  }
-
-  const source = String(ev.source || "");
-  const createdByUserId = String(ev.created_by_user_id || "").trim();
-
-  if (source !== "owner") {
-    const reason = "Non autorizzato: puoi caricare file solo su eventi owner o sui tuoi eventi.";
-
-    if (!createdByUserId || createdByUserId !== user.id) {
-      await safeWriteAudit(supabase, {
-        req,
-        actor_user_id: user.id,
-        actor_organization_id: grant.actor_organization_id,
-        action: "file.upload",
-        target_type: "event",
-        target_id: eventId,
-        animal_id: animalId,
-        result: "denied",
-        reason,
-      });
-
-      return NextResponse.json({ error: reason }, { status: 403 });
-    }
   }
 
   const bucket = "clinic-event-files";
@@ -310,8 +310,8 @@ export async function POST(req: Request) {
       if (upErr) {
         await safeWriteAudit(supabase, {
           req,
-          actor_user_id: user.id,
-          actor_organization_id: grant.actor_organization_id,
+          actor_user_id: operator.activeOperatorUserId,
+          actor_organization_id: operator.organizationId,
           action: "file.upload",
           target_type: "event",
           target_id: eventId,
@@ -335,7 +335,7 @@ export async function POST(req: Request) {
             filename: f.name || safeName,
             mime: f.type || null,
             size: f.size || null,
-            created_by_user_id: user.id,
+            created_by_user_id: operator.activeOperatorUserId,
           },
         ])
         .select("id, event_id, animal_id, path, filename, mime, size, created_by_user_id, created_at")
@@ -344,8 +344,8 @@ export async function POST(req: Request) {
       if (insErr || !row) {
         await safeWriteAudit(supabase, {
           req,
-          actor_user_id: user.id,
-          actor_organization_id: grant.actor_organization_id,
+          actor_user_id: operator.activeOperatorUserId,
+          actor_organization_id: operator.organizationId,
           action: "file.upload",
           target_type: "event",
           target_id: eventId,
@@ -371,8 +371,8 @@ export async function POST(req: Request) {
 
     await safeWriteAudit(supabase, {
       req,
-      actor_user_id: user.id,
-      actor_organization_id: grant.actor_organization_id,
+      actor_user_id: operator.activeOperatorUserId,
+      actor_organization_id: operator.organizationId,
       action: "file.upload",
       target_type: "event",
       target_id: eventId,
@@ -435,8 +435,8 @@ export async function POST(req: Request) {
 
     await safeWriteAudit(supabase, {
       req,
-      actor_user_id: user.id,
-      actor_organization_id: grant.actor_organization_id,
+      actor_user_id: operator.activeOperatorUserId,
+      actor_organization_id: operator.organizationId,
       action: "file.upload",
       target_type: "event",
       target_id: eventId,

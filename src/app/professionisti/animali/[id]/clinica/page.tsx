@@ -1113,6 +1113,7 @@ export default function ClinicaPage() {
       const createdEvent = json?.event as ClinicEventRow | undefined;
       if (createdEvent) {
         setEvents((prev) => [createdEvent, ...prev]);
+        // Update files count immediately for timeline badge
         if (newFiles.length > 0) {
           setFilesCountByEventId((prev) => ({
             ...prev,
@@ -2822,6 +2823,7 @@ export default function ClinicaPage() {
                                     const uploadedFiles = Array.isArray(uploadJson?.files)
                                       ? uploadJson.files
                                       : [];
+                                    // Update timeline badge immediately
                                     setFilesCountByEventId((prev) => ({
                                       ...prev,
                                       [detailEvent.id]: Math.max(

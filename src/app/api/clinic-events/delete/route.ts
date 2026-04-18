@@ -172,26 +172,6 @@ export async function POST(req: Request) {
     return forbidden(grant.reason);
   }
 
-  const createdByUserId = current.created_by_user_id ?? null;
-
-  if (!createdByUserId || createdByUserId !== operator.activeOperatorUserId) {
-    const reason = "Non autorizzato: puoi eliminare solo i tuoi eventi clinici.";
-
-    await safeWriteAudit(supabase, {
-      req,
-      actor_user_id: operator.activeOperatorUserId,
-      actor_organization_id: grant.actor_organization_id ?? operator.organizationId,
-      action: "event.delete",
-      target_type: "event",
-      target_id: id,
-      animal_id: animalId,
-      result: "denied",
-      reason,
-    });
-
-    return forbidden(reason);
-  }
-
   const { error } = await supabase
     .from("animal_clinic_events")
     .update({ status: "void" })

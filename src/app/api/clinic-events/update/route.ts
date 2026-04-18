@@ -151,6 +151,17 @@ export async function POST(req: Request) {
   const operator = operatorContext.data;
 
   if (!isVetUser(user)) {
+    await safeWriteAudit(supabase, {
+      req,
+      actor_user_id: operator.activeOperatorUserId,
+      actor_organization_id: operator.organizationId,
+      action: "event.update",
+      target_type: "animal",
+      target_id: "",
+      result: "denied",
+      reason: "Cartella clinica riservata ai veterinari.",
+    });
+
     return forbidden("Cartella clinica riservata ai veterinari autorizzati.");
   }
 
@@ -235,26 +246,6 @@ export async function POST(req: Request) {
     });
 
     return forbidden(grant.reason);
-  }
-
-  const createdByUserId = current.created_by_user_id ?? null;
-
-  if (!createdByUserId || createdByUserId !== operator.activeOperatorUserId) {
-    const reason = "Non autorizzato: puoi modificare solo i tuoi eventi clinici.";
-
-    await safeWriteAudit(supabase, {
-      req,
-      actor_user_id: operator.activeOperatorUserId,
-      actor_organization_id: grant.actor_organization_id ?? operator.organizationId,
-      action: "event.update",
-      target_type: "event",
-      target_id: id,
-      animal_id: animalId,
-      result: "denied",
-      reason,
-    });
-
-    return forbidden(reason);
   }
 
   const therapyStartDate = parseDateOnly(body.therapyStartDate);
