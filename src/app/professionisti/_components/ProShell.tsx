@@ -16,6 +16,7 @@ import {
   type OperatorOption,
   type OperatorSession,
 } from "@/lib/client/operatorSession";
+import { getWorkstationKey } from "@/lib/client/workstationKey";
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -90,17 +91,6 @@ function SideLink({
       ) : null}
     </Link>
   );
-}
-
-function getOrCreateWorkstationKey() {
-  if (typeof window === "undefined") return "";
-  const storageKey = "unimalia:clinic:workstation";
-  const existing = window.localStorage.getItem(storageKey);
-  if (existing && existing.trim()) return existing.trim();
-
-  const generated = `ws-${crypto.randomUUID()}`;
-  window.localStorage.setItem(storageKey, generated);
-  return generated;
 }
 
 export default function ProShell({ children }: { children: React.ReactNode }) {
@@ -178,7 +168,7 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
 
       setCurrentUserIsVet(isVetUser(user));
       setCurrentUserId(user.id);
-      setWorkstationKey(getOrCreateWorkstationKey());
+      setWorkstationKey(getWorkstationKey());
       setAuthChecked(true);
     }
 

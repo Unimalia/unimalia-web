@@ -19,6 +19,7 @@ import {
   switchOperatorSession,
   type OperatorSession,
 } from "@/lib/client/operatorSession";
+import { getWorkstationKey } from "@/lib/client/workstationKey";
 
 type Professional = {
   id: string;
@@ -66,8 +67,6 @@ const DEFAULT_PREFS: LocalPrefs = {
   notifyConsults: true,
   notifyClinicalUpdates: true,
 };
-
-const WORKSTATION_STORAGE_KEY = "unimalia:clinic-workstation-key";
 
 function isEmailValid(email: string) {
   const e = email.trim();
@@ -129,21 +128,6 @@ function operatorStatusLabel(status: string) {
     default:
       return status;
   }
-}
-
-function getOrCreateWorkstationKey() {
-  if (typeof window === "undefined") {
-    return "";
-  }
-
-  const existing = window.localStorage.getItem(WORKSTATION_STORAGE_KEY);
-  if (existing) {
-    return existing;
-  }
-
-  const generated = `ws_${crypto.randomUUID().toLowerCase()}`;
-  window.localStorage.setItem(WORKSTATION_STORAGE_KEY, generated);
-  return generated;
 }
 
 export default function ProfessionistiImpostazioniPage() {
@@ -242,7 +226,7 @@ export default function ProfessionistiImpostazioniPage() {
 
   async function refreshOperatorSession(workstationKeyValue?: string) {
     const resolvedWorkstationKey =
-      workstationKeyValue || workstationKey || getOrCreateWorkstationKey();
+      workstationKeyValue || workstationKey || getWorkstationKey();
 
     if (!resolvedWorkstationKey) {
       return;
@@ -295,7 +279,7 @@ export default function ProfessionistiImpostazioniPage() {
       setUserEmail(user.email ?? "");
       setProfessionalType(resolvedProfessionalType);
 
-      const initialWorkstationKey = getOrCreateWorkstationKey();
+      const initialWorkstationKey = getWorkstationKey();
       setWorkstationKey(initialWorkstationKey);
 
       const { data: proData, error: proErr } = await supabase
