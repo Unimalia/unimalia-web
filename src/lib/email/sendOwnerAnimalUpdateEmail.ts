@@ -163,10 +163,16 @@ function renderMetaRows(meta: Record<string, unknown> | null | undefined) {
     "therapy_end_date",
     "priority",
     "weight_kg",
+    "weightKg",
     "created_by_member_label",
     "created_by_member_id",
     "created_by_organization_name",
     "organization_name",
+    "organizationLabel",
+    "clinic_name",
+    "has_attachments",
+    "active_operator_user_id",
+    "active_operator_professional_id",
     "active_operator_label",
     "operator_session_id",
     "signature_mode",
@@ -293,12 +299,16 @@ export async function sendOwnerAnimalUpdateEmail(input: SendOwnerAnimalUpdateEma
   const clinicLabel =
     normalizeValue(meta?.created_by_organization_name) ||
     normalizeValue(meta?.organization_name) ||
-    "Clinica veterinaria";
+    normalizeValue(meta?.organizationLabel) ||
+    normalizeValue(meta?.clinic_name) ||
+    null;
 
   const professionalLabel =
     normalizeValue(vetSignature) ||
     normalizeValue(meta?.created_by_member_label) ||
-    clinicLabel;
+    normalizeValue(meta?.active_operator_label) ||
+    clinicLabel ||
+    "Professionista sanitario";
 
   const detailsRows = [
     renderDetailRow("Animale", animal.name ?? "il tuo animale"),
@@ -336,14 +346,25 @@ export async function sendOwnerAnimalUpdateEmail(input: SendOwnerAnimalUpdateEma
     </div>
   `;
 
-  const html = `
-    <div style="font-family: Arial, sans-serif; color: #222; line-height: 1.5; max-width: 720px; margin: 0 auto;">
+  const introBlock = clinicLabel
+    ? `
       <p>
         La clinica veterinaria <strong>${escapeHtml(clinicLabel)}</strong> ${escapeHtml(
           labelForAction(action)
         )} per
         <strong>${escapeHtml(animal.name ?? "il tuo animale")}</strong>.
       </p>
+    `
+    : `
+      <p>
+        È stato registrato un aggiornamento sanitario per
+        <strong>${escapeHtml(animal.name ?? "il tuo animale")}</strong>.
+      </p>
+    `;
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; color: #222; line-height: 1.5; max-width: 720px; margin: 0 auto;">
+      ${introBlock}
 
       <table style="width: 100%; border-collapse: collapse; margin-top: 18px;">
         ${detailsRows}
