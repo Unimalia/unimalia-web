@@ -268,6 +268,17 @@ export async function POST(req: Request) {
       ? body.priority
       : null;
 
+  let organizationMemberId: string | null = null;
+  if (operator.activeOperatorUserId && operator.organizationId) {
+    const { data: memberRow } = await supabase
+      .from("organization_members")
+      .select("id")
+      .eq("organization_id", operator.organizationId)
+      .eq("user_id", operator.activeOperatorUserId)
+      .maybeSingle<{ id: string }>();
+    organizationMemberId = memberRow?.id ?? null;
+  }
+
   const nextMeta: ClinicEventMeta = {
     ...((current.meta || {}) as ClinicEventMeta),
   };
@@ -297,7 +308,7 @@ export async function POST(req: Request) {
   nextMeta.active_operator_label = operator.activeOperatorLabel;
   nextMeta.operator_session_id = operator.operatorSessionId;
   nextMeta.signature_mode = "operator_session_pin";
-  nextMeta.updated_by_member_id = operator.activeOperatorUserId;
+  nextMeta.updated_by_member_id = organizationMemberId;
   nextMeta.updated_by_member_label = operator.activeOperatorLabel;
 
   const before = {

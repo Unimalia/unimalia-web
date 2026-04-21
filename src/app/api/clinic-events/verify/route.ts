@@ -182,6 +182,17 @@ export async function POST(req: Request) {
       return badRequest("Evento annullato non verificabile");
     }
 
+    let organizationMemberId: string | null = null;
+    if (operator.activeOperatorUserId && operator.organizationId) {
+      const { data: memberRow } = await supabase
+        .from("organization_members")
+        .select("id")
+        .eq("organization_id", operator.organizationId)
+        .eq("user_id", operator.activeOperatorUserId)
+        .maybeSingle<{ id: string }>();
+      organizationMemberId = memberRow?.id ?? null;
+    }
+
     const nowIso = new Date().toISOString();
     const verifierLabel = operator.activeOperatorLabel;
 
@@ -191,7 +202,7 @@ export async function POST(req: Request) {
         verified_at: nowIso,
         verified_by_user_id: operator.activeOperatorUserId,
         verified_by_organization_id: grant.actor_organization_id ?? operator.organizationId,
-        verified_by_member_id: operator.activeOperatorUserId,
+        verified_by_member_id: organizationMemberId,
         verified_by_label: verifierLabel,
       })
       .eq("id", id)
@@ -222,7 +233,7 @@ export async function POST(req: Request) {
         animal_id: animalId,
         actor_user_id: operator.activeOperatorUserId,
         actor_organization_id: grant.actor_organization_id ?? operator.organizationId,
-        actor_member_id: operator.activeClinicOperatorId,
+        actor_member_id: organizationMemberId,
         action: "verify",
         previous_data: current,
         next_data: updated,

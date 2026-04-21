@@ -356,6 +356,18 @@ export async function POST(req: Request) {
       null;
   }
 
+  // Get organization member ID for *_member_id fields
+  let organizationMemberId: string | null = null;
+  if (operator.activeOperatorUserId && operator.organizationId) {
+    const { data: memberRow } = await admin
+      .from("organization_members")
+      .select("id")
+      .eq("organization_id", operator.organizationId)
+      .eq("user_id", operator.activeOperatorUserId)
+      .maybeSingle<{ id: string }>();
+    organizationMemberId = memberRow?.id ?? null;
+  }
+
   const meta: ClinicEventMeta = {};
   const incomingMeta = sanitizeMeta(body.meta);
 
@@ -365,7 +377,7 @@ export async function POST(req: Request) {
 
   if (weightKg) meta.weight_kg = weightKg;
 
-  meta.created_by_member_id = operator.activeClinicOperatorId;
+  meta.created_by_member_id = organizationMemberId;
   meta.created_by_member_label = operator.activeOperatorLabel;
   meta.active_operator_user_id = operator.activeOperatorUserId;
   meta.active_operator_professional_id = operator.activeOperatorProfessionalId;
@@ -400,7 +412,7 @@ export async function POST(req: Request) {
         verified_at: nowIso,
         verified_by_user_id: operator.activeOperatorUserId,
         verified_by_organization_id: verifiedByOrganizationId,
-        verified_by_member_id: operator.activeOperatorUserId,
+        verified_by_member_id: organizationMemberId,
         verified_by_label: operator.activeOperatorLabel,
         meta,
         priority: priority || null,
