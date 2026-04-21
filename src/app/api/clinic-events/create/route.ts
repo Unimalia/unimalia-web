@@ -365,7 +365,7 @@ export async function POST(req: Request) {
 
   if (weightKg) meta.weight_kg = weightKg;
 
-  meta.created_by_member_id = operator.activeOperatorUserId;
+  meta.created_by_member_id = operator.activeClinicOperatorId;
   meta.created_by_member_label = operator.activeOperatorLabel;
   meta.active_operator_user_id = operator.activeOperatorUserId;
   meta.active_operator_professional_id = operator.activeOperatorProfessionalId;
@@ -433,7 +433,7 @@ export async function POST(req: Request) {
         animal_id: animalId,
         actor_user_id: operator.activeOperatorUserId,
         actor_organization_id: grant.actor_organization_id ?? operator.organizationId,
-        actor_member_id: operator.activeOperatorUserId,
+        actor_member_id: operator.activeClinicOperatorId,
         action: "create",
         previous_data: null,
         next_data: data,

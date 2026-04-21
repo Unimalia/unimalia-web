@@ -199,7 +199,7 @@ export async function POST(req: Request) {
       animal_id: animalId,
       actor_user_id: operator.activeOperatorUserId,
       actor_organization_id: grant.actor_organization_id ?? operator.organizationId,
-      actor_member_id: operator.activeOperatorUserId,
+      actor_member_id: operator.activeClinicOperatorId,
       action: "delete",
       previous_data: current,
       next_data: { ...current, status: "void" },

@@ -12,6 +12,7 @@ export type RequiredClinicOperatorSession = {
   operatorSessionId: string;
   activeOperatorUserId: string | null;
   activeOperatorProfessionalId: string | null;
+  activeClinicOperatorId: string | null;
   activeOperatorLabel: string;
   pinVerifiedAt: string;
   lastSeenAt: string;
@@ -84,6 +85,7 @@ export async function requireClinicOperatorSession(
       operatorSessionId: session.id,
       activeOperatorUserId: session.active_user_id,
       activeOperatorProfessionalId: session.active_professional_id ?? null,
+      activeClinicOperatorId: session.active_clinic_operator_id,
       activeOperatorLabel: session.active_operator_label,
       pinVerifiedAt: session.pin_verified_at,
       lastSeenAt: session.last_seen_at,

@@ -41,6 +41,13 @@ type Tag = {
   key: string;
 };
 
+function formatEventDate(value: string | null, fallbackCreatedAt: string) {
+  const source = value || fallbackCreatedAt;
+  const d = new Date(source);
+  if (Number.isNaN(d.getTime())) return "Data non disponibile";
+  return d.toLocaleString("it-IT");
+}
+
 export default function NewProfessionalConsultPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -207,12 +214,18 @@ export default function NewProfessionalConsultPage() {
   }
 
   if (loading) {
-    return <main className="mx-auto max-w-6xl p-6">Caricamento...</main>;
+    return (
+      <main className="mx-auto max-w-6xl px-4 py-8">
+        <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
+          <p className="text-sm text-zinc-600">Caricamento...</p>
+        </div>
+      </main>
+    );
   }
 
   if (error || !compose) {
     return (
-      <main className="mx-auto max-w-6xl p-6">
+      <main className="mx-auto max-w-6xl px-4 py-8">
         <div className="rounded-3xl border border-red-200 bg-red-50 p-6 text-red-700 shadow-sm">
           {error || "Dati non disponibili"}
         </div>
@@ -221,62 +234,89 @@ export default function NewProfessionalConsultPage() {
   }
 
   return (
-    <main className="mx-auto max-w-6xl p-6">
+    <main className="mx-auto max-w-7xl px-4 py-8 space-y-6">
       <button
         type="button"
         onClick={() => router.back()}
-        className="mb-4 rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800"
+        className="inline-flex items-center rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
       >
         ← Indietro
       </button>
 
-      <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <h1 className="text-2xl font-semibold text-zinc-900">Nuovo consulto professionista</h1>
-        <p className="mt-2 text-sm text-zinc-600">
+      <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="inline-flex rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-semibold text-zinc-700">
+            Consulto professionista
+          </span>
+          <span className="inline-flex rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-semibold text-zinc-700">
+            {compose.animal.name || "Animale"}
+          </span>
+        </div>
+
+        <h1 className="mt-4 text-3xl font-semibold tracking-tight text-zinc-900">
+          Nuovo consulto professionista
+        </h1>
+
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-600">
           Condividi la cartella clinica completa visibile oppure solo eventi selezionati.
         </p>
-      </div>
+      </section>
 
-      <div className="mt-6 rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <h2 className="text-base font-semibold text-zinc-900">Animale</h2>
-        <div className="mt-4 grid gap-3 text-sm text-zinc-700 md:grid-cols-2">
-          <div>
-            <strong>Nome:</strong> {compose.animal.name}
+      <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-zinc-900">Animale</h2>
+
+        <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 text-sm">
+          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+            <div className="text-zinc-500">Nome</div>
+            <div className="mt-1 font-semibold text-zinc-900">{compose.animal.name}</div>
           </div>
-          <div>
-            <strong>Specie:</strong> {compose.animal.species ?? "—"}
+
+          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+            <div className="text-zinc-500">Specie</div>
+            <div className="mt-1 font-semibold text-zinc-900">
+              {compose.animal.species ?? "—"}
+            </div>
           </div>
-          <div>
-            <strong>Razza:</strong> {compose.animal.breed ?? "—"}
+
+          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+            <div className="text-zinc-500">Razza</div>
+            <div className="mt-1 font-semibold text-zinc-900">
+              {compose.animal.breed ?? "—"}
+            </div>
           </div>
-          <div>
-            <strong>Sesso:</strong> {compose.animal.sex ?? "—"}
+
+          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+            <div className="text-zinc-500">Sesso</div>
+            <div className="mt-1 font-semibold text-zinc-900">
+              {compose.animal.sex ?? "—"}
+            </div>
           </div>
-          <div>
-            <strong>Microchip:</strong> {compose.animal.microchip ?? "—"}
-          </div>
-          <div>
-            <strong>Eventi disponibili:</strong> {(compose.events ?? []).length}
+
+          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 sm:col-span-2">
+            <div className="text-zinc-500">Microchip</div>
+            <div className="mt-1 font-semibold text-zinc-900 break-all">
+              {compose.animal.microchip ?? "—"}
+            </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
+      <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
         <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <h2 className="text-base font-semibold text-zinc-900">Destinatario</h2>
+          <h2 className="text-lg font-semibold text-zinc-900">Destinatario</h2>
 
-          <div className="mt-4 grid gap-3">
+          <div className="mt-5 grid gap-3">
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Ricerca libera..."
-              className="h-11 rounded-2xl border border-zinc-200 bg-white px-4 text-sm outline-none focus:border-zinc-400"
+              className="h-11 rounded-xl border border-zinc-300 bg-white px-3 text-sm outline-none focus:border-zinc-900"
             />
 
             <select
               value={tagId}
               onChange={(e) => setTagId(e.target.value)}
-              className="h-11 rounded-2xl border border-zinc-200 bg-white px-4 text-sm outline-none focus:border-zinc-400"
+              className="h-11 rounded-xl border border-zinc-300 bg-white px-3 text-sm outline-none focus:border-zinc-900"
             >
               <option value="">Tutte le skill</option>
               {tags.map((tag: Tag) => (
@@ -289,13 +329,13 @@ export default function NewProfessionalConsultPage() {
             <button
               type="button"
               onClick={() => void searchRecipients()}
-              className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800"
+              className="inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
             >
               Cerca professionisti
             </button>
           </div>
 
-          <div className="mt-4 max-h-[520px] space-y-2 overflow-auto">
+          <div className="mt-5 max-h-[560px] space-y-3 overflow-auto">
             {recipients.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-zinc-200 p-4 text-sm text-zinc-600">
                 Nessun professionista trovato.
@@ -303,13 +343,16 @@ export default function NewProfessionalConsultPage() {
             ) : (
               recipients.map((pro: Recipient) => {
                 const selected = receiverProfessionalId === pro.id;
+
                 return (
                   <button
                     key={pro.id}
                     type="button"
                     onClick={() => setReceiverProfessionalId(pro.id)}
-                    className={`w-full rounded-2xl border p-4 text-left ${
-                      selected ? "border-black bg-zinc-100" : "border-zinc-200 bg-white"
+                    className={`w-full rounded-2xl border p-4 text-left transition ${
+                      selected
+                        ? "border-black bg-zinc-100"
+                        : "border-zinc-200 bg-white hover:bg-zinc-50"
                     }`}
                   >
                     <div className="text-sm font-semibold text-zinc-900">
@@ -326,7 +369,7 @@ export default function NewProfessionalConsultPage() {
                         {tagsByProfessional[pro.id].map((tag: Tag) => (
                           <span
                             key={tag.id}
-                            className="rounded-full border border-zinc-200 bg-zinc-50 px-2 py-1 text-xs text-zinc-700"
+                            className="rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-xs text-zinc-700"
                           >
                             {tag.label}
                           </span>
@@ -342,14 +385,14 @@ export default function NewProfessionalConsultPage() {
 
         <section className="space-y-6">
           <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-            <h2 className="text-base font-semibold text-zinc-900">Messaggio clinico</h2>
+            <h2 className="text-lg font-semibold text-zinc-900">Messaggio clinico</h2>
 
-            <div className="mt-4 grid gap-3">
+            <div className="mt-5 grid gap-4">
               <input
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
                 placeholder="Oggetto"
-                className="h-11 rounded-2xl border border-zinc-200 bg-white px-4 text-sm outline-none focus:border-zinc-400"
+                className="h-11 rounded-xl border border-zinc-300 bg-white px-3 text-sm outline-none focus:border-zinc-900"
               />
 
               <textarea
@@ -357,15 +400,15 @@ export default function NewProfessionalConsultPage() {
                 onChange={(e) => setMessage(e.target.value)}
                 rows={7}
                 placeholder="Scrivi il referto o la richiesta di consulto..."
-                className="w-full rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm outline-none focus:border-zinc-400"
+                className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-3 text-sm outline-none focus:border-zinc-900"
               />
             </div>
           </div>
 
           <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-            <h2 className="text-base font-semibold text-zinc-900">Condivisione</h2>
+            <h2 className="text-lg font-semibold text-zinc-900">Condivisione</h2>
 
-            <div className="mt-4 space-y-3">
+            <div className="mt-5 space-y-3">
               <label className="flex cursor-pointer gap-3 rounded-2xl border border-zinc-200 p-4">
                 <input
                   type="radio"
@@ -401,12 +444,12 @@ export default function NewProfessionalConsultPage() {
           </div>
 
           <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-            <h2 className="text-base font-semibold text-zinc-900">Priorità</h2>
+            <h2 className="text-lg font-semibold text-zinc-900">Priorità</h2>
 
             <select
               value={priority}
               onChange={(e) => setPriority(e.target.value as "normal" | "emergency")}
-              className="mt-4 h-11 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm outline-none focus:border-zinc-400"
+              className="mt-5 h-11 w-full rounded-xl border border-zinc-300 bg-white px-3 text-sm outline-none focus:border-zinc-900"
             >
               <option value="normal">Normale</option>
               <option value="emergency">Emergenza</option>
@@ -414,9 +457,14 @@ export default function NewProfessionalConsultPage() {
           </div>
 
           <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-            <h2 className="text-base font-semibold text-zinc-900">Eventi condivisi</h2>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <h2 className="text-lg font-semibold text-zinc-900">Eventi condivisi</h2>
+              <p className="text-xs text-zinc-500">
+                Selezionati: <span className="font-semibold text-zinc-800">{effectiveSelectedIds.length}</span>
+              </p>
+            </div>
 
-            <div className="mt-4 max-h-[420px] space-y-3 overflow-auto">
+            <div className="mt-5 max-h-[440px] space-y-3 overflow-auto">
               {(compose?.events ?? []).length === 0 ? (
                 <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600">
                   Nessun evento clinico disponibile da condividere.
@@ -428,7 +476,7 @@ export default function NewProfessionalConsultPage() {
                   return (
                     <label
                       key={event.id}
-                      className="flex cursor-pointer gap-3 rounded-2xl border border-zinc-200 p-4"
+                      className="flex cursor-pointer gap-3 rounded-2xl border border-zinc-200 p-4 hover:bg-zinc-50"
                     >
                       <input
                         type="checkbox"
@@ -436,17 +484,18 @@ export default function NewProfessionalConsultPage() {
                         disabled={shareMode === "full_record"}
                         onChange={() => toggleEvent(event.id)}
                       />
+
                       <div className="min-w-0">
                         <div className="text-sm font-semibold text-zinc-900">
                           {event.title || "Evento clinico"}
                         </div>
+
                         <div className="mt-1 text-xs text-zinc-500">
-                          {event.event_date
-                            ? new Date(event.event_date).toLocaleString("it-IT")
-                            : new Date(event.created_at).toLocaleString("it-IT")}
+                          {formatEventDate(event.event_date, event.created_at)}
                         </div>
+
                         {event.description ? (
-                          <div className="mt-2 line-clamp-3 text-sm text-zinc-700">
+                          <div className="mt-2 line-clamp-3 text-sm leading-6 text-zinc-700">
                             {event.description}
                           </div>
                         ) : null}
@@ -466,7 +515,7 @@ export default function NewProfessionalConsultPage() {
                 !subject.trim() ||
                 effectiveSelectedIds.length === 0
               }
-              className="mt-6 w-full rounded-2xl bg-black px-5 py-3 text-sm font-semibold text-white disabled:opacity-60"
+              className="mt-6 w-full rounded-xl bg-black px-5 py-3 text-sm font-semibold text-white hover:bg-zinc-900 disabled:opacity-60"
             >
               {saving ? "Invio in corso..." : "Invia consulto"}
             </button>
