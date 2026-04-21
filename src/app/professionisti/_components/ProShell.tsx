@@ -364,6 +364,7 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
       setOperatorModalOpen(false);
       setOperatorInfo(`Operatore attivo aggiornato ✅ ${response.session.activeOperatorLabel}`);
       await refreshOperatorState();
+      window.dispatchEvent(new CustomEvent("unimalia:operator-session-updated"));
       return;
     }
 
@@ -399,6 +400,7 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
       setOperatorSession(null);
       setOperatorInfo("Operatore disattivato.");
       await refreshOperatorState();
+      window.dispatchEvent(new CustomEvent("unimalia:operator-session-updated"));
     } catch (error) {
       setOperatorError(error instanceof Error ? error.message : "Errore logout operatore.");
     } finally {
@@ -788,6 +790,12 @@ export default function ProShell({ children }: { children: React.ReactNode }) {
                   className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 outline-none focus:border-zinc-900"
                   value={operatorPin}
                   onChange={(e) => setOperatorPin(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      void handleActivateOrSwitchOperator();
+                    }
+                  }}
                   placeholder="4-8 cifre"
                 />
               </div>

@@ -574,6 +574,18 @@ export default function ClinicaPage() {
     };
   }, [accessChecked, refreshOperatorSession]);
 
+  useEffect(() => {
+    const handleOperatorSessionUpdate = () => {
+      void refreshOperatorSession();
+    };
+
+    window.addEventListener("unimalia:operator-session-updated", handleOperatorSessionUpdate);
+
+    return () => {
+      window.removeEventListener("unimalia:operator-session-updated", handleOperatorSessionUpdate);
+    };
+  }, [refreshOperatorSession]);
+
   const loadClinicEvents = useCallback(async () => {
     if (!id) return;
     setEventsLoading(true);
